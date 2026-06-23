@@ -1,0 +1,15 @@
+id,role,type,description,size_ratio,style_ref,source
+thumbnail_cover,marketplace 16:9 cover + OG image passed to deploy_game,image,"title art 'WHY IT SUCKS TO BE A...' with a cute low-poly rabbit fleeing a fox across a bright forest island, life-clock motif",16:9,STYLE FORMULA,generate_image(gpt_image_2)
+favicon_icon,site favicon + catalog icon passed to deploy_game,image,"cute low-poly rabbit face with big worried eyes, centered, app-icon",1:1,STYLE FORMULA,generate_image(nano_banana_2)
+music_cozy,looping background music (HTML audio loop),audio,"warm cheerful lighthearted nature documentary ukulele + marimba cozy loop, gentle and slightly silly",40s,STYLE FORMULA mood,generate_audio(sonilo_music)
+sfx_eat,played on eating correct food,audio,"single short cute nom/chomp munch",1s,n/a,generate_audio(mirelo_text_to_audio)
+sfx_hurt,played on predator hit,audio,"single short cartoon squish/ow yelp",1s,n/a,generate_audio(mirelo_text_to_audio)
+sfx_die,played on death (failure),audio,"funny comedic descending fail trombone-ish sad sting",2s,n/a,generate_audio(mirelo_text_to_audio)
+sfx_birth,played on reproduce (success),audio,"happy bright sparkle success chime, magical pop",2s,n/a,generate_audio(mirelo_text_to_audio)
+sfx_alert,played when a predator starts chasing,audio,"short tense danger sting / heartbeat thump alert",1s,n/a,generate_audio(mirelo_text_to_audio)
+proc_animals,player + predator + prey meshes built from primitives with code animation,3d_procedural,"low-poly rabbit/fox/bee/penguin/sea-turtle/salmon/shark; oversized heads+eyes; per-stage scale; hop/waddle/swim/tail-wag clips in code",~300-900 tris each,STYLE FORMULA,procedural
+proc_food,edible pickups + collectible meshes,3d_procedural,"grass tufts, flowers, berries, small fish, jellyfish, bugs; bright candy hues; bob+spin idle",low,STYLE FORMULA,procedural
+proc_biomes,terrain disc + biome prop meshes (instanced),3d_procedural,"forest trees/bushes/logs, ocean coral/seaweed/rocks, arctic icebergs/snow/frozen-lake, savanna acacia/grass/rocks; rounded chunky",instanced,STYLE FORMULA,procedural
+proc_fx,particle + feedback effects (pooled),3d_procedural,"eat puff, growth sparkle ring, danger ring decal, water splash, snow flurry, death poof",low,STYLE FORMULA,procedural
+proc_sky,sky dome gradient + fog tint per biome,3d_procedural,"soft-saturated gradient sky and biome-colored fog derived from formula light/mood",fullscreen,STYLE FORMULA,procedural
+ui_hud,HUD + menus DOM/SVG overlay,ui_procedural,"rounded nature-colored HUD: hunger/energy/life arcs, objective banner, touch joystick + sprint button, birth card, death epitaph, species-unlock screen",responsive,STYLE FORMULA,procedural

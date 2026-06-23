@@ -1,0 +1,27 @@
+{
+  "name": "animal",
+  "version": "1.0.0",
+  "description": "Why It Sucks To Be A… — a mobile-first low-poly 3D roguelike survival game",
+  "type": "module",
+  "main": "public/src/game.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "node tests/sim.test.js && node tests/build.test.js && node tests/dom.test.js",
+    "start": "cd public && python3 -m http.server 8080"
+  },
+  "repository": {
+    "type": "git",
+    "url": "http://local_proxy@127.0.0.1:36551/git/PukkingDragon123/Animal"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "three": "^0.169.0"
+  },
+  "devDependencies": {
+    "jsdom": "^29.1.1"
+  }
+}
