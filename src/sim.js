@@ -24,20 +24,22 @@ function randPoint(rng, minR, maxR) {
 // ---------------------------------------------------------------------------
 // Run creation
 // ---------------------------------------------------------------------------
-export function createRun({ speciesId = 'rabbit', seed = 1, upgrades = null }) {
+export function createRun({ speciesId = 'rabbit', seed = 1, bonus = null, visuals = null }) {
   const rng = makeRng(seed);
   const species = speciesOf(speciesId);
   const biome = biomeOf(species.biome);
   const mutationIds = rollMutations(rng);
   const mods = applyMutations(mutationIds);
 
-  // persistent evolution upgrades (Spore-style) stack on top of the run mutation
-  if (upgrades) {
-    mods.speed *= 1 + 0.06 * (upgrades.speed || 0);
-    mods.life *= 1 + 0.08 * (upgrades.longevity || 0);
-    mods.eat *= 1 + 0.12 * (upgrades.senses || 0);
-    mods.extraHits += (upgrades.vitality || 0);
-    if ((upgrades.fertility || 0) >= 3) mods.fertile = true;
+  // permanent skill-tree mutations stack on top of the run's random mutation
+  if (bonus) {
+    mods.speed *= bonus.speedMul || 1;
+    mods.life *= bonus.lifeMul || 1;
+    mods.eat *= bonus.eatMul || 1;
+    mods.size *= bonus.sizeMul || 1;
+    mods.extraHits += bonus.extraHits || 0;
+    mods.dmg *= bonus.dmgMul || 1;
+    if (bonus.fertile) mods.fertile = true;
   }
 
   // lifespan: base × mutation × struggle (bee = brutally short)
@@ -68,7 +70,7 @@ export function createRun({ speciesId = 'rabbit', seed = 1, upgrades = null }) {
     interactables: [], fruits: [], nestTwigs: [],
     mate: null, nest: null,
     reproduceCooldown: 0, attackCooldown: 0,
-    fertilityLevel: upgrades ? (upgrades.fertility || 0) : 0,
+    visuals: visuals || {},
     nestMaterials: 0, nestBuilt: false, needsMaterials: false,
     hidden: false, boost: 0, maxStageIndex: 0,
 
@@ -228,16 +230,15 @@ export function step(state, input, dt) {
   if (canSprint) { spd *= C.move.sprintMult; state.lastSprint = S.energy > 0.5; }
   else state.lastSprint = false;
 
-  P.vx = mx * spd; P.vz = mz * spd;
+  // smooth the input-driven velocity for a less twitchy feel
+  const dvx = mx * spd, dvz = mz * spd, k = Math.min(1, C.move.accel * dt);
+  P.vx += (dvx - P.vx) * k; P.vz += (dvz - P.vz) * k;
 
-  // river current pushes downstream
-  if (state.biome.current) {
-    const [cdx, cdz] = state.biome.currentDir;
-    P.vx += -cdx * state.biome.currentStrength;
-    P.vz += -cdz * state.biome.currentStrength;
-  }
+  // river current pushes downstream (added at integration, not smoothed)
+  let curX = 0, curZ = 0;
+  if (state.biome.current) { const [cdx, cdz] = state.biome.currentDir; curX = -cdx * state.biome.currentStrength; curZ = -cdz * state.biome.currentStrength; }
 
-  P.x += P.vx * dt; P.z += P.vz * dt;
+  P.x += (P.vx + curX) * dt; P.z += (P.vz + curZ) * dt;
 
   // soft circular wall
   const rr = Math.hypot(P.x, P.z), maxR = C.world.radius;
@@ -249,7 +250,7 @@ export function step(state, input, dt) {
   }
 
   // heading + moving flags
-  P.speed = Math.hypot(P.vx, P.vz);
+  P.speed = Math.hypot(P.vx + curX, P.vz + curZ);
   P.moving = mlen > 0.05;
   if (P.moving) {
     const target = Math.atan2(P.vx, P.vz);
@@ -491,15 +492,16 @@ function updatePredators(state, dt) {
     if (pr.stun > 0) { pr.stun -= dt; pr.vx *= 0.82; pr.vz *= 0.82; pr.x += pr.vx * dt; pr.z += pr.vz * dt; continue; }
     const d2 = dist2(P.x, P.z, pr.x, pr.z);
     const d = Math.sqrt(d2) || 1;
+    const effAggro = aggroR * (state.stage === 'baby' ? C.predator.babyAggroMult : 1);
 
-    if (!pr.aggro && d < aggroR) { pr.aggro = true; pr.state = 'chase'; pr.giveUp = 0; state.events.push({ t: 'alert' }); state.events.push({ t: 'quip', key: 'chased' }); }
+    if (!pr.aggro && d < effAggro) { pr.aggro = true; pr.state = 'chase'; pr.giveUp = 0; state.events.push({ t: 'alert' }); state.events.push({ t: 'quip', key: 'chased' }); }
     if (pr.aggro) {
       if (d > loseR) { pr.giveUp += dt; if (pr.giveUp > C.predator.giveUpSec) { pr.aggro = false; pr.state = 'wander'; } }
       else pr.giveUp = 0;
     }
 
     if (pr.aggro) {
-      const sc = 1 + state.ageFrac * 0.18;                 // mild escalation with age
+      const sc = 1 + state.ageFrac * C.predator.escalation; // mild escalation with age
       const ps = C.predator.speed * sc;
       pr.vx = (P.x - pr.x) / d * ps; pr.vz = (P.z - pr.z) / d * ps;
       pr.heading = Math.atan2(pr.vx, pr.vz);

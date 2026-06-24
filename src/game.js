@@ -12,7 +12,8 @@ import { Audio } from './audio.js';
 import { Hud } from './hud.js';
 import * as save from './save.js';
 import { recordRun, checkUnlocks } from './quests.js';
-import { runRewards, addExp, buyUpgrade, speciesUpgrades } from './evolution.js';
+import { runRewards, addExp } from './evolution.js';
+import { applySkills, speciesSkills, unlockSkill } from './skills.js';
 
 const STEP = C.sim.step;            // ms
 const STEP_S = STEP / 1000;
@@ -42,7 +43,7 @@ class Game {
       setSprint: (v) => this.input.setSprintButton(v),
       setAttack: (v) => this.input.setAttackButton(v),
       onEvolve: (id) => this.openEvolution(id),
-      onUpgrade: (id, key) => { const okb = buyUpgrade(this.save, id, key); if (okb) save.save(this.save); return okb; },
+      onUnlockSkill: (id, nodeId) => { const ok = unlockSkill(this.save, id, nodeId); if (ok) save.save(this.save); return ok; },
     });
 
     this.mode = 'menu';            // menu | birth | playing | paused | dead
@@ -96,7 +97,8 @@ class Game {
     if (!speciesId) speciesId = pick(this.save.unlocked);
     if (!this.save.unlocked.includes(speciesId)) speciesId = 'rabbit';
     this.lastSpecies = speciesId;
-    this.state = createRun({ speciesId, seed: freshSeed(), upgrades: speciesUpgrades(this.save, speciesId) });
+    const evo = applySkills(speciesSkills(this.save, speciesId));
+    this.state = createRun({ speciesId, seed: freshSeed(), bonus: evo.bonus, visuals: evo.visuals });
     this.renderer.setupRun(this.state);
     this.foodColor = (this.state.species.diet.kind === 'graze') ? foodOf(this.state.species.diet.food).color : 0xffd23f;
     this.hud.setDiet(this.state.species.dietIcon, this.state.species.dietName);

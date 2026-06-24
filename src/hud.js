@@ -7,7 +7,8 @@ import { SPECIES, SPECIES_LIST } from './species.js';
 import { MUTATIONS } from './mutations.js';
 import { questFor } from './quests.js';
 import { Preview } from './preview.js';
-import { UPGRADES, MAX_LEVEL, speciesUpgrades, upgradeCost, canUpgrade, totalLevels, expForLevel } from './evolution.js';
+import { expForLevel } from './evolution.js';
+import { SKILLS, SKILL_TIERS, speciesSkills, applySkills, canUnlock, reqMet } from './skills.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
@@ -158,8 +159,8 @@ export class Hud {
       $('spRarity').className = 'rarity ' + (sp.rarity || 'Common');
       $('spRarity').textContent = sp.rarity || 'Common';
       $('spAbility').innerHTML = `<b>${esc(STR.abilityLabel)}:</b> ${esc(sp.ability || '')}`;
-      const tot = totalLevels(speciesUpgrades(save, id));
-      $('spEvo').textContent = tot > 0 ? `🧬 Evolution Lv ${tot}` : '';
+      const sk = speciesSkills(save, id);
+      $('spEvo').textContent = sk.length ? `🧬 Mutations: ${sk.length}` : '';
       $('spStats').innerHTML = pip(STR.statSpeed, sp.rating.speed) + pip(STR.statSize, sp.rating.size) + pip(STR.statLife, sp.rating.life);
       const act = $('spAction');
       if (unlocked) {
@@ -173,7 +174,7 @@ export class Hud {
         $('previewCanvas').classList.add('lockedPrev');
       }
       this.els.screen.querySelectorAll('.dots i').forEach((d, i) => d.classList.toggle('cur', i === idx));
-      this.preview.show(id);
+      this.preview.show(id, applySkills(speciesSkills(save, id)).visuals);
     };
     const move = (dir) => { idx = (idx + dir + SPECIES_LIST.length) % SPECIES_LIST.length; render(); };
     $('prevSp').onclick = () => move(-1);
@@ -183,41 +184,42 @@ export class Hud {
     render();
   }
 
-  // Spore-style evolution lab: spend genes on permanent per-species upgrades
+  // Mutation skill tree: spend genes on connected nodes that mutate the model
   evolution(save, speciesId) {
     this._disposePreview();
     const id = (speciesId && save.unlocked.includes(speciesId)) ? speciesId : (save.unlocked[save.unlocked.length - 1] || 'rabbit');
     const sp = SPECIES[id];
     const need = expForLevel(save.level || 1);
+    const tiers = []; for (let t = 0; t < SKILL_TIERS; t++) tiers.push([]);
+    for (const nodeId in SKILLS) tiers[SKILLS[nodeId].tier].push(nodeId);
     this._screen(`
       <div class="panel selectC">
-        <div class="ptitle">${esc(STR.evoTitle)}</div>
+        <div class="ptitle">${esc(STR.evoTitle)} · ${esc(sp.name)}</div>
         <div class="evoTop">
           <span class="pill">⭐ ${STR.levelLabel} <b>${save.level || 1}</b></span>
           <span class="pill">🧬 <b id="evGenes">${save.genes || 0}</b> ${STR.genes}</span>
         </div>
         <div class="expbar"><div style="width:${Math.min(100, Math.round(100 * (save.exp || 0) / need))}%"></div></div>
         <canvas id="previewCanvas" class="preview"></canvas>
-        <div class="bignameRow"><span class="bigname">${esc(sp.name)}</span></div>
         <div class="bigdesc">${esc(STR.evoBlurb)}</div>
-        <div class="upgList" id="upgList"></div>
+        <div class="tree" id="tree"></div>
         <button class="btn ghost" id="btnBack">${STR.back}</button>
       </div>`);
-    this.preview = new Preview($('previewCanvas')); this.preview.show(id);
+    this.preview = new Preview($('previewCanvas'));
 
-    const renderUpg = () => {
-      const u = speciesUpgrades(save, id);
-      $('upgList').innerHTML = UPGRADES.map(up => {
-        const lvl = u[up.key] || 0, maxed = lvl >= MAX_LEVEL, cost = upgradeCost(lvl), afford = canUpgrade(save, id, up.key);
-        let pips = ''; for (let k = 0; k < MAX_LEVEL; k++) pips += `<i class="${k < lvl ? 'on' : ''}"></i>`;
-        const btn = maxed ? `<button class="ubuy max" disabled>${STR.maxed}</button>`
-          : `<button class="ubuy" data-k="${up.key}" ${afford ? '' : 'disabled'}>🧬 ${cost}</button>`;
-        return `<div class="upg"><div class="uico">${up.icon}</div><div class="uinfo"><div class="uname">${esc(up.name)}</div><div class="udesc">${esc(up.desc)}</div><div class="upips">${pips}</div></div>${btn}</div>`;
-      }).join('');
+    const refresh = () => {
+      const u = speciesSkills(save, id);
+      this.preview.show(id, applySkills(u).visuals);
       $('evGenes').textContent = save.genes || 0;
-      this.els.screen.querySelectorAll('.ubuy[data-k]').forEach(b => b.onclick = () => { if (this.h.onUpgrade?.(id, b.getAttribute('data-k'))) renderUpg(); });
+      $('tree').innerHTML = tiers.map(row => `<div class="tier">${row.map(nodeId => {
+        const n = SKILLS[nodeId], owned = u.includes(nodeId), avail = !owned && reqMet(u, nodeId), afford = avail && (save.genes || 0) >= n.cost;
+        const cls = owned ? 'owned' : (avail ? (afford ? 'avail' : 'cant') : 'locked');
+        return `<button class="snode ${cls}" data-n="${nodeId}" title="${esc(n.desc)}" ${owned || !afford ? 'disabled' : ''}>
+          <span class="sico">${n.icon}</span><span class="sname">${esc(n.name)}</span><span class="scost">${owned ? '✓ owned' : '🧬 ' + n.cost}</span></button>`;
+      }).join('')}</div>`).join('<div class="tierLink"></div>');
+      $('tree').querySelectorAll('.snode[data-n]').forEach(b => b.onclick = () => { if (this.h.onUnlockSkill?.(id, b.getAttribute('data-n'))) refresh(); });
     };
-    renderUpg();
+    refresh();
     $('btnBack').onclick = () => this.menu(save);
   }
 

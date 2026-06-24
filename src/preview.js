@@ -31,11 +31,11 @@ export class Preview {
     this.camera.aspect = w / h; this.camera.updateProjectionMatrix();
   }
 
-  show(speciesId) {
+  show(speciesId, visuals) {
     if (!this.ok) return;
     if (this.mesh) { this.scene.remove(this.mesh); this.mesh.traverse(o => { if (o.geometry) o.geometry.dispose(); }); this.mesh = null; }
     const sp = speciesOf(speciesId);
-    const m = buildCreature(sp.build, sp.colors);
+    const m = buildCreature(sp.build, sp.colors, visuals);
     const fit = 1.5 / Math.max(0.6, sp.baseScale);
     m.scale.setScalar(fit); m.userData.baseY = 0.05;
     this.scene.add(m); this.mesh = m;

@@ -3,7 +3,8 @@
 import { createRun, step } from '../src/sim.js';
 import { CONFIG as C } from '../src/config.js';
 import { recordRun, checkUnlocks } from '../src/quests.js';
-import { buyUpgrade, speciesUpgrades, runRewards, addExp, upgradeCost } from '../src/evolution.js';
+import { runRewards, addExp } from '../src/evolution.js';
+import { applySkills, speciesSkills, unlockSkill, SKILLS } from '../src/skills.js';
 
 let pass = 0, fail = 0;
 const ok = (n, c) => { if (c) pass++; else { fail++; console.error('  FAIL:', n); } };
@@ -130,24 +131,29 @@ console.log('feature tests');
   ok('attack hunt: lunge-kills prey', s.meals > m0);
 }
 
-// persistent upgrades stack onto a run
+// skill-tree bonuses + visuals stack onto a run
 {
   const base = createRun({ speciesId: 'rabbit', seed: 50 });
-  const up = createRun({ speciesId: 'rabbit', seed: 50, upgrades: { speed: 5, vitality: 3, longevity: 5, senses: 5, fertility: 3 } });
-  ok('upgrade: faster', up.mods.speed > base.mods.speed);
-  ok('upgrade: longer life', up.lifespan > base.lifespan);
-  ok('upgrade: more hits', up.hitsLeft > base.hitsLeft || base.mods.frail);
-  ok('upgrade: fertility≥3 → fertile', up.mods.fertile === true);
-  ok('upgrade: bigger feeding range', up.mods.eat > base.mods.eat);
+  const { bonus, visuals } = applySkills(['swift', 'sturdy', 'keen', 'longlegs', 'giant', 'ancient', 'bigears']);
+  const up = createRun({ speciesId: 'rabbit', seed: 50, bonus, visuals });
+  ok('skill: faster', up.mods.speed > base.mods.speed);
+  ok('skill: longer life', up.lifespan > base.lifespan);
+  ok('skill: more hits', up.hitsLeft > base.hitsLeft || base.mods.frail);
+  ok('skill: bigger feeding range', up.mods.eat > base.mods.eat);
+  ok('skill: bigger size', up.mods.size > base.mods.size);
+  ok('skill: visuals carried into the run', up.visuals && up.visuals.giant === true && up.visuals.ears > 1);
 }
 
-// evolution economy: spend genes, level via EXP, run rewards
+// skill-tree economy: prereqs, gene spend, EXP levels, run rewards
 {
-  const sv = { genes: 100, exp: 0, level: 1, evolution: {}, unlocked: ['rabbit'] };
-  ok('evo: buy succeeds', buyUpgrade(sv, 'rabbit', 'speed') === true);
-  ok('evo: genes spent', sv.genes === 100 - upgradeCost(0));
-  ok('evo: level recorded', speciesUpgrades(sv, 'rabbit').speed === 1);
-  ok('evo: cannot overspend', (() => { const poor = { genes: 0, evolution: {} }; return buyUpgrade(poor, 'rabbit', 'speed') === false; })());
+  const sv = { genes: 100, exp: 0, level: 1, skills: {}, unlocked: ['rabbit'] };
+  ok('skill: blocked before prereq', unlockSkill(sv, 'rabbit', 'giant') === false);
+  ok('skill: buy root succeeds', unlockSkill(sv, 'rabbit', 'swift') === true);
+  ok('skill: genes spent', sv.genes === 100 - SKILLS.swift.cost);
+  ok('skill: recorded', speciesSkills(sv, 'rabbit').includes('swift'));
+  ok('skill: child now buyable', unlockSkill(sv, 'rabbit', 'longlegs') === true);
+  ok('skill: applySkills aggregates', (() => { const a = applySkills(speciesSkills(sv, 'rabbit')); return a.bonus.speedMul > 1 && a.visuals.legs > 1; })());
+  ok('skill: cannot overspend', (() => { const poor = { genes: 0, skills: {} }; return unlockSkill(poor, 'rabbit', 'swift') === false; })());
   const lv0 = sv.level; const gained = addExp(sv, 1000);
   ok('evo: EXP levels up', sv.level > lv0 && gained > 0);
   const rw = runRewards({ meals: 10, offspring: 1, maxStageIndex: 2, reproduced: true, nestBuilt: false });

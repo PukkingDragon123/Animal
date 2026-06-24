@@ -26,7 +26,7 @@ python3 -m http.server 8080
 Or play it instantly from the branch (served via raw.githack.com, which sends
 the correct MIME types for ES modules):
 
-**https://raw.githack.com/PukkingDragon123/Animal/claude/inspiring-wright-5xmrsu/index.html?v=3**
+**https://raw.githack.com/PukkingDragon123/Animal/claude/inspiring-wright-5xmrsu/index.html?v=4**
 
 Open the URL on a phone or desktop. (ES modules need a real server — opening
 `index.html` from `file://` won't work.)
@@ -45,14 +45,20 @@ Keyboard is bound to **physical key codes**, so it works on any layout.
 **Attack** lets you bonk-and-stun predators (fight back!), lunge-kill prey as a
 hunter, or shake fruit from trees.
 
-## Evolution lab (Spore-style)
+## Evolution: the mutation skill tree (Spore-style)
 
 Every run earns **genes** and **EXP**. EXP levels up your gene pool; genes are
-spent in the **Evolution Lab** on permanent, per-species upgrades — Speed,
-Vitality (extra hits), Longevity, Senses (feeding range) and Fertility (twins +
-faster breeding). Your evolved stats stack on top of each run's random
-mutations, so a species gets stronger the more you play it. Reach the lab from
-the menu, the character card, or straight off the death screen.
+spent in the **Evolution Lab** — a **mutation skill tree** with prerequisites.
+Many nodes don't just buff stats, they **physically mutate your 3D model**:
+Big Ears, Spikes, Horns, Fangs, Bioglow and Giant all change how the creature
+looks (visible live in the lab's 3D preview, on the character card, and in the
+run). Upgrades stack on each run's random mutation, so a species gets stronger
+and weirder the more you play it. Reach the lab from the menu, the character
+card, or the death screen.
+
+The world is also full of **ambient critters** — squirrels, ravens, butterflies
+and frogs that wander and scatter as you pass — and predators are deliberately
+forgiving (small aggro range, give up quickly, mostly ignore babies).
 
 ## The loop
 

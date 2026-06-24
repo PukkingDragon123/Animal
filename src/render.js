@@ -32,6 +32,27 @@ function preyColors(build) {
   return { body: 0xcccccc, belly: 0xffffff, accent: 0x999999, eye: 0x222222 };
 }
 
+// ambient critters per biome (decorative life that scatters from the player)
+const CRITTERS = {
+  forest: [['squirrel', 3], ['butterfly', 5], ['raven', 2]],
+  meadow: [['butterfly', 8], ['squirrel', 2], ['raven', 1]],
+  savanna: [['squirrel', 2], ['raven', 3], ['butterfly', 3]],
+  arctic: [['raven', 2]],
+  ocean: [['fish', 6]],
+  river: [['butterfly', 4], ['frog', 3]],
+};
+const CRITTER_SIZE = { squirrel: 0.7, raven: 0.8, butterfly: 0.7, frog: 0.6, fish: 0.55 };
+function critterColors(kind) {
+  switch (kind) {
+    case 'squirrel': return { body: 0xb5652f, belly: 0xe9d8b0, accent: 0x6e3b18, eye: 0x201510 };
+    case 'raven': return { body: 0x2a2d33, belly: 0x3a3f47, accent: 0x6a6f77, eye: 0x111111 };
+    case 'butterfly': { const c = [0xff7ab0, 0xffc14a, 0x8a6bff, 0x57c8ff, 0xff6b6b][Math.floor(Math.random() * 5)]; return { body: c, belly: c, accent: 0xfff0c0, eye: 0x222222 }; }
+    case 'frog': return { body: 0x6fbf4a, belly: 0xd9e8a0, accent: 0x4f9a3a, eye: 0x141410 };
+    case 'fish': return { body: 0x9ad3ec, belly: 0xeaf2f6, accent: 0x6fb6d6, eye: 0x141414 };
+    default: return { body: 0xcccccc, belly: 0xffffff, accent: 0x888888, eye: 0x222222 };
+  }
+}
+
 export class Renderer {
   constructor(canvas) {
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: !isMobile, powerPreference: 'high-performance', alpha: false });
@@ -48,11 +69,14 @@ export class Renderer {
     this.sun = new THREE.DirectionalLight(0xfff2d6, 1.05);
     this.sun.castShadow = this.shadows;
     if (this.shadows) {
-      this.sun.shadow.mapSize.set(1024, 1024);
+      this.sun.shadow.mapSize.set(2048, 2048);
       const s = this.sun.shadow.camera; s.near = 1; s.far = 80; s.left = -24; s.right = 24; s.top = 24; s.bottom = -24;
-      this.sun.shadow.bias = -0.0008;
+      this.sun.shadow.bias = -0.0006; this.sun.shadow.normalBias = 0.02;
     }
     this.scene.add(this.sun); this.scene.add(this.sun.target);
+    // soft cool fill from the opposite side for nicer modelling (no shadow)
+    this.fill = new THREE.DirectionalLight(0xcfe2ff, 0.28); this.fill.position.set(14, 12, 18);
+    this.scene.add(this.fill);
 
     this.dyn = new THREE.Group(); this.scene.add(this.dyn);
     this.fx = new FX(this.scene, C.fx.poolSize);
@@ -64,6 +88,7 @@ export class Renderer {
     this.mateMesh = null; this.nestMesh = null; this.beacon = null; this.warmthMeshes = [];
     this.interactMeshes = []; this.fruitInst = null; this.twigInst = null; this.stepTimer = 0;
     this.ambient = null; this.ambData = null; this.ambKind = 'pollen';
+    this.critters = [];
 
     this.camPos = new THREE.Vector3(0, 18, -14);
     this.camLook = new THREE.Vector3();
@@ -92,6 +117,7 @@ export class Renderer {
     if (this.fruitInst) { this.dyn.remove(this.fruitInst); this.fruitInst.geometry.dispose(); this.fruitInst = null; }
     if (this.twigInst) { this.dyn.remove(this.twigInst); this.twigInst.geometry.dispose(); this.twigInst = null; }
     if (this.ambient) { this.scene.remove(this.ambient); this.ambient.geometry.dispose(); this.ambient.material.dispose(); this.ambient = null; this.ambData = null; }
+    this.critters.forEach(c => clear(c.mesh)); this.critters = [];
     clear(this.mateMesh); this.mateMesh = null;
     if (this.nestMesh) { this.dyn.remove(this.nestMesh); this.nestMesh = null; }
     if (this.beacon) { this.scene.remove(this.beacon); this.beacon = null; }
@@ -111,8 +137,8 @@ export class Renderer {
 
     this.swimY = b.water ? 0.7 : 0;
 
-    // player
-    this.playerMesh = buildCreature(state.species.build, state.species.colors);
+    // player (with its evolved skill-tree visuals)
+    this.playerMesh = buildCreature(state.species.build, state.species.colors, state.visuals);
     this.playerMesh.userData.baseY = this.swimY;
     this.dyn.add(this.playerMesh);
 
@@ -159,6 +185,20 @@ export class Renderer {
       this.dyn.add(this.fruitInst);
     }
     this.twigInst = null; this.stepTimer = 0;
+
+    // ambient critters (decorative wandering life)
+    this.critters = [];
+    for (const [kind, count] of (CRITTERS[b.id] || [])) {
+      for (let i = 0; i < count; i++) {
+        const m = buildCreature(kind, critterColors(kind));
+        const sc = CRITTER_SIZE[kind] || 0.7; m.scale.setScalar(sc);
+        const fly = !!(m.userData.parts && m.userData.parts.fly) || kind === 'raven';
+        const a = Math.random() * 6.283, r = 6 + Math.random() * (C.world.radius - 9);
+        const hoverY = b.water ? 0.7 : (fly ? 1.3 + Math.random() * 1.6 : 0);
+        const c = { mesh: m, x: Math.cos(a) * r, z: Math.sin(a) * r, vx: 0, vz: 0, heading: Math.random() * 6.283, retarget: 0, fly, baseY: hoverY, hoverY, sp: kind === 'butterfly' ? 1.5 : (fly ? 3 : 2.3) };
+        m.position.set(c.x, hoverY, c.z); this.dyn.add(m); this.critters.push(c);
+      }
+    }
 
     // ambient biome particles (pollen / snow / bubbles) for atmosphere
     {
@@ -285,16 +325,44 @@ export class Renderer {
       this.ambient.instanceMatrix.needsUpdate = true;
     }
 
+    // --- ambient critters ---
+    this._updateCritters(state, dt, time);
+
     // --- camera + light follow ---
     this._placeCamera(state, false);
     this.fx.update(dt);
+  }
+
+  _updateCritters(state, dt, time) {
+    const P = state.player, R = C.world.radius;
+    for (const c of this.critters) {
+      const dx = c.x - P.x, dz = c.z - P.z, d = Math.hypot(dx, dz) || 1;
+      const fleeR = c.fly ? 4.5 : 6.5;
+      if (d < fleeR) {                                  // scatter from the player
+        c.heading = Math.atan2(dx, dz);
+        c.vx = (dx / d) * c.sp * 1.9; c.vz = (dz / d) * c.sp * 1.9;
+        if (c.fly) c.baseY = Math.min(c.baseY + dt * 2.2, 4);
+      } else {
+        c.retarget -= dt;
+        if (c.retarget <= 0) { c.heading = Math.random() * 6.283; c.retarget = 1 + Math.random() * 2.5; }
+        c.vx = Math.sin(c.heading) * c.sp * 0.5; c.vz = Math.cos(c.heading) * c.sp * 0.5;
+        c.baseY += (c.hoverY - c.baseY) * Math.min(1, dt);
+      }
+      c.x += c.vx * dt; c.z += c.vz * dt;
+      const rr = Math.hypot(c.x, c.z);
+      if (rr > R) { c.x = c.x / rr * R; c.z = c.z / rr * R; c.heading += Math.PI; }
+      c.mesh.position.x = c.x; c.mesh.position.z = c.z; c.mesh.userData.baseY = c.baseY;
+      c.mesh.rotation.y = Math.atan2(c.vx, c.vz);
+      const moving = Math.abs(c.vx) + Math.abs(c.vz) > 0.3;
+      animateCreature(c.mesh, dt, time, { dt, time, speed: Math.hypot(c.vx, c.vz) * 3, moving, diving: false });
+    }
   }
 
   _syncRepro(state, dt, time) {
     const target = state.mate || state.nest;
     if (target && target.active) {
       if (state.mate && !this.mateMesh) {
-        this.mateMesh = buildCreature(state.species.build, state.species.colors);
+        this.mateMesh = buildCreature(state.species.build, state.species.colors, state.visuals);
         this.mateMesh.userData.baseY = this.swimY; this.dyn.add(this.mateMesh);
       }
       if (state.nest && !this.nestMesh) {

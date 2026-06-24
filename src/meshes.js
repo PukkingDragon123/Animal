@@ -235,14 +235,71 @@ function bear(c) {
   parts.gait = 'lumber'; return g;
 }
 
-const BUILDERS = { rabbit, fox, bee, penguin, turtle, salmon, shark, bird, seal, bear, fish };
+// ---- ambient critters (decorative life) ----
+function squirrel(c) {
+  const g = new THREE.Group(); const parts = g.userData.parts = {};
+  g.add(mesh(SPH(0.3), matte(c.body), { pos: [0, 0.4, 0], scl: [0.9, 1.1, 0.9] }));
+  g.add(mesh(SPH(0.18), matte(c.belly), { pos: [0, 0.36, 0.14], scl: [0.7, 0.9, 0.6], cast: false }));
+  const head = new THREE.Group(); head.position.set(0, 0.72, 0.08); g.add(head); parts.head = head;
+  head.add(mesh(SPH(0.2), matte(c.body)));
+  head.add(mesh(SPH(0.05), matte(c.accent), { pos: [0, -0.02, 0.18], cast: false }));
+  eyes(g, head, c.eye, 0.055, 0.09, 0.15, 0.05);
+  parts.ears = [];
+  for (const s of [-1, 1]) { const ear = new THREE.Group(); ear.position.set(s * 0.1, 0.2, 0); ear.add(mesh(CON(0.07, 0.14, 4), matte(c.body), { pos: [0, 0.05, 0] })); head.add(ear); parts.ears.push(ear); }
+  const tail = new THREE.Group(); tail.position.set(0, 0.4, -0.18); g.add(tail); parts.tail = tail;
+  tail.add(mesh(SPH(0.32), matte(c.body), { pos: [0, 0.3, -0.08], scl: [0.65, 1.35, 0.5] }));
+  parts.legs = [];
+  for (const sx of [-1, 1]) { const leg = mesh(BOX(0.1, 0.16, 0.12), matte(c.accent), { pos: [sx * 0.15, 0.1, 0.08] }); g.add(leg); parts.legs.push(leg); }
+  parts.gait = 'hop'; return g;
+}
+function butterfly(c) {
+  const g = new THREE.Group(); const parts = g.userData.parts = {};
+  const body = new THREE.Group(); body.position.y = 0.5; g.add(body); parts.body = body;
+  body.add(mesh(CYL(0.04, 0.05, 0.32, 5), matte(0x2b2520), { rot: [Math.PI / 2, 0, 0] }));
+  body.add(mesh(SPH(0.07), matte(0x2b2520), { pos: [0, 0, 0.17] }));
+  for (const s of [-1, 1]) body.add(mesh(CYL(0.008, 0.008, 0.13, 4), matte(0x2b2520), { pos: [s * 0.03, 0.06, 0.19], rot: [0.4, 0, s * 0.3], cast: false }));
+  parts.wings = [];
+  const wmat = matte(c.body, { flat: false, rough: 0.5 });
+  for (const s of [-1, 1]) {
+    const w = new THREE.Group(); w.position.set(s * 0.03, 0, 0);
+    w.add(mesh(SPH(0.25), wmat, { pos: [s * 0.2, 0, 0.07], scl: [1.1, 0.05, 0.8], cast: false }));
+    w.add(mesh(SPH(0.17), matte(c.accent, { flat: false }), { pos: [s * 0.22, 0, -0.13], scl: [0.9, 0.05, 0.7], cast: false }));
+    body.add(w); parts.wings.push(w);
+  }
+  parts.gait = 'fly'; parts.fly = true; return g;
+}
+function frog(c) {
+  const g = new THREE.Group(); const parts = g.userData.parts = {};
+  g.add(mesh(SPH(0.32), matte(c.body), { pos: [0, 0.24, 0], scl: [1.1, 0.8, 1.2] }));
+  g.add(mesh(SPH(0.24), matte(c.belly), { pos: [0, 0.14, 0.06], scl: [0.9, 0.5, 0.9], cast: false }));
+  for (const s of [-1, 1]) { const e = new THREE.Group(); e.position.set(s * 0.14, 0.42, 0.14); e.add(mesh(SPH(0.1), matte(0xffffff, { flat: false }), { cast: false })); e.add(mesh(SPH(0.05), matte(c.eye, { flat: false }), { pos: [0, 0.02, 0.07], cast: false })); g.add(e); }
+  parts.legs = [];
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) { const leg = mesh(BOX(0.12, 0.1, 0.22), matte(c.accent), { pos: [sx * 0.26, 0.08, sz * 0.16] }); g.add(leg); parts.legs.push(leg); }
+  parts.gait = 'hop'; return g;
+}
 
-export function buildCreature(buildKey, colors) {
+const BUILDERS = { rabbit, fox, bee, penguin, turtle, salmon, shark, bird, seal, bear, fish, squirrel, butterfly, frog, raven: bird };
+
+export function buildCreature(buildKey, colors, visuals) {
   const fn = BUILDERS[buildKey] || rabbit;
   const c = colors || { body: 0xcccccc, belly: 0xffffff, accent: 0x888888, eye: 0x222222 };
   const g = fn(c);
   g.userData.build = buildKey;
+  if (visuals) applyVisuals(g, visuals);
   return g;
+}
+
+// skill-tree mutations that physically change the model (ears/legs/spikes/horns/fangs/glow)
+export function applyVisuals(group, v) {
+  if (!v) return group;
+  const parts = group.userData.parts || {};
+  if (v.ears && parts.ears) parts.ears.forEach(e => e.scale.multiplyScalar(v.ears));
+  if (v.legs && parts.legs) parts.legs.forEach(l => { l.scale.y *= v.legs; });
+  if (v.spikes) { const m = matte(0x6b5b73); for (let i = 0; i < 5; i++) group.add(mesh(CON(0.1, 0.32, 4), m, { pos: [0, 0.95, -0.45 + i * 0.22], rot: [-0.3, 0, 0], cast: false })); }
+  if (v.horns) { const m = matte(0xf0e4cc); for (const s of [-1, 1]) group.add(mesh(CON(0.08, 0.36, 5), m, { pos: [s * 0.18, 1.08, 0.18], rot: [-0.35, 0, s * 0.35], cast: false })); }
+  if (v.fangs) { const m = matte(0xffffff, { flat: false }); for (const s of [-1, 1]) group.add(mesh(CON(0.045, 0.16, 4), m, { pos: [s * 0.07, 0.5, 0.45], rot: [Math.PI, 0, 0], cast: false })); }
+  if (v.glow) group.add(mesh(SPH(0.82), matte(0x8affc8, { flat: false, emissive: 0x35ffa0, opacity: 0.22 }), { pos: [0, 0.6, 0], cast: false }));
+  return group;
 }
 
 // ---------------------------------------------------------------------------

@@ -6,7 +6,8 @@ const KEY = 'wiststba.save.v2';
 const DEFAULT = {
   dna: 0,
   genes: 0, exp: 0, level: 1,   // Spore-style evolution meta
-  evolution: {},                // speciesId -> { speed, vitality, longevity, senses, fertility }
+  evolution: {},                // (legacy) speciesId -> flat upgrades
+  skills: {},                   // speciesId -> array of unlocked skill-tree node ids
   unlocked: ['rabbit'],         // rabbit is free; the rest are quest-locked
   runs: 0,
   bestScore: 0,
@@ -33,6 +34,7 @@ function deepDefault(data) {
   out.tutorialsSeen = { ...(data.tutorialsSeen || {}) };
   out.deaths = { ...(data.deaths || {}) };
   out.evolution = { ...(data.evolution || {}) };
+  out.skills = { ...(data.skills || {}) };
   out.level = data.level || 1;
   return out;
 }

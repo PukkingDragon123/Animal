@@ -23,7 +23,7 @@ const finiteVec = (v) => Number.isFinite(v.x) && Number.isFinite(v.y) && Number.
 console.log('build tests');
 
 // 1) every creature builds + animates without NaN
-const CREATURES = ['rabbit', 'fox', 'bee', 'penguin', 'turtle', 'salmon', 'shark', 'bird', 'seal', 'bear', 'fish'];
+const CREATURES = ['rabbit', 'fox', 'bee', 'penguin', 'turtle', 'salmon', 'shark', 'bird', 'seal', 'bear', 'fish', 'squirrel', 'butterfly', 'frog'];
 for (const key of CREATURES) {
   let g;
   try { g = buildCreature(key, { body: 0xc08040, belly: 0xfff0d0, accent: 0x884422, eye: 0x111111 }); }

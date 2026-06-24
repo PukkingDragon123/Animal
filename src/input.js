@@ -1,10 +1,15 @@
-// Unified input → one command object {mx, mz, sprint, attack}. Touch joystick
-// (left half) + sprint zone (right half) via pointer events, physical-keycode
-// keyboard, and the Gamepad API.
+// Unified input → one command object {mx, mz, sprint, attack}.
+//
+// Touch: the WHOLE canvas is a dynamic joystick. pointerdown on the canvas
+// drops a stick at the touch point; window-level move/up listeners track it (no
+// setPointerCapture reliance — that was flaky on mobile). The RUN and ATTACK
+// HUD buttons are separate DOM elements, so taps on them never reach the canvas
+// and never start the stick. Sprint/attack come from those buttons + keyboard +
+// gamepad — there is no invisible screen-half that can swallow a touch.
 //
 // Camera note: the follow camera looks toward +Z (yaw 180° from the Three.js
-// default), so world +X renders to SCREEN-LEFT. We negate the X command so
-// "push right" moves the player right on screen. World +Z = screen-up.
+// default), so world +X renders to SCREEN-LEFT. We return -X so "push right"
+// moves the player right on screen; world +Z = screen-up.
 
 const MOVE = {
   KeyW: [0, 1], ArrowUp: [0, 1], KeyS: [0, -1], ArrowDown: [0, -1],
@@ -19,9 +24,8 @@ export class Input {
     this.keys = new Set();
     this.sprintKey = false; this.sprintBtn = false;
     this.attackKey = false; this.attackBtn = false;
-    this.maxR = 64;
+    this.maxR = 60;
     this.joy = { active: false, id: -1, ox: 0, oy: 0, cx: 0, cy: 0 };
-    this.sprintId = -1;
     this.enabled = true;
     this._bind();
   }
@@ -38,63 +42,50 @@ export class Input {
       if (ATTACK_KEYS.has(e.code)) this.attackKey = false;
     });
 
-    const down = (e) => {
-      if (!this.enabled) return;
-      const left = e.clientX < innerWidth * 0.5;
-      if (left && !this.joy.active) {
-        this.joy.active = true; this.joy.id = e.pointerId;
-        this.joy.ox = this.joy.cx = e.clientX; this.joy.oy = this.joy.cy = e.clientY;
-      } else if (!left) {
-        this.sprintId = e.pointerId;
-      }
-      this.el.setPointerCapture?.(e.pointerId);
+    // whole-canvas dynamic joystick
+    this.el.addEventListener('pointerdown', (e) => {
+      if (!this.enabled || this.joy.active) return;
+      this.joy.active = true; this.joy.id = e.pointerId;
+      this.joy.ox = this.joy.cx = e.clientX; this.joy.oy = this.joy.cy = e.clientY;
+      try { this.el.setPointerCapture(e.pointerId); } catch (_) {}
       e.preventDefault();
-    };
-    const move = (e) => {
-      if (this.joy.active && e.pointerId === this.joy.id) { this.joy.cx = e.clientX; this.joy.cy = e.clientY; }
-    };
-    const up = (e) => {
-      if (e.pointerId === this.joy.id) { this.joy.active = false; this.joy.id = -1; }
-      if (e.pointerId === this.sprintId) this.sprintId = -1;
-    };
-    this.el.addEventListener('pointerdown', down, { passive: false });
-    this.el.addEventListener('pointermove', move, { passive: false });
-    addEventListener('pointerup', up);
-    addEventListener('pointercancel', up);
+    }, { passive: false });
+
+    const onMove = (e) => { if (this.joy.active && e.pointerId === this.joy.id) { this.joy.cx = e.clientX; this.joy.cy = e.clientY; } };
+    const onUp = (e) => { if (e.pointerId === this.joy.id) { this.joy.active = false; this.joy.id = -1; } };
+    addEventListener('pointermove', onMove, { passive: false });
+    addEventListener('pointerup', onUp);
+    addEventListener('pointercancel', onUp);
   }
 
   setSprintButton(v) { this.sprintBtn = v; }
   setAttackButton(v) { this.attackBtn = v; }
-  reset() { this.keys.clear(); this.sprintKey = false; this.sprintBtn = false; this.attackKey = false; this.attackBtn = false; this.joy.active = false; this.joy.id = -1; this.sprintId = -1; }
+  reset() { this.keys.clear(); this.sprintKey = this.sprintBtn = this.attackKey = this.attackBtn = false; this.joy.active = false; this.joy.id = -1; }
 
-  // joystick visual for the HUD
+  // joystick visual for the HUD (client px)
   joyVisual() {
     if (!this.joy.active) return null;
-    let dx = this.joy.cx - this.joy.ox, dy = this.joy.cy - this.joy.oy;
-    const len = Math.hypot(dx, dy) || 1;
-    const cl = Math.min(len, this.maxR);
+    const dx = this.joy.cx - this.joy.ox, dy = this.joy.cy - this.joy.oy;
+    const len = Math.hypot(dx, dy) || 1, cl = Math.min(len, this.maxR);
     return { ox: this.joy.ox, oy: this.joy.oy, kx: this.joy.ox + (dx / len) * cl, ky: this.joy.oy + (dy / len) * cl, maxR: this.maxR };
   }
 
   get() {
     let mx = 0, mz = 0;
-    let sprint = this.sprintKey || this.sprintBtn || this.sprintId >= 0;
+    let sprint = this.sprintKey || this.sprintBtn;
     let attack = this.attackKey || this.attackBtn;
 
-    // keyboard
     for (const k of this.keys) { const m = MOVE[k]; if (m) { mx += m[0]; mz += m[1]; } }
 
-    // touch joystick
     if (this.joy.active) {
       const dx = this.joy.cx - this.joy.ox, dy = this.joy.cy - this.joy.oy;
       const len = Math.hypot(dx, dy);
-      if (len > 6) {
+      if (len > 4) {
         const cl = Math.min(len, this.maxR) / this.maxR;
         mx += (dx / len) * cl; mz += -(dy / len) * cl;     // screen up = +z
       }
     }
 
-    // gamepad
     const pads = (typeof navigator !== 'undefined' && navigator.getGamepads) ? navigator.getGamepads() : [];
     for (const gp of pads) {
       if (!gp) continue;

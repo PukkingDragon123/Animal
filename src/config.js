@@ -23,15 +23,16 @@ export const CONFIG = {
   move: {
     baseSpeed: 7.0,         // units/sec at adult, no mutation
     sprintMult: 1.7,
+    accel: 16,              // velocity smoothing toward input (per sec)
     turnLerp: 12,           // heading approach rate
-    stageSpeed: { baby: 0.62, juvenile: 0.85, adult: 1.0, elder: 0.8 },
+    stageSpeed: { baby: 0.72, juvenile: 0.88, adult: 1.0, elder: 0.82 },
   },
 
   needs: {
     hungerMax: 100,
-    hungerDrainPerSec: 100 / 70,   // empty in ~70s idle
-    hungerSprintExtra: 6,          // extra per sec while sprinting
-    eatRestore: 34,
+    hungerDrainPerSec: 100 / 88,   // gentler — empty in ~88s idle
+    hungerSprintExtra: 5,          // extra per sec while sprinting
+    eatRestore: 40,
 
     energyMax: 100,
     energySprintDrain: 100 / 7,    // empty in ~7s of sprint
@@ -39,12 +40,12 @@ export const CONFIG = {
     sprintFloor: 6,                // can't start sprint below this
 
     healthMax: 100,
-    hitDamage: 45,
-    starveDamage: 12,              // per sec at 0 hunger
-    coldDamage: 14,                // per sec when freezing
-    healthRegen: 3,                // per sec when fed & safe
-    healthRegenHungerGate: 55,
-    invulnSec: 0.45,
+    hitDamage: 30,                 // friendlier — predators bruise, not one-shot
+    starveDamage: 9,               // per sec at 0 hunger
+    coldDamage: 11,                // per sec when freezing
+    healthRegen: 5,                // per sec when fed & safe
+    healthRegenHungerGate: 50,
+    invulnSec: 0.8,                // generous mercy window after a hit
   },
 
   life: {
@@ -59,12 +60,14 @@ export const CONFIG = {
   },
 
   predator: {
-    aggroRadius: 11,
-    loseRadius: 16,
-    giveUpSec: 4,
-    speed: 6.2,
-    wanderSpeed: 2.6,
-    contactRadius: 1.0,
+    aggroRadius: 8.5,              // notice you later (less scary)
+    loseRadius: 13,
+    giveUpSec: 2.6,               // gives up the chase sooner
+    speed: 5.4,                   // outrunnable by a fed juvenile/adult
+    wanderSpeed: 2.4,
+    contactRadius: 0.9,
+    babyAggroMult: 0.45,          // predators mostly ignore tiny babies
+    escalation: 0.10,             // mild speed-up as you age
   },
 
   prey: {                          // for hunter species (fox/shark)

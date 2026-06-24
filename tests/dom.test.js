@@ -25,14 +25,14 @@ console.log('dom tests');
 
 const calls = {};
 const handlers = {};
-for (const k of ['onPick', 'onUnlock', 'onBegin', 'onAgain', 'onMenu', 'onResume', 'onPause', 'onToggleMute', 'setSprint', 'setAttack', 'onEvolve', 'onUpgrade'])
-  handlers[k] = (...a) => { calls[k] = (calls[k] || 0) + 1; calls[k + '_arg'] = a[0]; return k === 'onUpgrade'; };
+for (const k of ['onPick', 'onUnlock', 'onBegin', 'onAgain', 'onMenu', 'onResume', 'onPause', 'onToggleMute', 'setSprint', 'setAttack', 'onEvolve', 'onUnlockSkill'])
+  handlers[k] = (...a) => { calls[k] = (calls[k] || 0) + 1; calls[k + '_arg'] = a[0]; return k === 'onUnlockSkill'; };
 
 let hud;
 try { hud = new Hud(handlers); ok('Hud constructs', true); }
 catch (e) { console.error(' THROW Hud', e.message); fail++; }
 
-const save = { dna: 500, genes: 200, exp: 10, level: 2, evolution: {}, unlocked: ['rabbit', 'bee'], runs: 3 };
+const save = { dna: 500, genes: 200, exp: 10, level: 2, evolution: {}, skills: {}, unlocked: ['rabbit', 'bee'], runs: 3 };
 
 // menu
 hud.menu(save);
@@ -85,14 +85,15 @@ hud.updateJoystick(null); ok('hud: joystick hidden', $('joystick').style.display
 hud.setDiet('🌿', 'Grass'); ok('hud: diet chip set', /Grass/.test($('dietChip').innerHTML));
 hud.showTutorial('Move with the left side'); ok('hud: tutorial shows', $('tut').classList.contains('show') && /Move with/.test($('tut').textContent));
 
-// evolution lab (preview no-op in jsdom)
+// evolution lab — mutation skill tree (preview no-op in jsdom)
 hud.evolution(save, 'rabbit');
 ok('evo: title shows', /EVOLUTION/.test($('screen').textContent));
-ok('evo: upgrade rows', $('screen').querySelectorAll('.upg').length === 5);
-const buyBtn = $('screen').querySelector('.ubuy[data-k]');
-ok('evo: an affordable buy button', !!buyBtn);
-buyBtn && buyBtn.click();
-ok('evo: buy → onUpgrade', calls.onUpgrade >= 1);
+ok('evo: skill nodes rendered', $('screen').querySelectorAll('.snode').length >= 8);
+ok('evo: tree tiers rendered', $('screen').querySelectorAll('.tier').length >= 3);
+const node = $('screen').querySelector('.snode[data-n]:not([disabled])');
+ok('evo: a root node is unlockable', !!node);
+node && node.click();
+ok('evo: click → onUnlockSkill', calls.onUnlockSkill >= 1);
 $('btnBack').click(); ok('evo: back → menu', !!$('btnPlay'));
 
 // death screen with rewards
