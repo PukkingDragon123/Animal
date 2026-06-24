@@ -3,8 +3,9 @@
 
 // per-run rewards from the finished run state
 export function runRewards(s) {
-  const genes = s.meals * 1 + s.offspring * 10 + s.maxStageIndex * 4 + (s.reproduced ? 12 : 0) + (s.nestBuilt ? 4 : 0);
-  const exp = s.meals * 2 + s.offspring * 16 + s.maxStageIndex * 6 + (s.reproduced ? 22 : 0);
+  const sc = s.score || 0;
+  const genes = s.meals * 1 + s.offspring * 10 + s.maxStageIndex * 4 + (s.reproduced ? 12 : 0) + (s.nestBuilt ? 4 : 0) + sc / 60;
+  const exp = s.meals * 2 + s.offspring * 16 + s.maxStageIndex * 6 + (s.reproduced ? 22 : 0) + sc / 30;
   return { genes: Math.max(1, Math.floor(genes)), exp: Math.max(1, Math.floor(exp)) };
 }
 

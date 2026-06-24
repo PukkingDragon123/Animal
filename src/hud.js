@@ -18,6 +18,7 @@ export class Hud {
     this.h = handlers;            // { onPick, onUnlock, onBegin, onAgain, onMenu, onResume, onToggleMute }
     this.els = {
       hud: $('hud'), obj: $('objective'), dna: $('dnaVal'), stage: $('stageLabel'), clock: $('clock'),
+      score: $('score'), combo: $('combo'),
       hunger: $('fillHunger'), energy: $('fillEnergy'), life: $('fillLife'),
       warmthWrap: $('barWarmthWrap'), warmth: $('fillWarmth'),
       quip: $('quip'), vignette: $('vignette'), dietChip: $('dietChip'), tut: $('tut'),
@@ -53,6 +54,12 @@ export class Hud {
   setObjective(text) { if (this.els.obj) this.els.obj.textContent = text; }
   setDiet(icon, name) { if (this.els.dietChip) this.els.dietChip.innerHTML = `${icon} <b>${esc(name)}</b>`; }
   setClock(light) { if (this.els.clock) this.els.clock.textContent = light > 0.55 ? '☀️' : (light > 0.2 ? '🌇' : '🌙'); }
+  setScore(n) { if (this.els.score) this.els.score.textContent = '★ ' + (n | 0); }
+  flashCombo(c) {
+    const el = this.els.combo; if (!el) return;
+    el.textContent = `COMBO ×${c}!`; el.classList.add('show');
+    clearTimeout(this._comboTimer); this._comboTimer = setTimeout(() => el.classList.remove('show'), 700);
+  }
 
   showTutorial(text) {
     const t = this.els.tut; if (!t || !text) return;
@@ -259,10 +266,11 @@ export class Hud {
         ${lvlHtml}
         <div class="rewards"><div class="rw">🧬 +${result.genes} ${STR.death.genesEarned}</div><div class="rw exp">✦ +${result.exp} ${STR.death.expEarned}</div></div>
         <div class="stats">
+          <div class="dnaStat"><span>Score</span><b>★ ${result.score || 0}</b></div>
           <div><span>${STR.death.livedFor}</span><b>${esc(result.lived)}</b></div>
           <div><span>${STR.death.ate}</span><b>${result.meals}</b></div>
           <div><span>${STR.death.babies}</span><b>${result.offspring}</b></div>
-          <div class="dnaStat"><span>${STR.death.dnaEarned}</span><b>🧬 ${result.dna}</b></div>
+          <div><span>${STR.death.dnaEarned}</span><b>🧬 ${result.dna}</b></div>
         </div>
         ${unlockHtml}
         <div class="row">

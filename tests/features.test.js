@@ -160,5 +160,27 @@ console.log('feature tests');
   ok('evo: run rewards positive', rw.genes > 0 && rw.exp > 0);
 }
 
+// arcade: AoE bite chomps several foods at once and builds score + combo
+{
+  const s = createRun({ speciesId: 'rabbit', seed: 21 });
+  const off = [1.8, -1.8, 2.1, -2.1];                 // between walk-over radius and bite radius
+  for (let i = 0; i < 4; i++) { s.food[i].alive = true; s.food[i].x = s.player.x + off[i]; s.food[i].z = s.player.z; }
+  const m0 = s.meals;
+  step(s, { mx: 0, mz: 0, attack: true }, DT);
+  ok('bite: AoE eats multiple at once', s.meals - m0 >= 3);
+  ok('bite: score increased', s.score > 0);
+  ok('bite: combo built', s.combo >= 2);
+}
+
+// infinite world: far entities recycle back around the roaming player
+{
+  const s = createRun({ speciesId: 'rabbit', seed: 22 });
+  s.player.x += 600; s.player.z += 600;               // teleport far past the old arena
+  step(s, { mx: 0, mz: 0 }, DT);
+  const near = s.food.some(f => (f.x - s.player.x) ** 2 + (f.z - s.player.z) ** 2 < (C.world.spawnR + 4) ** 2);
+  ok('infinite: food streams back around the player', near);
+  ok('infinite: no wall — player roams past the old radius', Math.hypot(s.player.x, s.player.z) > C.world.radius);
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

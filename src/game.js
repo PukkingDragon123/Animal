@@ -145,7 +145,7 @@ class Game {
     for (const e of s.events) {
       this.audio.onEvent(e.t);
       switch (e.t) {
-        case 'eat': fx.burst(e.x, swimY + 0.4, e.z, this.foodColor, 8, { up: 1.8 }); break;
+        case 'eat': fx.burst(e.x, swimY + 0.4, e.z, this.foodColor, 8, { up: 1.8 }); if (e.combo >= 3) this.hud.flashCombo(e.combo); break;
         case 'hit': fx.burst(P.x, swimY + 0.6, P.z, 0xff5040, 10, { up: 2.6, speed: 3 }); fx.blood(P.x, swimY + 0.6, P.z, 12); break;
         case 'birth': fx.sparkleRing(e.x, swimY, e.z, 0xff8fc0, 16); break;
         case 'stage':
@@ -158,7 +158,7 @@ class Game {
         case 'fruitDrop': fx.burst(e.x, 1.6, e.z, 0x5fb050, 6, { up: 1.0, speed: 1.4, life: 0.5 }); this.audio.eat(); break;
         case 'mushroom': fx.sparkleRing(e.x, swimY, e.z, 0xb072e0, 10); this.audio.grow(); break;
         case 'sting': fx.burst(e.x, swimY + 0.5, e.z, 0xffd23f, 10, { up: 2, speed: 2.4 }); fx.blood(P.x, swimY + 0.5, P.z, 6); this.audio.hurt(); this.hud.setVignette(0.4); break;
-        case 'attack': this.audio.swipe(); fx.burst(P.x + Math.sin(e.heading) * 1.4, swimY + 0.6, P.z + Math.cos(e.heading) * 1.4, 0xffffff, 5, { up: 1.2, speed: 1.4, life: 0.3, size: 0.7 }); break;
+        case 'bite': this.audio.swipe(); this.renderer.bitePulse(); break;
         case 'bonk': this.audio.bonk(); fx.burst(e.x, swimY + 0.6, e.z, 0xffe27a, 8, { up: 2, speed: 2.6 }); break;
         case 'blood': fx.blood(e.x, swimY + 0.5, e.z, e.big ? 16 : 9, !!e.big); break;
         case 'twig': fx.burst(e.x, swimY + 0.3, e.z, 0x9a6f44, 5, { up: 1.2, life: 0.5 }); this.audio.eat(); this.hud.showQuip(pick(STR.quips.twig)); break;
@@ -195,6 +195,7 @@ class Game {
     this.hud.setStage(s.stage);
     this.hud.setVignette(s.danger);
     this.hud.setClock(s.light);
+    this.hud.setScore(s.score);
     this.hud.updateJoystick(this.input.joyVisual());
     this._tutorials(s);
   }
@@ -222,7 +223,7 @@ class Game {
     this.hud.death({
       success: s.reproduced, cause: s.cause, speciesId: s.speciesId,
       lived: `${STR.stage[s.stage]} · ${Math.round(s.ageFrac * 100)}%`,
-      meals: s.meals, offspring: s.offspring, dna: earned,
+      meals: s.meals, offspring: s.offspring, dna: earned, score: s.score || 0,
       genes: rw.genes, exp: rw.exp, levelUp: levels > 0, level: this.save.level,
       newUnlocks: newNames,
     });

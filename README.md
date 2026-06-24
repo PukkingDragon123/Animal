@@ -26,7 +26,7 @@ python3 -m http.server 8080
 Or play it instantly from the branch (served via raw.githack.com, which sends
 the correct MIME types for ES modules):
 
-**https://raw.githack.com/PukkingDragon123/Animal/claude/inspiring-wright-5xmrsu/index.html?v=5**
+**https://raw.githack.com/PukkingDragon123/Animal/claude/inspiring-wright-5xmrsu/index.html?v=6**
 
 Open the URL on a phone or desktop. (ES modules need a real server — opening
 `index.html` from `file://` won't work.)
@@ -102,6 +102,19 @@ conservation status, and researched biology (shown on the card and birth screen)
 | Sockeye Salmon | *Oncorhynchus nerka* | River | insects | swim upstream, spawn once, die |
 | Red Fox | *Vulpes vulpes* | Forest | rabbits | miss the pounce, go hungry |
 | Great White Shark | *Carcharodon carcharias* | Ocean | fish & seals | stop swimming and you suffocate |
+
+## Arcade eat-and-survive (Hungry-Shark style)
+
+The map is now **endless** — no walls. Food, prey, predators, critters and
+scenery **stream in around you** as you roam (toroidally-wrapped props + a
+player-following ground = an infinite world). The moment-to-moment goal is to
+**eat and survive**: every bite scores points and builds a **combo multiplier**
+(★ score + combo popups on the HUD), and your run's score feeds your genes.
+
+**Bite** (the ⚔ button / Space) is a chunky **AoE chomp**: a faint **circular
+bite-area ring** sits under you, and a tap fires a forward **lunge + shockwave**
+that eats *everything edible in the circle* at once and knocks back any
+predators caught in it.
 
 ## A living ecosystem
 

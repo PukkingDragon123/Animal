@@ -11,6 +11,9 @@ export const CONFIG = {
     radius: 34,             // island radius (units)
     wallSoftness: 6,        // how far past the edge the soft wall pushes back
     dayLength: 75,          // seconds per full day/night cycle
+    spawnR: 40,             // entities stream in around the player within this ring
+    despawnR: 52,           // …and recycle when they drift past this
+    tile: 76,               // toroidal wrap period for scenery props
   },
 
   camera: {
@@ -119,6 +122,13 @@ export const CONFIG = {
     materialsNeeded: 3,            // twigs to collect before building
     twigs: 6,
     buildRadius: 2.2,
+  },
+
+  arcade: {
+    comboWindow: 2.6,             // seconds to chain an eat into a combo
+    comboMax: 12,
+    scoreFood: 10, scorePrey: 25, scoreCritter: 6,
+    biteBase: 2.4,               // AoE bite radius (before size scaling)
   },
 };
 

@@ -91,6 +91,7 @@ export class Renderer {
     this.critters = [];
     this._fogNight = new THREE.Color(0x12172e); this._skyDay = new THREE.Color(0xffffff); this._skyNight = new THREE.Color(0x2a3566);
     this._fogDay = new THREE.Color(0xffffff); this._baseSun = 1; this._baseAmb = 1; this._sunAz = 0;
+    this.biteRing = null; this.shock = null; this._biteFlash = 0; this._biteR = 2.5; this._lunge = 0;
 
     this.camPos = new THREE.Vector3(0, 18, -14);
     this.camLook = new THREE.Vector3();
@@ -120,6 +121,8 @@ export class Renderer {
     if (this.twigInst) { this.dyn.remove(this.twigInst); this.twigInst.geometry.dispose(); this.twigInst = null; }
     if (this.ambient) { this.scene.remove(this.ambient); this.ambient.geometry.dispose(); this.ambient.material.dispose(); this.ambient = null; this.ambData = null; }
     this.critters.forEach(c => clear(c.mesh)); this.critters = [];
+    if (this.biteRing) { this.scene.remove(this.biteRing); this.biteRing.geometry.dispose(); this.biteRing = null; }
+    if (this.shock) { this.scene.remove(this.shock); this.shock.geometry.dispose(); this.shock = null; }
     clear(this.mateMesh); this.mateMesh = null;
     if (this.nestMesh) { this.dyn.remove(this.nestMesh); this.nestMesh = null; }
     if (this.beacon) { this.scene.remove(this.beacon); this.beacon = null; }
@@ -189,6 +192,12 @@ export class Renderer {
     }
     this.twigInst = null; this.stepTimer = 0;
 
+    // bite area ring (always faint under the player) + a shockwave ring on chomp
+    this.biteRing = new THREE.Mesh(new THREE.RingGeometry(0.86, 1.0, 32), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.14, fog: false, side: THREE.DoubleSide }));
+    this.biteRing.rotation.x = -Math.PI / 2; this.scene.add(this.biteRing);
+    this.shock = new THREE.Mesh(new THREE.RingGeometry(0.7, 1.0, 32), new THREE.MeshBasicMaterial({ color: 0xfff0b0, transparent: true, opacity: 0, fog: false, side: THREE.DoubleSide }));
+    this.shock.rotation.x = -Math.PI / 2; this.shock.visible = false; this.scene.add(this.shock);
+
     // ambient critters (decorative wandering life)
     this.critters = [];
     for (const [kind, count] of (CRITTERS[b.id] || [])) {
@@ -245,6 +254,7 @@ export class Renderer {
     pm.rotation.y = P.heading;
     animateCreature(pm, dt, time, { dt, time, speed: P.speed, moving: P.moving });
     pm.visible = !(state.invuln > 0 && Math.floor(time * 16) % 2 === 0);
+    if (this._lunge > 0) { this._lunge -= dt; const k = Math.max(0, this._lunge / 0.22); pm.position.x += Math.sin(P.heading) * k * 0.7; pm.position.z += Math.cos(P.heading) * k * 0.7; pm.scale.multiplyScalar(1 + k * 0.14); }
 
     // footstep / wake puffs while moving
     this.stepTimer -= dt;
@@ -319,6 +329,7 @@ export class Renderer {
       const d = this._d, P = state.player;
       for (let i = 0; i < this.ambData.length; i++) {
         const a = this.ambData[i];
+        if ((a.x - P.x) * (a.x - P.x) + (a.z - P.z) * (a.z - P.z) > 46 * 46) { a.x = P.x + (Math.random() * 2 - 1) * 40; a.z = P.z + (Math.random() * 2 - 1) * 40; }
         if (this.ambKind === 'snow') { a.y -= a.sp * dt * 2; if (a.y < 0) { a.y = 14; a.x = P.x + (Math.random() * 2 - 1) * 40; a.z = P.z + (Math.random() * 2 - 1) * 40; } }
         else if (this.ambKind === 'bubble') { a.y += a.sp * dt * 2; if (a.y > 14) { a.y = 0; a.x = P.x + (Math.random() * 2 - 1) * 40; a.z = P.z + (Math.random() * 2 - 1) * 40; } }
         else { a.ph += dt; a.y += Math.sin(a.ph) * dt * 0.4; }
@@ -331,12 +342,50 @@ export class Renderer {
     // --- ambient critters ---
     this._updateCritters(state, dt, time);
 
+    // --- infinite world: follow ground/sky, wrap props, bite ring ---
+    this._followWorld(state, dt);
+
     // --- day / night cycle ---
     this._applyDayNight(state);
 
     // --- camera + light follow ---
     this._placeCamera(state, false);
     this.fx.update(dt);
+  }
+
+  bitePulse() { this._biteFlash = 0.35; this._lunge = 0.22; }
+
+  _followWorld(state, dt) {
+    const P = state.player, ud = this.envGroup && this.envGroup.userData, d = this._d;
+    if (ud) {
+      if (ud.ground) { ud.ground.position.x = P.x; ud.ground.position.z = P.z; }
+      if (ud.sky) { ud.sky.position.x = P.x; ud.sky.position.z = P.z; }
+    }
+    // toroidally wrap instanced scenery props around the player → endless world
+    if (this.envGroup) {
+      for (const o of this.envGroup.children) {
+        if (!o.isInstancedMesh || !o.userData.isProp) continue;
+        const T = o.userData.tile, bases = o.userData.bases;
+        for (let i = 0; i < bases.length; i++) {
+          const b = bases[i];
+          const x = b.x + Math.round((P.x - b.x) / T) * T, z = b.z + Math.round((P.z - b.z) / T) * T;
+          d.position.set(x, 0, z); d.rotation.set(0, b.ry, 0); d.scale.set(b.s, b.sy, b.s); d.updateMatrix();
+          o.setMatrixAt(i, d.matrix);
+        }
+        o.instanceMatrix.needsUpdate = true;
+      }
+    }
+    // bite-area ring (faint, always) + shockwave on chomp
+    const biteR = C.arcade.biteBase + Math.max(0.2, state.size) * 0.7; this._biteR = biteR;
+    if (this.biteRing) { this.biteRing.position.set(P.x, 0.06, P.z); this.biteRing.scale.setScalar(biteR); }
+    if (this.shock) {
+      if (this._biteFlash > 0) {
+        this._biteFlash -= dt; const t = 1 - this._biteFlash / 0.35;
+        this.shock.visible = true; this.shock.position.set(P.x, 0.07, P.z);
+        this.shock.scale.setScalar(biteR * (0.5 + t * 1.05));
+        this.shock.material.opacity = (1 - t) * 0.6;
+      } else this.shock.visible = false;
+    }
   }
 
   _applyDayNight(state) {
@@ -348,8 +397,8 @@ export class Renderer {
     const ud = this.envGroup && this.envGroup.userData;
     if (ud && ud.sky) ud.sky.material.color.copy(this._skyDay).lerp(this._skyNight, (1 - L) * 0.85);
     if (ud && ud.sunMesh) {
-      const ph = state.dayPhase || 0, az = ph * Math.PI * 2, el = Math.sin((ph - 0.25) * Math.PI * 2);
-      ud.sunMesh.position.set(Math.cos(az) * -150, 35 + el * 95, -150); ud.sunMesh.lookAt(0, 0, 0);
+      const P = state.player, ph = state.dayPhase || 0, az = ph * Math.PI * 2, el = Math.sin((ph - 0.25) * Math.PI * 2);
+      ud.sunMesh.position.set(P.x + Math.cos(az) * -150, 35 + el * 95, P.z - 150); ud.sunMesh.lookAt(P.x, 0, P.z);
       ud.sunMesh.material.color.setHex(L < 0.28 ? 0xcfe0ff : 0xfff4d6);
     }
     this._sunAz = (state.dayPhase || 0) * Math.PI * 2;
