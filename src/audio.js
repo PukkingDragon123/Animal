@@ -69,6 +69,8 @@ export class Audio {
     this._note(165, 0.8, 'sine', 0.14, null, seq.length * 0.22);
   }
   success() { this.resume(); [523, 587, 659, 784, 880, 1047].forEach((f, i) => this._note(f, 0.2, 'triangle', 0.16, null, i * 0.09)); }
+  swipe() { this.resume(); this._noise(0.14, 0.16, 2600); }
+  bonk() { this.resume(); this._note(150, 0.18, 'square', 0.22, null, 0, 70); this._noise(0.1, 0.18, 700); }
 
   // ---- generative cozy music ----
   startMusic() {

@@ -55,6 +55,18 @@ export class FX {
     this.mesh.instanceColor.needsUpdate = true;
   }
 
+  // stylized low-poly gore: a spray of dark + bright red chunks
+  blood(x, y, z, n = 10, big = false) {
+    const sp = big ? 3.6 : 2.4;
+    for (let k = 0; k < n; k++) {
+      const a = Math.random() * 6.283, r = Math.random();
+      const col = (k % 3 === 0) ? 0x7a1410 : 0xc8201a;
+      this._emit(x, y, z, Math.cos(a) * sp * r, (big ? 2.6 : 1.7) * (0.4 + Math.random()), Math.sin(a) * sp * r,
+        (big ? 0.85 : 0.6) * (0.7 + Math.random() * 0.6), (big ? 1.4 : 0.95) * (0.7 + Math.random() * 0.5), col, 9);
+    }
+    this.mesh.instanceColor.needsUpdate = true;
+  }
+
   update(dt) {
     const m = this._m, q = this._q, p = this._p, s = this._s, e = this._e;
     let any = false;

@@ -24,12 +24,21 @@ function randPoint(rng, minR, maxR) {
 // ---------------------------------------------------------------------------
 // Run creation
 // ---------------------------------------------------------------------------
-export function createRun({ speciesId = 'rabbit', seed = 1 }) {
+export function createRun({ speciesId = 'rabbit', seed = 1, upgrades = null }) {
   const rng = makeRng(seed);
   const species = speciesOf(speciesId);
   const biome = biomeOf(species.biome);
   const mutationIds = rollMutations(rng);
   const mods = applyMutations(mutationIds);
+
+  // persistent evolution upgrades (Spore-style) stack on top of the run mutation
+  if (upgrades) {
+    mods.speed *= 1 + 0.06 * (upgrades.speed || 0);
+    mods.life *= 1 + 0.08 * (upgrades.longevity || 0);
+    mods.eat *= 1 + 0.12 * (upgrades.senses || 0);
+    mods.extraHits += (upgrades.vitality || 0);
+    if ((upgrades.fertility || 0) >= 3) mods.fertile = true;
+  }
 
   // lifespan: base × mutation × struggle (bee = brutally short)
   let lifeMult = mods.life;
@@ -58,7 +67,8 @@ export function createRun({ speciesId = 'rabbit', seed = 1 }) {
     food: [], predators: [], prey: [], warmthSpots: [],
     interactables: [], fruits: [], nestTwigs: [],
     mate: null, nest: null,
-    reproduceCooldown: 0,
+    reproduceCooldown: 0, attackCooldown: 0,
+    fertilityLevel: upgrades ? (upgrades.fertility || 0) : 0,
     nestMaterials: 0, nestBuilt: false, needsMaterials: false,
     hidden: false, boost: 0, maxStageIndex: 0,
 
@@ -121,7 +131,7 @@ function spawnPredator(state) {
   const domain = state.species.struggle === 'hatchling' ? 'beach' : 'any';
   return { id: nextId(), x: p.x, z: p.z, vx: 0, vz: 0, heading: state.rng.next() * TAU,
            build: state.species.predatorBuild || 'fox', state: 'wander', aggro: false,
-           giveUp: 0, retarget: 0, phase: state.rng.next() * TAU, domain };
+           giveUp: 0, retarget: 0, phase: state.rng.next() * TAU, domain, stun: 0 };
 }
 
 // interactive forest objects: shake fruit trees, forage mushrooms, hide in
@@ -310,6 +320,10 @@ export function step(state, input, dt) {
   // 5b) interactive objects (fruit trees, mushrooms, hives, burrows) + bonus fruit
   updateInteractables(state, dt);
 
+  // 5c) attack verb (fight back / hunt / shake trees)
+  if (state.attackCooldown > 0) state.attackCooldown -= dt;
+  if (input.attack && state.attackCooldown <= 0) doAttack(state);
+
   // 6) predators
   updatePredators(state, dt);
 
@@ -332,6 +346,7 @@ function doEat(state, item, isPrey) {
   state.events.push({ t: 'eat', x: item.x, z: item.z });
   if (state.meals === 1) state.events.push({ t: 'quip', key: 'ateFirst' });
   if (isPrey) {
+    state.events.push({ t: 'blood', x: item.x, z: item.z, big: true });   // gore on a kill
     item.alive = false;
     // respawn a fresh prey elsewhere to keep the hunt going
     const fresh = spawnPrey(state); item.x = fresh.x; item.z = fresh.z; item.alive = true; item.vx = 0; item.vz = 0;
@@ -420,6 +435,41 @@ function updateInteractables(state, dt) {
   }
 }
 
+function doAttack(state) {
+  const P = state.player, sp = state.species;
+  state.attackCooldown = 0.5;
+  const range = 2.4 + state.size * 0.6, r2 = range * range;
+  state.events.push({ t: 'attack', x: P.x, z: P.z, heading: P.heading });
+
+  // hunters lunge-kill the nearest prey in reach
+  if (sp.diet.kind === 'hunt') {
+    let best = null, bd = r2;
+    for (const pr of state.prey) { if (!pr.alive) continue; const d = dist2(P.x, P.z, pr.x, pr.z); if (d < bd) { bd = d; best = pr; } }
+    if (best) { doEat(state, best, true); return; }
+  }
+  // everyone can bonk the nearest predator: knockback + stun (fight back!)
+  let bp = null, bd = r2;
+  for (const pr of state.predators) { if (pr.domain === 'gone') continue; const d = dist2(P.x, P.z, pr.x, pr.z); if (d < bd) { bd = d; bp = pr; } }
+  if (bp) {
+    const d = Math.sqrt(bd) || 1;
+    bp.x += (bp.x - P.x) / d * 2.6; bp.z += (bp.z - P.z) / d * 2.6;
+    bp.stun = 1.3; bp.aggro = false; bp.giveUp = 0;
+    state.events.push({ t: 'bonk', x: bp.x, z: bp.z });
+    state.events.push({ t: 'blood', x: bp.x, z: bp.z });
+    return;
+  }
+  // otherwise shake a fruit tree if one is in reach
+  for (const it of state.interactables) {
+    if (it.type !== 'fruitTree' || it.cooldown > 0) continue;
+    if (dist2(P.x, P.z, it.x, it.z) < (range + 0.8) * (range + 0.8)) {
+      it.cooldown = C.interact.fruitCooldown; it.shake = 0.6;
+      for (let k = 0; k < C.interact.fruitPerShake; k++) { const a = state.rng.next() * TAU, rr = 1.3 + state.rng.next(); state.fruits.push({ id: nextId(), x: it.x + Math.cos(a) * rr, z: it.z + Math.sin(a) * rr, phase: state.rng.next() * TAU, alive: true }); }
+      state.events.push({ t: 'fruitDrop', x: it.x, z: it.z });
+      return;
+    }
+  }
+}
+
 function updatePredators(state, dt) {
   const P = state.player;
   let danger = 0;
@@ -438,6 +488,7 @@ function updatePredators(state, dt) {
   for (const pr of state.predators) {
     if (pr.domain === 'gone') { pr.x += pr.vx * dt * 0.2; continue; }
     if (pr.domain === 'beach' && state.reachedWater) continue;
+    if (pr.stun > 0) { pr.stun -= dt; pr.vx *= 0.82; pr.vz *= 0.82; pr.x += pr.vx * dt; pr.z += pr.vz * dt; continue; }
     const d2 = dist2(P.x, P.z, pr.x, pr.z);
     const d = Math.sqrt(d2) || 1;
 

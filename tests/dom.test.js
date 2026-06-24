@@ -25,14 +25,14 @@ console.log('dom tests');
 
 const calls = {};
 const handlers = {};
-for (const k of ['onPick', 'onUnlock', 'onBegin', 'onAgain', 'onMenu', 'onResume', 'onPause', 'onToggleMute', 'setSprint'])
-  handlers[k] = (...a) => { calls[k] = (calls[k] || 0) + 1; calls[k + '_arg'] = a[0]; return false; };
+for (const k of ['onPick', 'onUnlock', 'onBegin', 'onAgain', 'onMenu', 'onResume', 'onPause', 'onToggleMute', 'setSprint', 'setAttack', 'onEvolve', 'onUpgrade'])
+  handlers[k] = (...a) => { calls[k] = (calls[k] || 0) + 1; calls[k + '_arg'] = a[0]; return k === 'onUpgrade'; };
 
 let hud;
 try { hud = new Hud(handlers); ok('Hud constructs', true); }
 catch (e) { console.error(' THROW Hud', e.message); fail++; }
 
-const save = { dna: 500, unlocked: ['rabbit', 'bee'], runs: 3 };
+const save = { dna: 500, genes: 200, exp: 10, level: 2, evolution: {}, unlocked: ['rabbit', 'bee'], runs: 3 };
 
 // menu
 hud.menu(save);
@@ -85,9 +85,23 @@ hud.updateJoystick(null); ok('hud: joystick hidden', $('joystick').style.display
 hud.setDiet('🌿', 'Grass'); ok('hud: diet chip set', /Grass/.test($('dietChip').innerHTML));
 hud.showTutorial('Move with the left side'); ok('hud: tutorial shows', $('tut').classList.contains('show') && /Move with/.test($('tut').textContent));
 
-// death screen
-hud.death({ success: true, cause: 'oldAge', lived: 'Elder · 100%', meals: 12, offspring: 3, dna: 240, newUnlocks: ['Bee'] });
+// evolution lab (preview no-op in jsdom)
+hud.evolution(save, 'rabbit');
+ok('evo: title shows', /EVOLUTION/.test($('screen').textContent));
+ok('evo: upgrade rows', $('screen').querySelectorAll('.upg').length === 5);
+const buyBtn = $('screen').querySelector('.ubuy[data-k]');
+ok('evo: an affordable buy button', !!buyBtn);
+buyBtn && buyBtn.click();
+ok('evo: buy → onUpgrade', calls.onUpgrade >= 1);
+$('btnBack').click(); ok('evo: back → menu', !!$('btnPlay'));
+
+// death screen with rewards
+hud.death({ success: true, cause: 'oldAge', speciesId: 'rabbit', lived: 'Elder · 100%', meals: 12, offspring: 3, dna: 240, genes: 18, exp: 40, levelUp: true, level: 3, newUnlocks: ['Bee'] });
 ok('death: shows DNA', /240/.test($('screen').textContent));
+ok('death: shows genes reward', /18/.test($('screen').textContent));
+ok('death: level-up banner', /LEVEL UP/.test($('screen').textContent));
+ok('death: evolve button', !!$('btnEvolveD'));
+$('btnEvolveD').click(); ok('death: evolve → onEvolve', calls.onEvolve >= 1);
 ok('death: again button', !!$('btnAgain'));
 $('btnAgain').click(); ok('death: again → onAgain', calls.onAgain === 1);
 
@@ -109,11 +123,22 @@ window.dispatchEvent(new window.KeyboardEvent('keyup', { code: 'KeyW' }));
 window.dispatchEvent(new window.KeyboardEvent('keyup', { code: 'ShiftLeft' }));
 cmd = input.get();
 ok('input: released → idle', Math.abs(cmd.mz) < 0.01 && cmd.sprint === false);
+// horizontal: A and D move opposite ways (camera maps +X to screen-left, so the
+// command X is negated — D and A must just be opposite & non-zero)
 window.dispatchEvent(new window.KeyboardEvent('keydown', { code: 'KeyD' }));
-ok('input: D → right (+x)', input.get().mx > 0.5);
+const dRight = input.get().mx;
 window.dispatchEvent(new window.KeyboardEvent('keyup', { code: 'KeyD' }));
+window.dispatchEvent(new window.KeyboardEvent('keydown', { code: 'KeyA' }));
+const dLeft = input.get().mx;
+window.dispatchEvent(new window.KeyboardEvent('keyup', { code: 'KeyA' }));
+ok('input: A and D are opposite horizontally', dRight !== 0 && Math.sign(dRight) === -Math.sign(dLeft));
 input.setSprintButton(true); ok('input: run button → sprint', input.get().sprint === true);
 input.setSprintButton(false);
+input.setAttackButton(true); ok('input: attack button → attack', input.get().attack === true);
+input.setAttackButton(false);
+window.dispatchEvent(new window.KeyboardEvent('keydown', { code: 'Space' }));
+ok('input: Space → attack', input.get().attack === true);
+window.dispatchEvent(new window.KeyboardEvent('keyup', { code: 'Space' }));
 // diagonal normalization
 window.dispatchEvent(new window.KeyboardEvent('keydown', { code: 'KeyW' }));
 window.dispatchEvent(new window.KeyboardEvent('keydown', { code: 'KeyD' }));

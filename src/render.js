@@ -63,6 +63,7 @@ export class Renderer {
     this.foodInst = null; this.foodColor = 0x57bf43;
     this.mateMesh = null; this.nestMesh = null; this.beacon = null; this.warmthMeshes = [];
     this.interactMeshes = []; this.fruitInst = null; this.twigInst = null; this.stepTimer = 0;
+    this.ambient = null; this.ambData = null; this.ambKind = 'pollen';
 
     this.camPos = new THREE.Vector3(0, 18, -14);
     this.camLook = new THREE.Vector3();
@@ -90,6 +91,7 @@ export class Renderer {
     this.interactMeshes.forEach(clear); this.interactMeshes = [];
     if (this.fruitInst) { this.dyn.remove(this.fruitInst); this.fruitInst.geometry.dispose(); this.fruitInst = null; }
     if (this.twigInst) { this.dyn.remove(this.twigInst); this.twigInst.geometry.dispose(); this.twigInst = null; }
+    if (this.ambient) { this.scene.remove(this.ambient); this.ambient.geometry.dispose(); this.ambient.material.dispose(); this.ambient = null; this.ambData = null; }
     clear(this.mateMesh); this.mateMesh = null;
     if (this.nestMesh) { this.dyn.remove(this.nestMesh); this.nestMesh = null; }
     if (this.beacon) { this.scene.remove(this.beacon); this.beacon = null; }
@@ -157,6 +159,19 @@ export class Renderer {
       this.dyn.add(this.fruitInst);
     }
     this.twigInst = null; this.stepTimer = 0;
+
+    // ambient biome particles (pollen / snow / bubbles) for atmosphere
+    {
+      const n = 28, isSnow = b.cold, isWater = b.underwater;
+      this.ambKind = isSnow ? 'snow' : (isWater ? 'bubble' : 'pollen');
+      const col = isSnow ? 0xffffff : (isWater ? 0xcdeeff : 0xfff0a0);
+      const mat = new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: isWater ? 0.45 : 0.7 });
+      this.ambient = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(isWater ? 0.12 : 0.08, 0), mat, n);
+      this.ambient.frustumCulled = false; this.ambient.castShadow = false;
+      this.ambData = [];
+      for (let i = 0; i < n; i++) this.ambData.push({ x: (Math.random() * 2 - 1) * 40, y: Math.random() * 14, z: (Math.random() * 2 - 1) * 40, ph: Math.random() * 6.28, sp: 0.3 + Math.random() * 0.7 });
+      this.scene.add(this.ambient);
+    }
 
     // initial camera snap
     this.curDist = this._distFor(state.size);
@@ -255,6 +270,20 @@ export class Renderer {
 
     // --- mate / nest + beacon ---
     this._syncRepro(state, dt, time);
+
+    // --- ambient particles ---
+    if (this.ambient && this.ambData) {
+      const d = this._d, P = state.player;
+      for (let i = 0; i < this.ambData.length; i++) {
+        const a = this.ambData[i];
+        if (this.ambKind === 'snow') { a.y -= a.sp * dt * 2; if (a.y < 0) { a.y = 14; a.x = P.x + (Math.random() * 2 - 1) * 40; a.z = P.z + (Math.random() * 2 - 1) * 40; } }
+        else if (this.ambKind === 'bubble') { a.y += a.sp * dt * 2; if (a.y > 14) { a.y = 0; a.x = P.x + (Math.random() * 2 - 1) * 40; a.z = P.z + (Math.random() * 2 - 1) * 40; } }
+        else { a.ph += dt; a.y += Math.sin(a.ph) * dt * 0.4; }
+        d.position.set(a.x + Math.sin(a.ph + time) * 0.6, a.y, a.z); d.rotation.set(0, a.ph, 0); d.scale.setScalar(1); d.updateMatrix();
+        this.ambient.setMatrixAt(i, d.matrix);
+      }
+      this.ambient.instanceMatrix.needsUpdate = true;
+    }
 
     // --- camera + light follow ---
     this._placeCamera(state, false);

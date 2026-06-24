@@ -12,6 +12,7 @@ import { Audio } from './audio.js';
 import { Hud } from './hud.js';
 import * as save from './save.js';
 import { recordRun, checkUnlocks } from './quests.js';
+import { runRewards, addExp, buyUpgrade, speciesUpgrades } from './evolution.js';
 
 const STEP = C.sim.step;            // ms
 const STEP_S = STEP / 1000;
@@ -39,6 +40,9 @@ class Game {
       onPause: () => this.pause(),
       onToggleMute: () => { const m = !this.audio.muted; this.audio.setMuted(m); return m; },
       setSprint: (v) => this.input.setSprintButton(v),
+      setAttack: (v) => this.input.setAttackButton(v),
+      onEvolve: (id) => this.openEvolution(id),
+      onUpgrade: (id, key) => { const okb = buyUpgrade(this.save, id, key); if (okb) save.save(this.save); return okb; },
     });
 
     this.mode = 'menu';            // menu | birth | playing | paused | dead
@@ -82,10 +86,17 @@ class Game {
     this.hud.speciesSelect(this.save);
   }
 
+  openEvolution(id) {
+    this.mode = 'menu'; this.input.enabled = false; this.input.reset();
+    this.hud.showHud(false);
+    this.hud.evolution(this.save, id || this.lastSpecies);
+  }
+
   startRun(speciesId) {
     if (!speciesId) speciesId = pick(this.save.unlocked);
     if (!this.save.unlocked.includes(speciesId)) speciesId = 'rabbit';
-    this.state = createRun({ speciesId, seed: freshSeed() });
+    this.lastSpecies = speciesId;
+    this.state = createRun({ speciesId, seed: freshSeed(), upgrades: speciesUpgrades(this.save, speciesId) });
     this.renderer.setupRun(this.state);
     this.foodColor = (this.state.species.diet.kind === 'graze') ? foodOf(this.state.species.diet.food).color : 0xffd23f;
     this.hud.setDiet(this.state.species.dietIcon, this.state.species.dietName);
@@ -101,6 +112,7 @@ class Game {
     this.mode = 'playing'; this.input.enabled = true; this.input.reset();
     this.hud.showQuip(pick(STR.quips.born));
     this._tut('move');
+    this._tut('attack');
     if (this.state.species.struggle === 'cold') this._tut('cold');
     this.last = performance.now(); this.acc = 0;
   }
@@ -132,7 +144,7 @@ class Game {
       this.audio.onEvent(e.t);
       switch (e.t) {
         case 'eat': fx.burst(e.x, swimY + 0.4, e.z, this.foodColor, 8, { up: 1.8 }); break;
-        case 'hit': fx.burst(P.x, swimY + 0.6, P.z, 0xff5040, 12, { up: 2.6, speed: 3 }); break;
+        case 'hit': fx.burst(P.x, swimY + 0.6, P.z, 0xff5040, 10, { up: 2.6, speed: 3 }); fx.blood(P.x, swimY + 0.6, P.z, 12); break;
         case 'birth': fx.sparkleRing(e.x, swimY, e.z, 0xff8fc0, 16); break;
         case 'stage':
           fx.sparkleRing(P.x, swimY, P.z, 0xffe27a, 12); this.hud.setStage(s.stage);
@@ -143,7 +155,10 @@ class Game {
         case 'alert': this.hud.setVignette(0.6); this._tut('sprint'); break;
         case 'fruitDrop': fx.burst(e.x, 1.6, e.z, 0x5fb050, 6, { up: 1.0, speed: 1.4, life: 0.5 }); this.audio.eat(); break;
         case 'mushroom': fx.sparkleRing(e.x, swimY, e.z, 0xb072e0, 10); this.audio.grow(); break;
-        case 'sting': fx.burst(e.x, swimY + 0.5, e.z, 0xffd23f, 10, { up: 2, speed: 2.4 }); this.audio.hurt(); this.hud.setVignette(0.4); break;
+        case 'sting': fx.burst(e.x, swimY + 0.5, e.z, 0xffd23f, 10, { up: 2, speed: 2.4 }); fx.blood(P.x, swimY + 0.5, P.z, 6); this.audio.hurt(); this.hud.setVignette(0.4); break;
+        case 'attack': this.audio.swipe(); fx.burst(P.x + Math.sin(e.heading) * 1.4, swimY + 0.6, P.z + Math.cos(e.heading) * 1.4, 0xffffff, 5, { up: 1.2, speed: 1.4, life: 0.3, size: 0.7 }); break;
+        case 'bonk': this.audio.bonk(); fx.burst(e.x, swimY + 0.6, e.z, 0xffe27a, 8, { up: 2, speed: 2.6 }); break;
+        case 'blood': fx.blood(e.x, swimY + 0.5, e.z, e.big ? 16 : 9, !!e.big); break;
         case 'twig': fx.burst(e.x, swimY + 0.3, e.z, 0x9a6f44, 5, { up: 1.2, life: 0.5 }); this.audio.eat(); this.hud.showQuip(pick(STR.quips.twig)); break;
         case 'nestBuilt': fx.sparkleRing(e.x, swimY, e.z, 0xffe27a, 18); this.audio.success(); this.hud.showQuip(pick(STR.quips.nestBuilt)); break;
         case 'death': this._pendingDeath = { cause: e.cause, success: e.success }; break;
@@ -163,8 +178,9 @@ class Game {
     this._drain();
     if (this._pendingDeath && this.deathTimer === 0) {
       this.audio.die(); this.deathTimer = 1.25;
-      const col = this.state.species.colors.body;
-      this.renderer.fx.burst(this.state.player.x, (this.renderer.swimY || 0) + 0.5, this.state.player.z, col, 18, { up: 3, speed: 3.2, life: 0.9 });
+      const col = this.state.species.colors.body, sy = (this.renderer.swimY || 0) + 0.5;
+      this.renderer.fx.burst(this.state.player.x, sy, this.state.player.z, col, 16, { up: 3, speed: 3.2, life: 0.9 });
+      if (this.state.cause === 'predator') this.renderer.fx.blood(this.state.player.x, sy, this.state.player.z, 20, true);
     }
   }
 
@@ -189,6 +205,10 @@ class Game {
     this.save.totalMeals += s.meals;
     this.save.deaths[s.cause] = (this.save.deaths[s.cause] || 0) + 1;
     if (earned > this.save.bestScore) this.save.bestScore = earned;
+    // Spore-style rewards: genes + EXP (which can level up the gene pool)
+    const rw = runRewards(s);
+    this.save.genes = (this.save.genes || 0) + rw.genes;
+    const levels = addExp(this.save, rw.exp);
     // record quest flags, then see which species just unlocked
     recordRun(this.save, { speciesId: s.speciesId, reproduced: s.reproduced, maxStageIndex: s.maxStageIndex, meals: s.meals, builtNest: s.nestBuilt });
     const newly = checkUnlocks(this.save);
@@ -197,11 +217,13 @@ class Game {
 
     this.mode = 'dead'; this.input.enabled = false; this.hud.showHud(false);
     this.hud.death({
-      success: s.reproduced, cause: s.cause,
+      success: s.reproduced, cause: s.cause, speciesId: s.speciesId,
       lived: `${STR.stage[s.stage]} · ${Math.round(s.ageFrac * 100)}%`,
-      meals: s.meals, offspring: s.offspring, dna: earned, newUnlocks: newNames,
+      meals: s.meals, offspring: s.offspring, dna: earned,
+      genes: rw.genes, exp: rw.exp, levelUp: levels > 0, level: this.save.level,
+      newUnlocks: newNames,
     });
-    if (s.reproduced || newly.length) this.audio.success();
+    if (s.reproduced || newly.length || levels) this.audio.success();
     this._pendingDeath = null; this.deathTimer = 0;
   }
 

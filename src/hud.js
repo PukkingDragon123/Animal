@@ -7,6 +7,7 @@ import { SPECIES, SPECIES_LIST } from './species.js';
 import { MUTATIONS } from './mutations.js';
 import { questFor } from './quests.js';
 import { Preview } from './preview.js';
+import { UPGRADES, MAX_LEVEL, speciesUpgrades, upgradeCost, canUpgrade, totalLevels, expForLevel } from './evolution.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
@@ -19,7 +20,7 @@ export class Hud {
       hunger: $('fillHunger'), energy: $('fillEnergy'), life: $('fillLife'),
       warmthWrap: $('barWarmthWrap'), warmth: $('fillWarmth'),
       quip: $('quip'), vignette: $('vignette'), dietChip: $('dietChip'), tut: $('tut'),
-      joystick: $('joystick'), knob: $('joyKnob'), run: $('runbtn'),
+      joystick: $('joystick'), knob: $('joyKnob'), run: $('runbtn'), atk: $('atkbtn'),
       screen: $('screen'), pauseBtn: $('pauseBtn'),
     };
     this._quipTimer = null; this._tutTimer = null; this.preview = null;
@@ -33,6 +34,13 @@ export class Hud {
       const off = (e) => { this.h.setSprint?.(false); };
       r.addEventListener('pointerdown', on); r.addEventListener('pointerup', off);
       r.addEventListener('pointercancel', off); r.addEventListener('pointerleave', off);
+    }
+    const a = this.els.atk;
+    if (a) {
+      const on = (e) => { this.h.setAttack?.(true); e.preventDefault(); };
+      const off = () => this.h.setAttack?.(false);
+      a.addEventListener('pointerdown', on); a.addEventListener('pointerup', off);
+      a.addEventListener('pointercancel', off); a.addEventListener('pointerleave', off);
     }
     this.els.pauseBtn?.addEventListener('click', () => this.h.onPause?.());
   }
@@ -94,15 +102,17 @@ export class Hud {
       <div class="panel menu">
         <div class="logo">${esc(STR.title)}</div>
         <div class="tagline">${esc(STR.tagline)}</div>
-        <div class="dnaBig">🧬 <b>${save.dna}</b> ${STR.dna}</div>
+        <div class="dnaBig">⭐ ${STR.levelLabel} <b>${save.level || 1}</b> · 🧬 <b>${save.genes || 0}</b> ${STR.genes}</div>
         <button class="btn big" id="btnPlay">${STR.tapToLive}</button>
         <button class="btn ghost" id="btnSelect">${STR.chooseSpecies}</button>
+        <button class="btn ghost" id="btnEvolve">${STR.evolve}</button>
         <div class="muteRow"><button class="btn tiny" id="btnMute">🔊</button></div>
         <div class="hint">${esc(STR.hint)}<br>${esc(STR.hintKeys)}</div>
       </div>`);
     if (!s) return;
     $('btnPlay').onclick = () => this.h.onPick?.(null);     // null = random unlocked
     $('btnSelect').onclick = () => this.speciesSelect(save);
+    $('btnEvolve').onclick = () => this.h.onEvolve?.(null);
     $('btnMute').onclick = (e) => { const m = this.h.onToggleMute?.(); e.target.textContent = m ? '🔇' : '🔊'; };
   }
 
@@ -118,9 +128,12 @@ export class Hud {
           <button class="navArrow" id="prevSp" aria-label="Previous">‹</button>
           <div class="bigcard">
             <canvas id="previewCanvas" class="preview"></canvas>
+            <div class="rarity Common" id="spRarity"></div>
             <div class="bignameRow"><span class="bigname" id="spName"></span><span class="bignum" id="spNum"></span></div>
             <div class="bigdesc" id="spDesc"></div>
             <div class="dietRow"><span class="eats">${esc(STR.diet)}:</span> <span id="spDiet"></span></div>
+            <div class="ability" id="spAbility"></div>
+            <div class="evoMini" id="spEvo"></div>
             <div class="stats3" id="spStats"></div>
             <div class="spAction" id="spAction"></div>
           </div>
@@ -142,11 +155,17 @@ export class Hud {
       $('spNum').textContent = `${idx + 1}/${SPECIES_LIST.length}`;
       $('spDesc').textContent = sp.desc;
       $('spDiet').innerHTML = `${sp.dietIcon} <b>${esc(sp.dietName)}</b>`;
+      $('spRarity').className = 'rarity ' + (sp.rarity || 'Common');
+      $('spRarity').textContent = sp.rarity || 'Common';
+      $('spAbility').innerHTML = `<b>${esc(STR.abilityLabel)}:</b> ${esc(sp.ability || '')}`;
+      const tot = totalLevels(speciesUpgrades(save, id));
+      $('spEvo').textContent = tot > 0 ? `🧬 Evolution Lv ${tot}` : '';
       $('spStats').innerHTML = pip(STR.statSpeed, sp.rating.speed) + pip(STR.statSize, sp.rating.size) + pip(STR.statLife, sp.rating.life);
       const act = $('spAction');
       if (unlocked) {
-        act.innerHTML = `<button class="btn big" id="spPlay">${STR.play}</button>`;
-        $('spPlay').onclick = () => { const s = id; this.h.onPick?.(s); };
+        act.innerHTML = `<div class="cardBtns"><button class="btn big" id="spPlay">${STR.play}</button><button class="btn big evo" id="spEvolve">${STR.evolve}</button></div>`;
+        $('spPlay').onclick = () => this.h.onPick?.(id);
+        $('spEvolve').onclick = () => this.h.onEvolve?.(id);
         $('previewCanvas').classList.remove('lockedPrev');
       } else {
         const q = questFor(id);
@@ -162,6 +181,44 @@ export class Hud {
     this.els.screen.querySelectorAll('.dots i').forEach((d, i) => d.onclick = () => { idx = i; render(); });
     $('btnBack').onclick = () => this.menu(save);
     render();
+  }
+
+  // Spore-style evolution lab: spend genes on permanent per-species upgrades
+  evolution(save, speciesId) {
+    this._disposePreview();
+    const id = (speciesId && save.unlocked.includes(speciesId)) ? speciesId : (save.unlocked[save.unlocked.length - 1] || 'rabbit');
+    const sp = SPECIES[id];
+    const need = expForLevel(save.level || 1);
+    this._screen(`
+      <div class="panel selectC">
+        <div class="ptitle">${esc(STR.evoTitle)}</div>
+        <div class="evoTop">
+          <span class="pill">⭐ ${STR.levelLabel} <b>${save.level || 1}</b></span>
+          <span class="pill">🧬 <b id="evGenes">${save.genes || 0}</b> ${STR.genes}</span>
+        </div>
+        <div class="expbar"><div style="width:${Math.min(100, Math.round(100 * (save.exp || 0) / need))}%"></div></div>
+        <canvas id="previewCanvas" class="preview"></canvas>
+        <div class="bignameRow"><span class="bigname">${esc(sp.name)}</span></div>
+        <div class="bigdesc">${esc(STR.evoBlurb)}</div>
+        <div class="upgList" id="upgList"></div>
+        <button class="btn ghost" id="btnBack">${STR.back}</button>
+      </div>`);
+    this.preview = new Preview($('previewCanvas')); this.preview.show(id);
+
+    const renderUpg = () => {
+      const u = speciesUpgrades(save, id);
+      $('upgList').innerHTML = UPGRADES.map(up => {
+        const lvl = u[up.key] || 0, maxed = lvl >= MAX_LEVEL, cost = upgradeCost(lvl), afford = canUpgrade(save, id, up.key);
+        let pips = ''; for (let k = 0; k < MAX_LEVEL; k++) pips += `<i class="${k < lvl ? 'on' : ''}"></i>`;
+        const btn = maxed ? `<button class="ubuy max" disabled>${STR.maxed}</button>`
+          : `<button class="ubuy" data-k="${up.key}" ${afford ? '' : 'disabled'}>🧬 ${cost}</button>`;
+        return `<div class="upg"><div class="uico">${up.icon}</div><div class="uinfo"><div class="uname">${esc(up.name)}</div><div class="udesc">${esc(up.desc)}</div><div class="upips">${pips}</div></div>${btn}</div>`;
+      }).join('');
+      $('evGenes').textContent = save.genes || 0;
+      this.els.screen.querySelectorAll('.ubuy[data-k]').forEach(b => b.onclick = () => { if (this.h.onUpgrade?.(id, b.getAttribute('data-k'))) renderUpg(); });
+    };
+    renderUpg();
+    $('btnBack').onclick = () => this.menu(save);
   }
 
   birth(speciesId, mutationIds) {
@@ -182,14 +239,18 @@ export class Hud {
   }
 
   death(result) {
+    this._disposePreview();
     const ep = EPITAPH[result.cause] || 'Gone, but statistically expected.';
     const title = result.success ? STR.death.successTitle : STR.death.title;
     const unlockHtml = (result.newUnlocks && result.newUnlocks.length)
       ? `<div class="unlockNote">🎉 Unlocked: ${result.newUnlocks.map(esc).join(', ')}</div>` : '';
+    const lvlHtml = result.levelUp ? `<div class="levelup">⭐ ${STR.death.levelUp} ${STR.levelLabel} ${result.level}</div>` : '';
     this._screen(`
       <div class="panel death ${result.success ? 'win' : ''}">
         <div class="ptitle">${esc(title)}</div>
         <div class="epitaph">${esc(ep)}</div>
+        ${lvlHtml}
+        <div class="rewards"><div class="rw">🧬 +${result.genes} ${STR.death.genesEarned}</div><div class="rw exp">✦ +${result.exp} ${STR.death.expEarned}</div></div>
         <div class="stats">
           <div><span>${STR.death.livedFor}</span><b>${esc(result.lived)}</b></div>
           <div><span>${STR.death.ate}</span><b>${result.meals}</b></div>
@@ -199,10 +260,12 @@ export class Hud {
         ${unlockHtml}
         <div class="row">
           <button class="btn big" id="btnAgain">${STR.death.again}</button>
-          <button class="btn ghost" id="btnMenu">${STR.death.menu}</button>
+          <button class="btn big evo" id="btnEvolveD">${STR.death.evolve}</button>
         </div>
+        <button class="btn ghost" id="btnMenu" style="margin-top:8px;width:100%">${STR.death.menu}</button>
       </div>`);
     $('btnAgain').onclick = () => this.h.onAgain?.();
+    $('btnEvolveD').onclick = () => this.h.onEvolve?.(result.speciesId);
     $('btnMenu').onclick = () => this.h.onMenu?.();
   }
 

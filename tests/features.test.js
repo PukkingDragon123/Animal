@@ -3,6 +3,7 @@
 import { createRun, step } from '../src/sim.js';
 import { CONFIG as C } from '../src/config.js';
 import { recordRun, checkUnlocks } from '../src/quests.js';
+import { buyUpgrade, speciesUpgrades, runRewards, addExp, upgradeCost } from '../src/evolution.js';
 
 let pass = 0, fail = 0;
 const ok = (n, c) => { if (c) pass++; else { fail++; console.error('  FAIL:', n); } };
@@ -107,6 +108,50 @@ console.log('feature tests');
   ok('quest: reach-elder unlocks Salmon', save.unlocked.includes('salmon'));
   ok('quest: 15-meals unlocks Fox', save.unlocked.includes('fox'));
   ok('quest: locked until earned (Shark still locked)', !save.unlocked.includes('shark'));
+}
+
+// attack: bonk + stun a predator (fight back)
+{
+  const s = createRun({ speciesId: 'rabbit', seed: 11 });
+  const pr = s.predators[0]; pr.x = s.player.x + 1.4; pr.z = s.player.z; pr.aggro = true; const x0 = pr.x;
+  step(s, { mx: 0, mz: 0, attack: true }, DT);
+  ok('attack: predator stunned', pr.stun > 0);
+  ok('attack: predator knocked back', pr.x !== x0);
+  ok('attack: predator lost aggro', pr.aggro === false);
+  ok('attack: blood emitted', s.events.some(e => e.t === 'blood'));
+}
+
+// attack: hunter lunge-kills prey just out of contact range
+{
+  const s = createRun({ speciesId: 'fox', seed: 9 });
+  const pr = s.prey[0]; pr.alive = true; pr.x = s.player.x + 2.3; pr.z = s.player.z;
+  const m0 = s.meals;
+  step(s, { mx: 0, mz: 0, attack: true }, DT);
+  ok('attack hunt: lunge-kills prey', s.meals > m0);
+}
+
+// persistent upgrades stack onto a run
+{
+  const base = createRun({ speciesId: 'rabbit', seed: 50 });
+  const up = createRun({ speciesId: 'rabbit', seed: 50, upgrades: { speed: 5, vitality: 3, longevity: 5, senses: 5, fertility: 3 } });
+  ok('upgrade: faster', up.mods.speed > base.mods.speed);
+  ok('upgrade: longer life', up.lifespan > base.lifespan);
+  ok('upgrade: more hits', up.hitsLeft > base.hitsLeft || base.mods.frail);
+  ok('upgrade: fertility≥3 → fertile', up.mods.fertile === true);
+  ok('upgrade: bigger feeding range', up.mods.eat > base.mods.eat);
+}
+
+// evolution economy: spend genes, level via EXP, run rewards
+{
+  const sv = { genes: 100, exp: 0, level: 1, evolution: {}, unlocked: ['rabbit'] };
+  ok('evo: buy succeeds', buyUpgrade(sv, 'rabbit', 'speed') === true);
+  ok('evo: genes spent', sv.genes === 100 - upgradeCost(0));
+  ok('evo: level recorded', speciesUpgrades(sv, 'rabbit').speed === 1);
+  ok('evo: cannot overspend', (() => { const poor = { genes: 0, evolution: {} }; return buyUpgrade(poor, 'rabbit', 'speed') === false; })());
+  const lv0 = sv.level; const gained = addExp(sv, 1000);
+  ok('evo: EXP levels up', sv.level > lv0 && gained > 0);
+  const rw = runRewards({ meals: 10, offspring: 1, maxStageIndex: 2, reproduced: true, nestBuilt: false });
+  ok('evo: run rewards positive', rw.genes > 0 && rw.exp > 0);
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

@@ -1,20 +1,24 @@
-// Unified input → one command object {mx, mz, sprint}. Touch joystick (left
-// half) + sprint zone (right half) via pointer events, physical-keycode
-// keyboard (WASD/arrows + Shift/Space), and the Gamepad API. Fixed camera:
-// screen-up = world +Z. No hover-only interactions; every verb works on touch.
+// Unified input → one command object {mx, mz, sprint, attack}. Touch joystick
+// (left half) + sprint zone (right half) via pointer events, physical-keycode
+// keyboard, and the Gamepad API.
+//
+// Camera note: the follow camera looks toward +Z (yaw 180° from the Three.js
+// default), so world +X renders to SCREEN-LEFT. We negate the X command so
+// "push right" moves the player right on screen. World +Z = screen-up.
 
 const MOVE = {
   KeyW: [0, 1], ArrowUp: [0, 1], KeyS: [0, -1], ArrowDown: [0, -1],
   KeyA: [-1, 0], ArrowLeft: [-1, 0], KeyD: [1, 0], ArrowRight: [1, 0],
 };
-const SPRINT_KEYS = new Set(['ShiftLeft', 'ShiftRight', 'Space']);
+const SPRINT_KEYS = new Set(['ShiftLeft', 'ShiftRight']);
+const ATTACK_KEYS = new Set(['Space', 'KeyJ', 'Enter']);
 
 export class Input {
   constructor(el) {
     this.el = el;
     this.keys = new Set();
-    this.sprintKey = false;
-    this.sprintBtn = false;
+    this.sprintKey = false; this.sprintBtn = false;
+    this.attackKey = false; this.attackBtn = false;
     this.maxR = 64;
     this.joy = { active: false, id: -1, ox: 0, oy: 0, cx: 0, cy: 0 };
     this.sprintId = -1;
@@ -26,10 +30,12 @@ export class Input {
     addEventListener('keydown', (e) => {
       if (MOVE[e.code]) { this.keys.add(e.code); e.preventDefault(); }
       if (SPRINT_KEYS.has(e.code)) { this.sprintKey = true; e.preventDefault(); }
+      if (ATTACK_KEYS.has(e.code)) { this.attackKey = true; e.preventDefault(); }
     });
     addEventListener('keyup', (e) => {
       this.keys.delete(e.code);
       if (SPRINT_KEYS.has(e.code)) this.sprintKey = false;
+      if (ATTACK_KEYS.has(e.code)) this.attackKey = false;
     });
 
     const down = (e) => {
@@ -58,7 +64,8 @@ export class Input {
   }
 
   setSprintButton(v) { this.sprintBtn = v; }
-  reset() { this.keys.clear(); this.sprintKey = false; this.sprintBtn = false; this.joy.active = false; this.joy.id = -1; this.sprintId = -1; }
+  setAttackButton(v) { this.attackBtn = v; }
+  reset() { this.keys.clear(); this.sprintKey = false; this.sprintBtn = false; this.attackKey = false; this.attackBtn = false; this.joy.active = false; this.joy.id = -1; this.sprintId = -1; }
 
   // joystick visual for the HUD
   joyVisual() {
@@ -70,7 +77,9 @@ export class Input {
   }
 
   get() {
-    let mx = 0, mz = 0, sprint = this.sprintKey || this.sprintBtn || this.sprintId >= 0;
+    let mx = 0, mz = 0;
+    let sprint = this.sprintKey || this.sprintBtn || this.sprintId >= 0;
+    let attack = this.attackKey || this.attackBtn;
 
     // keyboard
     for (const k of this.keys) { const m = MOVE[k]; if (m) { mx += m[0]; mz += m[1]; } }
@@ -92,14 +101,14 @@ export class Input {
       const ax = gp.axes[0] || 0, ay = gp.axes[1] || 0;
       if (Math.abs(ax) > 0.18) mx += ax;
       if (Math.abs(ay) > 0.18) mz += -ay;
-      if (gp.buttons[0]?.pressed || gp.buttons[5]?.pressed || gp.buttons[7]?.pressed) sprint = true;
-      // dpad
+      if (gp.buttons[4]?.pressed || gp.buttons[5]?.pressed || gp.buttons[6]?.pressed || gp.buttons[7]?.pressed) sprint = true;
+      if (gp.buttons[0]?.pressed || gp.buttons[2]?.pressed) attack = true;
       if (gp.buttons[12]?.pressed) mz += 1; if (gp.buttons[13]?.pressed) mz -= 1;
       if (gp.buttons[14]?.pressed) mx -= 1; if (gp.buttons[15]?.pressed) mx += 1;
     }
 
     const len = Math.hypot(mx, mz);
     if (len > 1) { mx /= len; mz /= len; }
-    return { mx, mz, sprint };
+    return { mx: -mx, mz, sprint, attack };       // negate X: camera maps +X to screen-left
   }
 }

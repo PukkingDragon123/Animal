@@ -26,7 +26,7 @@ python3 -m http.server 8080
 Or play it instantly from the branch (served via raw.githack.com, which sends
 the correct MIME types for ES modules):
 
-**https://raw.githack.com/PukkingDragon123/Animal/claude/inspiring-wright-5xmrsu/index.html?v=2**
+**https://raw.githack.com/PukkingDragon123/Animal/claude/inspiring-wright-5xmrsu/index.html?v=3**
 
 Open the URL on a phone or desktop. (ES modules need a real server — opening
 `index.html` from `file://` won't work.)
@@ -37,11 +37,22 @@ Add `?dev=1` to the URL for an FPS / entity-count overlay.
 
 | | Move | Sprint |
 |---|---|---|
-| **Touch** | drag the **left half** of the screen (virtual joystick) | hold the **RUN** button / right half |
-| **Keyboard** | WASD / arrow keys | Shift or Space |
-| **Gamepad** | left stick / d-pad | A / bumpers |
+| **Touch** | drag the **left half** of the screen (virtual joystick) | hold **RUN** (right) · tap **⚔** to attack |
+| **Keyboard** | WASD / arrow keys | Shift to run · Space / J to attack |
+| **Gamepad** | left stick / d-pad | bumpers to run · A / X to attack |
 
 Keyboard is bound to **physical key codes**, so it works on any layout.
+**Attack** lets you bonk-and-stun predators (fight back!), lunge-kill prey as a
+hunter, or shake fruit from trees.
+
+## Evolution lab (Spore-style)
+
+Every run earns **genes** and **EXP**. EXP levels up your gene pool; genes are
+spent in the **Evolution Lab** on permanent, per-species upgrades — Speed,
+Vitality (extra hits), Longevity, Senses (feeding range) and Fertility (twins +
+faster breeding). Your evolved stats stack on top of each run's random
+mutations, so a species gets stronger the more you play it. Reach the lab from
+the menu, the character card, or straight off the death screen.
 
 ## The loop
 

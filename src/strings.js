@@ -21,10 +21,19 @@ export const STR = {
   warmth: 'Warmth',
   diet: 'Eats',
 
+  // controls
+  attack: 'ATTACK',
+
   // character select
   statSpeed: 'Speed', statSize: 'Size', statLife: 'Longevity',
   questToUnlock: 'QUEST TO UNLOCK',
   twigsLabel: 'Twigs',
+  abilityLabel: 'Ability', rarityLabel: 'Rarity',
+
+  // evolution lab
+  evolve: 'EVOLVE', evoTitle: 'EVOLUTION LAB',
+  genes: 'Genes', exp: 'EXP', levelLabel: 'Lvl', maxed: 'MAX',
+  evoBlurb: 'Spend genes to permanently mutate this species.',
 
   // life stages
   stage: { baby: 'Baby', juvenile: 'Juvenile', adult: 'Adult', elder: 'Elder' },
@@ -57,10 +66,13 @@ export const STR = {
     title: 'YOU DIED',
     successTitle: 'A LIFE WELL LIVED',
     dnaEarned: 'DNA earned',
+    genesEarned: 'Genes', expEarned: 'EXP',
     livedFor: 'Lived for',
     ate: 'Meals eaten',
     babies: 'Offspring',
+    levelUp: 'LEVEL UP!',
     again: 'LIVE AGAIN',
+    evolve: 'EVOLVE',
     menu: 'MENU',
   },
 
@@ -83,6 +95,7 @@ export const STR = {
   // one-time contextual tutorial hints (💡)
   tutorials: {
     move: 'Drag the LEFT side of the screen to move (or WASD).',
+    attack: 'Tap ⚔ to attack — bonk predators or snatch prey (Space / J).',
     eat: 'Walk into your glowing food to eat it.',
     sprint: 'Danger nearby! Hold RUN to sprint away.',
     grow: 'You grew up! Follow the glowing beacon to reproduce.',

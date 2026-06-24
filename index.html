@@ -57,10 +57,14 @@
     background:rgba(255,255,255,.16);border:3px solid rgba(255,255,255,.5);}
   #joyKnob{position:absolute;width:60px;height:60px;left:-30px;top:-30px;border-radius:50%;
     background:rgba(255,255,255,.85);box-shadow:var(--shadow);}
-  #runbtn{position:absolute;right:24px;bottom:32px;width:96px;height:96px;border-radius:50%;pointer-events:auto;
-    border:none;background:linear-gradient(180deg,#ffd06b,#ff9b3d);color:#5b3a12;font-weight:900;font-size:20px;
+  #runbtn{position:absolute;right:24px;bottom:32px;width:92px;height:92px;border-radius:50%;pointer-events:auto;
+    border:none;background:linear-gradient(180deg,#ffd06b,#ff9b3d);color:#5b3a12;font-weight:900;font-size:19px;
     box-shadow:var(--shadow);cursor:pointer;touch-action:none;}
   #runbtn:active{transform:scale(.94);}
+  #atkbtn{position:absolute;right:124px;bottom:46px;width:72px;height:72px;border-radius:50%;pointer-events:auto;
+    border:none;background:linear-gradient(180deg,#ff7a6b,#e23b2e);color:#fff;font-weight:900;font-size:28px;
+    box-shadow:var(--shadow);cursor:pointer;touch-action:none;}
+  #atkbtn:active{transform:scale(.9);}
 
   /* ---- screens ---- */
   #screen{position:absolute;inset:0;display:none;align-items:center;justify-content:center;padding:18px;
@@ -140,6 +144,34 @@
   .dots{display:flex;justify-content:center;gap:7px;margin:12px 0;}
   .dots i{width:9px;height:9px;border-radius:50%;background:rgba(0,0,0,.15);cursor:pointer;}
   .dots i.cur{background:var(--leaf-d);transform:scale(1.3);} .dots i.lk{border:1.5px solid rgba(0,0,0,.25);background:transparent;}
+
+  /* lobby card extras */
+  .rarity{display:inline-block;font-size:11px;font-weight:900;letter-spacing:.5px;padding:2px 10px;border-radius:10px;margin-bottom:6px;}
+  .rarity.Common{background:#cfd8dc;color:#46535a;} .rarity.Rare{background:#bcdcff;color:#1f5fa6;}
+  .rarity.Epic{background:#e6ccff;color:#7b34c9;} .rarity.Legendary{background:linear-gradient(90deg,#ffe08a,#ffb347);color:#7a4a00;}
+  .ability{font-size:12px;color:var(--ink-soft);margin:2px 0 8px;line-height:1.4;} .ability b{color:var(--ink);}
+  .evoMini{font-size:11px;color:#7c3ae0;font-weight:800;margin-bottom:8px;}
+  .cardBtns{display:flex;gap:8px;} .cardBtns .btn{flex:1;margin:0;}
+  .btn.evo{background:linear-gradient(180deg,#b07bff,#7c3ae0);}
+
+  /* evolution lab */
+  .evoTop{display:flex;justify-content:center;gap:12px;font-weight:800;margin:4px 0 10px;flex-wrap:wrap;}
+  .evoTop .pill{background:rgba(0,0,0,.06);border-radius:12px;padding:5px 12px;font-size:13px;} .evoTop .pill b{color:#7c3ae0;}
+  .expbar{height:8px;background:rgba(0,0,0,.12);border-radius:6px;overflow:hidden;margin:0 auto 12px;max-width:300px;}
+  .expbar>div{height:100%;background:linear-gradient(90deg,#b07bff,#7c3ae0);transition:width .3s;}
+  .upgList{display:flex;flex-direction:column;gap:8px;margin-bottom:14px;}
+  .upg{display:flex;align-items:center;gap:10px;background:#fff;border-radius:14px;padding:10px;box-shadow:0 3px 10px rgba(60,45,25,.1);}
+  .upg .uico{font-size:20px;width:28px;text-align:center;}
+  .upg .uinfo{flex:1;text-align:left;min-width:0;} .upg .uname{font-weight:900;font-size:14px;} .upg .udesc{font-size:11px;color:var(--ink-soft);}
+  .upg .upips{display:flex;gap:3px;margin-top:4px;} .upg .upips i{width:15px;height:7px;border-radius:3px;background:rgba(0,0,0,.12);} .upg .upips i.on{background:#7c3ae0;}
+  .upg .ubuy{border:none;border-radius:12px;padding:9px 10px;font-weight:800;font-size:12px;background:var(--leaf);color:#fff;cursor:pointer;min-width:62px;}
+  .upg .ubuy:disabled{opacity:.4;cursor:not-allowed;} .upg .ubuy.max{background:#ffb347;color:#5b3a12;}
+
+  /* death rewards */
+  .rewards{display:flex;justify-content:center;gap:10px;margin:6px 0 10px;}
+  .rewards .rw{background:rgba(124,58,224,.14);border-radius:12px;padding:8px 14px;font-weight:800;font-size:14px;}
+  .rewards .rw.exp{background:rgba(108,194,74,.18);}
+  .levelup{background:linear-gradient(90deg,#ffe08a,#ffb347);color:#7a4a00;font-weight:900;border-radius:12px;padding:8px;margin-bottom:10px;}
 </style>
 </head>
 <body>
@@ -167,6 +199,7 @@
   <div id="vignette"></div>
   <div id="quip"></div>
   <div id="joystick"><div class="ring"></div><div id="joyKnob"></div></div>
+  <button id="atkbtn">⚔</button>
   <button id="runbtn">RUN</button>
 </div>
 
