@@ -56,6 +56,7 @@ export function createRun({ speciesId = 'rabbit', seed = 1, bonus = null, visual
     seed, rng, speciesId, species, biome,
     mutationIds, mods,
     time: 0, lifespan, ageFrac: 0,
+    dayPhase: 0.28, light: 1,            // day/night cycle (0 midnight … 0.5 noon)
     stage: 'baby', stageIndex: 0, stageScale: C.life.stageScale.baby,
 
     player: { x: px, z: pz, vx: 0, vz: 0, heading: 0, speed: 0, moving: false, stillFor: 0 },
@@ -211,6 +212,8 @@ export function step(state, input, dt) {
   // 1) age + stages
   state.time += dt;
   state.ageFrac = clamp(state.time / state.lifespan, 0, 1);
+  state.dayPhase = (state.dayPhase + dt / C.world.dayLength) % 1;
+  state.light = 0.5 - 0.5 * Math.cos(state.dayPhase * TAU);   // 0 = midnight, 1 = noon
   updateStage(state);
 
   const P = state.player, S = state.stats, sp = state.species;
@@ -272,7 +275,7 @@ export function step(state, input, dt) {
     let nearWarm = false;
     for (const w of state.warmthSpots) if (dist2(P.x, P.z, w.x, w.z) < w.r * w.r) { nearWarm = true; break; }
     if (nearWarm) state.warmth = clamp(state.warmth + 26 * dt, 0, 100);
-    else state.warmth = clamp(state.warmth - 9 * dt, 0, 100);
+    else state.warmth = clamp(state.warmth - (9 + 5 * (1 - state.light)) * dt, 0, 100); // colder at night
   }
 
   // health: starvation, cold, suffocation (shark), regen
@@ -492,7 +495,10 @@ function updatePredators(state, dt) {
     if (pr.stun > 0) { pr.stun -= dt; pr.vx *= 0.82; pr.vz *= 0.82; pr.x += pr.vx * dt; pr.z += pr.vz * dt; continue; }
     const d2 = dist2(P.x, P.z, pr.x, pr.z);
     const d = Math.sqrt(d2) || 1;
-    const effAggro = aggroR * (state.stage === 'baby' ? C.predator.babyAggroMult : 1);
+    // detection: move/sprint makes you easy to spot; freezing hides you; calmer at night
+    const moveDetect = 0.5 + 0.5 * Math.min(1.4, P.speed / C.move.baseSpeed);
+    const dayDetect = 0.78 + 0.22 * state.light;
+    const effAggro = aggroR * (state.stage === 'baby' ? C.predator.babyAggroMult : 1) * moveDetect * dayDetect;
 
     if (!pr.aggro && d < effAggro) { pr.aggro = true; pr.state = 'chase'; pr.giveUp = 0; state.events.push({ t: 'alert' }); state.events.push({ t: 'quip', key: 'chased' }); }
     if (pr.aggro) {

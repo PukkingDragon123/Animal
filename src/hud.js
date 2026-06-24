@@ -17,7 +17,7 @@ export class Hud {
   constructor(handlers) {
     this.h = handlers;            // { onPick, onUnlock, onBegin, onAgain, onMenu, onResume, onToggleMute }
     this.els = {
-      hud: $('hud'), obj: $('objective'), dna: $('dnaVal'), stage: $('stageLabel'),
+      hud: $('hud'), obj: $('objective'), dna: $('dnaVal'), stage: $('stageLabel'), clock: $('clock'),
       hunger: $('fillHunger'), energy: $('fillEnergy'), life: $('fillLife'),
       warmthWrap: $('barWarmthWrap'), warmth: $('fillWarmth'),
       quip: $('quip'), vignette: $('vignette'), dietChip: $('dietChip'), tut: $('tut'),
@@ -52,6 +52,7 @@ export class Hud {
   setStage(stageKey) { if (this.els.stage) this.els.stage.textContent = STR.stage[stageKey] || ''; }
   setObjective(text) { if (this.els.obj) this.els.obj.textContent = text; }
   setDiet(icon, name) { if (this.els.dietChip) this.els.dietChip.innerHTML = `${icon} <b>${esc(name)}</b>`; }
+  setClock(light) { if (this.els.clock) this.els.clock.textContent = light > 0.55 ? '☀️' : (light > 0.2 ? '🌇' : '🌙'); }
 
   showTutorial(text) {
     const t = this.els.tut; if (!t || !text) return;
@@ -129,8 +130,9 @@ export class Hud {
           <button class="navArrow" id="prevSp" aria-label="Previous">‹</button>
           <div class="bigcard">
             <canvas id="previewCanvas" class="preview"></canvas>
-            <div class="rarity Common" id="spRarity"></div>
+            <div class="badges"><span class="rarity Common" id="spRarity"></span><span class="statusword" id="spStatus"></span></div>
             <div class="bignameRow"><span class="bigname" id="spName"></span><span class="bignum" id="spNum"></span></div>
+            <div class="latin" id="spLatin"></div>
             <div class="bigdesc" id="spDesc"></div>
             <div class="dietRow"><span class="eats">${esc(STR.diet)}:</span> <span id="spDiet"></span></div>
             <div class="ability" id="spAbility"></div>
@@ -154,6 +156,8 @@ export class Hud {
       const id = SPECIES_LIST[idx], sp = SPECIES[id], unlocked = save.unlocked.includes(id);
       $('spName').textContent = sp.name;
       $('spNum').textContent = `${idx + 1}/${SPECIES_LIST.length}`;
+      $('spLatin').textContent = sp.latin || '';
+      const st = $('spStatus'); st.textContent = sp.status || ''; st.className = 'statusword s' + (sp.status || '').replace(/\s/g, '');
       $('spDesc').textContent = sp.desc;
       $('spDiet').innerHTML = `${sp.dietIcon} <b>${esc(sp.dietName)}</b>`;
       $('spRarity').className = 'rarity ' + (sp.rarity || 'Common');
@@ -232,6 +236,7 @@ export class Hud {
     this._screen(`
       <div class="panel birth">
         <div class="ptitle">${esc(STR.birth.youAre)} ${esc(sp.article)} <span class="hi">${esc(sp.name)}</span></div>
+        <div class="latin">${esc(sp.latin || '')} · <span class="statusword s${esc((sp.status || '').replace(/\s/g, ''))}">${esc(sp.status || '')}</span></div>
         <div class="fact">“${esc(sp.facts[Math.floor(Math.random() * sp.facts.length)])}”</div>
         <div class="mutLabel">${esc(STR.birth.aMut)}</div>
         <div class="muts">${muts}</div>

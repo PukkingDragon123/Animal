@@ -10,6 +10,7 @@ export const CONFIG = {
   world: {
     radius: 34,             // island radius (units)
     wallSoftness: 6,        // how far past the edge the soft wall pushes back
+    dayLength: 75,          // seconds per full day/night cycle
   },
 
   camera: {

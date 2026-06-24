@@ -89,6 +89,8 @@ export class Renderer {
     this.interactMeshes = []; this.fruitInst = null; this.twigInst = null; this.stepTimer = 0;
     this.ambient = null; this.ambData = null; this.ambKind = 'pollen';
     this.critters = [];
+    this._fogNight = new THREE.Color(0x12172e); this._skyDay = new THREE.Color(0xffffff); this._skyNight = new THREE.Color(0x2a3566);
+    this._fogDay = new THREE.Color(0xffffff); this._baseSun = 1; this._baseAmb = 1; this._sunAz = 0;
 
     this.camPos = new THREE.Vector3(0, 18, -14);
     this.camLook = new THREE.Vector3();
@@ -134,6 +136,7 @@ export class Renderer {
     this.hemi.color.set(b.ambSky); this.hemi.groundColor.set(b.ambGround); this.hemi.intensity = b.ambInt;
     this.sun.color.set(b.sun); this.sun.intensity = b.sunInt;
     this.scene.fog = new THREE.FogExp2(b.fog, b.fogDensity);
+    this.biome = b; this._baseSun = b.sunInt; this._baseAmb = b.ambInt; this._fogDay.set(b.fog);
 
     this.swimY = b.water ? 0.7 : 0;
 
@@ -328,19 +331,49 @@ export class Renderer {
     // --- ambient critters ---
     this._updateCritters(state, dt, time);
 
+    // --- day / night cycle ---
+    this._applyDayNight(state);
+
     // --- camera + light follow ---
     this._placeCamera(state, false);
     this.fx.update(dt);
   }
 
+  _applyDayNight(state) {
+    const L = state.light != null ? state.light : 1;
+    this.sun.intensity = this._baseSun * (0.2 + 0.8 * L);
+    this.hemi.intensity = this._baseAmb * (0.32 + 0.68 * L);
+    this.fill.intensity = 0.08 + 0.2 * L;
+    if (this.scene.fog) this.scene.fog.color.copy(this._fogDay).lerp(this._fogNight, 1 - L);
+    const ud = this.envGroup && this.envGroup.userData;
+    if (ud && ud.sky) ud.sky.material.color.copy(this._skyDay).lerp(this._skyNight, (1 - L) * 0.85);
+    if (ud && ud.sunMesh) {
+      const ph = state.dayPhase || 0, az = ph * Math.PI * 2, el = Math.sin((ph - 0.25) * Math.PI * 2);
+      ud.sunMesh.position.set(Math.cos(az) * -150, 35 + el * 95, -150); ud.sunMesh.lookAt(0, 0, 0);
+      ud.sunMesh.material.color.setHex(L < 0.28 ? 0xcfe0ff : 0xfff4d6);
+    }
+    this._sunAz = (state.dayPhase || 0) * Math.PI * 2;
+  }
+
   _updateCritters(state, dt, time) {
-    const P = state.player, R = C.world.radius;
+    const P = state.player, R = C.world.radius, baseY = this.swimY || 0;
     for (const c of this.critters) {
-      const dx = c.x - P.x, dz = c.z - P.z, d = Math.hypot(dx, dz) || 1;
+      // nearest threat: the player, or any active predator (emergent food web)
+      let tx = P.x, tz = P.z, td = Math.hypot(c.x - P.x, c.z - P.z), pred = false;
+      for (const m of this.predMeshes) {
+        if (!m.visible) continue;
+        const dd = Math.hypot(c.x - m.position.x, c.z - m.position.z);
+        if (dd < td) { td = dd; tx = m.position.x; tz = m.position.z; pred = true; }
+      }
+      if (pred && td < 1.6) {                            // a predator catches the critter
+        this.fx.burst(c.x, baseY + 0.45, c.z, c.fly ? 0xffd23f : 0xc8201a, 6, { up: 1.6, life: 0.5 });
+        const a = Math.random() * 6.283, r = 12 + Math.random() * 14;
+        c.x = P.x + Math.cos(a) * r; c.z = P.z + Math.sin(a) * r; c.baseY = c.hoverY; continue;
+      }
       const fleeR = c.fly ? 4.5 : 6.5;
-      if (d < fleeR) {                                  // scatter from the player
-        c.heading = Math.atan2(dx, dz);
-        c.vx = (dx / d) * c.sp * 1.9; c.vz = (dz / d) * c.sp * 1.9;
+      if (td < fleeR) {
+        const dx = c.x - tx, dz = c.z - tz, d = Math.hypot(dx, dz) || 1;
+        c.heading = Math.atan2(dx, dz); c.vx = (dx / d) * c.sp * 1.9; c.vz = (dz / d) * c.sp * 1.9;
         if (c.fly) c.baseY = Math.min(c.baseY + dt * 2.2, 4);
       } else {
         c.retarget -= dt;
@@ -445,8 +478,9 @@ export class Renderer {
     this.camera.position.copy(this.camPos);
     this.camera.lookAt(P.x, this.swimY + 0.6, P.z + 1.5);
 
-    // keep the shadow frustum on the player
-    this.sun.position.set(P.x - 18, 34, P.z - 12);
+    // keep the shadow frustum on the player; sun direction follows the day arc
+    const az = this._sunAz || 0;
+    this.sun.position.set(P.x + Math.cos(az) * -18, 34, P.z + Math.sin(az) * -14);
     this.sun.target.position.set(P.x, 0, P.z);
     this.sun.target.updateMatrixWorld();
   }

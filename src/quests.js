@@ -5,12 +5,14 @@ import { SPECIES_LIST } from './species.js';
 
 // stage indices: baby 0, juvenile 1, adult 2, elder 3
 export const QUESTS = {
-  bee:     { text: 'Reproduce as a Rabbit',        hint: 'Grow up and reach the heart beacon.', check: (s) => !!s.flags.reproduced.rabbit },
-  penguin: { text: 'Reach adulthood as a Bee',     hint: 'Pollinate flowers and grow fast — bees are short-lived!', check: (s) => !!s.flags.adult.bee },
-  turtle:  { text: 'Reproduce as a Penguin',       hint: 'Stay warm, eat fish, then nest.', check: (s) => !!s.flags.reproduced.penguin },
-  salmon:  { text: 'Reach Elder as any animal',    hint: 'Survive a whole life to old age.', check: (s) => !!s.flags.elderAny },
-  fox:     { text: 'Eat 15 times in one life',     hint: 'Graze relentlessly in a single run.', check: (s) => !!s.flags.meals15 },
-  shark:   { text: 'Reproduce as a Salmon',        hint: 'Fight upstream and build your nest.', check: (s) => !!s.flags.reproduced.salmon },
+  bee:     { text: 'Reproduce as a European Rabbit', check: (s) => !!s.flags.reproduced.rabbit },
+  monarch: { text: 'Reproduce as a Honey Bee',       check: (s) => !!s.flags.reproduced.bee },
+  meerkat: { text: 'Reach adulthood as a Rabbit',    check: (s) => !!s.flags.adult.rabbit },
+  penguin: { text: 'Reach adulthood as a Honey Bee', check: (s) => !!s.flags.adult.bee },
+  turtle:  { text: 'Reproduce as an Emperor Penguin', check: (s) => !!s.flags.reproduced.penguin },
+  salmon:  { text: 'Reach Elder as any animal',       check: (s) => !!s.flags.elderAny },
+  fox:     { text: 'Eat 15 times in one life',        check: (s) => !!s.flags.meals15 },
+  shark:   { text: 'Reproduce as a Sockeye Salmon',   check: (s) => !!s.flags.reproduced.salmon },
 };
 
 // record one finished run into the save's quest flags

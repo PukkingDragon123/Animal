@@ -278,7 +278,27 @@ function frog(c) {
   parts.gait = 'hop'; return g;
 }
 
-const BUILDERS = { rabbit, fox, bee, penguin, turtle, salmon, shark, bird, seal, bear, fish, squirrel, butterfly, frog, raven: bird };
+function meerkat(c) {
+  const g = new THREE.Group(); const parts = g.userData.parts = {};
+  const body = new THREE.Group(); body.position.y = 0.18; g.add(body); parts.body = body;
+  body.add(mesh(CYL(0.22, 0.3, 0.7, 8), matte(c.body), { pos: [0, 0.5, 0] }));        // upright torso
+  body.add(mesh(SPH(0.26), matte(c.belly), { pos: [0, 0.5, 0.14], scl: [0.7, 1.1, 0.5], cast: false }));
+  const head = new THREE.Group(); head.position.set(0, 1.0, 0.05); body.add(head); parts.head = head;
+  head.add(mesh(SPH(0.22), matte(c.body), { scl: [1, 1, 1.15] }));
+  head.add(mesh(CON(0.1, 0.2, 5), matte(c.body), { pos: [0, -0.02, 0.2], rot: [Math.PI / 2, 0, 0] }));
+  head.add(mesh(SPH(0.05), matte(0x14110e), { pos: [0, -0.02, 0.34], cast: false }));
+  for (const s of [-1, 1]) head.add(mesh(SPH(0.09), matte(c.accent), { pos: [s * 0.12, 0.04, 0.15], scl: [1, 1.2, 0.5], cast: false })); // dark eye patches
+  eyes(g, head, c.eye, 0.06, 0.12, 0.18, 0.04);
+  parts.ears = [];
+  for (const s of [-1, 1]) { const ear = new THREE.Group(); ear.position.set(s * 0.16, 0.15, 0); ear.add(mesh(SPH(0.07), matte(c.accent), { scl: [1, 1, 0.5] })); head.add(ear); parts.ears.push(ear); }
+  const tail = new THREE.Group(); tail.position.set(0, 0.2, -0.16); g.add(tail); parts.tail = tail;
+  tail.add(mesh(CYL(0.05, 0.08, 0.6, 5), matte(c.body), { pos: [0, -0.05, -0.2], rot: [0.8, 0, 0] }));
+  parts.legs = [];
+  for (const s of [-1, 1]) { const leg = mesh(BOX(0.12, 0.2, 0.14), matte(c.body), { pos: [s * 0.14, 0.1, 0.04] }); g.add(leg); parts.legs.push(leg); }
+  parts.gait = 'waddle'; return g;
+}
+
+const BUILDERS = { rabbit, fox, bee, penguin, turtle, salmon, shark, bird, seal, bear, fish, squirrel, butterfly, frog, meerkat, raven: bird };
 
 export function buildCreature(buildKey, colors, visuals) {
   const fn = BUILDERS[buildKey] || rabbit;

@@ -26,7 +26,7 @@ python3 -m http.server 8080
 Or play it instantly from the branch (served via raw.githack.com, which sends
 the correct MIME types for ES modules):
 
-**https://raw.githack.com/PukkingDragon123/Animal/claude/inspiring-wright-5xmrsu/index.html?v=4**
+**https://raw.githack.com/PukkingDragon123/Animal/claude/inspiring-wright-5xmrsu/index.html?v=5**
 
 Open the URL on a phone or desktop. (ES modules need a real server — opening
 `index.html` from `file://` won't work.)
@@ -86,17 +86,32 @@ predators, and steer clear of **beehives** (they sting anyone who is not a bee).
 Footsteps kick up little puffs as you move, and a diet chip + one-time tutorial
 tips keep the controls obvious.
 
-## Species & their one big struggle
+## Real species & their one big struggle
 
-| Species | Biome | Eats | Why it sucks |
-|---|---|---|---|
-| Rabbit (start) | Forest | grass | everything hunts you |
-| Bee | Meadow | flowers | brutally short lifespan |
-| Penguin | Arctic | fish | freezing cold (warmth drains) |
-| Sea Turtle | Ocean | seaweed | reach the sea as a hatchling |
-| Salmon | River | bugs | swim upstream against the current |
-| Fox | Forest | rabbits | catch fast prey before you starve |
-| Shark | Ocean | fish | keep swimming or suffocate |
+Every animal is a **specific, real species** with its scientific name, IUCN
+conservation status, and researched biology (shown on the card and birth screen).
+
+| Species | Latin | Biome | Eats | Why it sucks |
+|---|---|---|---|---|
+| European Rabbit (start) | *Oryctolagus cuniculus* | Forest | grasses | foxes cause ~28% of deaths |
+| Western Honey Bee | *Apis mellifera* | Meadow | nectar | a worker lives 4–8 weeks |
+| Monarch Butterfly | *Danaus plexippus* | Meadow | nectar | summer adults live ~2–5 weeks |
+| Meerkat | *Suricata suricatta* | Savanna | insects | hawks above, cobras below |
+| Emperor Penguin | *Aptenodytes forsteri* | Arctic | fish | −40°C; leopard seals at the ice edge |
+| Leatherback Turtle | *Dermochelys coriacea* | Ocean | jellyfish | ~1 in 1,000 hatchlings survives |
+| Sockeye Salmon | *Oncorhynchus nerka* | River | insects | swim upstream, spawn once, die |
+| Red Fox | *Vulpes vulpes* | Forest | rabbits | miss the pounce, go hungry |
+| Great White Shark | *Carcharodon carcharias* | Ocean | fish & seals | stop swimming and you suffocate |
+
+## A living ecosystem
+
+- **Day/night cycle** — the sun arcs overhead, light/fog shift to dusk and a
+  moonlit night, and the world calms down after dark (a 🌙/☀️ clock shows the
+  time). Penguins lose warmth faster at night.
+- **Freeze to hide** — predators detect you by movement: sprint and you're easy
+  to spot; **hold still and they lose you**. (They also mostly ignore tiny babies.)
+- **Emergent food web** — ambient critters flee not just you but nearby
+  predators, who actually catch them — so the world hunts itself, not only you.
 
 ## Project layout
 

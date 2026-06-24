@@ -194,6 +194,7 @@ class Game {
     this.hud.setDna(liveDna(s));
     this.hud.setStage(s.stage);
     this.hud.setVignette(s.danger);
+    this.hud.setClock(s.light);
     this.hud.updateJoystick(this.input.joyVisual());
     this._tutorials(s);
   }

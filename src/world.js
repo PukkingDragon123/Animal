@@ -57,12 +57,12 @@ export function buildEnvironment(biome, seed) {
     skyGeo.setAttribute('color', new THREE.BufferAttribute(col, 3));
   }
   const sky = new THREE.Mesh(skyGeo, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide, fog: false }));
-  group.add(sky);
+  group.add(sky); group.userData.sky = sky;
 
-  // soft sun
+  // sun/moon disc — repositioned + tinted each frame by the day/night cycle
   const sun = new THREE.Mesh(new THREE.CircleGeometry(14, 20), new THREE.MeshBasicMaterial({ color: 0xfff4d6, fog: false, transparent: true, opacity: 0.9 }));
   sun.position.set(-60, 80, -120); sun.lookAt(0, 0, 0);
-  group.add(sun);
+  group.add(sun); group.userData.sunMesh = sun;
 
   // --- instanced props ---
   const propMeshes = [];
