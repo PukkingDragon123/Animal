@@ -1,14 +1,14 @@
 // Build-layer smoke test: exercises all procedural geometry/mesh/animation code
 // without a WebGL context (geometries + meshes don't need GL; only the renderer
 // does). Catches Three.js API misuse, NaNs, and missing builders.
-import * as THREE from '../public/vendor/three.module.js';
-import { buildCreature } from '../public/src/meshes.js';
-import { buildFoodGeometry, buildPropGeometry } from '../public/src/props.js';
-import { buildEnvironment } from '../public/src/world.js';
-import { animateCreature } from '../public/src/animator.js';
-import { FX } from '../public/src/fx.js';
-import { BIOMES } from '../public/src/biomes.js';
-import { SPECIES, FOODS } from '../public/src/species.js';
+import * as THREE from '../vendor/three.module.js';
+import { buildCreature } from '../src/meshes.js';
+import { buildFoodGeometry, buildPropGeometry } from '../src/props.js';
+import { buildEnvironment } from '../src/world.js';
+import { animateCreature } from '../src/animator.js';
+import { FX } from '../src/fx.js';
+import { BIOMES } from '../src/biomes.js';
+import { SPECIES, FOODS } from '../src/species.js';
 
 let pass = 0, fail = 0, totalTris = 0;
 const ok = (n, c) => { if (c) pass++; else { fail++; console.error('  FAIL:', n); } };

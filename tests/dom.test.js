@@ -4,7 +4,7 @@
 import { JSDOM } from 'jsdom';
 import { readFileSync } from 'node:fs';
 
-const html = readFileSync(new URL('../public/index.html', import.meta.url), 'utf8');
+const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const dom = new JSDOM(html, { pretendToBeVisual: true, runScripts: 'outside-only' });
 const { window } = dom;
 // expose the globals the modules use
@@ -14,8 +14,8 @@ global.addEventListener = window.addEventListener.bind(window);
 global.removeEventListener = window.removeEventListener.bind(window);
 window.innerWidth = 800; window.innerHeight = 600;
 
-const { Hud } = await import('../public/src/hud.js');
-const { Input } = await import('../public/src/input.js');
+const { Hud } = await import('../src/hud.js');
+const { Input } = await import('../src/input.js');
 
 let pass = 0, fail = 0;
 const ok = (n, c) => { if (c) pass++; else { fail++; console.error('  FAIL:', n); } };

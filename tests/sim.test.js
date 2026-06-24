@@ -1,8 +1,8 @@
 // Headless simulation tests (no WebGL). Validates the deterministic core:
 // stages, eating, reproduction, death, determinism, and every species boots.
-import { createRun, step, liveDna } from '../public/src/sim.js';
-import { SPECIES_LIST } from '../public/src/species.js';
-import { CONFIG as C } from '../public/src/config.js';
+import { createRun, step, liveDna } from '../src/sim.js';
+import { SPECIES_LIST } from '../src/species.js';
+import { CONFIG as C } from '../src/config.js';
 
 let pass = 0, fail = 0;
 const ok = (name, cond) => { if (cond) { pass++; } else { fail++; console.error('  FAIL:', name); } };

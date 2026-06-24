@@ -18,10 +18,15 @@ game is self-contained, tiny, and runs offline.
 It's a static site — no build step.
 
 ```bash
-npm start          # serves ./public at http://localhost:8080
+npm start          # serves the repo root at http://localhost:8080
 # or:
-cd public && python3 -m http.server 8080
+python3 -m http.server 8080
 ```
+
+Or play it instantly from the branch (served via raw.githack.com, which sends
+the correct MIME types for ES modules):
+
+**https://raw.githack.com/PukkingDragon123/Animal/claude/inspiring-wright-5xmrsu/index.html**
 
 Open the URL on a phone or desktop. (ES modules need a real server — opening
 `index.html` from `file://` won't work.)
@@ -63,12 +68,11 @@ Keyboard is bound to **physical key codes**, so it works on any layout.
 ## Project layout
 
 ```
-public/
-  index.html          # entry: canvas + mobile-first HUD/menus + CSS
-  logic.js            # platform rules-module stub (solo game)
-  favicon.svg
-  vendor/three.module.js
-  src/
+index.html            # entry: canvas + mobile-first HUD/menus + CSS
+logic.js              # platform rules-module stub (solo game)
+favicon.svg
+vendor/three.module.js
+src/
     config.js         # frozen agency metrics + balance (data only)
     rng.js            # seeded deterministic RNG (mulberry32)
     sim.js            # PURE simulation core — no Three.js, Node-testable
