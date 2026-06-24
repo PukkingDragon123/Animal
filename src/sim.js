@@ -56,8 +56,11 @@ export function createRun({ speciesId = 'rabbit', seed = 1 }) {
     hitsLeft: mods.frail ? 0 : (1 + mods.extraHits),
 
     food: [], predators: [], prey: [], warmthSpots: [],
+    interactables: [], fruits: [], nestTwigs: [],
     mate: null, nest: null,
     reproduceCooldown: 0,
+    nestMaterials: 0, nestBuilt: false, needsMaterials: false,
+    hidden: false, boost: 0, maxStageIndex: 0,
 
     inWater: false, reachedWater: species.struggle !== 'hatchling',
     reachedAdultBonus: false,
@@ -91,6 +94,8 @@ export function createRun({ speciesId = 'rabbit', seed = 1 }) {
     }
   }
 
+  spawnInteractables(state);
+
   updateObjective(state);
   state.events.push({ t: 'born' });
   return state;
@@ -119,6 +124,20 @@ function spawnPredator(state) {
            giveUp: 0, retarget: 0, phase: state.rng.next() * TAU, domain };
 }
 
+// interactive forest objects: shake fruit trees, forage mushrooms, hide in
+// burrows, and beehives (a bee's nest, a sting for everyone else)
+function spawnInteractables(state) {
+  const I = C.interact, R = C.world.radius;
+  if (!state.biome.water) {                       // land biomes only
+    for (let i = 0; i < I.fruitTrees; i++) { const p = randPoint(state.rng, 7, R * 0.88); state.interactables.push({ id: nextId(), type: 'fruitTree', x: p.x, z: p.z, cooldown: state.rng.range(0, 3), shake: 0 }); }
+    for (let i = 0; i < I.mushrooms; i++) { const p = randPoint(state.rng, 5, R * 0.9); state.interactables.push({ id: nextId(), type: 'mushroom', x: p.x, z: p.z, alive: true }); }
+    for (let i = 0; i < I.burrows; i++) { const p = randPoint(state.rng, 6, R * 0.8); state.interactables.push({ id: nextId(), type: 'burrow', x: p.x, z: p.z }); }
+  }
+  if (state.species.biome === 'meadow' || state.species.biome === 'forest') {
+    for (let i = 0; i < I.hives; i++) { const p = randPoint(state.rng, 8, R * 0.8); state.interactables.push({ id: nextId(), type: 'hive', x: p.x, z: p.z, cooldown: 0 }); }
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Stages
 // ---------------------------------------------------------------------------
@@ -126,6 +145,7 @@ function updateStage(state) {
   const stages = C.life.stages;
   let idx = 0;
   for (let i = 0; i < stages.length; i++) if (state.ageFrac >= stages[i].t) idx = i;
+  if (idx > state.maxStageIndex) state.maxStageIndex = idx;
   if (idx !== state.stageIndex) {
     state.stageIndex = idx;
     state.stage = stages[idx].name;
@@ -147,6 +167,11 @@ function onBecomeAdult(state) {
     else if (sp.struggle === 'hatchling') { nz = -C.world.radius * 0.78; } // nest back on the beach
     else { const p = randPoint(state.rng, 8, C.world.radius * 0.7); nx = p.x; nz = p.z; } // hive, etc.
     state.nest = { x: nx, z: nz, active: true };
+    state.needsMaterials = sp.struggle !== 'shortlife';     // bees skip twig-gathering (too short-lived)
+    state.nestBuilt = !state.needsMaterials;
+    if (state.needsMaterials) {
+      for (let i = 0; i < C.nest.twigs; i++) { const p = randPoint(state.rng, 5, C.world.radius * 0.85); state.nestTwigs.push({ id: nextId(), x: p.x, z: p.z, phase: state.rng.next() * TAU, alive: true }); }
+    }
   } else {
     const p = randPoint(state.rng, 8, C.world.radius * 0.7);
     state.mate = { x: p.x, z: p.z, active: true, vx: 0, vz: 0, retarget: 0 };
@@ -160,7 +185,9 @@ function onBecomeAdult(state) {
 // ---------------------------------------------------------------------------
 function playerSpeed(state) {
   const stageMul = C.move.stageSpeed[state.stage];
-  return C.move.baseSpeed * stageMul * state.species.speedMult * state.mods.speed;
+  let s = C.move.baseSpeed * stageMul * state.species.speedMult * state.mods.speed;
+  if (state.boost > 0) s *= C.interact.boostSpeed;       // mushroom buzz
+  return s;
 }
 
 // ---------------------------------------------------------------------------
@@ -248,6 +275,7 @@ export function step(state, input, dt) {
 
   if (state.invuln > 0) state.invuln -= dt;
   if (state.reproduceCooldown > 0) state.reproduceCooldown -= dt;
+  if (state.boost > 0) state.boost -= dt;
 
   // water flag (ocean/river underwater, or turtle once in sea)
   state.inWater = !!state.biome.water && (sp.struggle !== 'hatchling' || state.reachedWater);
@@ -278,6 +306,9 @@ export function step(state, input, dt) {
     }
     updatePrey(state, dt);
   }
+
+  // 5b) interactive objects (fruit trees, mushrooms, hives, burrows) + bonus fruit
+  updateInteractables(state, dt);
 
   // 6) predators
   updatePredators(state, dt);
@@ -330,11 +361,80 @@ function updatePrey(state, dt) {
   }
 }
 
+function updateInteractables(state, dt) {
+  const P = state.player, sp = state.species, I = C.interact;
+  const ir = I.radius + state.size * 0.4;
+  let hidden = false;
+  for (const it of state.interactables) {
+    if (it.shake > 0) it.shake -= dt;
+    if (it.cooldown > 0) it.cooldown -= dt;
+    const near = dist2(P.x, P.z, it.x, it.z) < ir * ir;
+    if (!near) continue;
+    switch (it.type) {
+      case 'fruitTree':
+        if (it.cooldown <= 0 && state.fruits.length < 40) {
+          it.cooldown = I.fruitCooldown; it.shake = 0.6;
+          for (let k = 0; k < I.fruitPerShake; k++) {
+            const a = state.rng.next() * TAU, r = 1.3 + state.rng.next();
+            state.fruits.push({ id: nextId(), x: it.x + Math.cos(a) * r, z: it.z + Math.sin(a) * r, phase: state.rng.next() * TAU, alive: true });
+          }
+          state.events.push({ t: 'fruitDrop', x: it.x, z: it.z });
+        }
+        break;
+      case 'mushroom':
+        if (it.alive) {
+          it.alive = false;
+          state.stats.hunger = clamp(state.stats.hunger + 14, 0, C.needs.hungerMax);
+          state.boost = I.boostSec; state.dnaRun += 1;
+          state.events.push({ t: 'mushroom', x: it.x, z: it.z });
+        }
+        break;
+      case 'hive':
+        if (it.cooldown <= 0 && sp.build !== 'bee' && state.invuln <= 0) {
+          it.cooldown = 3; state.invuln = C.needs.invulnSec;
+          const d = Math.hypot(P.x - it.x, P.z - it.z) || 1;
+          P.x += (P.x - it.x) / d * 1.5; P.z += (P.z - it.z) / d * 1.5;
+          state.lastHurtBy = 'predator';
+          state.events.push({ t: 'sting', x: it.x, z: it.z });
+          if (!state.mods.frail) { state.stats.health = clamp(state.stats.health - I.stingDamage * state.mods.dmg, 0, C.needs.healthMax); if (state.stats.health <= 0) die(state, 'predator'); }
+          else die(state, 'predator');
+        }
+        break;
+      case 'burrow':
+        hidden = true;
+        break;
+    }
+  }
+  state.hidden = hidden;
+
+  // bonus fruit pickups — any land grazer can snack
+  const eatR = C.food.eatRadius * state.mods.eat * (0.7 + 0.6 * state.stageScale);
+  for (const f of state.fruits) {
+    if (!f.alive) continue;
+    if (dist2(P.x, P.z, f.x, f.z) < eatR * eatR) {
+      f.alive = false;
+      state.stats.hunger = clamp(state.stats.hunger + C.needs.eatRestore * 0.8, 0, C.needs.hungerMax);
+      state.meals++; state.dnaRun += C.dna.perFood;
+      state.events.push({ t: 'eat', x: f.x, z: f.z });
+    }
+  }
+}
+
 function updatePredators(state, dt) {
   const P = state.player;
   let danger = 0;
+  // hidden in a burrow: predators lose track and can't reach you
+  if (state.hidden) {
+    for (const pr of state.predators) {
+      pr.aggro = false; pr.state = 'wander';
+      pr.retarget -= dt;
+      if (pr.retarget <= 0) { pr.heading = state.rng.next() * TAU; pr.retarget = 1.5 + state.rng.next() * 2.5; }
+      pr.vx = Math.sin(pr.heading) * C.predator.wanderSpeed; pr.vz = Math.cos(pr.heading) * C.predator.wanderSpeed;
+      pr.x += pr.vx * dt; pr.z += pr.vz * dt; confine(pr, false);
+    }
+    state.danger = 0; return;
+  }
   const aggroR = C.predator.aggroRadius, loseR = C.predator.loseRadius;
-  const babyFear = state.stage === 'baby' ? 1.0 : 0;
   for (const pr of state.predators) {
     if (pr.domain === 'gone') { pr.x += pr.vx * dt * 0.2; continue; }
     if (pr.domain === 'beach' && state.reachedWater) continue;
@@ -385,9 +485,26 @@ function hitPlayer(state, pr) {
 
 function updateReproduction(state, dt) {
   const sp = state.species, P = state.player;
+  if (state.stage !== 'adult' && state.stage !== 'elder') return;
+
+  // nest species: gather twigs, then build at the nest site before reproducing
+  if (sp.reproduce === 'nest') {
+    if (!state.nest || !state.nest.active) return;
+    if (!state.nestBuilt) {
+      const tr = C.food.eatRadius * state.mods.eat + 0.4;
+      for (const tw of state.nestTwigs) {
+        if (tw.alive && dist2(P.x, P.z, tw.x, tw.z) < tr * tr) { tw.alive = false; state.nestMaterials++; state.events.push({ t: 'twig', x: tw.x, z: tw.z }); }
+      }
+      if (state.nestMaterials >= C.nest.materialsNeeded &&
+          dist2(P.x, P.z, state.nest.x, state.nest.z) < C.nest.buildRadius * C.nest.buildRadius) {
+        state.nestBuilt = true; state.events.push({ t: 'nestBuilt', x: state.nest.x, z: state.nest.z });
+      }
+      if (!state.nestBuilt) return;     // no reproducing until the nest is built
+    }
+  }
+
   const target = state.mate || state.nest;
   if (!target || !target.active) return;
-  if (state.stage !== 'adult' && state.stage !== 'elder') return;
 
   // a roaming mate drifts a little
   if (state.mate) {
@@ -441,9 +558,11 @@ function updateObjective(state) {
   let key = 'grow';
   if (sp.struggle === 'hatchling' && !state.reachedWater) key = 'hatchling_reachWater';
   else if (state.stage === 'adult' || state.stage === 'elder') {
-    if (sp.reproduce === 'nest') key = sp.struggle === 'upstream' ? 'upstream' : 'reproduceNest';
-    else key = 'reproduce';
-    if (state.stage === 'elder') key = state.reproduced ? 'elder' : key;
+    if (sp.reproduce === 'nest') {
+      if (!state.nestBuilt) key = (state.nestMaterials >= C.nest.materialsNeeded) ? 'buildNest' : 'gatherTwigs';
+      else key = sp.struggle === 'upstream' ? 'upstream' : 'reproduceNest';
+    } else key = 'reproduce';
+    if (state.stage === 'elder' && state.reproduced) key = 'elder';
   } else if (S.hunger < 28) key = 'findFood';
   else if (sp.struggle === 'cold') key = 'cold';
   else if (sp.struggle === 'keepMoving') key = 'keepMoving';

@@ -19,6 +19,12 @@ export const STR = {
   energy: 'Energy',
   life: 'Life',
   warmth: 'Warmth',
+  diet: 'Eats',
+
+  // character select
+  statSpeed: 'Speed', statSize: 'Size', statLife: 'Longevity',
+  questToUnlock: 'QUEST TO UNLOCK',
+  twigsLabel: 'Twigs',
 
   // life stages
   stage: { baby: 'Baby', juvenile: 'Juvenile', adult: 'Adult', elder: 'Elder' },
@@ -29,6 +35,8 @@ export const STR = {
     findFood: 'Find food before you starve',
     reproduce: 'Find a mate and pass on your genes!',
     reproduceNest: 'Reach the nest to reproduce!',
+    gatherTwigs: 'Gather twigs to build your nest',
+    buildNest: 'Twigs ready! Reach the nest spot to build it',
     survive: 'Just… keep living',
     hatchling_reachWater: 'Reach the ocean! Run, tiny one, run!',
     upstream: 'Swim UPSTREAM to your spawning ground!',
@@ -64,6 +72,26 @@ export const STR = {
     chased: ['RUN.', 'This is the cardio you never trained for.', 'Nature is just running, mostly.'],
     reproduced: ['Genes: passed on. The species thanks you.', 'Congratulations, your DNA escapes oblivion!'],
     elder: ['You are ancient now. A wise, crunchy snack.'],
+    fruit: ['Free fruit! Nature does occasionally tip.'],
+    mushroom: ['Zoomies! That mushroom was… interesting.'],
+    sting: ['BEES. Bad idea. Very bad idea.'],
+    burrow: ['Safe. Cramped, but safe.'],
+    twig: ['A twig! Only a few more for the nest.'],
+    nestBuilt: ['Nest built. Now make it worthwhile.'],
+  },
+
+  // one-time contextual tutorial hints (💡)
+  tutorials: {
+    move: 'Drag the LEFT side of the screen to move (or WASD).',
+    eat: 'Walk into your glowing food to eat it.',
+    sprint: 'Danger nearby! Hold RUN to sprint away.',
+    grow: 'You grew up! Follow the glowing beacon to reproduce.',
+    fruitTree: 'Bump a fruit tree to shake down a snack.',
+    mushroom: 'Munch a mushroom for a quick speed buzz.',
+    burrow: 'Dive into a burrow to hide from predators.',
+    twigs: 'Collect twigs, then reach the nest spot to build it.',
+    hive: 'Careful — beehives sting anyone who is not a bee!',
+    cold: 'Stand in the warm glow so you do not freeze.',
   },
 
   // controls hint (first run)

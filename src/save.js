@@ -1,35 +1,48 @@
-// Meta progression persistence (DNA + unlocks + stats). localStorage, guarded.
+// Meta progression persistence: DNA (score), quest flags → species unlocks,
+// tutorials seen, lifetime stats. localStorage, guarded for private mode.
 
-const KEY = 'wiststba.save.v1';
+const KEY = 'wiststba.save.v2';
 
 const DEFAULT = {
   dna: 0,
-  unlocked: ['rabbit'],     // rabbit is free
+  unlocked: ['rabbit'],         // rabbit is free; the rest are quest-locked
   runs: 0,
   bestScore: 0,
   totalOffspring: 0,
-  deaths: {},               // cause -> count (for the funny stats)
+  totalMeals: 0,
+  deaths: {},                   // cause -> count
+  flags: {                      // quest progress, accumulated across runs
+    reproduced: {},             // speciesId -> true
+    adult: {},                  // speciesId -> reached adult
+    elderAny: false,
+    meals15: false,
+    builtNest: false,
+  },
+  tutorialsSeen: {},            // hintId -> true
   seenIntro: false,
 };
+
+function deepDefault(data) {
+  const out = { ...DEFAULT, ...data };
+  out.unlocked = Array.isArray(data.unlocked) && data.unlocked.length ? [...new Set(data.unlocked)] : ['rabbit'];
+  out.flags = { ...DEFAULT.flags, ...(data.flags || {}) };
+  out.flags.reproduced = { ...(data.flags && data.flags.reproduced || {}) };
+  out.flags.adult = { ...(data.flags && data.flags.adult || {}) };
+  out.tutorialsSeen = { ...(data.tutorialsSeen || {}) };
+  out.deaths = { ...(data.deaths || {}) };
+  return out;
+}
 
 export function load() {
   try {
     const raw = localStorage.getItem(KEY);
-    if (!raw) return { ...DEFAULT };
-    const data = JSON.parse(raw);
-    return { ...DEFAULT, ...data, unlocked: data.unlocked || ['rabbit'] };
-  } catch (e) {
-    return { ...DEFAULT };
-  }
+    if (!raw) return deepDefault({});
+    return deepDefault(JSON.parse(raw));
+  } catch (e) { return deepDefault({}); }
 }
 
 export function save(state) {
-  try {
-    localStorage.setItem(KEY, JSON.stringify(state));
-  } catch (e) { /* private mode / quota — ignore, run still works */ }
+  try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {}
 }
 
-export function resetSave() {
-  try { localStorage.removeItem(KEY); } catch (e) {}
-  return { ...DEFAULT };
-}
+export function resetSave() { try { localStorage.removeItem(KEY); } catch (e) {} return deepDefault({}); }

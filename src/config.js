@@ -102,6 +102,20 @@ export const CONFIG = {
     groundProps: 320,              // instanced
     foodItems: 18,
   },
+
+  interact: {
+    radius: 1.9,                   // bump distance to trigger an interactable
+    fruitTrees: 4, fruitCooldown: 7, fruitPerShake: 2,
+    mushrooms: 6, hives: 2, burrows: 2,
+    stingDamage: 14,               // angry hive sting (non-bees)
+    boostSec: 5, boostSpeed: 1.45, // mushroom speed buzz
+  },
+
+  nest: {
+    materialsNeeded: 3,            // twigs to collect before building
+    twigs: 6,
+    buildRadius: 2.2,
+  },
 };
 
 // Unlock costs live with species, but mirrored here for the meta screen order.

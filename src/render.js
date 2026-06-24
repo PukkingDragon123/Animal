@@ -4,7 +4,7 @@
 // never mutates it. Lighting/fog derive from the biome (STYLE FORMULA blocks 3-4).
 import * as THREE from '../vendor/three.module.js';
 import { CONFIG as C } from './config.js';
-import { buildCreature } from './meshes.js';
+import { buildCreature, buildInteractable } from './meshes.js';
 import { buildFoodGeometry, propMaterial } from './props.js';
 import { buildEnvironment } from './world.js';
 import { animateCreature } from './animator.js';
@@ -62,6 +62,7 @@ export class Renderer {
     this.predMeshes = []; this.preyMeshes = []; this.dangerRings = [];
     this.foodInst = null; this.foodColor = 0x57bf43;
     this.mateMesh = null; this.nestMesh = null; this.beacon = null; this.warmthMeshes = [];
+    this.interactMeshes = []; this.fruitInst = null; this.twigInst = null; this.stepTimer = 0;
 
     this.camPos = new THREE.Vector3(0, 18, -14);
     this.camLook = new THREE.Vector3();
@@ -86,6 +87,9 @@ export class Renderer {
     this.dangerRings.forEach(r => { this.scene.remove(r); r.geometry.dispose(); }); this.dangerRings = [];
     this.warmthMeshes.forEach(m => { this.scene.remove(m); m.geometry.dispose(); }); this.warmthMeshes = [];
     if (this.foodInst) { this.dyn.remove(this.foodInst); this.foodInst.geometry.dispose(); this.foodInst = null; }
+    this.interactMeshes.forEach(clear); this.interactMeshes = [];
+    if (this.fruitInst) { this.dyn.remove(this.fruitInst); this.fruitInst.geometry.dispose(); this.fruitInst = null; }
+    if (this.twigInst) { this.dyn.remove(this.twigInst); this.twigInst.geometry.dispose(); this.twigInst = null; }
     clear(this.mateMesh); this.mateMesh = null;
     if (this.nestMesh) { this.dyn.remove(this.nestMesh); this.nestMesh = null; }
     if (this.beacon) { this.scene.remove(this.beacon); this.beacon = null; }
@@ -133,6 +137,27 @@ export class Renderer {
       this.scene.add(ring); this.warmthMeshes.push(ring);
     }
 
+    // interactive objects (fruit trees, mushrooms, hives, burrows)
+    this.interactMeshes = [];
+    for (const it of state.interactables) {
+      const m = buildInteractable(it.type);
+      m.position.set(it.x, 0, it.z);
+      m.rotation.y = (it.id % 7) * 0.9;
+      this.dyn.add(m); this.interactMeshes.push(m);
+    }
+
+    // bonus fruit (instanced, capacity matches the sim cap)
+    {
+      const cap = 40, d = this._d;
+      this.fruitInst = new THREE.InstancedMesh(buildFoodGeometry('berry', 0xff7a3c), propMaterial.clone(), cap);
+      this.fruitInst.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(cap * 3).fill(1), 3);
+      this.fruitInst.castShadow = false;
+      d.scale.setScalar(0); d.updateMatrix();
+      for (let i = 0; i < cap; i++) this.fruitInst.setMatrixAt(i, d.matrix);
+      this.dyn.add(this.fruitInst);
+    }
+    this.twigInst = null; this.stepTimer = 0;
+
     // initial camera snap
     this.curDist = this._distFor(state.size);
     this._placeCamera(state, true);
@@ -162,6 +187,14 @@ export class Renderer {
     pm.rotation.y = P.heading;
     animateCreature(pm, dt, time, { dt, time, speed: P.speed, moving: P.moving });
     pm.visible = !(state.invuln > 0 && Math.floor(time * 16) % 2 === 0);
+
+    // footstep / wake puffs while moving
+    this.stepTimer -= dt;
+    if (P.moving && this.stepTimer <= 0) {
+      this.stepTimer = 0.16;
+      const col = state.inWater ? 0xbfe9ff : (state.biome.cold ? 0xffffff : (state.biome.id === 'savanna' ? 0xe0c070 : 0x9ad86a));
+      this.fx.burst(P.x, (this.swimY || 0) + 0.08, P.z, col, 2, { up: state.inWater ? 0.9 : 0.5, speed: 0.8, life: 0.45, size: 0.7, grav: state.inWater ? 1.5 : 5 });
+    }
 
     // --- predators ---
     this._ensureCount(this.predMeshes, state.predators.length, (i) => {
@@ -217,6 +250,9 @@ export class Renderer {
       this.foodInst.instanceMatrix.needsUpdate = true;
     }
 
+    // --- interactive objects + bonus fruit + nest twigs ---
+    this._syncInteractables(state, dt, time);
+
     // --- mate / nest + beacon ---
     this._syncRepro(state, dt, time);
 
@@ -259,6 +295,43 @@ export class Renderer {
       this.beacon.visible = false;
       if (this.mateMesh) this.mateMesh.visible = false;
       if (this.nestMesh) this.nestMesh.visible = false;
+    }
+  }
+
+  _syncInteractables(state, dt, time) {
+    const baseY = this.swimY || 0, d = this._d;
+    for (let i = 0; i < this.interactMeshes.length; i++) {
+      const it = state.interactables[i], m = this.interactMeshes[i];
+      if (!it || !m) continue;
+      if (it.type === 'mushroom') m.visible = it.alive !== false;
+      else if (it.type === 'fruitTree' && m.userData.canopy) {
+        m.userData.canopy.rotation.z = it.shake > 0 ? Math.sin(time * 34) * 0.14 * it.shake : m.userData.canopy.rotation.z * 0.8;
+      } else if (it.type === 'hive') m.rotation.y += dt * 0.3;
+    }
+    // bonus fruit
+    if (this.fruitInst) {
+      for (let i = 0; i < this.fruitInst.count; i++) {
+        const f = state.fruits[i];
+        if (f && f.alive) { d.position.set(f.x, baseY + 0.25 + Math.sin(time * 3 + f.phase) * 0.08, f.z); d.rotation.set(0, time + f.phase, 0); d.scale.setScalar(1); }
+        else d.scale.setScalar(0);
+        d.updateMatrix(); this.fruitInst.setMatrixAt(i, d.matrix);
+      }
+      this.fruitInst.instanceMatrix.needsUpdate = true;
+    }
+    // nest twigs (appear at adulthood)
+    if (state.nestTwigs.length && !this.twigInst) {
+      this.twigInst = new THREE.InstancedMesh(buildFoodGeometry('twig', 0x8a6038), propMaterial.clone(), state.nestTwigs.length);
+      this.twigInst.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(state.nestTwigs.length * 3).fill(1), 3);
+      this.dyn.add(this.twigInst);
+    }
+    if (this.twigInst) {
+      for (let i = 0; i < this.twigInst.count; i++) {
+        const tw = state.nestTwigs[i];
+        if (tw && tw.alive) { d.position.set(tw.x, baseY + 0.12 + Math.sin(time * 2 + tw.phase) * 0.05, tw.z); d.rotation.set(0, tw.phase, 0); d.scale.setScalar(1); }
+        else d.scale.setScalar(0);
+        d.updateMatrix(); this.twigInst.setMatrixAt(i, d.matrix);
+      }
+      this.twigInst.instanceMatrix.needsUpdate = true;
     }
   }
 

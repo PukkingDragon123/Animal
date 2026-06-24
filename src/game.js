@@ -11,6 +11,7 @@ import { Input } from './input.js';
 import { Audio } from './audio.js';
 import { Hud } from './hud.js';
 import * as save from './save.js';
+import { recordRun, checkUnlocks } from './quests.js';
 
 const STEP = C.sim.step;            // ms
 const STEP_S = STEP / 1000;
@@ -87,6 +88,7 @@ class Game {
     this.state = createRun({ speciesId, seed: freshSeed() });
     this.renderer.setupRun(this.state);
     this.foodColor = (this.state.species.diet.kind === 'graze') ? foodOf(this.state.species.diet.food).color : 0xffd23f;
+    this.hud.setDiet(this.state.species.dietIcon, this.state.species.dietName);
     this.state.events.length = 0;            // consume the 'born' event after birth card
     this.mode = 'birth'; this.input.enabled = false;
     this.hud.showHud(false);
@@ -98,7 +100,27 @@ class Game {
     this.hud.hideScreen(); this.hud.showHud(true);
     this.mode = 'playing'; this.input.enabled = true; this.input.reset();
     this.hud.showQuip(pick(STR.quips.born));
+    this._tut('move');
+    if (this.state.species.struggle === 'cold') this._tut('cold');
     this.last = performance.now(); this.acc = 0;
+  }
+
+  // one-time contextual tutorial hint (persisted so it never nags twice)
+  _tut(id) {
+    if (!this.save.tutorialsSeen || this.save.tutorialsSeen[id]) return;
+    this.save.tutorialsSeen[id] = true; save.save(this.save);
+    this.hud.showTutorial(STR.tutorials[id]);
+  }
+
+  _tutorials(s) {
+    if (!this.save.tutorialsSeen.eat && s.stats.hunger < 60) this._tut('eat');
+    const P = s.player;
+    for (const it of s.interactables) {
+      if ((it.x - P.x) ** 2 + (it.z - P.z) ** 2 > 25) continue;     // within ~5 units
+      if (it.type === 'fruitTree') this._tut('fruitTree');
+      else if (it.type === 'burrow') this._tut('burrow');
+      else if (it.type === 'hive' && s.species.build !== 'bee') this._tut('hive');
+    }
   }
 
   pause() { if (this.mode !== 'playing') return; this.mode = 'paused'; this.input.enabled = false; this.hud.pause(); }
@@ -112,10 +134,18 @@ class Game {
         case 'eat': fx.burst(e.x, swimY + 0.4, e.z, this.foodColor, 8, { up: 1.8 }); break;
         case 'hit': fx.burst(P.x, swimY + 0.6, P.z, 0xff5040, 12, { up: 2.6, speed: 3 }); break;
         case 'birth': fx.sparkleRing(e.x, swimY, e.z, 0xff8fc0, 16); break;
-        case 'stage': fx.sparkleRing(P.x, swimY, P.z, 0xffe27a, 12); this.hud.setStage(s.stage); break;
+        case 'stage':
+          fx.sparkleRing(P.x, swimY, P.z, 0xffe27a, 12); this.hud.setStage(s.stage);
+          if (e.stage === 'adult') { this._tut('grow'); if (s.species.reproduce === 'nest' && s.needsMaterials) this._tut('twigs'); }
+          break;
         case 'reachedWater': fx.burst(P.x, swimY, P.z, 0x9fe0ff, 16, { up: 2.2, speed: 3 }); break;
         case 'quip': this.hud.showQuip(pick(STR.quips[e.key] || [''])); break;
-        case 'alert': this.hud.setVignette(0.6); break;
+        case 'alert': this.hud.setVignette(0.6); this._tut('sprint'); break;
+        case 'fruitDrop': fx.burst(e.x, 1.6, e.z, 0x5fb050, 6, { up: 1.0, speed: 1.4, life: 0.5 }); this.audio.eat(); break;
+        case 'mushroom': fx.sparkleRing(e.x, swimY, e.z, 0xb072e0, 10); this.audio.grow(); break;
+        case 'sting': fx.burst(e.x, swimY + 0.5, e.z, 0xffd23f, 10, { up: 2, speed: 2.4 }); this.audio.hurt(); this.hud.setVignette(0.4); break;
+        case 'twig': fx.burst(e.x, swimY + 0.3, e.z, 0x9a6f44, 5, { up: 1.2, life: 0.5 }); this.audio.eat(); this.hud.showQuip(pick(STR.quips.twig)); break;
+        case 'nestBuilt': fx.sparkleRing(e.x, swimY, e.z, 0xffe27a, 18); this.audio.success(); this.hud.showQuip(pick(STR.quips.nestBuilt)); break;
         case 'death': this._pendingDeath = { cause: e.cause, success: e.success }; break;
       }
     }
@@ -147,6 +177,7 @@ class Game {
     this.hud.setStage(s.stage);
     this.hud.setVignette(s.danger);
     this.hud.updateJoystick(this.input.joyVisual());
+    this._tutorials(s);
   }
 
   _finishDeath() {
@@ -155,16 +186,22 @@ class Game {
     this.save.dna += earned;
     this.save.runs += 1;
     this.save.totalOffspring += s.offspring;
+    this.save.totalMeals += s.meals;
     this.save.deaths[s.cause] = (this.save.deaths[s.cause] || 0) + 1;
-    if (s.dnaRun > this.save.bestScore) this.save.bestScore = earned;
+    if (earned > this.save.bestScore) this.save.bestScore = earned;
+    // record quest flags, then see which species just unlocked
+    recordRun(this.save, { speciesId: s.speciesId, reproduced: s.reproduced, maxStageIndex: s.maxStageIndex, meals: s.meals, builtNest: s.nestBuilt });
+    const newly = checkUnlocks(this.save);
+    const newNames = newly.map(id => speciesOf(id).name);
     save.save(this.save);
+
     this.mode = 'dead'; this.input.enabled = false; this.hud.showHud(false);
     this.hud.death({
       success: s.reproduced, cause: s.cause,
       lived: `${STR.stage[s.stage]} · ${Math.round(s.ageFrac * 100)}%`,
-      meals: s.meals, offspring: s.offspring, dna: earned, newUnlocks: [],
+      meals: s.meals, offspring: s.offspring, dna: earned, newUnlocks: newNames,
     });
-    if (s.reproduced) this.audio.success();
+    if (s.reproduced || newly.length) this.audio.success();
     this._pendingDeath = null; this.deathTimer = 0;
   }
 

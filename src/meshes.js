@@ -244,3 +244,39 @@ export function buildCreature(buildKey, colors) {
   g.userData.build = buildKey;
   return g;
 }
+
+// ---------------------------------------------------------------------------
+// Interactive forest objects (rendered as individual groups, few in number)
+// ---------------------------------------------------------------------------
+function fruitTreeMesh() {
+  const g = new THREE.Group();
+  g.add(mesh(CYL(0.2, 0.3, 1.4, 6), matte(0x7a5230), { pos: [0, 0.7, 0] }));
+  const canopy = new THREE.Group(); canopy.position.y = 1.9; g.add(canopy); g.userData.canopy = canopy;
+  canopy.add(mesh(SPH(0.95), matte(0x4f9f4a), { scl: [1, 0.9, 1] }));
+  canopy.add(mesh(SPH(0.6), matte(0x5fb050), { pos: [0.5, 0.3, 0.1] }));
+  canopy.add(mesh(SPH(0.55), matte(0x47923f), { pos: [-0.45, 0.25, -0.2] }));
+  for (let i = 0; i < 6; i++) { const a = (i / 6) * Math.PI * 2; canopy.add(mesh(SPH(0.13), matte(0xff7a3c, { flat: false }), { pos: [Math.cos(a) * 0.8, -0.2 + Math.sin(a * 2) * 0.2, Math.sin(a) * 0.8], cast: false })); }
+  return g;
+}
+function mushroomMesh() {
+  const g = new THREE.Group();
+  g.add(mesh(CYL(0.12, 0.16, 0.4, 7), matte(0xf4ecdd), { pos: [0, 0.2, 0] }));
+  const cap = mesh(SPH(0.34), matte(0xe2483c), { pos: [0, 0.42, 0], scl: [1, 0.6, 1] }); g.add(cap);
+  for (let i = 0; i < 5; i++) { const a = (i / 5) * Math.PI * 2; cap.add(mesh(SPH(0.06), matte(0xffffff, { flat: false }), { pos: [Math.cos(a) * 0.22, 0.12, Math.sin(a) * 0.22], cast: false })); }
+  return g;
+}
+function hiveMesh() {
+  const g = new THREE.Group();
+  for (let i = 0; i < 3; i++) g.add(mesh(CYL(0.42 - i * 0.06, 0.46 - i * 0.06, 0.34, 9), matte(0xe8b455), { pos: [0, 0.4 + i * 0.32, 0] }));
+  g.add(mesh(SPH(0.14), matte(0x4a3420, { flat: false }), { pos: [0, 0.7, 0.36], cast: false }));   // entrance
+  return g;
+}
+function burrowMesh() {
+  const g = new THREE.Group();
+  g.add(mesh(SPH(0.7), matte(0x6b4f37), { pos: [0, 0.1, 0], scl: [1.4, 0.55, 1.4] }));
+  g.add(mesh(SPH(0.34), matte(0x140f0a, { flat: false }), { pos: [0, 0.18, 0.42], scl: [1, 0.8, 0.5], cast: false }));  // hole
+  return g;
+}
+
+const INTERACT = { fruitTree: fruitTreeMesh, mushroom: mushroomMesh, hive: hiveMesh, burrow: burrowMesh };
+export function buildInteractable(type) { const f = INTERACT[type]; const g = f ? f() : new THREE.Group(); g.userData.itype = type; return g; }

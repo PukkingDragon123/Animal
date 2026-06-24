@@ -2,7 +2,7 @@
 // without a WebGL context (geometries + meshes don't need GL; only the renderer
 // does). Catches Three.js API misuse, NaNs, and missing builders.
 import * as THREE from '../vendor/three.module.js';
-import { buildCreature } from '../src/meshes.js';
+import { buildCreature, buildInteractable } from '../src/meshes.js';
 import { buildFoodGeometry, buildPropGeometry } from '../src/props.js';
 import { buildEnvironment } from '../src/world.js';
 import { animateCreature } from '../src/animator.js';
@@ -87,6 +87,16 @@ for (const sp of Object.values(SPECIES)) {
   for (let i = 0; i < 120; i++) fx.update(1 / 60);
   fx.reset();
   ok('fx: survived update + reset', true);
+}
+
+// 7) interactive object meshes + twig pickup geometry
+for (const t of ['fruitTree', 'mushroom', 'hive', 'burrow']) {
+  let g; try { g = buildInteractable(t); } catch (e) { console.error('  THROW interactable', t, e.message); fail++; continue; }
+  ok(`interactable ${t}: group with meshes`, g && g.isGroup && g.children.length > 0);
+}
+{
+  const tw = buildFoodGeometry('twig', 0x8a6038);
+  ok('twig geometry: verts + color', tw.attributes.position.count > 0 && !!tw.attributes.color);
 }
 
 console.log(`\nApprox tris for all 11 creatures: ${totalTris}`);

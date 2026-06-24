@@ -108,6 +108,38 @@
   .stats .dnaStat{background:rgba(108,194,74,.2);}
   .death.win .ptitle{color:var(--pink);}
   .unlockNote{background:rgba(255,184,77,.25);border-radius:12px;padding:8px;font-weight:700;margin-bottom:12px;}
+
+  /* diet chip + tutorial toast */
+  .dietChip{margin-top:3px;align-self:flex-start;background:var(--cream-t);border-radius:12px;padding:4px 10px;font-size:12px;font-weight:700;box-shadow:var(--shadow);}
+  #tut{position:absolute;left:50%;top:118px;transform:translateX(-50%) translateY(-8px);max-width:84vw;text-align:center;
+    background:rgba(91,74,55,.92);color:#fff7ea;padding:9px 16px;border-radius:14px;font-weight:600;font-size:13.5px;
+    opacity:0;transition:opacity .3s,transform .3s;box-shadow:var(--shadow);pointer-events:none;}
+  #tut.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+  /* character-select carousel (Slay-the-Spire style) */
+  .selectC{max-width:480px;}
+  .carousel{display:flex;align-items:center;gap:6px;}
+  .navArrow{pointer-events:auto;border:none;background:var(--cream);width:46px;height:46px;flex:0 0 46px;border-radius:50%;
+    font-size:28px;line-height:1;font-weight:900;color:var(--leaf-d);box-shadow:var(--shadow);cursor:pointer;}
+  .navArrow:active{transform:scale(.92);}
+  .bigcard{flex:1;background:#fff;border-radius:22px;padding:14px;box-shadow:0 6px 18px rgba(60,45,25,.16);}
+  .preview{width:100%;height:200px;display:block;border-radius:16px;background:linear-gradient(180deg,#cdeeff,#eafaf0);}
+  .preview.lockedPrev{filter:grayscale(.85) brightness(.8);}
+  .bignameRow{display:flex;justify-content:center;align-items:baseline;gap:8px;margin-top:8px;}
+  .bigname{font-size:24px;font-weight:900;color:var(--leaf-d);}
+  .bignum{font-size:12px;color:var(--ink-soft);font-weight:700;}
+  .bigdesc{font-size:13px;color:var(--ink-soft);margin:2px 0 8px;}
+  .dietRow{font-size:14px;margin-bottom:8px;} .dietRow .eats{color:var(--ink-soft);font-size:12px;}
+  .stats3{display:flex;flex-direction:column;gap:5px;margin-bottom:10px;}
+  .stat{display:flex;align-items:center;gap:8px;} .stat>span{width:74px;text-align:left;font-size:12px;font-weight:700;color:var(--ink-soft);}
+  .pips{display:flex;gap:4px;} .pips i{width:18px;height:9px;border-radius:4px;background:rgba(0,0,0,.12);}
+  .pips i.on{background:var(--leaf);}
+  .questBox{background:rgba(255,184,77,.22);border-radius:14px;padding:10px;}
+  .questBox .qlabel{font-size:11px;font-weight:800;color:#9a6a1a;letter-spacing:.4px;}
+  .questBox .qtext{font-size:15px;font-weight:800;margin-top:2px;}
+  .dots{display:flex;justify-content:center;gap:7px;margin:12px 0;}
+  .dots i{width:9px;height:9px;border-radius:50%;background:rgba(0,0,0,.15);cursor:pointer;}
+  .dots i.cur{background:var(--leaf-d);transform:scale(1.3);} .dots i.lk{border:1.5px solid rgba(0,0,0,.25);background:transparent;}
 </style>
 </head>
 <body>
@@ -122,12 +154,14 @@
       <div class="need"><span class="lbl">Food</span><div class="bar"><div class="fill" id="fillHunger"></div></div></div>
       <div class="need"><span class="lbl">Energy</span><div class="bar"><div class="fill" id="fillEnergy"></div></div></div>
       <div class="need" id="barWarmthWrap" style="display:none"><span class="lbl">Warmth</span><div class="bar"><div class="fill" id="fillWarmth"></div></div></div>
+      <div class="dietChip" id="dietChip"></div>
     </div>
     <div class="topright">
       <div class="dna">🧬 <span id="dnaVal">0</span></div>
       <button id="pauseBtn" class="iconbtn" aria-label="Pause">⏸</button>
     </div>
     <div id="objective" class="objective"></div>
+    <div id="tut"></div>
   </div>
 
   <div id="vignette"></div>

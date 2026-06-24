@@ -19,6 +19,7 @@ export const SPECIES = {
     predatorBuild: 'fox', predatorCount: 3,
     reproduce: 'mate', struggle: 'predators', unlockCost: 0,
     desc: 'Fast, fluffy, and constantly hunted.',
+    dietName: 'Grass', dietIcon: '🌿', rating: { speed: 4, size: 3, life: 3 },
     facts: [
       "A rabbit's heart can literally give out from fright.",
       'Almost everything in the forest wants to eat you.',
@@ -33,6 +34,7 @@ export const SPECIES = {
     predatorBuild: 'bird', predatorCount: 2,
     reproduce: 'nest', struggle: 'shortlife', unlockCost: 60,
     desc: 'Tiny wings, even tinier lifespan.',
+    dietName: 'Flowers', dietIcon: '🌸', rating: { speed: 5, size: 1, life: 1 },
     facts: [
       'Worker bees live about five weeks, then drop dead.',
       'Your stinger is barbed — using it kills you.',
@@ -47,6 +49,7 @@ export const SPECIES = {
     predatorBuild: 'seal', predatorCount: 2,
     reproduce: 'mate', struggle: 'cold', unlockCost: 140,
     desc: 'Adorable. Freezing. Edible.',
+    dietName: 'Fish', dietIcon: '🐟', rating: { speed: 3, size: 4, life: 3 },
     facts: [
       'Huddle for warmth or freeze — survival by shuffling.',
       'Leopard seals lurk right at the ice edge.',
@@ -61,6 +64,7 @@ export const SPECIES = {
     predatorBuild: 'bird', predatorCount: 3,
     reproduce: 'nest', struggle: 'hatchling', unlockCost: 240,
     desc: 'Born on a beach that is trying to kill you.',
+    dietName: 'Seaweed', dietIcon: '🍃', rating: { speed: 2, size: 4, life: 4 },
     facts: [
       'Only about 1 in 1,000 hatchlings reaches adulthood.',
       'The crawl from nest to sea is the deadliest trip of your life.',
@@ -75,6 +79,7 @@ export const SPECIES = {
     predatorBuild: 'bear', predatorCount: 2,
     reproduce: 'nest', struggle: 'upstream', unlockCost: 360,
     desc: 'Swim up. Always up.',
+    dietName: 'Bugs', dietIcon: '🐛', rating: { speed: 4, size: 2, life: 2 },
     facts: [
       'You swim hundreds of miles upstream — without eating.',
       'Bears wait at every single waterfall.',
@@ -89,6 +94,7 @@ export const SPECIES = {
     predatorBuild: null, predatorCount: 0,
     reproduce: 'mate', struggle: 'hunt', unlockCost: 520,
     desc: 'Predator problems: catching dinner.',
+    dietName: 'Rabbits', dietIcon: '🐰', rating: { speed: 4, size: 4, life: 3 },
     facts: [
       'Miss the pounce and you simply go hungry.',
       'Your prey is faster and twitchier than you would like.',
@@ -103,6 +109,7 @@ export const SPECIES = {
     predatorBuild: null, predatorCount: 0,
     reproduce: 'mate', struggle: 'keepMoving', unlockCost: 720,
     desc: 'Apex predator, utterly exhausted.',
+    dietName: 'Fish', dietIcon: '🐟', rating: { speed: 4, size: 5, life: 4 },
     facts: [
       'Stop swimming and you cannot breathe.',
       'That huge body needs constant feeding.',

@@ -91,17 +91,35 @@ function foodBerry(color) {
     bake(SPH(0.12), color, M(0, 0.4, -0.04)),
   ]);
 }
-const FOOD_GEO = { grass: foodGrass, flowerFood: foodFlower, fishFood: foodFish, seaweedFood: foodSeaweed, bug: foodBug, berry: foodBerry };
+function foodTwig(color) {
+  return merge([
+    bake(CYL(0.03, 0.04, 0.5, 4), color || 0x8a6038, M(0, 0.12, 0, 1, 1, 1, 0, 0, 1.2)),
+    bake(CYL(0.025, 0.03, 0.28, 4), color || 0x9a6f44, M(0.12, 0.2, 0, 1, 1, 1, 0, 0, 0.4)),
+    bake(SPH(0.06), 0x6fae54, M(-0.18, 0.16, 0.04)),
+  ]);
+}
+const FOOD_GEO = { grass: foodGrass, flowerFood: foodFlower, fishFood: foodFish, seaweedFood: foodSeaweed, bug: foodBug, berry: foodBerry, twig: foodTwig };
 export function buildFoodGeometry(buildKey, color) { return (FOOD_GEO[buildKey] || foodGrass)(color); }
 
 // ---- PROPS ----
 function tree() {
-  return merge([
-    bake(CYL(0.18, 0.26, 1.1, 6), 0x7a5230, M(0, 0.55, 0)),
-    bake(SPH(0.8), 0x4f9f4a, M(0, 1.5, 0, 1, 0.95, 1)),
-    bake(SPH(0.6), 0x5fb050, M(0.3, 1.95, 0.15)),
-    bake(SPH(0.55), 0x47923f, M(-0.28, 1.8, -0.2)),
-  ]);
+  const greens = [0x4f9f4a, 0x5fb050, 0x47923f, 0x66bd57];
+  const parts = [
+    bake(CYL(0.18, 0.28, 1.2, 6), 0x7a5230, M(0, 0.6, 0)),
+    bake(SPH(0.85), greens[0], M(0, 1.55, 0, 1.05, 0.95, 1.05)),
+  ];
+  // fuller, rounder canopy from several offset blobs
+  const blobs = [[0.42, 1.95, 0.18, 0.6], [-0.4, 1.85, -0.22, 0.58], [0.1, 2.25, -0.05, 0.55], [-0.15, 1.7, 0.4, 0.5], [0.3, 1.6, -0.4, 0.46]];
+  for (let i = 0; i < blobs.length; i++) { const b = blobs[i]; parts.push(bake(SPH(b[3]), greens[(i + 1) % greens.length], M(b[0], b[1], b[2]))); }
+  return merge(parts);
+}
+function fern() {
+  const parts = [];
+  for (let i = 0; i < 7; i++) {
+    const a = (i / 7) * 6.28, r = 0.05;
+    parts.push(bake(CON(0.09, 0.8, 4), i % 2 ? 0x4f9f4a : 0x5fb050, M(Math.cos(a) * r, 0.4, Math.sin(a) * r, 0.5, 1, 1, 0.5 * Math.cos(a), a, 0.5 * Math.sin(a))));
+  }
+  return merge(parts);
 }
 function bush() { return merge([bake(SPH(0.55), 0x4f9f4a, M(0, 0.45, 0, 1.2, 0.9, 1.2)), bake(SPH(0.42), 0x5fb050, M(0.32, 0.5, 0.1))]); }
 function log() {
@@ -155,5 +173,5 @@ function tallgrass() {
   for (let i = 0; i < 6; i++) { const a = i * 1.1, r = 0.14; parts.push(bake(CON(0.05, 0.9, 4), 0xc9b04a, M(Math.cos(a) * r, 0.45, Math.sin(a) * r, 1, 1, 1, 0.12 * Math.cos(a), a, 0.12 * Math.sin(a)))); }
   return merge(parts);
 }
-const PROP_GEO = { tree, bush, log, flowerProp, iceberg, snowpile, icerock, coral, seaweedProp, rock, reed, acacia, tallgrass };
+const PROP_GEO = { tree, bush, log, flowerProp, fern, iceberg, snowpile, icerock, coral, seaweedProp, rock, reed, acacia, tallgrass };
 export function buildPropGeometry(buildKey) { return (PROP_GEO[buildKey] || bush)(); }

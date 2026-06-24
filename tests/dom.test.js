@@ -41,16 +41,22 @@ ok('menu: play button', !!$('btnPlay'));
 $('btnPlay').click();
 ok('menu: play → onPick', calls.onPick === 1);
 
-// species select + unlock + play
+// species select carousel (preview is a no-op in jsdom: no WebGL)
 hud.speciesSelect(save);
-ok('select: has cards', $('screen').querySelectorAll('.card').length === 7);
-const playBtn = $('screen').querySelector('[data-play]');
-ok('select: a play button exists', !!playBtn);
-playBtn.click();
-ok('select: play → onPick(id)', typeof calls.onPick_arg === 'string');
+ok('select: preview canvas present', !!$('previewCanvas'));
+ok('select: shows a species name', $('spName').textContent.length > 0);
+ok('select: nav arrows present', !!$('prevSp') && !!$('nextSp'));
+const nm = $('spName').textContent; $('nextSp').click();
+ok('select: next changes species', $('spName').textContent !== nm);
+hud.speciesSelect(save);                 // restart at first unlocked (rabbit)
+ok('select: PLAY shown for unlocked', !!$('spPlay'));
+$('spPlay').click();
+ok('select: PLAY → onPick(id)', typeof calls.onPick_arg === 'string');
 hud.speciesSelect(save);
-const buyBtn = $('screen').querySelector('[data-buy]');
-if (buyBtn) { buyBtn.click(); ok('select: unlock → onUnlock', calls.onUnlock >= 1); } else ok('select: unlock button present', false);
+$('nextSp').click(); $('nextSp').click();   // rabbit → bee → penguin (locked)
+ok('select: locked shows quest box', !!document.querySelector('.questBox'));
+$('btnBack').click();
+ok('select: back returns to menu', !!$('btnPlay'));
 
 // birth card with mutations
 hud.birth('rabbit', ['fast', 'frail']);
@@ -76,6 +82,8 @@ hud.showQuip('Hello'); ok('hud: quip shown', $('quip').classList.contains('show'
 hud.updateJoystick({ ox: 100, oy: 200, kx: 130, ky: 180, maxR: 64 });
 ok('hud: joystick visible', $('joystick').style.display === 'block');
 hud.updateJoystick(null); ok('hud: joystick hidden', $('joystick').style.display === 'none');
+hud.setDiet('🌿', 'Grass'); ok('hud: diet chip set', /Grass/.test($('dietChip').innerHTML));
+hud.showTutorial('Move with the left side'); ok('hud: tutorial shows', $('tut').classList.contains('show') && /Move with/.test($('tut').textContent));
 
 // death screen
 hud.death({ success: true, cause: 'oldAge', lived: 'Elder · 100%', meals: 12, offspring: 3, dna: 240, newUnlocks: ['Bee'] });

@@ -26,7 +26,7 @@ python3 -m http.server 8080
 Or play it instantly from the branch (served via raw.githack.com, which sends
 the correct MIME types for ES modules):
 
-**https://raw.githack.com/PukkingDragon123/Animal/claude/inspiring-wright-5xmrsu/index.html**
+**https://raw.githack.com/PukkingDragon123/Animal/claude/inspiring-wright-5xmrsu/index.html?v=2**
 
 Open the URL on a phone or desktop. (ES modules need a real server — opening
 `index.html` from `file://` won't work.)
@@ -49,9 +49,25 @@ Keyboard is bound to **physical key codes**, so it works on any layout.
    every run — Fast, Frail, Long Life, Always Hungry…).
 2. **Survive childhood**, eat your species' food, grow Baby → Juvenile → Adult → Elder.
 3. **Avoid your nemesis** (every species has one signature struggle).
-4. As an **Adult**, reach a mate / nest to **reproduce** — the run's main goal.
-5. **Die** (old age if you're lucky), earn **DNA**, and spend it to **unlock**
-   new species.
+4. As an **Adult**, **reproduce** — mate species find a mate; nest species
+   gather twigs and **build a nest** first.
+5. **Die** (old age if you're lucky), bank **DNA**, and complete **quests** to
+   **unlock** new species.
+
+## Character select & unlocks
+
+A Slay-the-Spire-style carousel with a live spinning 3D preview of each
+animal, its diet and stat bars (Speed / Size / Longevity). New species are
+earned by completing **quests** (e.g. *Reproduce as a Rabbit* → unlock the Bee;
+*Reach Elder* → unlock the Salmon), shown right on each locked card.
+
+## Forest interactions
+
+The forest is alive and pokeable: **bump fruit trees** to shake down a snack,
+**forage mushrooms** for a speed buzz, **dive into burrows** to hide from
+predators, and steer clear of **beehives** (they sting anyone who is not a bee).
+Footsteps kick up little puffs as you move, and a diet chip + one-time tutorial
+tips keep the controls obvious.
 
 ## Species & their one big struggle
 
