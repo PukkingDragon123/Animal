@@ -145,7 +145,8 @@ export class Renderer {
   setupRun(state) {
     this.teardown();
     const b = state.biome;
-    this.envGroup = buildEnvironment(b, state.seed);
+    this._arenaR = state.arenaR || C.world.radius;
+    this.envGroup = buildEnvironment(b, state.seed, state.level);
     this.scene.add(this.envGroup);
 
     // lighting + fog from biome (formula)
@@ -231,7 +232,7 @@ export class Renderer {
         const m = buildCreature(kind, critterColors(kind));
         const sc = CRITTER_SIZE[kind] || 0.7; m.scale.setScalar(sc);
         const fly = !!(m.userData.parts && m.userData.parts.fly) || kind === 'raven';
-        const a = Math.random() * 6.283, r = 6 + Math.random() * (C.world.radius - 9);
+        const a = Math.random() * 6.283, r = 6 + Math.random() * (this._arenaR - 9);
         const hoverY = b.water ? 0.7 : (fly ? 1.3 + Math.random() * 1.6 : 0);
         const c = { mesh: m, x: Math.cos(a) * r, z: Math.sin(a) * r, vx: 0, vz: 0, heading: Math.random() * 6.283, retarget: 0, fly, baseY: hoverY, hoverY, sp: kind === 'butterfly' ? 1.5 : (fly ? 3 : 2.3) };
         m.position.set(c.x, hoverY, c.z); this.dyn.add(m); this.critters.push(c);
@@ -403,12 +404,11 @@ export class Renderer {
 
   _followWorld(state, dt) {
     const P = state.player, ud = this.envGroup && this.envGroup.userData, d = this._d;
-    if (ud) {
+    // legacy infinite mode only (no handcrafted level): follow ground/sky + wrap props.
+    // Bounded handcrafted levels keep a static, centered world.
+    if (!state.level && ud) {
       if (ud.ground) { ud.ground.position.x = P.x; ud.ground.position.z = P.z; }
       if (ud.sky) { ud.sky.position.x = P.x; ud.sky.position.z = P.z; }
-    }
-    // toroidally wrap instanced scenery props around the player → endless world
-    if (this.envGroup) {
       for (const o of this.envGroup.children) {
         if (!o.isInstancedMesh || !o.userData.isProp) continue;
         const T = o.userData.tile, bases = o.userData.bases;
@@ -460,7 +460,7 @@ export class Renderer {
   }
 
   _updateCritters(state, dt, time) {
-    const P = state.player, R = C.world.radius, baseY = this.swimY || 0;
+    const P = state.player, R = this._arenaR || C.world.radius, baseY = this.swimY || 0;
     for (const c of this.critters) {
       // nearest threat: the player, or any active predator (emergent food web)
       let tx = P.x, tz = P.z, td = Math.hypot(c.x - P.x, c.z - P.z), pred = false;

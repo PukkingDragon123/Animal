@@ -102,11 +102,15 @@ console.log('feature tests');
   ok('burrow: predators de-aggro', s.predators.every(p => !p.aggro));
 }
 {
-  const s = createRun({ speciesId: 'bee', seed: 5 });
-  const hive = find(s, 'hive'); s.player.x = hive.x; s.player.z = hive.z; s.invuln = 0;
-  const h0 = s.stats.health;
-  step(s, { mx: 0, mz: 0 }, DT);
-  ok('hive: a bee is immune to its own hive', s.stats.health === h0);
+  // handcrafted level: hand-placed predator posts + hazard zones
+  const s = createRun({ speciesId: 'turtle', seed: 5 });
+  ok('level: predators spawn at designed posts', s.predators.length === s.species.predatorCount && s.predators.every(p => s.level.predators.some(q => Math.hypot(p.x - q.x, p.z - q.z) < 3)));
+  ok('level: hazards are placed', s.hazards.length > 0);
+  const h = s.hazards[0]; s.player.x = h.x; s.player.z = h.z;
+  const h0 = s.stats.health; let hz = false;
+  for (let i = 0; i < 30; i++) { step(s, { mx: 0, mz: 0 }, DT); if (s.events.some(e => e.t === 'hazard')) hz = true; }
+  ok('hazard: lingering in a hazard hurts you', s.stats.health < h0);
+  ok('hazard: emits a hazard event', hz);
 }
 
 // --- combat: fight back, wound, and kill predators -------------------------
@@ -211,13 +215,13 @@ console.log('feature tests');
   ok('bite: builds score', s.score > 0);
 }
 
-// --- infinite world: far entities recycle around the roaming player --------
+// --- bounded handcrafted map: a soft wall keeps you (and the food) inside -----
 {
   const s = createRun({ speciesId: 'turtle', seed: 22 });
-  s.player.x += 600; s.player.z += 600;
-  step(s, { mx: 0, mz: 0 }, DT);
-  const near = s.food.some(f => (f.x - s.player.x) ** 2 + (f.z - s.player.z) ** 2 < (C.world.spawnR + 4) ** 2);
-  ok('infinite: food streams back around the player', near);
+  s.player.x = 999; s.player.z = 0;
+  step(s, { mx: 1, mz: 0 }, DT);
+  ok('bounds: the player is held inside the arena', Math.hypot(s.player.x, s.player.z) <= s.arenaR + 0.5);
+  ok('bounds: food lives within the arena', s.food.every(f => Math.hypot(f.x, f.z) <= s.arenaR + 1.5));
 }
 
 // --- quest unlock chain over the five species ------------------------------

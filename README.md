@@ -26,7 +26,7 @@ python3 -m http.server 8080
 Or play it instantly from the branch (served via raw.githack.com, which sends
 the correct MIME types for ES modules):
 
-**https://raw.githack.com/PukkingDragon123/Animal/claude/inspiring-wright-5xmrsu/index.html?v=9**
+**https://raw.githack.com/PukkingDragon123/Animal/claude/inspiring-wright-5xmrsu/index.html?v=10**
 
 Open the URL on a phone or desktop. (ES modules need a real server — opening
 `index.html` from `file://` won't work.)
@@ -128,18 +128,20 @@ others:
 | 4 | **Pacific Salmon** | *Oncorhynchus nerka* | The **great migration** — fight the current **upstream**, dodge the bears, spawn once | semelparous: you spawn, then die |
 | 5 | **Male Anglerfish** | *Ceratias holboelli* | **Alone in the black**, navigate by your glowing lure to find the giant female — and **fuse to her forever** | the male loses his eyes and organs, becoming a lifelong attachment |
 
-## Arcade eat-and-survive (Hungry-Shark style)
+## Handcrafted, bounded maps (no more procedural wandering)
 
-The map is now **endless** — no walls. Food, prey, predators, critters and
-scenery **stream in around you** as you roam (toroidally-wrapped props + a
-player-following ground = an infinite world). The moment-to-moment goal is to
-**eat and survive**: every bite scores points and builds a **combo multiplier**
-(★ score + combo popups on the HUD), and your run's score feeds your genes.
+Each species now plays in a **designed, bounded arena** — not an endless
+procedurally-streamed field. Every map hand-places the things that make the run:
+your **start**, your life's **goal**, **predator posts**, **hazard zones** to
+weave through (ghost-crab pits on the turtle's beach, a snapping fish in the
+mayfly's river, wasps in the bee's meadow, rapids rocks on the salmon's climb),
+and signature **landmark scenery**. A soft wall keeps you inside the space, so
+the run is a designed *course* with a real finish rather than aimless roaming.
 
 **Bite** (the ⚔ button / Space) is a chunky **AoE chomp**: a faint **circular
 bite-area ring** sits under you, and a tap fires a forward **lunge + shockwave**
-that eats *everything edible in the circle* at once and knocks back any
-predators caught in it.
+that eats *everything edible in the circle* at once, knocks back predators, and
+feeds the **score + combo** meter (★ popups on the HUD).
 
 ## A living ecosystem
 

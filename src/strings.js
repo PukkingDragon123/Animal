@@ -161,6 +161,9 @@ export const EPITAPH = {
   gull: 'Snatched by a seagull on the beach. Brutal.',
   spent: 'Spent everything on one last act of creation — the truest animal death.',
   fused: 'Found her in the dark and became part of her, forever. Mission accomplished, technically.',
+  crab: 'Pulled under by a ghost crab on the sand. So close to the waves.',
+  snapped: 'Snapped out of the air by a hungry fish. The river always wins.',
+  wasp: 'Stung to pieces defending the patch. Bees have enemies too.',
 };
 
 // the "family moment" shown when you reproduce — the realistic circle of life

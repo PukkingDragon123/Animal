@@ -7,6 +7,7 @@ import { makeRng } from './rng.js';
 import { rollMutations, applyMutations } from './mutations.js';
 import { speciesOf } from './species.js';
 import { biomeOf } from './biomes.js';
+import { levelFor } from './levels.js';
 
 const TAU = Math.PI * 2;
 const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
@@ -21,14 +22,16 @@ function ringAround(rng, cx, cz, minR, maxR) {
   const r = Math.sqrt(rng.range(minR * minR, maxR * maxR));
   return { x: cx + Math.cos(a) * r, z: cz + Math.sin(a) * r };
 }
-// if an entity drifts past the despawn ring, recycle it to a fresh spot around the player
-function recycleFar(state, e, minR) {
-  const P = state.player, dr = C.world.despawnR;
-  if (dist2(e.x, e.z, P.x, P.z) > dr * dr) {
-    const p = ringAround(state.rng, P.x, P.z, minR || C.world.spawnR * 0.82, C.world.spawnR);
-    e.x = p.x; e.z = p.z; return true;
-  }
-  return false;
+// Bounded handcrafted maps don't stream — entities live inside the arena.
+function recycleFar() { return false; }
+// a deterministic point inside the bounded arena (ring from the centre)
+function arenaSpot(state, minR, maxR) { return ringAround(state.rng, 0, 0, minR, Math.min(maxR, state.arenaR)); }
+// a point near a designed cluster centre, clamped to the arena
+function clusterSpot(rng, cx, cz, spread, R) {
+  const a = rng.next() * TAU, r = Math.sqrt(rng.next()) * spread;
+  let x = cx + Math.cos(a) * r, z = cz + Math.sin(a) * r;
+  const rr = Math.hypot(x, z); if (rr > R) { x = x / rr * R; z = z / rr * R; }
+  return { x, z };
 }
 // arcade scoring: each eat builds a combo multiplier
 function gainScore(state, base) {
@@ -66,10 +69,9 @@ export function createRun({ speciesId = 'turtle', seed = 1, bonus = null, visual
   if (species.struggle === 'ephemeral') lifeMult *= 0.5;     // mayfly: a life measured in minutes
   const lifespan = (species.lifeSec || C.life.baseLifespanSec) * lifeMult;
 
-  // start position depends on the species' signature struggle
-  let px = 0, pz = 0;
-  if (species.struggle === 'hatchling') { px = 0; pz = -C.world.radius * 0.74; }      // up the beach
-  else if (species.struggle === 'upstream') { px = 0; pz = -C.world.radius * 0.72; }   // downstream start
+  // handcrafted, bounded level — fixes the play space and the designed start
+  const level = levelFor(speciesId);
+  const px = level.start.x, pz = level.start.z;
 
   const state = {
     seed, rng, speciesId, species, biome,
@@ -110,6 +112,9 @@ export function createRun({ speciesId = 'turtle', seed = 1, bonus = null, visual
     female: null, fused: false, dark: !!species.dark,            // anglerfish
     dyingFuse: 0,                                                // semelparous wind-down
     qte: null, qteCooldown: 0, _atkPrev: false,                 // quick-time / mini-game state
+    // handcrafted bounded map
+    level, arenaR: level.radius, goal: { x: level.goal.x, z: level.goal.z },
+    hazards: (level.hazards || []).map(h => ({ ...h, fired: 0 })),
     alive: true, cause: null, lastHurtBy: null,
     danger: 0,
     objective: 'grow',
@@ -120,7 +125,8 @@ export function createRun({ speciesId = 'turtle', seed = 1, bonus = null, visual
   // food pickups for grazers (species that never feed — mayfly, anglerfish — get none)
   if (!species.noEat) {
     if (species.diet.kind === 'graze') {
-      for (let i = 0; i < C.caps.foodItems; i++) state.food.push(spawnFood(state));
+      const n = level.food ? level.food.count : C.caps.foodItems;
+      for (let i = 0; i < n; i++) state.food.push(spawnFood(state));
     } else {
       const n = species.diet.preyCount || 6;
       for (let i = 0; i < n; i++) state.prey.push(spawnPrey(state));
@@ -143,10 +149,9 @@ export function createRun({ speciesId = 'turtle', seed = 1, bonus = null, visual
 
   // worker bee lives at a hive she must keep flying nectar back to
   if (species.forage) { state.hive = { x: px, z: pz, active: true }; state.nest = state.hive; }
-  // male anglerfish: the giant female waits somewhere far out in the black
+  // male anglerfish: the giant female glows at her designed spot across the dark
   if (species.dark) {
-    const p = ringAround(rng, px, pz, C.angler.femaleDist * 0.8, C.angler.femaleDist);
-    state.mate = { x: p.x, z: p.z, active: true, isFemale: true, court: 1 };
+    state.mate = { x: level.goal.x, z: level.goal.z, active: true, isFemale: true, court: 1 };
     state.female = state.mate;
   }
   // hatchling sea turtle: the life opens with a "dig out of the nest" mash
@@ -158,37 +163,39 @@ export function createRun({ speciesId = 'turtle', seed = 1, bonus = null, visual
 }
 
 function spawnFood(state) {
-  const P = state.player, p = ringAround(state.rng, P.x, P.z, 4, C.world.spawnR);
+  const f = state.level && state.level.food;
+  const p = f ? clusterSpot(state.rng, f.cx, f.cz, f.spread, state.arenaR) : arenaSpot(state, 4, state.arenaR);
   return { id: nextId(), x: p.x, z: p.z, phase: state.rng.next() * TAU, alive: true, respawn: 0 };
 }
 
 function spawnPrey(state) {
-  const P = state.player, p = ringAround(state.rng, P.x, P.z, 8, C.world.spawnR);
+  const p = arenaSpot(state, 8, state.arenaR);
   return { id: nextId(), x: p.x, z: p.z, vx: 0, vz: 0, phase: state.rng.next() * TAU,
            heading: state.rng.next() * TAU, retarget: 0, alive: true };
 }
 
+// predators patrol designed posts (cycled if more than there are posts)
 function spawnPredator(state) {
-  const P = state.player, p = ringAround(state.rng, P.x, P.z, 14, C.world.spawnR);
+  const posts = state.level && state.level.predators;
+  let x, z;
+  if (posts && posts.length) { const post = posts[state.predators.length % posts.length]; x = post.x + state.rng.range(-2, 2); z = post.z + state.rng.range(-2, 2); }
+  else { const p = arenaSpot(state, 14, state.arenaR); x = p.x; z = p.z; }
   const domain = state.species.struggle === 'hatchling' ? 'beach' : 'any';
-  return { id: nextId(), x: p.x, z: p.z, vx: 0, vz: 0, heading: state.rng.next() * TAU,
+  return { id: nextId(), x, z, vx: 0, vz: 0, heading: state.rng.next() * TAU,
            build: state.species.predatorBuild || 'fox', state: 'wander', aggro: false,
            giveUp: 0, retarget: 0, phase: state.rng.next() * TAU, domain, stun: 0,
            health: C.predator.health, maxHealth: C.predator.health, hurt: 0 };
 }
 
-// interactive forest objects: shake fruit trees, forage mushrooms, hide in
-// burrows, and beehives (a bee's nest, a sting for everyone else)
+// hand-placed interactables from the level (burrows, mud, mushrooms, fruit, hive)
 function spawnInteractables(state) {
-  const I = C.interact, P = state.player, S = C.world.spawnR;
-  if (!state.biome.water) {                       // land biomes only
-    for (let i = 0; i < I.fruitTrees; i++) { const p = ringAround(state.rng, P.x, P.z, 7, S); state.interactables.push({ id: nextId(), type: 'fruitTree', x: p.x, z: p.z, cooldown: state.rng.range(0, 3), shake: 0 }); }
-    for (let i = 0; i < I.mushrooms; i++) { const p = ringAround(state.rng, P.x, P.z, 5, S); state.interactables.push({ id: nextId(), type: 'mushroom', x: p.x, z: p.z, alive: true }); }
-    for (let i = 0; i < I.burrows; i++) { const p = ringAround(state.rng, P.x, P.z, 6, S); state.interactables.push({ id: nextId(), type: 'burrow', x: p.x, z: p.z }); }
-    for (let i = 0; i < C.mech.mudCount; i++) { const p = ringAround(state.rng, P.x, P.z, 6, S); state.interactables.push({ id: nextId(), type: 'mud', x: p.x, z: p.z, r: 2.6 }); }
-  }
-  if (state.species.biome === 'meadow' || state.species.biome === 'forest') {
-    for (let i = 0; i < I.hives; i++) { const p = ringAround(state.rng, P.x, P.z, 8, S); state.interactables.push({ id: nextId(), type: 'hive', x: p.x, z: p.z, cooldown: 0 }); }
+  for (const it of (state.level.interactables || [])) {
+    const o = { id: nextId(), type: it.type, x: it.x, z: it.z };
+    if (it.type === 'fruitTree') { o.cooldown = state.rng.range(0, 3); o.shake = 0; }
+    else if (it.type === 'mushroom') o.alive = true;
+    else if (it.type === 'mud') o.r = 2.6;
+    else if (it.type === 'hive') o.cooldown = 0;
+    state.interactables.push(o);
   }
 }
 
@@ -219,20 +226,16 @@ function onBecomeAdult(state) {
   if (sp.forage || sp.dark) {
     // target already set in createRun
   } else if (sp.reproduce === 'nest') {
-    let nx = P.x, nz = P.z;
-    if (sp.struggle === 'upstream') { nz = P.z + 64; }              // spawning ground far upstream
-    else if (sp.struggle === 'hatchling') { nz = P.z - 36; }        // nest back toward the beach
-    else { const p = ringAround(state.rng, P.x, P.z, 12, 26); nx = p.x; nz = p.z; }
-    state.nest = { x: nx, z: nz, active: true };
+    // the nest sits at the level's designed goal (upstream gravel / beach)
+    state.nest = { x: state.goal.x, z: state.goal.z, active: true };
     // the journeys (upstream / beach) ARE the work — no twig-gathering on top
     state.needsMaterials = !(sp.struggle === 'shortlife' || sp.struggle === 'upstream' || sp.struggle === 'hatchling');
     state.nestBuilt = !state.needsMaterials;
     if (state.needsMaterials) {
-      for (let i = 0; i < C.nest.twigs; i++) { const p = ringAround(state.rng, P.x, P.z, 6, C.world.spawnR); state.nestTwigs.push({ id: nextId(), x: p.x, z: p.z, phase: state.rng.next() * TAU, alive: true }); }
+      for (let i = 0; i < C.nest.twigs; i++) { const p = arenaSpot(state, 6, state.arenaR); state.nestTwigs.push({ id: nextId(), x: p.x, z: p.z, phase: state.rng.next() * TAU, alive: true }); }
     }
   } else {
-    const p = ringAround(state.rng, P.x, P.z, 12, 24);
-    state.mate = { x: p.x, z: p.z, active: true, vx: 0, vz: 0, retarget: 0 };
+    state.mate = { x: state.goal.x, z: state.goal.z, active: true, vx: 0, vz: 0, retarget: 0 };
   }
   // life gets a little meaner as you grow up
   if (sp.predatorBuild) state.predators.push(spawnPredator(state));
@@ -296,7 +299,8 @@ export function step(state, input, dt) {
   if (state.biome.current) { const [cdx, cdz] = state.biome.currentDir; curX = -cdx * state.biome.currentStrength; curZ = -cdz * state.biome.currentStrength; }
 
   P.x += (P.vx + curX) * dt; P.z += (P.vz + curZ) * dt;
-  // infinite world — no wall; content streams around the player (see recycleFar)
+  // bounded handcrafted arena — a soft wall keeps you inside the designed map
+  { const rr = Math.hypot(P.x, P.z), R = state.arenaR; if (rr > R) { const s = R / rr; P.x *= s; P.z *= s; P.vx *= 0.5; P.vz *= 0.5; } }
 
   // heading + moving flags
   P.speed = Math.hypot(P.vx + curX, P.vz + curZ);
@@ -373,7 +377,7 @@ export function step(state, input, dt) {
     const eatR = C.food.eatRadius * state.mods.eat * (0.7 + 0.6 * state.stageScale);
     if (sp.diet.kind === 'graze') {
       for (const f of state.food) {
-        if (!f.alive) { f.respawn -= dt; if (f.respawn <= 0) { const p = ringAround(state.rng, P.x, P.z, 4, C.world.spawnR); f.x = p.x; f.z = p.z; f.alive = true; } continue; }
+        if (!f.alive) { f.respawn -= dt; if (f.respawn <= 0) { const np = spawnFood(state); f.x = np.x; f.z = np.z; f.alive = true; } continue; }
         recycleFar(state, f);                 // drifted away → restream around the player
         if (dist2(P.x, P.z, f.x, f.z) < eatR * eatR) doEat(state, f);
       }
@@ -388,6 +392,9 @@ export function step(state, input, dt) {
 
   // 5b) interactive objects (fruit trees, mushrooms, hives, burrows) + bonus fruit
   updateInteractables(state, dt);
+
+  // 5b2) hand-placed hazard zones — crab pits, snapping fish, wasps, rapids
+  updateHazards(state, dt);
 
   // 5c) attack verb (fight back / hunt / shake trees)
   if (state.attackCooldown > 0) state.attackCooldown -= dt;
@@ -729,7 +736,7 @@ function updateReproduction(state, dt) {
     state.reproduceCooldown = cd;
     // relocate the target so you can keep going
     if (sp.struggle === 'upstream' || sp.struggle === 'hatchling') { target.x += state.rng.range(-2, 2); } // fixed spot: small nudge
-    else { const p = ringAround(state.rng, P.x, P.z, 12, 26); target.x = p.x; target.z = p.z; }
+    else { const p = clusterSpot(state.rng, state.goal.x, state.goal.z, 16, state.arenaR); target.x = p.x; target.z = p.z; }
   }
 }
 
@@ -778,6 +785,22 @@ function applyQteEffect(state, q, success) {
     if (success) { P.z += 9; state.score += 30; state.actionExp += 4; state.events.push({ t: 'leap', x: P.x, z: P.z, success: true }); }
     else { P.z -= 4; state.events.push({ t: 'leap', x: P.x, z: P.z, success: false }); }
     state.qteCooldown = 7;
+  }
+}
+
+// Hand-placed hazard zones: linger inside one and it hurts (and can kill).
+const HAZARD_CAUSE = { crab: 'crab', fish: 'snapped', wasp: 'wasp', rock: 'current' };
+function updateHazards(state, dt) {
+  if (!state.hazards.length || state.inBurrow) return;
+  const P = state.player, S = state.stats;
+  for (const h of state.hazards) {
+    if (h.fired > 0) h.fired -= dt;
+    if (dist2(P.x, P.z, h.x, h.z) < h.r * h.r) {
+      S.health = clamp(S.health - h.dps * dt, 0, C.needs.healthMax);
+      state.lastHurtBy = HAZARD_CAUSE[h.kind] || 'predator';
+      if (h.fired <= 0) { h.fired = 0.45; state.danger = Math.max(state.danger, 0.6); state.events.push({ t: 'hazard', x: P.x, z: P.z, kind: h.kind }); }
+      if (S.health <= 0 && state.alive) die(state, HAZARD_CAUSE[h.kind] || 'predator');
+    }
   }
 }
 
