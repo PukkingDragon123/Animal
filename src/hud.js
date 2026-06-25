@@ -21,6 +21,7 @@ export class Hud {
       score: $('score'), combo: $('combo'), genChip: $('genChip'),
       hearts: $('hearts'), foodRow: $('foodRow'), energy: $('fillEnergy'), life: $('fillLife'),
       warmthWrap: $('barWarmthWrap'), warmth: $('fillWarmth'),
+      goals: $('goals'), xppop: $('xppop'), family: $('family'), carry: $('carryChip'),
       quip: $('quip'), vignette: $('vignette'), dietChip: $('dietChip'), tut: $('tut'),
       joystick: $('joystick'), knob: $('joyKnob'), run: $('runbtn'), atk: $('atkbtn'),
       screen: $('screen'), pauseBtn: $('pauseBtn'),
@@ -51,7 +52,7 @@ export class Hud {
   }
 
   // ---- in-play HUD ----
-  showHud(show) { this.els.hud?.classList.toggle('show', show); }
+  showHud(show) { this.els.hud?.classList.toggle('show', show); if (!show) { this.setGoals(null); this.setCarry(null); } }
   setDna(n) { if (this.els.dna) this.els.dna.textContent = n; }
   setStage(stageKey) { if (this.els.stage) this.els.stage.textContent = STR.stage[stageKey] || ''; }
   setObjective(text) { if (this.els.obj) this.els.obj.textContent = text; }
@@ -73,11 +74,15 @@ export class Hud {
 
   _disposePreview() { if (this.preview) { this.preview.dispose(); this.preview = null; } }
 
-  // Minecraft-style vitals: hearts (health), drumsticks (food), stamina bar (energy)
+  // Minecraft-style vitals: hearts (health), drumsticks (food), stamina bar (energy).
+  // hungerPct === null → this species cannot eat (mayfly/anglerfish): hide the food row.
   setVitals(healthPct, hungerPct, energyPct, lifePct, warmthPct) {
-    const hf = Math.round(Math.max(0, healthPct) / 10), ff = Math.round(Math.max(0, hungerPct) / 10);
+    const hf = Math.round(Math.max(0, healthPct) / 10);
     for (let i = 0; i < this._hearts.length; i++) this._hearts[i].classList.toggle('off', i >= hf);
-    for (let i = 0; i < this._food.length; i++) this._food[i].classList.toggle('off', i >= ff);
+    if (this.els.foodRow) {
+      if (hungerPct == null) this.els.foodRow.style.display = 'none';
+      else { this.els.foodRow.style.display = 'flex'; const ff = Math.round(Math.max(0, hungerPct) / 10); for (let i = 0; i < this._food.length; i++) this._food[i].classList.toggle('off', i >= ff); }
+    }
     if (this.els.energy) this.els.energy.style.width = Math.max(0, energyPct) + '%';
     if (this.els.life) this.els.life.style.width = Math.max(0, Math.min(100, lifePct)) + '%';
     if (warmthPct != null && this.els.warmthWrap) {
@@ -87,6 +92,37 @@ export class Hud {
   }
 
   setGeneration(gen) { if (this.els.genChip) { if (gen > 1) { this.els.genChip.style.display = 'block'; this.els.genChip.textContent = '⚭ Gen ' + gen; } else this.els.genChip.style.display = 'none'; } }
+
+  // life-goals checklist — the quest you must complete in this life (re-renders on change)
+  setGoals(goals, idx) {
+    const el = this.els.goals; if (!el) return;
+    if (!goals || !goals.length) { if (this._goalSig !== '') { el.innerHTML = ''; this._goalSig = ''; } return; }
+    const sig = idx + '/' + goals.length + '/' + goals.filter(g => g.done).length;
+    if (sig === this._goalSig) return;
+    this._goalSig = sig;
+    el.innerHTML = goals.map((g, i) => {
+      const cls = g.done ? 'done' : (i === idx ? 'cur' : '');
+      const k = g.done ? '✓' : (i === idx ? '▸' : '○');
+      return `<div class="goalItem ${cls}"><span class="gk">${k}</span><span>${esc(g.label)}</span></div>`;
+    }).join('');
+  }
+
+  // a "+N EXP" pop near the score when an action pays out
+  xpPopup(n) {
+    const el = this.els.xppop; if (!el || !n) return;
+    el.textContent = '✦ +' + n + ' EXP'; el.classList.add('show');
+    clearTimeout(this._xpTimer); this._xpTimer = setTimeout(() => el.classList.remove('show'), 1000);
+  }
+
+  // the realistic "family moment" card shown when you reproduce
+  familyMoment(text) {
+    const el = this.els.family; if (!el || !text) return;
+    el.textContent = '👶 ' + text; el.classList.add('show');
+    clearTimeout(this._famTimer); this._famTimer = setTimeout(() => el.classList.remove('show'), 5400);
+  }
+
+  // forager carry chip (worker bee): nectar load + lifetime deliveries
+  setCarry(text) { const el = this.els.carry; if (!el) return; if (text == null) el.style.display = 'none'; else { el.style.display = 'block'; el.innerHTML = text; } }
 
   setVignette(danger) {
     if (this.els.vignette) this.els.vignette.style.opacity = Math.min(0.7, danger * 0.7);
@@ -162,7 +198,7 @@ export class Hud {
 
     const canvas = $('previewCanvas');
     this.preview = new Preview(canvas);
-    let idx = Math.max(0, SPECIES_LIST.indexOf(startId || SPECIES_LIST.find(id => save.unlocked.includes(id)) || 'rabbit'));
+    let idx = Math.max(0, SPECIES_LIST.indexOf(startId || SPECIES_LIST.find(id => save.unlocked.includes(id)) || 'turtle'));
 
     const pip = (label, val) => { let p = ''; for (let k = 0; k < 5; k++) p += `<i class="${k < val ? 'on' : ''}"></i>`; return `<div class="stat"><span>${label}</span><div class="pips">${p}</div></div>`; };
 
@@ -205,7 +241,7 @@ export class Hud {
   // Mutation skill tree: spend genes on connected nodes that mutate the model
   evolution(save, speciesId) {
     this._disposePreview();
-    const id = (speciesId && save.unlocked.includes(speciesId)) ? speciesId : (save.unlocked[save.unlocked.length - 1] || 'rabbit');
+    const id = (speciesId && save.unlocked.includes(speciesId)) ? speciesId : (save.unlocked[save.unlocked.length - 1] || 'turtle');
     const sp = SPECIES[id];
     const need = expForLevel(save.level || 1);
     const tiers = []; for (let t = 0; t < SKILL_TIERS; t++) tiers.push([]);

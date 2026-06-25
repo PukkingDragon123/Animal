@@ -53,6 +53,16 @@ export const STR = {
     hunt: 'Catch prey before you starve!',
     keepMoving: 'Keep swimming or you suffocate!',
     elder: 'You are old. Make it count.',
+    // five-species lives
+    forageOut: 'Find a flower and gather nectar',
+    forageHome: 'Carry the nectar home to your hive',
+    forageDone: 'The colony is fed — keep working till the end',
+    mayflyGrow: 'Grow up — you have only minutes',
+    mayflyMate: 'Find the swarm and a mate — FAST!',
+    mayflyDone: 'Your purpose is fulfilled. Rest now.',
+    findFemale: 'Follow her faint glow through the dark',
+    fused: 'Fused to her, forever. This is… success.',
+    spent: 'Your life’s one great act is done.',
   },
 
   birth: {
@@ -99,6 +109,14 @@ export const STR = {
     ambush: ['AMBUSH! Where did THAT come from?!', 'Surprise! Everything still wants you dead.'],
     gift: ['A gift offered. Romance, animal-style.', 'Nothing wins hearts like a free snack.'],
     dynasty: ['The bloodline continues. No pressure.', 'You ARE your descendants now. Keep it going!'],
+    // five-species flavour
+    swarm: ['The swarm! Somewhere in here is the one.', 'Mate now — there is no “later” for a mayfly.'],
+    delivery: ['Nectar delivered. The hive hums its approval.', 'Another load home. The colony grows.'],
+    forage: ['So many flowers, so little lifespan.'],
+    fused: ['You are now… part of her. Forever. Congrats?'],
+    spent: ['That was everything you had. Worth it.'],
+    dark: ['It is very, very dark down here.', 'Your lure is the only light for miles.'],
+    goalDone: ['Life goal complete!'],
   },
 
   // one-time contextual tutorial hints (💡)
@@ -116,6 +134,10 @@ export const STR = {
     cold: 'Stand in the warm glow so you do not freeze.',
     mud: 'Wallow in a mud puddle to mask your scent — predators lose your trail.',
     mate: 'Tap ⚔ near a mate to offer a gift and win them over before reproducing.',
+    forage: 'Sip nectar at flowers, then fly back to your hive to deliver it.',
+    female: 'You can only see by your lure. Wander the dark to find her faint glow.',
+    clock: 'You have no mouth — you cannot eat. Race the life bar to find a mate!',
+    upstreamTip: 'Swim against the current — push upstream toward the spawning gravel.',
   },
 
   // controls hint (first run)
@@ -134,4 +156,15 @@ export const EPITAPH = {
   drowned: 'Stopped swimming. The ocean noticed.',
   current: 'Swept away by the current. So close.',
   gull: 'Snatched by a seagull on the beach. Brutal.',
+  spent: 'Spent everything on one last act of creation — the truest animal death.',
+  fused: 'Found her in the dark and became part of her, forever. Mission accomplished, technically.',
+};
+
+// the "family moment" shown when you reproduce — the realistic circle of life
+export const FAMILY = {
+  turtle: 'You haul ashore and bury a clutch of eggs in the warm sand. Most will never make it — but some might.',
+  mayfly: 'In a frenzied dusk swarm you mate on the wing. Your eggs scatter on the river. Your one purpose: complete.',
+  bee: 'Your deliveries become honey and brood. The colony will outlive you — that was always the point.',
+  salmon: 'You sweep out a gravel nest and release the next generation over it, then drift, spent, into the shallows.',
+  angler: 'You bite down and never let go. Your body fuses to hers — you will father her young for the rest of her life.',
 };

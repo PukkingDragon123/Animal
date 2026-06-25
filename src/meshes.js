@@ -298,7 +298,46 @@ function meerkat(c) {
   parts.gait = 'waddle'; return g;
 }
 
-const BUILDERS = { rabbit, fox, bee, penguin, turtle, salmon, shark, bird, seal, bear, fish, squirrel, butterfly, frog, meerkat, raven: bird };
+// Mayfly — gossamer river insect: slim body, three long tail filaments, big
+// upright translucent wings, oversized eyes. Lives a day.
+function mayfly(c) {
+  const g = new THREE.Group(); const parts = g.userData.parts = {};
+  const body = new THREE.Group(); body.position.y = 0.5; g.add(body); parts.body = body;
+  body.add(mesh(CYL(0.05, 0.09, 0.5, 6), matte(c.body, { flat: false }), { pos: [0, 0, -0.16], rot: [Math.PI / 2, 0, 0] }));  // abdomen
+  body.add(mesh(SPH(0.12), matte(c.accent), { pos: [0, 0, 0.12], scl: [1, 0.9, 1.2] }));                                       // thorax
+  const head = new THREE.Group(); head.position.set(0, 0.02, 0.27); body.add(head); parts.head = head;
+  head.add(mesh(SPH(0.1), matte(c.accent)));
+  eyes(g, head, c.eye, 0.06, 0.08, 0.05, 0.02);
+  for (const s of [-1, 0, 1]) body.add(mesh(CYL(0.006, 0.006, 0.52, 3), matte(c.body, { flat: false }), { pos: [s * 0.05, 0, -0.52], rot: [Math.PI / 2, 0, 0], cast: false })); // cerci
+  parts.wings = [];
+  const wingMat = matte(0xf2fbff, { opacity: 0.4, flat: false, rough: 0.3 });
+  for (const s of [-1, 1]) {
+    const fore = mesh(SPH(0.32), wingMat, { pos: [s * 0.15, 0.22, 0.04], scl: [0.42, 1.0, 0.12], cast: false }); body.add(fore); parts.wings.push(fore);
+    const hind = mesh(SPH(0.18), wingMat, { pos: [s * 0.12, 0.06, -0.14], scl: [0.38, 0.66, 0.1], cast: false }); body.add(hind); parts.wings.push(hind);
+  }
+  parts.gait = 'fly'; parts.fly = true; return g;
+}
+
+// Male anglerfish — small, dark, round, gaping toothy mouth, and a glowing lure
+// on a stalk: the only light in the abyss.
+function angler(c) {
+  const g = new THREE.Group(); const parts = g.userData.parts = {};
+  const body = mesh(SPH(0.46), matte(c.body), { pos: [0, 0.45, 0], scl: [1.05, 0.95, 1.25] }); g.add(body); parts.body = body;
+  g.add(mesh(SPH(0.4), matte(c.belly), { pos: [0, 0.34, 0.06], scl: [0.7, 0.55, 1.0], cast: false }));
+  g.add(mesh(SPH(0.3), matte(0x120f14, { flat: false }), { pos: [0, 0.4, 0.42], scl: [1, 0.7, 0.6], cast: false }));   // dark gaping mouth
+  for (let i = 0; i < 7; i++) { const a = (i / 6 - 0.5) * 2.0; g.add(mesh(CON(0.03, 0.12, 4), matte(0xffffff, { flat: false }), { pos: [Math.sin(a) * 0.22, 0.4, 0.5], rot: [Math.PI, 0, 0], cast: false })); } // teeth
+  const lure = new THREE.Group(); lure.position.set(0, 0.78, 0.18); g.add(lure); parts.lure = lure;
+  lure.add(mesh(CYL(0.02, 0.02, 0.5, 4), matte(c.body, { flat: false }), { pos: [0, 0.0, 0.16], rot: [1.2, 0, 0], cast: false }));
+  const orb = mesh(SPH(0.12), matte(0xeaffff, { flat: false, emissive: 0x9ffcff }), { pos: [0, 0.14, 0.42], cast: false }); lure.add(orb); parts.lureOrb = orb;
+  eyes(g, g, c.eye, 0.055, 0.14, 0.5, 0.55);
+  const tail = new THREE.Group(); tail.position.set(0, 0.45, -0.62); g.add(tail); parts.tail = tail;
+  tail.add(mesh(CON(0.3, 0.4, 3), matte(c.body), { pos: [0, 0, -0.16], rot: [Math.PI / 2, 0, 0], scl: [1, 1, 0.5] }));
+  parts.fins = [];
+  for (const s of [-1, 1]) { const f = mesh(CON(0.1, 0.28, 3), matte(c.body), { pos: [s * 0.36, 0.4, 0.05], rot: [Math.PI / 2, 0, s * 0.7], cast: false }); g.add(f); parts.fins.push(f); }
+  parts.gait = 'swimfish'; parts.swim = true; return g;
+}
+
+const BUILDERS = { rabbit, fox, bee, penguin, turtle, salmon, shark, bird, seal, bear, fish, squirrel, butterfly, frog, meerkat, mayfly, angler, raven: bird };
 
 export function buildCreature(buildKey, colors, visuals) {
   const fn = BUILDERS[buildKey] || rabbit;

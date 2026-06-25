@@ -1,14 +1,16 @@
 // Meta progression persistence: DNA (score), quest flags → species unlocks,
 // tutorials seen, lifetime stats. localStorage, guarded for private mode.
 
-const KEY = 'wiststba.save.v2';
+import { SPECIES } from './species.js';
+
+const KEY = 'wiststba.save.v3';
 
 const DEFAULT = {
   dna: 0,
   genes: 0, exp: 0, level: 1,   // Spore-style evolution meta
   evolution: {},                // (legacy) speciesId -> flat upgrades
   skills: {},                   // speciesId -> array of unlocked skill-tree node ids
-  unlocked: ['rabbit'],         // rabbit is free; the rest are quest-locked
+  unlocked: ['turtle'],         // the Sea Turtle Hatchling is free; the rest are quest-locked
   runs: 0,
   bestScore: 0,
   totalOffspring: 0,
@@ -19,6 +21,7 @@ const DEFAULT = {
     adult: {},                  // speciesId -> reached adult
     elderAny: false,
     meals15: false,
+    reachedSea: false,
     builtNest: false,
   },
   tutorialsSeen: {},            // hintId -> true
@@ -27,7 +30,10 @@ const DEFAULT = {
 
 function deepDefault(data) {
   const out = { ...DEFAULT, ...data };
-  out.unlocked = Array.isArray(data.unlocked) && data.unlocked.length ? [...new Set(data.unlocked)] : ['rabbit'];
+  // keep only species ids that still exist, and guarantee the free starter
+  const valid = (Array.isArray(data.unlocked) ? data.unlocked : []).filter(id => SPECIES[id]);
+  out.unlocked = [...new Set(valid)];
+  if (!out.unlocked.includes('turtle')) out.unlocked.unshift('turtle');
   out.flags = { ...DEFAULT.flags, ...(data.flags || {}) };
   out.flags.reproduced = { ...(data.flags && data.flags.reproduced || {}) };
   out.flags.adult = { ...(data.flags && data.flags.adult || {}) };

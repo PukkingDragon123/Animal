@@ -5,14 +5,10 @@ import { SPECIES_LIST } from './species.js';
 
 // stage indices: baby 0, juvenile 1, adult 2, elder 3
 export const QUESTS = {
-  bee:     { text: 'Reproduce as a European Rabbit', check: (s) => !!s.flags.reproduced.rabbit },
-  monarch: { text: 'Reproduce as a Honey Bee',       check: (s) => !!s.flags.reproduced.bee },
-  meerkat: { text: 'Reach adulthood as a Rabbit',    check: (s) => !!s.flags.adult.rabbit },
-  penguin: { text: 'Reach adulthood as a Honey Bee', check: (s) => !!s.flags.adult.bee },
-  turtle:  { text: 'Reproduce as an Emperor Penguin', check: (s) => !!s.flags.reproduced.penguin },
-  salmon:  { text: 'Reach Elder as any animal',       check: (s) => !!s.flags.elderAny },
-  fox:     { text: 'Eat 15 times in one life',        check: (s) => !!s.flags.meals15 },
-  shark:   { text: 'Reproduce as a Sockeye Salmon',   check: (s) => !!s.flags.reproduced.salmon },
+  mayfly: { text: 'Reach the sea as a Sea Turtle Hatchling', check: (s) => !!s.flags.reachedSea },
+  bee:    { text: 'Mate as a Mayfly',                        check: (s) => !!s.flags.reproduced.mayfly },
+  salmon: { text: 'Help the colony as a Worker Honey Bee',   check: (s) => !!s.flags.reproduced.bee },
+  angler: { text: 'Spawn upstream as a Pacific Salmon',      check: (s) => !!s.flags.reproduced.salmon },
 };
 
 // record one finished run into the save's quest flags
@@ -23,6 +19,7 @@ export function recordRun(save, r) {
   if (r.maxStageIndex >= 2) save.flags.adult[r.speciesId] = true;
   if (r.maxStageIndex >= 3) save.flags.elderAny = true;
   if (r.meals >= 15) save.flags.meals15 = true;
+  if (r.reachedSea) save.flags.reachedSea = true;
   if (r.builtNest) save.flags.builtNest = true;
 }
 

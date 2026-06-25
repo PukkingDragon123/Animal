@@ -32,7 +32,7 @@ let hud;
 try { hud = new Hud(handlers); ok('Hud constructs', true); }
 catch (e) { console.error(' THROW Hud', e.message); fail++; }
 
-const save = { dna: 500, genes: 200, exp: 10, level: 2, evolution: {}, skills: {}, unlocked: ['rabbit', 'bee'], runs: 3 };
+const save = { dna: 500, genes: 200, exp: 10, level: 2, evolution: {}, skills: {}, unlocked: ['turtle', 'mayfly'], runs: 3 };
 
 // menu
 hud.menu(save);
@@ -48,19 +48,19 @@ ok('select: shows a species name', $('spName').textContent.length > 0);
 ok('select: nav arrows present', !!$('prevSp') && !!$('nextSp'));
 const nm = $('spName').textContent; $('nextSp').click();
 ok('select: next changes species', $('spName').textContent !== nm);
-hud.speciesSelect(save);                 // restart at first unlocked (rabbit)
+hud.speciesSelect(save);                 // restart at first unlocked (turtle)
 ok('select: PLAY shown for unlocked', !!$('spPlay'));
 $('spPlay').click();
 ok('select: PLAY → onPick(id)', typeof calls.onPick_arg === 'string');
 hud.speciesSelect(save);
-$('nextSp').click(); $('nextSp').click();   // rabbit → bee → penguin (locked)
+$('nextSp').click(); $('nextSp').click();   // turtle → mayfly → bee (locked)
 ok('select: locked shows quest box', !!document.querySelector('.questBox'));
 $('btnBack').click();
 ok('select: back returns to menu', !!$('btnPlay'));
 
 // birth card with mutations
-hud.birth('rabbit', ['fast', 'frail']);
-ok('birth: shows species', /Rabbit/.test($('screen').textContent));
+hud.birth('turtle', ['fast', 'frail']);
+ok('birth: shows species', /Turtle/.test($('screen').textContent));
 ok('birth: shows mutations', $('screen').querySelectorAll('.mut').length === 2);
 $('btnBegin').click();
 ok('birth: begin → onBegin', calls.onBegin === 1);
@@ -77,6 +77,20 @@ ok('hud: warmth hidden when null', $('barWarmthWrap').style.display === 'none');
 hud.setVitals(20, 10, 90, 25, 15);
 ok('hud: 2 hearts lit at 20% health', $('hearts').querySelectorAll('span:not(.off)').length === 2);
 ok('hud: warmth shown for cold', $('barWarmthWrap').style.display === 'flex');
+// mouthless species (mayfly/anglerfish): hide the food row
+hud.setVitals(60, null, 50, 80, null);
+ok('hud: food row hidden when a species cannot eat', $('foodRow').style.display === 'none');
+hud.setVitals(60, 30, 50, 80, null);
+ok('hud: food row shown again for eaters', $('foodRow').style.display !== 'none');
+// life-goals checklist
+hud.setGoals([{ id: 'a', label: 'First goal', done: true }, { id: 'b', label: 'Second goal', done: false }, { id: 'c', label: 'Third goal', done: false }], 1);
+ok('hud: goals checklist renders all items', $('goals').querySelectorAll('.goalItem').length === 3);
+ok('hud: goals mark done + current', !!$('goals').querySelector('.goalItem.done') && !!$('goals').querySelector('.goalItem.cur'));
+// action-EXP popup, family moment, forage carry chip
+hud.xpPopup(12); ok('hud: EXP popup shows', $('xppop').classList.contains('show') && /12/.test($('xppop').textContent));
+hud.familyMoment('Your eggs are buried in the sand.'); ok('hud: family moment shows', $('family').classList.contains('show') && /eggs/.test($('family').textContent));
+hud.setCarry('🌼 2/3 · 🍯 4'); ok('hud: carry chip shows', $('carryChip').style.display !== 'none' && /🍯/.test($('carryChip').innerHTML));
+hud.setCarry(null); ok('hud: carry chip hides', $('carryChip').style.display === 'none');
 hud.setObjective('Find food'); ok('hud: objective text', $('objective').textContent === 'Find food');
 hud.setDna(123); ok('hud: dna text', $('dnaVal').textContent === '123');
 hud.setStage('adult'); ok('hud: stage text', $('stageLabel').textContent === 'Adult');
@@ -89,7 +103,7 @@ hud.setDiet('🌿', 'Grass'); ok('hud: diet chip set', /Grass/.test($('dietChip'
 hud.showTutorial('Move with the left side'); ok('hud: tutorial shows', $('tut').classList.contains('show') && /Move with/.test($('tut').textContent));
 
 // evolution lab — mutation skill tree (preview no-op in jsdom)
-hud.evolution(save, 'rabbit');
+hud.evolution(save, 'turtle');
 ok('evo: title shows', /EVOLUTION/.test($('screen').textContent));
 ok('evo: skill nodes rendered', $('screen').querySelectorAll('.snode').length >= 8);
 ok('evo: tree tiers rendered', $('screen').querySelectorAll('.tier').length >= 3);
@@ -100,7 +114,7 @@ ok('evo: click → onUnlockSkill', calls.onUnlockSkill >= 1);
 $('btnBack').click(); ok('evo: back → menu', !!$('btnPlay'));
 
 // death screen with rewards
-hud.death({ success: true, cause: 'oldAge', speciesId: 'rabbit', lived: 'Elder · 100%', meals: 12, offspring: 3, dna: 240, score: 800, genes: 18, exp: 40, levelUp: true, level: 3, newUnlocks: ['Bee'], generation: 2, dynastyScore: 1500, canContinue: true, nextGen: 3 });
+hud.death({ success: true, cause: 'oldAge', speciesId: 'turtle', lived: 'Elder · 100%', meals: 12, offspring: 3, dna: 240, score: 800, genes: 18, exp: 40, levelUp: true, level: 3, newUnlocks: ['Bee'], generation: 2, dynastyScore: 1500, canContinue: true, nextGen: 3 });
 ok('death: shows DNA', /240/.test($('screen').textContent));
 ok('death: shows genes reward', /18/.test($('screen').textContent));
 ok('death: level-up banner', /LEVEL UP/.test($('screen').textContent));
@@ -112,7 +126,7 @@ $('btnEvolveD').click(); ok('death: evolve → onEvolve', calls.onEvolve >= 1);
 ok('death: again button', !!$('btnAgain'));
 $('btnAgain').click(); ok('death: again → onAgain', calls.onAgain === 1);
 // a gen-1 death (no offspring) hides the continue button
-hud.death({ success: false, cause: 'predator', speciesId: 'rabbit', lived: 'Baby · 5%', meals: 0, offspring: 0, dna: 5, score: 0, genes: 1, exp: 2, levelUp: false, level: 1, newUnlocks: [], generation: 1, dynastyScore: 0, canContinue: false, nextGen: 0 });
+hud.death({ success: false, cause: 'predator', speciesId: 'turtle', lived: 'Baby · 5%', meals: 0, offspring: 0, dna: 5, score: 0, genes: 1, exp: 2, levelUp: false, level: 1, newUnlocks: [], generation: 1, dynastyScore: 0, canContinue: false, nextGen: 0 });
 ok('death: no continue button without offspring', !$('btnContinue'));
 
 // pause

@@ -26,7 +26,7 @@ python3 -m http.server 8080
 Or play it instantly from the branch (served via raw.githack.com, which sends
 the correct MIME types for ES modules):
 
-**https://raw.githack.com/PukkingDragon123/Animal/claude/inspiring-wright-5xmrsu/index.html?v=7**
+**https://raw.githack.com/PukkingDragon123/Animal/claude/inspiring-wright-5xmrsu/index.html?v=8**
 
 Open the URL on a phone or desktop. (ES modules need a real server — opening
 `index.html` from `file://` won't work.)
@@ -62,46 +62,47 @@ forgiving (small aggro range, give up quickly, mostly ignore babies).
 
 ## The loop
 
-1. Spawn as a random unlocked animal with random **mutations** (a fresh build
-   every run — Fast, Frail, Long Life, Always Hungry…).
-2. **Survive childhood**, eat your species' food, grow Baby → Juvenile → Adult → Elder.
-3. **Avoid your nemesis** (every species has one signature struggle).
-4. As an **Adult**, **reproduce** — mate species find a mate; nest species
-   gather twigs and **build a nest** first.
-5. **Die** (old age if you're lucky), bank **DNA**, and complete **quests** to
-   **unlock** new species.
+Each run is **one complete animal life**, structured by a list of **life goals**
+— the quest you must complete before your time runs out (shown as a live
+checklist on the HUD).
+
+1. Spawn as a chosen species with random **mutations** (a fresh build every run).
+2. Work through your **life goals** — hatch, take flight, forage, swim upstream,
+   find a mate… every goal completed pays out **live EXP** right then and there.
+3. **Reproduce** — and live a real **family moment**: lay your eggs in the sand,
+   mate in the dusk swarm, feed the colony, spawn over the gravel, or fuse to the
+   female forever. Then **see your newborns** trail behind you.
+4. **Die** (of old age, or — for a mayfly or salmon — *spent*, right after
+   breeding). Bank **DNA + EXP**, and complete **quests** to unlock the next life.
+
+Doing things — eating, killing a predator, hitting a life goal, delivering
+nectar, mating — all feed **EXP** into your gene pool, so an active life levels
+you up faster than a passive one. Leave young behind and you can **continue as
+your offspring** (a growing dynasty across generations).
 
 ## Character select & unlocks
 
-A Slay-the-Spire-style carousel with a live spinning 3D preview of each
-animal, its diet and stat bars (Speed / Size / Longevity). New species are
-earned by completing **quests** (e.g. *Reproduce as a Rabbit* → unlock the Bee;
-*Reach Elder* → unlock the Salmon), shown right on each locked card.
+A Slay-the-Spire-style carousel with a live spinning 3D preview of each animal,
+its diet and stat bars (Speed / Size / Longevity), and its signature ability.
+The five lives unlock in a chain (shown on each locked card):
 
-## Forest interactions
+*Reach the sea as a hatchling Turtle* → **Mayfly** · *Mate as a Mayfly* →
+**Honey Bee** · *Save the colony as a Bee* → **Salmon** · *Spawn upstream as a
+Salmon* → **Anglerfish**.
 
-The forest is alive and pokeable: **bump fruit trees** to shake down a snack,
-**forage mushrooms** for a speed buzz, **dive into burrows** to hide from
-predators, and steer clear of **beehives** (they sting anyone who is not a bee).
-Footsteps kick up little puffs as you move, and a diet chip + one-time tutorial
-tips keep the controls obvious.
+## Five real species — five completely different lives
 
-## Real species & their one big struggle
+Every animal is a **specific, real species** (scientific name, IUCN status, and
+true biology shown on its card and birth screen), and each plays nothing like the
+others:
 
-Every animal is a **specific, real species** with its scientific name, IUCN
-conservation status, and researched biology (shown on the card and birth screen).
-
-| Species | Latin | Biome | Eats | Why it sucks |
+| # | Species | Latin | The life | Why it sucks |
 |---|---|---|---|---|
-| European Rabbit (start) | *Oryctolagus cuniculus* | Forest | grasses | foxes cause ~28% of deaths |
-| Western Honey Bee | *Apis mellifera* | Meadow | nectar | a worker lives 4–8 weeks |
-| Monarch Butterfly | *Danaus plexippus* | Meadow | nectar | summer adults live ~2–5 weeks |
-| Meerkat | *Suricata suricatta* | Savanna | insects | hawks above, cobras below |
-| Emperor Penguin | *Aptenodytes forsteri* | Arctic | fish | −40°C; leopard seals at the ice edge |
-| Leatherback Turtle | *Dermochelys coriacea* | Ocean | jellyfish | ~1 in 1,000 hatchlings survives |
-| Sockeye Salmon | *Oncorhynchus nerka* | River | insects | swim upstream, spawn once, die |
-| Red Fox | *Vulpes vulpes* | Forest | rabbits | miss the pounce, go hungry |
-| Great White Shark | *Carcharodon carcharias* | Ocean | fish & seals | stop swimming and you suffocate |
+| 1 | **Sea Turtle Hatchling** (start) | *Dermochelys coriacea* | Dig out, then **sprint down a predator-lined beach to the surf**, grow in the open ocean | ~1 in 1,000 hatchlings survives the crawl |
+| 2 | **Mayfly** | *Ephemera danica* | **No mouth, a life of minutes** — take flight, mature, find the swarm and mate before the clock empties | adults can’t eat; they die within hours of breeding |
+| 3 | **Worker Honey Bee** | *Apis mellifera* | A **working life**: sip nectar, carry it home, **feed the hive**, repeat until you drop | a summer worker lives 4–8 weeks, then works itself to death |
+| 4 | **Pacific Salmon** | *Oncorhynchus nerka* | The **great migration** — fight the current **upstream**, dodge the bears, spawn once | semelparous: you spawn, then die |
+| 5 | **Male Anglerfish** | *Ceratias holboelli* | **Alone in the black**, navigate by your glowing lure to find the giant female — and **fuse to her forever** | the male loses his eyes and organs, becoming a lifelong attachment |
 
 ## Arcade eat-and-survive (Hungry-Shark style)
 

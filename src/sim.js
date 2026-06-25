@@ -42,7 +42,7 @@ function gainScore(state, base) {
 // ---------------------------------------------------------------------------
 // Run creation
 // ---------------------------------------------------------------------------
-export function createRun({ speciesId = 'rabbit', seed = 1, bonus = null, visuals = null, generation = 1, lineageScore = 0 }) {
+export function createRun({ speciesId = 'turtle', seed = 1, bonus = null, visuals = null, generation = 1, lineageScore = 0 }) {
   const rng = makeRng(seed);
   const species = speciesOf(speciesId);
   const biome = biomeOf(species.biome);
@@ -60,10 +60,11 @@ export function createRun({ speciesId = 'rabbit', seed = 1, bonus = null, visual
     if (bonus.fertile) mods.fertile = true;
   }
 
-  // lifespan: base × mutation × struggle (bee = brutally short)
+  // lifespan: species base × mutation × struggle (mayfly = brutally short)
   let lifeMult = mods.life;
   if (species.struggle === 'shortlife') lifeMult *= 0.5;
-  const lifespan = C.life.baseLifespanSec * lifeMult;
+  if (species.struggle === 'ephemeral') lifeMult *= 0.5;     // mayfly: a life measured in minutes
+  const lifespan = (species.lifeSec || C.life.baseLifespanSec) * lifeMult;
 
   // start position depends on the species' signature struggle
   let px = 0, pz = 0;
@@ -101,6 +102,13 @@ export function createRun({ speciesId = 'rabbit', seed = 1, bonus = null, visual
     generation, lineageScore,
     scent: 1, scentMask: 0, inBurrow: false, denTimer: 0, kills: 0,
     matingTimer: 0, ambushTimer: 0,
+    // life goals (the quest you must complete in this life) + live action EXP
+    goals: (species.lifeGoals || []).map(g => ({ id: g.id, label: g.label, done: false })),
+    goalIndex: 0, actionExp: 0, hasMoved: false,
+    // species-specific playstyle state
+    pollen: 0, pollenCollected: 0, deliveries: 0, hive: null,    // worker bee
+    female: null, fused: false, dark: !!species.dark,            // anglerfish
+    dyingFuse: 0,                                                // semelparous wind-down
     alive: true, cause: null, lastHurtBy: null,
     danger: 0,
     objective: 'grow',
@@ -108,13 +116,14 @@ export function createRun({ speciesId = 'rabbit', seed = 1, bonus = null, visual
     quipShown: {},
   };
 
-  // food pickups for grazers
-  if (species.diet.kind === 'graze') {
-    for (let i = 0; i < C.caps.foodItems; i++) state.food.push(spawnFood(state));
-  } else {
-    // hunters chase prey entities
-    const n = species.diet.preyCount || 6;
-    for (let i = 0; i < n; i++) state.prey.push(spawnPrey(state));
+  // food pickups for grazers (species that never feed — mayfly, anglerfish — get none)
+  if (!species.noEat) {
+    if (species.diet.kind === 'graze') {
+      for (let i = 0; i < C.caps.foodItems; i++) state.food.push(spawnFood(state));
+    } else {
+      const n = species.diet.preyCount || 6;
+      for (let i = 0; i < n; i++) state.prey.push(spawnPrey(state));
+    }
   }
 
   // predators
@@ -130,6 +139,15 @@ export function createRun({ speciesId = 'rabbit', seed = 1, bonus = null, visual
   }
 
   spawnInteractables(state);
+
+  // worker bee lives at a hive she must keep flying nectar back to
+  if (species.forage) { state.hive = { x: px, z: pz, active: true }; state.nest = state.hive; }
+  // male anglerfish: the giant female waits somewhere far out in the black
+  if (species.dark) {
+    const p = ringAround(rng, px, pz, C.angler.femaleDist * 0.8, C.angler.femaleDist);
+    state.mate = { x: p.x, z: p.z, active: true, isFemale: true, court: 1 };
+    state.female = state.mate;
+  }
 
   updateObjective(state);
   state.events.push({ t: 'born' });
@@ -192,15 +210,19 @@ function updateStage(state) {
 function onBecomeAdult(state) {
   if (!state.reachedAdultBonus) { state.dnaRun += C.dna.reachAdult; state.reachedAdultBonus = true; }
   state.events.push({ t: 'quip', key: 'grewUp' });
-  // place the reproduction target
+  // place the reproduction target — bee (hive from birth) and anglerfish
+  // (female from birth) already have theirs, so they skip this.
   const sp = state.species, P = state.player;
-  if (sp.reproduce === 'nest') {
+  if (sp.forage || sp.dark) {
+    // target already set in createRun
+  } else if (sp.reproduce === 'nest') {
     let nx = P.x, nz = P.z;
     if (sp.struggle === 'upstream') { nz = P.z + 64; }              // spawning ground far upstream
     else if (sp.struggle === 'hatchling') { nz = P.z - 36; }        // nest back toward the beach
     else { const p = ringAround(state.rng, P.x, P.z, 12, 26); nx = p.x; nz = p.z; }
     state.nest = { x: nx, z: nz, active: true };
-    state.needsMaterials = sp.struggle !== 'shortlife';     // bees skip twig-gathering (too short-lived)
+    // the journeys (upstream / beach) ARE the work — no twig-gathering on top
+    state.needsMaterials = !(sp.struggle === 'shortlife' || sp.struggle === 'upstream' || sp.struggle === 'hatchling');
     state.nestBuilt = !state.needsMaterials;
     if (state.needsMaterials) {
       for (let i = 0; i < C.nest.twigs; i++) { const p = ringAround(state.rng, P.x, P.z, 6, C.world.spawnR); state.nestTwigs.push({ id: nextId(), x: p.x, z: p.z, phase: state.rng.next() * TAU, alive: true }); }
@@ -240,6 +262,7 @@ export function step(state, input, dt) {
 
   // 2) movement
   let mx = input.mx || 0, mz = input.mz || 0;
+  if (state.fused) { mx = 0; mz = 0; }                  // fused to the female — you will never move again
   const mlen = Math.hypot(mx, mz);
   if (mlen > 1) { mx /= mlen; mz /= mlen; }
   if (state.mods.clumsy && mlen > 0.01) {                     // wobble
@@ -266,6 +289,7 @@ export function step(state, input, dt) {
 
   // heading + moving flags
   P.speed = Math.hypot(P.vx + curX, P.vz + curZ);
+  if (P.speed > 2) state.hasMoved = true;
   P.moving = mlen > 0.05;
   if (P.moving) {
     const target = Math.atan2(P.vx, P.vz);
@@ -274,10 +298,12 @@ export function step(state, input, dt) {
   }
   P.stillFor = P.speed < 1.4 ? P.stillFor + dt : 0;
 
-  // 3) needs
-  const hungerDrain = C.needs.hungerDrainPerSec * state.mods.hunger
-                    + (canSprint ? C.needs.hungerSprintExtra : 0);
-  S.hunger = clamp(S.hunger - hungerDrain * dt, 0, C.needs.hungerMax);
+  // 3) needs — species that never feed (mayfly, anglerfish) ignore hunger entirely
+  if (!sp.noEat) {
+    const hungerDrain = C.needs.hungerDrainPerSec * state.mods.hunger
+                      + (canSprint ? C.needs.hungerSprintExtra : 0);
+    S.hunger = clamp(S.hunger - hungerDrain * dt, 0, C.needs.hungerMax);
+  }
 
   if (canSprint) S.energy = clamp(S.energy - C.needs.energySprintDrain * dt, 0, C.needs.energyMax);
   else S.energy = clamp(S.energy + C.needs.energyRegen * dt, 0, C.needs.energyMax);
@@ -323,6 +349,7 @@ export function step(state, input, dt) {
     if (P.z > 4) {                       // crossed from beach into the sea
       state.reachedWater = true;
       state.dnaRun += 20;
+      state.actionExp += C.xp.reachSea;
       state.events.push({ t: 'reachedWater' });
       // gulls give up; add a couple of slow sea predators
       for (const pr of state.predators) pr.domain = 'gone';
@@ -330,20 +357,22 @@ export function step(state, input, dt) {
     }
   }
 
-  // 5) eating
-  const eatR = C.food.eatRadius * state.mods.eat * (0.7 + 0.6 * state.stageScale);
-  if (sp.diet.kind === 'graze') {
-    for (const f of state.food) {
-      if (!f.alive) { f.respawn -= dt; if (f.respawn <= 0) { const p = ringAround(state.rng, P.x, P.z, 4, C.world.spawnR); f.x = p.x; f.z = p.z; f.alive = true; } continue; }
-      recycleFar(state, f);                 // drifted away → restream around the player
-      if (dist2(P.x, P.z, f.x, f.z) < eatR * eatR) doEat(state, f);
+  // 5) eating (mayfly + anglerfish never eat — they live off the clock)
+  if (!sp.noEat) {
+    const eatR = C.food.eatRadius * state.mods.eat * (0.7 + 0.6 * state.stageScale);
+    if (sp.diet.kind === 'graze') {
+      for (const f of state.food) {
+        if (!f.alive) { f.respawn -= dt; if (f.respawn <= 0) { const p = ringAround(state.rng, P.x, P.z, 4, C.world.spawnR); f.x = p.x; f.z = p.z; f.alive = true; } continue; }
+        recycleFar(state, f);                 // drifted away → restream around the player
+        if (dist2(P.x, P.z, f.x, f.z) < eatR * eatR) doEat(state, f);
+      }
+    } else {
+      for (const pr of state.prey) {
+        if (!pr.alive) continue;
+        if (dist2(P.x, P.z, pr.x, pr.z) < (eatR + 0.4) * (eatR + 0.4)) doEat(state, pr, true);
+      }
+      updatePrey(state, dt);
     }
-  } else {
-    for (const pr of state.prey) {
-      if (!pr.alive) continue;
-      if (dist2(P.x, P.z, pr.x, pr.z) < (eatR + 0.4) * (eatR + 0.4)) doEat(state, pr, true);
-    }
-    updatePrey(state, dt);
   }
 
   // 5b) interactive objects (fruit trees, mushrooms, hives, burrows) + bonus fruit
@@ -356,8 +385,17 @@ export function step(state, input, dt) {
   // 6) predators
   updatePredators(state, dt);
 
-  // 7) reproduction
-  updateReproduction(state, dt);
+  // 7) reproduction / life's purpose — each species chases it its own way
+  if (sp.forage) updateForage(state, dt);
+  else if (sp.dark) updateAnglerSearch(state, dt);
+  else updateReproduction(state, dt);
+
+  // semelparous wind-down: mayfly + salmon are spent by breeding; the anglerfish
+  // fuses to the female. A brief beat, then the run ends.
+  if (state.dyingFuse > 0) { state.dyingFuse -= dt; if (state.dyingFuse <= 0 && state.alive) die(state, state.fused ? 'fused' : 'spent'); }
+
+  // life-goal progress (each completed goal awards live action EXP)
+  advanceGoals(state);
 
   // 7b) unexpected ambush — a predator streams in already hunting
   state.ambushTimer -= dt;
@@ -382,6 +420,9 @@ function doEat(state, item, isPrey) {
   S.hunger = clamp(S.hunger + C.needs.eatRestore, 0, C.needs.hungerMax);
   state.meals++;
   state.dnaRun += C.dna.perFood;
+  state.actionExp += C.xp.eat;
+  // worker bee loads nectar into its baskets to carry home
+  if (state.species.forage) { state.pollen = Math.min(C.forage.capacity, state.pollen + 1); state.pollenCollected++; }
   const pts = gainScore(state, isPrey ? C.arcade.scorePrey : C.arcade.scoreFood);
   state.events.push({ t: 'eat', x: item.x, z: item.z, combo: state.combo, pts });
   if (state.meals === 1) state.events.push({ t: 'quip', key: 'ateFirst' });
@@ -532,7 +573,7 @@ function doAttack(state) {
     pr.health -= C.predator.biteDamage;
     state.events.push({ t: 'blood', x: pr.x, z: pr.z });
     if (pr.health <= 0) {
-      state.kills++; state.score += C.arcade.scoreKill;
+      state.kills++; state.score += C.arcade.scoreKill; state.actionExp += C.xp.kill;
       state.events.push({ t: 'killed', x: pr.x, z: pr.z });
       const np = spawnPredator(state); pr.x = np.x; pr.z = np.z; pr.health = pr.maxHealth; pr.aggro = false; pr.state = 'wander'; pr.stun = 0; pr.hurt = 0;
     } else { pr.aggro = false; pr.giveUp = 0; }
@@ -661,18 +702,91 @@ function updateReproduction(state, dt) {
     const twins = state.mods.fertile && state.rng.chance(0.5);
     const n = twins ? 2 : 1;
     state.offspring += n;
-    state.dnaRun += C.dna.dnaPerOffspring * n;
+    state.dnaRun += C.reproduce.dnaPerOffspring * n;
     state.reproduced = true;
+    state.actionExp += C.xp.reproduce;
     state.matingTimer = 1.4;                  // brief mating animation window
     if (state.mate) state.mate.court = 0;     // reset courtship for the next one
     state.events.push({ t: 'birth', x: target.x, z: target.z, n });
+    state.events.push({ t: 'family', key: sp.id, n, total: state.offspring });
     state.events.push({ t: 'quip', key: 'reproduced' });
+    // semelparous species (mayfly, salmon) are spent by the act of breeding
+    if (sp.dieAfterReproduce) state.dyingFuse = sp.struggle === 'ephemeral' ? C.ephemeral.dieFuseSec : 3.2;
     let cd = C.reproduce.nestCooldownSec;
     if (state.mods.fertile) cd *= C.reproduce.fertileCooldownMult;
     state.reproduceCooldown = cd;
     // relocate the target so you can keep going
     if (sp.struggle === 'upstream' || sp.struggle === 'hatchling') { target.x += state.rng.range(-2, 2); } // fixed spot: small nudge
     else { const p = ringAround(state.rng, P.x, P.z, 12, 26); target.x = p.x; target.z = p.z; }
+  }
+}
+
+// Worker bee: ferry nectar back to the hive. Each delivery feeds the colony;
+// hit the quota and the colony survives the winter (= you have "reproduced").
+function updateForage(state, dt) {
+  const P = state.player, hive = state.hive;
+  if (!hive) return;
+  if (state.pollen > 0 && dist2(P.x, P.z, hive.x, hive.z) < C.forage.depositRadius * C.forage.depositRadius) {
+    const n = state.pollen; state.pollen = 0; state.deliveries += n;
+    state.score += n * C.forage.scorePerDelivery;
+    state.actionExp += n * C.xp.delivery;
+    state.dnaRun += n * 4;
+    state.events.push({ t: 'delivery', x: hive.x, z: hive.z, n, total: state.deliveries });
+    if (!state.reproduced && state.deliveries >= C.forage.quota) {
+      state.reproduced = true; state.offspring += 1; state.actionExp += C.xp.reproduce;
+      state.events.push({ t: 'birth', x: hive.x, z: hive.z, n: 1 });
+      state.events.push({ t: 'family', key: 'bee', n: 1, total: state.deliveries });
+      state.events.push({ t: 'quip', key: 'reproduced' });
+    }
+  }
+}
+
+// Male anglerfish: cross the black to reach the giant female. Touch her and you
+// fuse — permanently. A grim little victory, then the run gently winds down.
+function updateAnglerSearch(state, dt) {
+  const P = state.player, f = state.female;
+  if (!f || !f.active || state.fused) return;
+  if (dist2(P.x, P.z, f.x, f.z) < C.angler.findRadius * C.angler.findRadius) {
+    state.fused = true; state.reproduced = true; state.offspring += 1;
+    state.actionExp += C.xp.reproduce; state.matingTimer = 1.4;
+    state.dyingFuse = C.angler.fuseEndSec;
+    state.events.push({ t: 'fused', x: f.x, z: f.z });
+    state.events.push({ t: 'birth', x: f.x, z: f.z, n: 1 });
+    state.events.push({ t: 'family', key: 'angler', n: 1, total: 1 });
+  }
+}
+
+// Has the current life-goal been satisfied? (Conditions read existing state.)
+function goalDone(state, id) {
+  const s = state, f = s.female || s.mate;
+  switch (id) {
+    case 'hatch': return s.time > 0.4;
+    case 'flight': case 'leave': return s.hasMoved;
+    case 'reachSea': return s.reachedWater;
+    case 'eat': case 'forage1': return s.meals >= 1 || s.pollenCollected >= 1;
+    case 'grow': return s.stageIndex >= 1;
+    case 'adult': return s.stageIndex >= 2;
+    case 'court': return !!(s.mate && (s.mate.court || 0) >= 1);
+    case 'deliver': return s.deliveries >= 1;
+    case 'forageN': return s.deliveries >= C.forage.quota;
+    case 'upstream': return s.stageIndex >= 2;          // the grown adult turns for home
+    case 'reachNest': { const n = s.nest; return s.reproduced || (!!n && Math.hypot(s.player.x - n.x, s.player.z - n.z) < C.nest.buildRadius + s.size + 2); }
+    case 'spawn': case 'reproduce': return s.reproduced;
+    case 'survive': return s.ageFrac >= 0.2 || s.fused;       // (finding her early counts as surviving)
+    case 'seekFemale': return !!f && Math.hypot(s.player.x - f.x, s.player.z - f.z) < C.angler.femaleDist * 0.5;
+    case 'findFemale': return s.fused || s.reproduced;
+    case 'fuse': return s.fused;
+    default: return false;
+  }
+}
+
+// Complete every life-goal whose condition is now met, awarding action EXP.
+function advanceGoals(state) {
+  const goals = state.goals; if (!goals) return;
+  while (state.goalIndex < goals.length && goalDone(state, goals[state.goalIndex].id)) {
+    const g = goals[state.goalIndex]; g.done = true; state.goalIndex++;
+    state.actionExp += C.xp.goal;
+    state.events.push({ t: 'goal', id: g.id, label: g.label, exp: C.xp.goal, index: state.goalIndex, total: goals.length });
   }
 }
 
@@ -690,6 +804,12 @@ function die(state, cause) {
 function updateObjective(state) {
   const sp = state.species, S = state.stats;
   let key = 'grow';
+  // species-specific objective lines take priority
+  if (state.fused) { state.objective = 'fused'; return; }
+  if (state.dyingFuse > 0) { state.objective = state.fused ? 'fused' : 'spent'; return; }
+  if (sp.dark) { state.objective = 'findFemale'; return; }
+  if (sp.forage) { state.objective = state.reproduced ? 'forageDone' : (state.pollen > 0 ? 'forageHome' : 'forageOut'); return; }
+  if (sp.struggle === 'ephemeral') { state.objective = state.reproduced ? 'mayflyDone' : (state.stageIndex >= 2 ? 'mayflyMate' : 'mayflyGrow'); return; }
   if (sp.struggle === 'hatchling' && !state.reachedWater) key = 'hatchling_reachWater';
   else if (state.stage === 'adult' || state.stage === 'elder') {
     if (sp.reproduce === 'nest') {

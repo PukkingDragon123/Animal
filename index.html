@@ -42,6 +42,21 @@
   .iconrow span.off{opacity:.22;filter:grayscale(1) brightness(.7);}
   .chips{display:flex;gap:6px;align-items:center;flex-wrap:wrap;}
   .genChip{background:linear-gradient(180deg,#c7a6ff,#9a6bff);color:#fff;font-weight:800;padding:4px 10px;border-radius:12px;font-size:12px;box-shadow:var(--shadow);}
+  .carryChip{background:linear-gradient(180deg,#ffe7a0,#ffcf5a);color:#6a4a00;font-weight:800;padding:4px 10px;border-radius:12px;font-size:12px;box-shadow:var(--shadow);}
+  /* life-goals checklist — the "quest you must complete in this life" */
+  .goals{position:absolute;left:12px;top:172px;display:flex;flex-direction:column;gap:4px;max-width:64vw;}
+  .goalItem{display:flex;align-items:center;gap:6px;background:var(--cream-t);border-radius:10px;padding:4px 9px;
+    font-size:11.5px;font-weight:700;box-shadow:var(--shadow);opacity:.5;transition:opacity .25s;}
+  .goalItem .gk{width:14px;text-align:center;color:var(--ink-soft);}
+  .goalItem.cur{opacity:1;border-left:3px solid var(--leaf-d);} .goalItem.cur .gk{color:var(--leaf-d);}
+  .goalItem.done{opacity:.45;color:var(--leaf-d);text-decoration:line-through;} .goalItem.done .gk{color:var(--leaf-d);}
+  #xppop{position:absolute;right:16px;top:66px;color:#7c3ae0;font-weight:900;font-size:16px;
+    text-shadow:0 2px 6px rgba(255,255,255,.6);opacity:0;transform:translateY(8px);transition:opacity .2s,transform .2s;pointer-events:none;}
+  #xppop.show{opacity:1;transform:translateY(0);}
+  #family{position:absolute;left:50%;bottom:150px;transform:translateX(-50%) translateY(10px);max-width:84vw;text-align:center;
+    background:linear-gradient(180deg,rgba(255,160,210,.96),rgba(255,95,162,.94));color:#fff;padding:12px 18px;border-radius:16px;
+    font-weight:700;font-size:14px;line-height:1.4;opacity:0;transition:opacity .4s,transform .4s;box-shadow:var(--shadow);pointer-events:none;}
+  #family.show{opacity:1;transform:translateX(-50%) translateY(0);}
   .topright{position:absolute;top:30px;right:12px;display:flex;align-items:center;gap:8px;}
   .dna{background:var(--cream-t);font-weight:800;padding:6px 12px;border-radius:14px;box-shadow:var(--shadow);font-size:15px;}
   .clock{background:var(--cream-t);border-radius:14px;padding:5px 9px;font-size:16px;box-shadow:var(--shadow);}
@@ -216,8 +231,11 @@
       <div class="iconrow" id="foodRow"></div>
       <div class="need"><span class="lbl">Stamina</span><div class="bar"><div class="fill" id="fillEnergy"></div></div></div>
       <div class="need" id="barWarmthWrap" style="display:none"><span class="lbl">Warmth</span><div class="bar"><div class="fill" id="fillWarmth"></div></div></div>
-      <div class="chips"><div class="dietChip" id="dietChip"></div><div class="genChip" id="genChip" style="display:none"></div></div>
+      <div class="chips"><div class="dietChip" id="dietChip"></div><div class="carryChip" id="carryChip" style="display:none"></div><div class="genChip" id="genChip" style="display:none"></div></div>
     </div>
+    <div id="goals" class="goals"></div>
+    <div id="xppop"></div>
+    <div id="family"></div>
     <div class="topright">
       <div class="scoreChip" id="score">★ 0</div>
       <div id="clock" class="clock">☀️</div>

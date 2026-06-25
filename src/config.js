@@ -142,7 +142,30 @@ export const CONFIG = {
     maxBabies: 4,                // visible newborn followers
     ambushChance: 0.04,          // per second, an unexpected predator streams in
   },
+
+  // EXP earned live, from doing things (banked into the meta gene pool on death)
+  xp: { goal: 12, eat: 1, kill: 4, reproduce: 18, delivery: 6, reachSea: 14 },
+
+  // Worker bee: carry nectar home to the hive
+  forage: {
+    capacity: 3,                 // flowers you can carry at once
+    quota: 4,                    // deliveries that secure the colony (= "reproduced")
+    depositRadius: 3.0,          // how close to the hive counts as a delivery
+    scorePerDelivery: 45,
+  },
+
+  // Mayfly: breeding spends the last of you
+  ephemeral: { dieFuseSec: 2.8 },
+
+  // Male anglerfish: the lonely search in the dark
+  angler: {
+    lightFloor: 0.06,            // ambient light can never rise above near-black
+    lureRadius: 7,               // your bioluminescent glow lights this far
+    femaleDist: 30,              // how far the giant female starts
+    findRadius: 3.4,             // reach her to fuse
+    fuseEndSec: 3.4,             // beat to savour the (horrifying) success, then end
+  },
 };
 
 // Unlock costs live with species, but mirrored here for the meta screen order.
-export const UNLOCK_ORDER = ['bee', 'penguin', 'turtle', 'salmon', 'fox', 'shark'];
+export const UNLOCK_ORDER = ['mayfly', 'bee', 'salmon', 'angler'];

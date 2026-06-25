@@ -5,7 +5,7 @@ import { CONFIG as C } from './config.js';
 import { createRun, step, liveDna } from './sim.js';
 import { speciesOf, foodOf, SPECIES_LIST } from './species.js';
 import { freshSeed } from './rng.js';
-import { STR } from './strings.js';
+import { STR, FAMILY } from './strings.js';
 import { Renderer } from './render.js';
 import { Input } from './input.js';
 import { Audio } from './audio.js';
@@ -96,7 +96,7 @@ class Game {
 
   startRun(speciesId, lineage) {
     if (!speciesId) speciesId = pick(this.save.unlocked);
-    if (!this.save.unlocked.includes(speciesId)) speciesId = 'rabbit';
+    if (!this.save.unlocked.includes(speciesId)) speciesId = 'turtle';
     this.lastSpecies = speciesId;
     const gen = (lineage && lineage.generation) || 1;
     const evo = applySkills(speciesSkills(this.save, speciesId));
@@ -133,7 +133,12 @@ class Game {
     this.hud.showQuip(pick(STR.quips.born));
     this._tut('move');
     this._tut('attack');
-    if (this.state.species.struggle === 'cold') this._tut('cold');
+    const sp = this.state.species;
+    if (sp.struggle === 'cold') this._tut('cold');
+    if (sp.noEat && sp.struggle === 'ephemeral') this._tut('clock');
+    if (sp.forage) this._tut('forage');
+    if (sp.dark) this._tut('female');
+    if (sp.struggle === 'upstream') this._tut('upstreamTip');
     this.last = performance.now(); this.acc = 0;
   }
 
@@ -167,7 +172,11 @@ class Game {
       switch (e.t) {
         case 'eat': fx.burst(e.x, swimY + 0.4, e.z, this.foodColor, 8, { up: 1.8 }); if (e.combo >= 3) this.hud.flashCombo(e.combo); break;
         case 'hit': fx.burst(P.x, swimY + 0.6, P.z, 0xff5040, 10, { up: 2.6, speed: 3 }); fx.blood(P.x, swimY + 0.6, P.z, 12); break;
-        case 'birth': fx.sparkleRing(e.x, swimY, e.z, 0xff8fc0, 16); break;
+        case 'birth': fx.sparkleRing(e.x, swimY, e.z, 0xff8fc0, 16); this.hud.xpPopup(C.xp.reproduce); break;
+        case 'goal': this.hud.xpPopup(e.exp); this.hud.showQuip('✓ ' + e.label); this.audio.grow(); break;
+        case 'delivery': fx.sparkleRing(e.x, swimY + 0.4, e.z, 0xffd23f, 10); fx.burst(e.x, swimY + 0.5, e.z, 0xffcf5a, 5, { up: 1.6, life: 0.7 }); this.hud.xpPopup((e.n || 1) * C.xp.delivery); this.hud.showQuip(pick(STR.quips.delivery)); this.audio.success(); break;
+        case 'family': this.hud.familyMoment(FAMILY[e.key] || ''); break;
+        case 'fused': fx.sparkleRing(e.x, swimY + 0.4, e.z, 0x9ffcff, 20); fx.burst(e.x, swimY + 0.6, e.z, 0x9ffcff, 10, { up: 1.8, life: 0.9 }); this.audio.success(); this.hud.showQuip(pick(STR.quips.fused)); break;
         case 'stage':
           fx.sparkleRing(P.x, swimY, P.z, 0xffe27a, 12); this.hud.setStage(s.stage);
           if (e.stage === 'adult') { this._tut('grow'); if (s.species.reproduce === 'nest' && s.needsMaterials) this._tut('twigs'); }
@@ -183,7 +192,7 @@ class Game {
         case 'blood': fx.blood(e.x, swimY + 0.5, e.z, e.big ? 16 : 9, !!e.big); break;
         case 'twig': fx.burst(e.x, swimY + 0.3, e.z, 0x9a6f44, 5, { up: 1.2, life: 0.5 }); this.audio.eat(); this.hud.showQuip(pick(STR.quips.twig)); break;
         case 'nestBuilt': fx.sparkleRing(e.x, swimY, e.z, 0xffe27a, 18); this.audio.success(); this.hud.showQuip(pick(STR.quips.nestBuilt)); break;
-        case 'killed': fx.blood(e.x, swimY + 0.5, e.z, 20, true); fx.sparkleRing(e.x, swimY, e.z, 0xffd23f, 12); this.audio.bonk(); this.audio.success(); this.hud.showQuip(pick(STR.quips.killed)); break;
+        case 'killed': fx.blood(e.x, swimY + 0.5, e.z, 20, true); fx.sparkleRing(e.x, swimY, e.z, 0xffd23f, 12); this.audio.bonk(); this.audio.success(); this.hud.xpPopup(C.xp.kill); this.hud.showQuip(pick(STR.quips.killed)); break;
         case 'gift': fx.sparkleRing(e.x, swimY + 0.4, e.z, 0xff8fc0, 10); fx.burst(e.x, swimY + 0.7, e.z, 0xff5fa2, 5, { up: 1.6, life: 0.8, grav: -1 }); this.audio.grow(); this.hud.showQuip(pick(STR.quips.gift)); break;
         case 'denEnter': fx.burst(e.x, swimY + 0.15, e.z, 0x8a6b4a, 12, { up: 1.0, speed: 1.8, life: 0.5, grav: 7 }); this.audio.swipe(); this.hud.showQuip(pick(STR.quips.den)); break;
         case 'denExit': fx.burst(e.x, swimY + 0.15, e.z, 0x8a6b4a, 8, { up: 1.2, speed: 2.0, life: 0.45, grav: 7 }); this.audio.swipe(); break;
@@ -215,8 +224,10 @@ class Game {
   _hud() {
     const s = this.state, S = s.stats;
     const warmth = s.species.struggle === 'cold' ? s.warmth : null;
-    this.hud.setVitals(S.health, S.hunger, S.energy, s.ageFrac * 100, warmth);
+    this.hud.setVitals(S.health, s.species.noEat ? null : S.hunger, S.energy, s.ageFrac * 100, warmth);
     this.hud.setGeneration(s.generation);
+    this.hud.setGoals(s.goals, s.goalIndex);
+    this.hud.setCarry(s.species.forage ? `🌼 ${s.pollen}/${C.forage.capacity} · 🍯 ${s.deliveries}` : null);
     this.hud.setObjective(STR.obj[s.objective] || STR.obj.survive);
     this.hud.setDna(liveDna(s));
     this.hud.setStage(s.stage);
@@ -236,12 +247,14 @@ class Game {
     this.save.totalMeals += s.meals;
     this.save.deaths[s.cause] = (this.save.deaths[s.cause] || 0) + 1;
     if (earned > this.save.bestScore) this.save.bestScore = earned;
-    // Spore-style rewards: genes + EXP (which can level up the gene pool)
+    // Spore-style rewards: genes + EXP. EXP = end-of-run rewards + everything you
+    // earned live this life (life goals, kills, deliveries, mating…).
     const rw = runRewards(s);
+    const totalExp = rw.exp + (s.actionExp || 0);
     this.save.genes = (this.save.genes || 0) + rw.genes;
-    const levels = addExp(this.save, rw.exp);
+    const levels = addExp(this.save, totalExp);
     // record quest flags, then see which species just unlocked
-    recordRun(this.save, { speciesId: s.speciesId, reproduced: s.reproduced, maxStageIndex: s.maxStageIndex, meals: s.meals, builtNest: s.nestBuilt });
+    recordRun(this.save, { speciesId: s.speciesId, reproduced: s.reproduced, maxStageIndex: s.maxStageIndex, meals: s.meals, builtNest: s.nestBuilt, reachedSea: s.reachedWater });
     const newly = checkUnlocks(this.save);
     const newNames = newly.map(id => speciesOf(id).name);
     save.save(this.save);
@@ -257,7 +270,7 @@ class Game {
       success: s.reproduced, cause: s.cause, speciesId: s.speciesId,
       lived: `${STR.stage[s.stage]} · ${Math.round(s.ageFrac * 100)}%`,
       meals: s.meals, offspring: s.offspring, dna: earned, score: s.score || 0,
-      genes: rw.genes, exp: rw.exp, levelUp: levels > 0, level: this.save.level,
+      genes: rw.genes, exp: totalExp, levelUp: levels > 0, level: this.save.level,
       newUnlocks: newNames,
       generation: s.generation || 1, dynastyScore,
       canContinue: !!this._lineage, nextGen: this._lineage ? this._lineage.generation : 0,

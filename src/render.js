@@ -93,6 +93,7 @@ export class Renderer {
     this._fogNight = new THREE.Color(0x12172e); this._skyDay = new THREE.Color(0xffffff); this._skyNight = new THREE.Color(0x2a3566);
     this._fogDay = new THREE.Color(0xffffff); this._baseSun = 1; this._baseAmb = 1; this._sunAz = 0;
     this.biteRing = null; this.shock = null; this._biteFlash = 0; this._biteR = 2.5; this._lunge = 0;
+    this.lureLight = null; this.femaleLight = null; this._dark = false;
 
     this.camPos = new THREE.Vector3(0, 18, -14);
     this.camLook = new THREE.Vector3();
@@ -126,6 +127,9 @@ export class Renderer {
     this.healthBars.forEach(h => { this.scene.remove(h); h.traverse(o => { if (o.geometry) o.geometry.dispose(); }); }); this.healthBars = [];
     if (this.biteRing) { this.scene.remove(this.biteRing); this.biteRing.geometry.dispose(); this.biteRing = null; }
     if (this.shock) { this.scene.remove(this.shock); this.shock.geometry.dispose(); this.shock = null; }
+    if (this.lureLight) { this.scene.remove(this.lureLight); this.lureLight = null; }
+    if (this.femaleLight) { this.scene.remove(this.femaleLight); this.femaleLight = null; }
+    this._dark = false;
     clear(this.mateMesh); this.mateMesh = null;
     if (this.nestMesh) { this.dyn.remove(this.nestMesh); this.nestMesh = null; }
     if (this.beacon) { this.scene.remove(this.beacon); this.beacon = null; }
@@ -143,6 +147,18 @@ export class Renderer {
     this.sun.color.set(b.sun); this.sun.intensity = b.sunInt;
     this.scene.fog = new THREE.FogExp2(b.fog, b.fogDensity);
     this.biome = b; this._baseSun = b.sunInt; this._baseAmb = b.ambInt; this._fogDay.set(b.fog);
+
+    // anglerfish: the crushing dark. Kill the lights, thicken the fog to black,
+    // and give the player a bioluminescent lure + the female a distant glow.
+    this._dark = !!state.dark;
+    if (this._dark) {
+      this.hemi.intensity = 0.05; this.sun.intensity = 0.04; this.fill.intensity = 0.0;
+      this.scene.fog = new THREE.FogExp2(0x02040a, 0.05);
+      this.lureLight = new THREE.PointLight(0x9ffcff, 2.2, C.angler.lureRadius * 2.6, 1.6);
+      this.scene.add(this.lureLight);
+      this.femaleLight = new THREE.PointLight(0xbfeaff, 1.6, 30, 1.4);
+      this.scene.add(this.femaleLight);
+    }
 
     this.swimY = b.water ? 0.7 : 0;
 
@@ -358,8 +374,9 @@ export class Renderer {
     // --- infinite world: follow ground/sky, wrap props, bite ring ---
     this._followWorld(state, dt);
 
-    // --- day / night cycle ---
+    // --- day / night cycle (or abyssal dark for the anglerfish) ---
     this._applyDayNight(state);
+    this._syncDark(state, time);
 
     // --- camera + light follow ---
     this._placeCamera(state, false);
@@ -401,7 +418,16 @@ export class Renderer {
     }
   }
 
+  // the player's lure follows them; the female's glow marks her in the black
+  _syncDark(state, time) {
+    if (!this._dark) return;
+    const P = state.player, y = (this.swimY || 0) + 1.1;
+    if (this.lureLight) { this.lureLight.position.set(P.x, y, P.z); this.lureLight.intensity = 2.0 + Math.sin(time * 3) * 0.4; }
+    if (this.femaleLight && state.female) { this.femaleLight.position.set(state.female.x, y, state.female.z); this.femaleLight.intensity = (state.fused ? 3.6 : 1.7) + Math.sin(time * 2) * 0.3; }
+  }
+
   _applyDayNight(state) {
+    if (this._dark) return;                 // the abyss stays black; _syncDark drives the glow
     const L = state.light != null ? state.light : 1;
     this.sun.intensity = this._baseSun * (0.2 + 0.8 * L);
     this.hemi.intensity = this._baseAmb * (0.32 + 0.68 * L);
@@ -543,12 +569,13 @@ export class Renderer {
         this.scene.add(this.beacon);
       }
       if (this.mateMesh) {
+        const fscale = (state.mate && state.mate.isFemale) ? 2.6 : 1;   // the female anglerfish dwarfs the male
         this.mateMesh.position.set(target.x, this.swimY, target.z);
-        this.mateMesh.scale.setScalar(state.species.baseScale * C.life.stageScale.adult);
+        this.mateMesh.scale.setScalar(state.species.baseScale * C.life.stageScale.adult * fscale);
         animateCreature(this.mateMesh, dt, time + 1.3, { dt, time, speed: 0, moving: false });
       }
       if (this.nestMesh) this.nestMesh.position.set(target.x, 0, target.z);
-      this.beacon.visible = true;
+      this.beacon.visible = !this._dark;       // no free beacon in the dark — hunt her glow
       this.beacon.position.set(target.x, this.swimY + 1.6 + Math.sin(time * 3) * 0.2, target.z);
       this.beacon.rotation.y = time * 1.5;
     } else if (this.beacon) {
