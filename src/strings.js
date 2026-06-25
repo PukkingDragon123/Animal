@@ -74,6 +74,9 @@ export const STR = {
     again: 'LIVE AGAIN',
     evolve: 'EVOLVE',
     menu: 'MENU',
+    continueHeir: 'CONTINUE AS YOUR YOUNG',
+    dynasty: 'Dynasty score',
+    generation: 'Generation',
   },
 
   // funny documentary quips shown during play / on events
@@ -90,6 +93,12 @@ export const STR = {
     burrow: ['Safe. Cramped, but safe.'],
     twig: ['A twig! Only a few more for the nest.'],
     nestBuilt: ['Nest built. Now make it worthwhile.'],
+    killed: ['Predator down. Today, YOU are the apex.', 'It started this. You finished it.', 'One fewer thing trying to eat you.'],
+    den: ['Underground and out of sight. Cozy.', 'Let them search. You are not home.'],
+    mud: ['Caked in mud — you basically smell like dirt now.', 'Scent masked. Sneaky little thing.'],
+    ambush: ['AMBUSH! Where did THAT come from?!', 'Surprise! Everything still wants you dead.'],
+    gift: ['A gift offered. Romance, animal-style.', 'Nothing wins hearts like a free snack.'],
+    dynasty: ['The bloodline continues. No pressure.', 'You ARE your descendants now. Keep it going!'],
   },
 
   // one-time contextual tutorial hints (💡)
@@ -101,10 +110,12 @@ export const STR = {
     grow: 'You grew up! Follow the glowing beacon to reproduce.',
     fruitTree: 'Bump a fruit tree to shake down a snack.',
     mushroom: 'Munch a mushroom for a quick speed buzz.',
-    burrow: 'Dive into a burrow to hide from predators.',
+    burrow: 'Tap ⚔ at a burrow to dive in — a safe den that heals you. Move to pop out.',
     twigs: 'Collect twigs, then reach the nest spot to build it.',
     hive: 'Careful — beehives sting anyone who is not a bee!',
     cold: 'Stand in the warm glow so you do not freeze.',
+    mud: 'Wallow in a mud puddle to mask your scent — predators lose your trail.',
+    mate: 'Tap ⚔ near a mate to offer a gift and win them over before reproducing.',
   },
 
   // controls hint (first run)

@@ -37,6 +37,11 @@
   .need .bar{flex:1;height:13px;background:rgba(0,0,0,.22);border-radius:9px;overflow:hidden;box-shadow:inset 0 1px 2px rgba(0,0,0,.25);}
   .need .fill{height:100%;width:100%;border-radius:9px;transition:width .15s linear,background .3s;}
   #fillEnergy{background:#6fc7ff;}
+  .iconrow{display:flex;gap:1px;flex-wrap:wrap;max-width:230px;filter:drop-shadow(0 2px 3px rgba(0,0,0,.45));}
+  .iconrow span{font-size:15px;line-height:1.1;transition:opacity .12s,transform .12s;}
+  .iconrow span.off{opacity:.22;filter:grayscale(1) brightness(.7);}
+  .chips{display:flex;gap:6px;align-items:center;flex-wrap:wrap;}
+  .genChip{background:linear-gradient(180deg,#c7a6ff,#9a6bff);color:#fff;font-weight:800;padding:4px 10px;border-radius:12px;font-size:12px;box-shadow:var(--shadow);}
   .topright{position:absolute;top:30px;right:12px;display:flex;align-items:center;gap:8px;}
   .dna{background:var(--cream-t);font-weight:800;padding:6px 12px;border-radius:14px;box-shadow:var(--shadow);font-size:15px;}
   .clock{background:var(--cream-t);border-radius:14px;padding:5px 9px;font-size:16px;box-shadow:var(--shadow);}
@@ -164,6 +169,7 @@
   .evoMini{font-size:11px;color:#7c3ae0;font-weight:800;margin-bottom:8px;}
   .cardBtns{display:flex;gap:8px;} .cardBtns .btn{flex:1;margin:0;}
   .btn.evo{background:linear-gradient(180deg,#b07bff,#7c3ae0);}
+  .btn.heir{background:linear-gradient(180deg,#ffa6d2,#ff5fa2);color:#fff;}
 
   /* evolution lab */
   .evoTop{display:flex;justify-content:center;gap:12px;font-weight:800;margin:4px 0 10px;flex-wrap:wrap;}
@@ -206,10 +212,11 @@
     <div class="lifebar-wrap"><div class="fill" id="fillLife"></div></div>
     <div id="stageLabel">Baby</div>
     <div class="needs">
-      <div class="need"><span class="lbl">Food</span><div class="bar"><div class="fill" id="fillHunger"></div></div></div>
-      <div class="need"><span class="lbl">Energy</span><div class="bar"><div class="fill" id="fillEnergy"></div></div></div>
+      <div class="iconrow" id="hearts"></div>
+      <div class="iconrow" id="foodRow"></div>
+      <div class="need"><span class="lbl">Stamina</span><div class="bar"><div class="fill" id="fillEnergy"></div></div></div>
       <div class="need" id="barWarmthWrap" style="display:none"><span class="lbl">Warmth</span><div class="bar"><div class="fill" id="fillWarmth"></div></div></div>
-      <div class="dietChip" id="dietChip"></div>
+      <div class="chips"><div class="dietChip" id="dietChip"></div><div class="genChip" id="genChip" style="display:none"></div></div>
     </div>
     <div class="topright">
       <div class="scoreChip" id="score">★ 0</div>

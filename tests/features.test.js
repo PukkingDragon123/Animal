@@ -182,5 +182,88 @@ console.log('feature tests');
   ok('infinite: no wall — player roams past the old radius', Math.hypot(s.player.x, s.player.z) > C.world.radius);
 }
 
+// combat: a bitten predator takes damage and can be killed (apex moment)
+{
+  const s = createRun({ speciesId: 'rabbit', seed: 31 });
+  const pr = s.predators[0]; pr.domain = 'any'; pr.x = s.player.x + 1.2; pr.z = s.player.z;
+  pr.health = C.predator.biteDamage;                  // one clean bite finishes it
+  const k0 = s.kills, sc0 = s.score;
+  step(s, { mx: 0, mz: 0, attack: true }, DT);
+  ok('kill: a bite kills a weakened predator', s.kills > k0);
+  ok('kill: awards the kill score', s.score >= sc0 + C.arcade.scoreKill);
+  ok('kill: emits a killed event', s.events.some(e => e.t === 'killed'));
+}
+
+// combat: a healthy predator only loses health from one bite (not one-shot)
+{
+  const s = createRun({ speciesId: 'rabbit', seed: 32 });
+  const pr = s.predators[0]; pr.domain = 'any'; pr.x = s.player.x + 1.2; pr.z = s.player.z;
+  pr.health = pr.maxHealth = C.predator.health;
+  step(s, { mx: 0, mz: 0, attack: true }, DT);
+  ok('combat: predator wounded but not dead', pr.health < C.predator.health && pr.health > 0);
+  ok('combat: predator shows a hurt flash', pr.hurt > 0);
+}
+
+// courtship: a mate must be wooed (court ≥ 1) before reproducing
+{
+  const s = createRun({ speciesId: 'rabbit', seed: 41 });
+  s.time = s.lifespan * 0.45; step(s, { mx: 0, mz: 0 }, DT);     // grow to adult → mate appears
+  ok('court: a mate is placed at adulthood', !!s.mate);
+  const farPreds = () => s.predators.forEach(p => { p.x = s.player.x + 200; p.z = s.player.z + 200; p.aggro = false; });
+  farPreds();
+  // near + fed but not yet courted → reproduction is gated
+  s.player.x = s.mate.x; s.player.z = s.mate.z; s.stats.hunger = 95; s.reproduceCooldown = 0; s.mate.court = 0;
+  step(s, { mx: 0, mz: 0 }, DT);
+  ok('court: reproduction gated until courted', s.reproduced === false);
+  // offering a gift (attack near the mate) raises courtship
+  const c0 = s.mate.court || 0;
+  farPreds(); s.player.x = s.mate.x; s.player.z = s.mate.z; s.stats.hunger = 95;
+  step(s, { mx: 0, mz: 0, attack: true }, DT);
+  ok('court: a gift raises courtship', (s.mate.court || 0) > c0);
+  ok('court: emits a gift event', s.events.some(e => e.t === 'gift'));
+  // fully courted → reproduces, and the brief mating window opens
+  farPreds(); s.mate.court = 1; s.stats.hunger = 95; s.reproduceCooldown = 0; s.player.x = s.mate.x; s.player.z = s.mate.z;
+  step(s, { mx: 0, mz: 0 }, DT);
+  ok('court: reproduces once fully courted', s.reproduced === true && s.offspring >= 1);
+  ok('court: opens a mating animation window', s.matingTimer > 0);
+}
+
+// dynasty: a continued offspring run carries generation + accumulated score,
+// and the inherited bloodline bonus makes it a touch hardier than gen 1
+{
+  const s = createRun({ speciesId: 'rabbit', seed: 61, generation: 3, lineageScore: 500 });
+  ok('lineage: generation carried into the run', s.generation === 3);
+  ok('lineage: dynasty score carried into the run', s.lineageScore === 500);
+}
+
+// mud: wallowing masks your scent so predators lose the trail
+{
+  const s = createRun({ speciesId: 'rabbit', seed: 71 });
+  const mud = find(s, 'mud');
+  ok('mud: a puddle exists in a land biome', !!mud);
+  s.player.x = mud.x; s.player.z = mud.z; s.scent = 1; s.scentMask = 0;
+  step(s, { mx: 0, mz: 0 }, DT);
+  ok('mud: wallowing masks scent', s.scentMask > 0);
+  ok('mud: emits a mud event', s.events.some(e => e.t === 'mud'));
+  s.player.x = mud.x; s.player.z = mud.z;
+  step(s, { mx: 0, mz: 0 }, DT);
+  ok('mud: scent decays while masked', s.scent < 1);
+}
+
+// burrow home: attack to dive in (a healing den); moving pops you back out
+{
+  const s = createRun({ speciesId: 'rabbit', seed: 81 });
+  const b = find(s, 'burrow');
+  s.player.x = b.x; s.player.z = b.z; s.stats.health = 40;
+  step(s, { mx: 0, mz: 0, attack: true }, DT);
+  ok('den: attacking at a burrow dives in', s.inBurrow === true);
+  ok('den: emits a denEnter event', s.events.some(e => e.t === 'denEnter'));
+  const h1 = s.stats.health;
+  step(s, { mx: 0, mz: 0 }, DT);                     // rest underground → heal
+  ok('den: denning heals you', s.stats.health > h1);
+  step(s, { mx: 1, mz: 0 }, DT);                     // any movement pops you out
+  ok('den: moving exits the den', s.inBurrow === false);
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

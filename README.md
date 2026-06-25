@@ -26,7 +26,7 @@ python3 -m http.server 8080
 Or play it instantly from the branch (served via raw.githack.com, which sends
 the correct MIME types for ES modules):
 
-**https://raw.githack.com/PukkingDragon123/Animal/claude/inspiring-wright-5xmrsu/index.html?v=6**
+**https://raw.githack.com/PukkingDragon123/Animal/claude/inspiring-wright-5xmrsu/index.html?v=7**
 
 Open the URL on a phone or desktop. (ES modules need a real server — opening
 `index.html` from `file://` won't work.)
@@ -126,6 +126,46 @@ predators caught in it.
 - **Emergent food web** — ambient critters flee not just you but nearby
   predators, who actually catch them — so the world hunts itself, not only you.
 
+## Dynasty: keep the bloodline going
+
+Death isn't the end of the run — it's a hand-off. Once you've left **offspring**
+behind, the death screen offers **"Continue as your young"**: you respawn as one
+of your newborns (**Generation N+1**), inheriting your evolved look with a fresh
+roll of mutations and a small **bloodline bonus** that toughens the line each
+generation. Your **dynasty score** accumulates across the whole lineage — *see
+how long you can keep it going.* Newborns also **trail you in a little conga
+line** so you can watch your young grow.
+
+## Interactions, gimmicks & survival tricks
+
+- **Win a mate** — wild mates behave like you and have to be impressed. Get close
+  while well-fed to woo them, or tap **⚔ near a mate to offer a gift** and fill
+  their heart faster. Reproduction is **gated on courtship**, then plays a brief
+  **mating animation** (bouncing pair + floating hearts) before the birth.
+- **Burrow home** — tap **⚔ at a burrow to dive underground** into a safe den
+  that **heals you** while predators lose your trail; any movement pops you back
+  out.
+- **Mud wallows** — roll through a **mud puddle to mask your scent**, so
+  predators can barely smell you for a few seconds (scent feeds their detection
+  alongside movement and daylight).
+- **Killable predators** — the AoE bite now **damages enemies and can kill them**
+  outright (with a gory finish and a kill score), so you can finally fight back
+  and *become* the apex.
+- **Unexpected ambushes** — every so often a predator **streams in already
+  hunting**, so the endless world keeps you honest.
+- **Attack is contextual** — the same **⚔** dives into burrows, offers mating
+  gifts, shakes fruit trees, lunges at prey, and bites predators depending on
+  what's in range.
+
+## HUD: Minecraft-style vitals
+
+The in-play overlay reads at a glance, console-game style: a row of **❤️ hearts**
+for health and a row of **🍗 drumsticks** for food (each ticking off as you take
+damage or get hungry), plus a **stamina** bar for sprinting and a **warmth** bar
+for cold biomes. **Enemies show their own health bars** above their heads
+(camera-facing, color-shifting green→red) once they're wounded or hunting, and a
+**⚭ Gen** chip shows your current dynasty generation.
+
 ## Project layout
 
 ```
@@ -163,10 +203,13 @@ npm test
 
 - `tests/sim.test.js` — simulation: stages, eating, reproduction, death,
   determinism, every species boots.
+- `tests/features.test.js` — systems: interactables, nest building, quests,
+  combat/killable predators, courtship-gated mating, dynasty lineage, mud
+  scent-masking, burrow denning, AoE bite, infinite-world streaming.
 - `tests/build.test.js` — every creature/food/prop/biome builds and animates
   without NaNs (runs Three.js geometry in Node — no GL context needed).
-- `tests/dom.test.js` — menus, screens, button wiring and input command object
-  (jsdom).
+- `tests/dom.test.js` — menus, screens, button wiring, the Minecraft-style
+  vitals HUD and input command object (jsdom).
 
 ## Performance
 

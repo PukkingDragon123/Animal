@@ -72,6 +72,7 @@ export const CONFIG = {
     contactRadius: 0.9,
     babyAggroMult: 0.45,          // predators mostly ignore tiny babies
     escalation: 0.10,             // mild speed-up as you age
+    health: 30, biteDamage: 16,   // predators can be fought off and killed
   },
 
   prey: {                          // for hunter species (fox/shark)
@@ -127,8 +128,19 @@ export const CONFIG = {
   arcade: {
     comboWindow: 2.6,             // seconds to chain an eat into a combo
     comboMax: 12,
-    scoreFood: 10, scorePrey: 25, scoreCritter: 6,
+    scoreFood: 10, scorePrey: 25, scoreCritter: 6, scoreKill: 60,
     biteBase: 2.4,               // AoE bite radius (before size scaling)
+  },
+
+  mech: {
+    mudMaskSec: 5,               // scent stays masked this long after a mud wallow
+    mudDetectMul: 0.28,          // predators barely smell a muddy animal
+    mudCount: 3,
+    courtFillPerSec: 0.45,       // courting a fed mate fills its heart this fast
+    courtGift: 0.55,             // an offered gift (attack near mate) jumps it
+    burrowHealPerSec: 16,        // denning in a burrow heals you
+    maxBabies: 4,                // visible newborn followers
+    ambushChance: 0.04,          // per second, an unexpected predator streams in
   },
 };
 

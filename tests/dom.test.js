@@ -25,7 +25,7 @@ console.log('dom tests');
 
 const calls = {};
 const handlers = {};
-for (const k of ['onPick', 'onUnlock', 'onBegin', 'onAgain', 'onMenu', 'onResume', 'onPause', 'onToggleMute', 'setSprint', 'setAttack', 'onEvolve', 'onUnlockSkill'])
+for (const k of ['onPick', 'onUnlock', 'onBegin', 'onAgain', 'onContinue', 'onMenu', 'onResume', 'onPause', 'onToggleMute', 'setSprint', 'setAttack', 'onEvolve', 'onUnlockSkill'])
   handlers[k] = (...a) => { calls[k] = (calls[k] || 0) + 1; calls[k + '_arg'] = a[0]; return k === 'onUnlockSkill'; };
 
 let hud;
@@ -68,12 +68,15 @@ ok('birth: begin → onBegin', calls.onBegin === 1);
 // in-play HUD updates
 hud.showHud(true);
 ok('hud: shown', $('hud').classList.contains('show'));
-hud.setNeeds(80, 40, 33, null);
-ok('hud: hunger width set', $('fillHunger').style.width === '80%');
+hud.setVitals(80, 40, 33, 50, null);
+ok('hud: 8 hearts lit at 80% health', $('hearts').querySelectorAll('span:not(.off)').length === 8);
+ok('hud: 4 drumsticks lit at 40% food', $('foodRow').querySelectorAll('span:not(.off)').length === 4);
+ok('hud: stamina width set', $('fillEnergy').style.width === '33%');
+ok('hud: life width set', $('fillLife').style.width === '50%');
 ok('hud: warmth hidden when null', $('barWarmthWrap').style.display === 'none');
-hud.setNeeds(20, 10, 90, 25);
+hud.setVitals(20, 10, 90, 25, 15);
+ok('hud: 2 hearts lit at 20% health', $('hearts').querySelectorAll('span:not(.off)').length === 2);
 ok('hud: warmth shown for cold', $('barWarmthWrap').style.display === 'flex');
-ok('hud: low hunger turns red', $('fillHunger').style.background.includes('255') || $('fillHunger').style.background.includes('#ff'));
 hud.setObjective('Find food'); ok('hud: objective text', $('objective').textContent === 'Find food');
 hud.setDna(123); ok('hud: dna text', $('dnaVal').textContent === '123');
 hud.setStage('adult'); ok('hud: stage text', $('stageLabel').textContent === 'Adult');
@@ -97,14 +100,20 @@ ok('evo: click → onUnlockSkill', calls.onUnlockSkill >= 1);
 $('btnBack').click(); ok('evo: back → menu', !!$('btnPlay'));
 
 // death screen with rewards
-hud.death({ success: true, cause: 'oldAge', speciesId: 'rabbit', lived: 'Elder · 100%', meals: 12, offspring: 3, dna: 240, genes: 18, exp: 40, levelUp: true, level: 3, newUnlocks: ['Bee'] });
+hud.death({ success: true, cause: 'oldAge', speciesId: 'rabbit', lived: 'Elder · 100%', meals: 12, offspring: 3, dna: 240, score: 800, genes: 18, exp: 40, levelUp: true, level: 3, newUnlocks: ['Bee'], generation: 2, dynastyScore: 1500, canContinue: true, nextGen: 3 });
 ok('death: shows DNA', /240/.test($('screen').textContent));
 ok('death: shows genes reward', /18/.test($('screen').textContent));
 ok('death: level-up banner', /LEVEL UP/.test($('screen').textContent));
+ok('death: shows dynasty score', /1500/.test($('screen').textContent));
+ok('death: continue-as-young button', !!$('btnContinue'));
+$('btnContinue').click(); ok('death: continue → onContinue', calls.onContinue === 1);
 ok('death: evolve button', !!$('btnEvolveD'));
 $('btnEvolveD').click(); ok('death: evolve → onEvolve', calls.onEvolve >= 1);
 ok('death: again button', !!$('btnAgain'));
 $('btnAgain').click(); ok('death: again → onAgain', calls.onAgain === 1);
+// a gen-1 death (no offspring) hides the continue button
+hud.death({ success: false, cause: 'predator', speciesId: 'rabbit', lived: 'Baby · 5%', meals: 0, offspring: 0, dna: 5, score: 0, genes: 1, exp: 2, levelUp: false, level: 1, newUnlocks: [], generation: 1, dynastyScore: 0, canContinue: false, nextGen: 0 });
+ok('death: no continue button without offspring', !$('btnContinue'));
 
 // pause
 hud.pause(); $('btnResume').click(); ok('pause: resume → onResume', calls.onResume === 1);

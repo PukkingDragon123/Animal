@@ -18,14 +18,17 @@ export class Hud {
     this.h = handlers;            // { onPick, onUnlock, onBegin, onAgain, onMenu, onResume, onToggleMute }
     this.els = {
       hud: $('hud'), obj: $('objective'), dna: $('dnaVal'), stage: $('stageLabel'), clock: $('clock'),
-      score: $('score'), combo: $('combo'),
-      hunger: $('fillHunger'), energy: $('fillEnergy'), life: $('fillLife'),
+      score: $('score'), combo: $('combo'), genChip: $('genChip'),
+      hearts: $('hearts'), foodRow: $('foodRow'), energy: $('fillEnergy'), life: $('fillLife'),
       warmthWrap: $('barWarmthWrap'), warmth: $('fillWarmth'),
       quip: $('quip'), vignette: $('vignette'), dietChip: $('dietChip'), tut: $('tut'),
       joystick: $('joystick'), knob: $('joyKnob'), run: $('runbtn'), atk: $('atkbtn'),
       screen: $('screen'), pauseBtn: $('pauseBtn'),
     };
     this._quipTimer = null; this._tutTimer = null; this.preview = null;
+    const mk = (el, n, ch) => { const a = []; if (el) { el.innerHTML = ''; for (let i = 0; i < n; i++) { const s = document.createElement('span'); s.textContent = ch; el.appendChild(s); a.push(s); } } return a; };
+    this._hearts = mk(this.els.hearts, 10, '❤️');
+    this._food = mk(this.els.foodRow, 10, '🍗');
     this._wireStatic();
   }
 
@@ -70,16 +73,20 @@ export class Hud {
 
   _disposePreview() { if (this.preview) { this.preview.dispose(); this.preview = null; } }
 
-  setNeeds(hungerPct, energyPct, lifePct, warmthPct) {
-    if (this.els.hunger) this.els.hunger.style.width = Math.max(0, hungerPct) + '%';
+  // Minecraft-style vitals: hearts (health), drumsticks (food), stamina bar (energy)
+  setVitals(healthPct, hungerPct, energyPct, lifePct, warmthPct) {
+    const hf = Math.round(Math.max(0, healthPct) / 10), ff = Math.round(Math.max(0, hungerPct) / 10);
+    for (let i = 0; i < this._hearts.length; i++) this._hearts[i].classList.toggle('off', i >= hf);
+    for (let i = 0; i < this._food.length; i++) this._food[i].classList.toggle('off', i >= ff);
     if (this.els.energy) this.els.energy.style.width = Math.max(0, energyPct) + '%';
     if (this.els.life) this.els.life.style.width = Math.max(0, Math.min(100, lifePct)) + '%';
-    if (this.els.hunger) this.els.hunger.style.background = hungerPct < 25 ? '#ff6b5e' : (hungerPct < 50 ? '#ffcf5e' : '#7fd66a');
     if (warmthPct != null && this.els.warmthWrap) {
       this.els.warmthWrap.style.display = 'flex';
       if (this.els.warmth) { this.els.warmth.style.width = Math.max(0, warmthPct) + '%'; this.els.warmth.style.background = warmthPct < 30 ? '#7fd0ff' : '#ffb84d'; }
     } else if (this.els.warmthWrap) this.els.warmthWrap.style.display = 'none';
   }
+
+  setGeneration(gen) { if (this.els.genChip) { if (gen > 1) { this.els.genChip.style.display = 'block'; this.els.genChip.textContent = '⚭ Gen ' + gen; } else this.els.genChip.style.display = 'none'; } }
 
   setVignette(danger) {
     if (this.els.vignette) this.els.vignette.style.opacity = Math.min(0.7, danger * 0.7);
@@ -234,16 +241,18 @@ export class Hud {
     $('btnBack').onclick = () => this.menu(save);
   }
 
-  birth(speciesId, mutationIds) {
+  birth(speciesId, mutationIds, gen = 1) {
     this._disposePreview();
     const sp = SPECIES[speciesId];
     const muts = mutationIds.length
       ? mutationIds.map(id => { const m = MUTATIONS[id]; return `<div class="mut ${m.good ? 'good' : 'bad'}"><b>${esc(m.name)}</b><span>${esc(m.desc)}</span></div>`; }).join('')
       : `<div class="mut neutral">${esc(STR.birth.noMut)}</div>`;
+    const genHtml = gen > 1 ? `<div class="levelup">⚭ ${STR.death.generation} ${gen} — the bloodline carries on, freshly mutated</div>` : '';
     this._screen(`
       <div class="panel birth">
         <div class="ptitle">${esc(STR.birth.youAre)} ${esc(sp.article)} <span class="hi">${esc(sp.name)}</span></div>
         <div class="latin">${esc(sp.latin || '')} · <span class="statusword s${esc((sp.status || '').replace(/\s/g, ''))}">${esc(sp.status || '')}</span></div>
+        ${genHtml}
         <div class="fact">“${esc(sp.facts[Math.floor(Math.random() * sp.facts.length)])}”</div>
         <div class="mutLabel">${esc(STR.birth.aMut)}</div>
         <div class="muts">${muts}</div>
@@ -267,18 +276,21 @@ export class Hud {
         <div class="rewards"><div class="rw">🧬 +${result.genes} ${STR.death.genesEarned}</div><div class="rw exp">✦ +${result.exp} ${STR.death.expEarned}</div></div>
         <div class="stats">
           <div class="dnaStat"><span>Score</span><b>★ ${result.score || 0}</b></div>
+          ${result.generation > 1 ? `<div class="dnaStat"><span>${STR.death.dynasty} · ${STR.death.generation} ${result.generation}</span><b>★ ${result.dynastyScore}</b></div>` : ''}
           <div><span>${STR.death.livedFor}</span><b>${esc(result.lived)}</b></div>
           <div><span>${STR.death.ate}</span><b>${result.meals}</b></div>
           <div><span>${STR.death.babies}</span><b>${result.offspring}</b></div>
           <div><span>${STR.death.dnaEarned}</span><b>🧬 ${result.dna}</b></div>
         </div>
         ${unlockHtml}
+        ${result.canContinue ? `<button class="btn big heir" id="btnContinue">⚭ ${STR.death.continueHeir} · ${STR.death.generation} ${result.nextGen}</button>` : ''}
         <div class="row">
           <button class="btn big" id="btnAgain">${STR.death.again}</button>
           <button class="btn big evo" id="btnEvolveD">${STR.death.evolve}</button>
         </div>
         <button class="btn ghost" id="btnMenu" style="margin-top:8px;width:100%">${STR.death.menu}</button>
       </div>`);
+    if (result.canContinue) $('btnContinue').onclick = () => this.h.onContinue?.();
     $('btnAgain').onclick = () => this.h.onAgain?.();
     $('btnEvolveD').onclick = () => this.h.onEvolve?.(result.speciesId);
     $('btnMenu').onclick = () => this.h.onMenu?.();

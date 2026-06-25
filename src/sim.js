@@ -42,7 +42,7 @@ function gainScore(state, base) {
 // ---------------------------------------------------------------------------
 // Run creation
 // ---------------------------------------------------------------------------
-export function createRun({ speciesId = 'rabbit', seed = 1, bonus = null, visuals = null }) {
+export function createRun({ speciesId = 'rabbit', seed = 1, bonus = null, visuals = null, generation = 1, lineageScore = 0 }) {
   const rng = makeRng(seed);
   const species = speciesOf(speciesId);
   const biome = biomeOf(species.biome);
@@ -98,6 +98,9 @@ export function createRun({ speciesId = 'rabbit', seed = 1, bonus = null, visual
 
     offspring: 0, meals: 0, dnaRun: 0, reproduced: false,
     score: 0, combo: 0, comboTimer: 0,
+    generation, lineageScore,
+    scent: 1, scentMask: 0, inBurrow: false, denTimer: 0, kills: 0,
+    matingTimer: 0, ambushTimer: 0,
     alive: true, cause: null, lastHurtBy: null,
     danger: 0,
     objective: 'grow',
@@ -149,7 +152,8 @@ function spawnPredator(state) {
   const domain = state.species.struggle === 'hatchling' ? 'beach' : 'any';
   return { id: nextId(), x: p.x, z: p.z, vx: 0, vz: 0, heading: state.rng.next() * TAU,
            build: state.species.predatorBuild || 'fox', state: 'wander', aggro: false,
-           giveUp: 0, retarget: 0, phase: state.rng.next() * TAU, domain, stun: 0 };
+           giveUp: 0, retarget: 0, phase: state.rng.next() * TAU, domain, stun: 0,
+           health: C.predator.health, maxHealth: C.predator.health, hurt: 0 };
 }
 
 // interactive forest objects: shake fruit trees, forage mushrooms, hide in
@@ -160,6 +164,7 @@ function spawnInteractables(state) {
     for (let i = 0; i < I.fruitTrees; i++) { const p = ringAround(state.rng, P.x, P.z, 7, S); state.interactables.push({ id: nextId(), type: 'fruitTree', x: p.x, z: p.z, cooldown: state.rng.range(0, 3), shake: 0 }); }
     for (let i = 0; i < I.mushrooms; i++) { const p = ringAround(state.rng, P.x, P.z, 5, S); state.interactables.push({ id: nextId(), type: 'mushroom', x: p.x, z: p.z, alive: true }); }
     for (let i = 0; i < I.burrows; i++) { const p = ringAround(state.rng, P.x, P.z, 6, S); state.interactables.push({ id: nextId(), type: 'burrow', x: p.x, z: p.z }); }
+    for (let i = 0; i < C.mech.mudCount; i++) { const p = ringAround(state.rng, P.x, P.z, 6, S); state.interactables.push({ id: nextId(), type: 'mud', x: p.x, z: p.z, r: 2.6 }); }
   }
   if (state.species.biome === 'meadow' || state.species.biome === 'forest') {
     for (let i = 0; i < I.hives; i++) { const p = ringAround(state.rng, P.x, P.z, 8, S); state.interactables.push({ id: nextId(), type: 'hive', x: p.x, z: p.z, cooldown: 0 }); }
@@ -297,7 +302,18 @@ export function step(state, input, dt) {
   if (state.invuln > 0) state.invuln -= dt;
   if (state.reproduceCooldown > 0) state.reproduceCooldown -= dt;
   if (state.boost > 0) state.boost -= dt;
+  if (state.matingTimer > 0) state.matingTimer -= dt;
   if (state.comboTimer > 0) { state.comboTimer -= dt; if (state.comboTimer <= 0) state.combo = 0; }
+
+  // scent — rises to full unless freshly muddied (masked → predators barely smell you)
+  if (state.scentMask > 0) { state.scentMask -= dt; state.scent = Math.max(C.mech.mudDetectMul, state.scent - dt * 0.8); }
+  else state.scent = Math.min(1, state.scent + dt * 0.5);
+
+  // denning in a burrow: heals you, and you pop out when you move
+  if (state.inBurrow) {
+    S.health = clamp(S.health + C.mech.burrowHealPerSec * dt, 0, C.needs.healthMax);
+    if (mlen > 0.15) { state.inBurrow = false; state.events.push({ t: 'denExit' }); }
+  }
 
   // water flag (ocean/river underwater, or turtle once in sea)
   state.inWater = !!state.biome.water && (sp.struggle !== 'hatchling' || state.reachedWater);
@@ -342,6 +358,16 @@ export function step(state, input, dt) {
 
   // 7) reproduction
   updateReproduction(state, dt);
+
+  // 7b) unexpected ambush — a predator streams in already hunting
+  state.ambushTimer -= dt;
+  if (state.species.predatorBuild && state.ambushTimer <= 0) {
+    state.ambushTimer = 1;
+    if (state.rng.chance(C.mech.ambushChance) && state.stage !== 'baby' && !state.inBurrow && state.predators.length < C.caps.entities) {
+      const pr = spawnPredator(state); const p = ringAround(state.rng, P.x, P.z, 9, 13); pr.x = p.x; pr.z = p.z; pr.aggro = true; pr.state = 'chase';
+      state.predators.push(pr); state.events.push({ t: 'ambush' }); state.events.push({ t: 'alert' });
+    }
+  }
 
   // 8) death checks
   if (S.health <= 0 && state.alive) die(state, state.lastHurtBy || 'starved');
@@ -430,9 +456,15 @@ function updateInteractables(state, dt) {
       case 'burrow':
         hidden = true;
         break;
+      case 'mud':
+        if (dist2(P.x, P.z, it.x, it.z) < (it.r || 2.6) * (it.r || 2.6)) {
+          if (state.scentMask <= 0) state.events.push({ t: 'mud', x: P.x, z: P.z });
+          state.scentMask = C.mech.mudMaskSec;
+        }
+        break;
     }
   }
-  state.hidden = hidden;
+  state.hidden = hidden || state.inBurrow;
 
   // stream interactables around the roaming player (infinite forest)
   for (const it of state.interactables) {
@@ -453,13 +485,32 @@ function updateInteractables(state, dt) {
   }
 }
 
-// AoE bite/chomp: eats everything edible in a circle, bonks predators, shakes trees
+// Context-sensitive ATTACK: dive into a burrow-home, court a mate, then an AoE
+// chomp that eats everything in the circle and damages/kills predators.
 function doAttack(state) {
   const P = state.player, sp = state.species;
   state.attackCooldown = 0.45;
+
+  // dive into / out of a nearby burrow (a safe den)
+  for (const it of state.interactables) {
+    if (it.type === 'burrow' && dist2(P.x, P.z, it.x, it.z) < 6.25) {
+      state.inBurrow = !state.inBurrow;
+      if (state.inBurrow) { P.x = it.x; P.z = it.z; }
+      state.events.push({ t: state.inBurrow ? 'denEnter' : 'denExit', x: it.x, z: it.z });
+      return;
+    }
+  }
+
   const range = C.arcade.biteBase + state.size * 0.7, r2 = range * range;
   state.events.push({ t: 'bite', x: P.x, z: P.z, r: range, heading: P.heading });
   let hits = 0;
+
+  // court a nearby mate by offering a gift (must be well fed)
+  if (state.mate && state.mate.active && state.stats.hunger >= C.reproduce.hungerGate &&
+      dist2(P.x, P.z, state.mate.x, state.mate.z) < (range + 1.6) * (range + 1.6)) {
+    state.mate.court = Math.min(1, (state.mate.court || 0) + C.mech.courtGift);
+    state.events.push({ t: 'gift', x: state.mate.x, z: state.mate.z }); hits++;
+  }
 
   if (sp.diet.kind === 'hunt') {
     for (const pr of state.prey) { if (pr.alive && dist2(P.x, P.z, pr.x, pr.z) < r2) { doEat(state, pr, true); hits++; } }
@@ -473,12 +524,19 @@ function doAttack(state) {
     const pts = gainScore(state, C.arcade.scoreFood);
     state.events.push({ t: 'eat', x: f.x, z: f.z, combo: state.combo, pts }); hits++;
   }
+  // damage predators in the circle; kill them when health runs out
   for (const pr of state.predators) {
     if (pr.domain === 'gone' || dist2(P.x, P.z, pr.x, pr.z) >= r2) continue;
     const d = Math.hypot(pr.x - P.x, pr.z - P.z) || 1;
-    pr.x += (pr.x - P.x) / d * 2.6; pr.z += (pr.z - P.z) / d * 2.6;
-    pr.stun = 1.3; pr.aggro = false; pr.giveUp = 0;
-    state.events.push({ t: 'blood', x: pr.x, z: pr.z }); hits++;
+    pr.x += (pr.x - P.x) / d * 2.3; pr.z += (pr.z - P.z) / d * 2.3; pr.stun = 1.1; pr.hurt = 0.5;
+    pr.health -= C.predator.biteDamage;
+    state.events.push({ t: 'blood', x: pr.x, z: pr.z });
+    if (pr.health <= 0) {
+      state.kills++; state.score += C.arcade.scoreKill;
+      state.events.push({ t: 'killed', x: pr.x, z: pr.z });
+      const np = spawnPredator(state); pr.x = np.x; pr.z = np.z; pr.health = pr.maxHealth; pr.aggro = false; pr.state = 'wander'; pr.stun = 0; pr.hurt = 0;
+    } else { pr.aggro = false; pr.giveUp = 0; }
+    hits++;
   }
   for (const it of state.interactables) {
     if (it.type !== 'fruitTree' || it.cooldown > 0 || state.fruits.length >= 40) continue;
@@ -507,6 +565,7 @@ function updatePredators(state, dt) {
   }
   const aggroR = C.predator.aggroRadius, loseR = C.predator.loseRadius;
   for (const pr of state.predators) {
+    if (pr.hurt > 0) pr.hurt -= dt;
     if (pr.domain === 'gone') { pr.x += pr.vx * dt * 0.2; continue; }
     if (pr.domain === 'beach' && state.reachedWater) continue;
     if (pr.stun > 0) { pr.stun -= dt; pr.vx *= 0.82; pr.vz *= 0.82; pr.x += pr.vx * dt; pr.z += pr.vz * dt; continue; }
@@ -515,7 +574,7 @@ function updatePredators(state, dt) {
     // detection: move/sprint makes you easy to spot; freezing hides you; calmer at night
     const moveDetect = 0.5 + 0.5 * Math.min(1.4, P.speed / C.move.baseSpeed);
     const dayDetect = 0.78 + 0.22 * state.light;
-    const effAggro = aggroR * (state.stage === 'baby' ? C.predator.babyAggroMult : 1) * moveDetect * dayDetect;
+    const effAggro = aggroR * (state.stage === 'baby' ? C.predator.babyAggroMult : 1) * moveDetect * dayDetect * state.scent;
 
     if (!pr.aggro && d < effAggro) { pr.aggro = true; pr.state = 'chase'; pr.giveUp = 0; state.events.push({ t: 'alert' }); state.events.push({ t: 'quip', key: 'chased' }); }
     if (pr.aggro) {
@@ -583,16 +642,20 @@ function updateReproduction(state, dt) {
   const target = state.mate || state.nest;
   if (!target || !target.active) return;
 
-  // a roaming mate drifts a little
+  // a roaming mate drifts a little, and is courted when you're near & well-fed
   if (state.mate) {
     state.mate.retarget -= dt;
     if (state.mate.retarget <= 0) { state.mate.dir = state.rng.next() * TAU; state.mate.retarget = 2 + state.rng.next() * 2; }
     state.mate.x += Math.sin(state.mate.dir || 0) * 1.1 * dt;
     state.mate.z += Math.cos(state.mate.dir || 0) * 1.1 * dt;
+    const cr = 3.0 + state.size;
+    if (state.stats.hunger >= C.reproduce.hungerGate && dist2(P.x, P.z, state.mate.x, state.mate.z) < cr * cr)
+      state.mate.court = Math.min(1, (state.mate.court || 0) + C.mech.courtFillPerSec * dt);
   }
 
   const reach = 2.0 + state.size * 0.6;
-  if (state.stats.hunger >= C.reproduce.hungerGate &&
+  const courted = state.mate ? (state.mate.court || 0) >= 1 : true;   // nest species don't court
+  if (courted && state.stats.hunger >= C.reproduce.hungerGate &&
       state.reproduceCooldown <= 0 &&
       dist2(P.x, P.z, target.x, target.z) < reach * reach) {
     const twins = state.mods.fertile && state.rng.chance(0.5);
@@ -600,6 +663,8 @@ function updateReproduction(state, dt) {
     state.offspring += n;
     state.dnaRun += C.dna.dnaPerOffspring * n;
     state.reproduced = true;
+    state.matingTimer = 1.4;                  // brief mating animation window
+    if (state.mate) state.mate.court = 0;     // reset courtship for the next one
     state.events.push({ t: 'birth', x: target.x, z: target.z, n });
     state.events.push({ t: 'quip', key: 'reproduced' });
     let cd = C.reproduce.nestCooldownSec;

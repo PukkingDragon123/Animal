@@ -90,7 +90,7 @@ for (const sp of Object.values(SPECIES)) {
 }
 
 // 7) interactive object meshes + twig pickup geometry
-for (const t of ['fruitTree', 'mushroom', 'hive', 'burrow']) {
+for (const t of ['fruitTree', 'mushroom', 'hive', 'burrow', 'mud']) {
   let g; try { g = buildInteractable(t); } catch (e) { console.error('  THROW interactable', t, e.message); fail++; continue; }
   ok(`interactable ${t}: group with meshes`, g && g.isGroup && g.children.length > 0);
 }

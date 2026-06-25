@@ -355,5 +355,12 @@ function burrowMesh() {
   return g;
 }
 
-const INTERACT = { fruitTree: fruitTreeMesh, mushroom: mushroomMesh, hive: hiveMesh, burrow: burrowMesh };
+function mudMesh() {
+  const g = new THREE.Group();
+  g.add(mesh(new THREE.CircleGeometry(2.4, 20), matte(0x5a4632, { flat: false, rough: 1 }), { rot: [-Math.PI / 2, 0, 0], pos: [0, 0.04, 0], cast: false }));
+  for (let i = 0; i < 4; i++) { const a = i * 1.6; g.add(mesh(SPH(0.2), matte(0x6e5740), { pos: [Math.cos(a) * 1.1, 0.08, Math.sin(a) * 1.1], scl: [1, 0.4, 1], cast: false })); }
+  return g;
+}
+
+const INTERACT = { fruitTree: fruitTreeMesh, mushroom: mushroomMesh, hive: hiveMesh, burrow: burrowMesh, mud: mudMesh };
 export function buildInteractable(type) { const f = INTERACT[type]; const g = f ? f() : new THREE.Group(); g.userData.itype = type; return g; }

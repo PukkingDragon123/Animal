@@ -36,6 +36,7 @@ class Game {
       onUnlock: (id) => this.unlock(id),
       onBegin: () => this.begin(),
       onAgain: () => this.startRun(this.state ? this.state.speciesId : null),
+      onContinue: () => this.continueAsOffspring(),
       onMenu: () => this.toMenu(),
       onResume: () => this.resume(),
       onPause: () => this.pause(),
@@ -93,19 +94,36 @@ class Game {
     this.hud.evolution(this.save, id || this.lastSpecies);
   }
 
-  startRun(speciesId) {
+  startRun(speciesId, lineage) {
     if (!speciesId) speciesId = pick(this.save.unlocked);
     if (!this.save.unlocked.includes(speciesId)) speciesId = 'rabbit';
     this.lastSpecies = speciesId;
+    const gen = (lineage && lineage.generation) || 1;
     const evo = applySkills(speciesSkills(this.save, speciesId));
-    this.state = createRun({ speciesId, seed: freshSeed(), bonus: evo.bonus, visuals: evo.visuals });
+    // dynasty: each surviving generation toughens the bloodline a little
+    const bonus = Object.assign({}, evo.bonus);
+    if (gen > 1) {
+      const g = gen - 1;
+      bonus.lifeMul = (bonus.lifeMul || 1) * (1 + 0.04 * g);
+      bonus.eatMul = (bonus.eatMul || 1) * (1 + 0.03 * g);
+      bonus.extraHits = (bonus.extraHits || 0) + Math.floor(g / 2);
+    }
+    this.state = createRun({ speciesId, seed: freshSeed(), bonus, visuals: evo.visuals, generation: gen, lineageScore: (lineage && lineage.lineageScore) || 0 });
     this.renderer.setupRun(this.state);
     this.foodColor = (this.state.species.diet.kind === 'graze') ? foodOf(this.state.species.diet.food).color : 0xffd23f;
     this.hud.setDiet(this.state.species.dietIcon, this.state.species.dietName);
     this.state.events.length = 0;            // consume the 'born' event after birth card
     this.mode = 'birth'; this.input.enabled = false;
     this.hud.showHud(false);
-    this.hud.birth(speciesId, this.state.mutationIds);
+    this.hud.birth(speciesId, this.state.mutationIds, gen);
+  }
+
+  // dynasty loop: when you've left young behind, carry on as your offspring —
+  // same species, a fresh roll of mutations, and an accumulating dynasty score.
+  continueAsOffspring() {
+    const ln = this._lineage; this._lineage = null;
+    if (!ln) { this.startRun(this.lastSpecies); return; }
+    this.startRun(ln.speciesId, { generation: ln.generation, lineageScore: ln.lineageScore });
   }
 
   begin() {
@@ -133,8 +151,10 @@ class Game {
       if ((it.x - P.x) ** 2 + (it.z - P.z) ** 2 > 25) continue;     // within ~5 units
       if (it.type === 'fruitTree') this._tut('fruitTree');
       else if (it.type === 'burrow') this._tut('burrow');
+      else if (it.type === 'mud') this._tut('mud');
       else if (it.type === 'hive' && s.species.build !== 'bee') this._tut('hive');
     }
+    if (s.mate && s.mate.active && (s.mate.x - P.x) ** 2 + (s.mate.z - P.z) ** 2 < 49) this._tut('mate');
   }
 
   pause() { if (this.mode !== 'playing') return; this.mode = 'paused'; this.input.enabled = false; this.hud.pause(); }
@@ -163,6 +183,12 @@ class Game {
         case 'blood': fx.blood(e.x, swimY + 0.5, e.z, e.big ? 16 : 9, !!e.big); break;
         case 'twig': fx.burst(e.x, swimY + 0.3, e.z, 0x9a6f44, 5, { up: 1.2, life: 0.5 }); this.audio.eat(); this.hud.showQuip(pick(STR.quips.twig)); break;
         case 'nestBuilt': fx.sparkleRing(e.x, swimY, e.z, 0xffe27a, 18); this.audio.success(); this.hud.showQuip(pick(STR.quips.nestBuilt)); break;
+        case 'killed': fx.blood(e.x, swimY + 0.5, e.z, 20, true); fx.sparkleRing(e.x, swimY, e.z, 0xffd23f, 12); this.audio.bonk(); this.audio.success(); this.hud.showQuip(pick(STR.quips.killed)); break;
+        case 'gift': fx.sparkleRing(e.x, swimY + 0.4, e.z, 0xff8fc0, 10); fx.burst(e.x, swimY + 0.7, e.z, 0xff5fa2, 5, { up: 1.6, life: 0.8, grav: -1 }); this.audio.grow(); this.hud.showQuip(pick(STR.quips.gift)); break;
+        case 'denEnter': fx.burst(e.x, swimY + 0.15, e.z, 0x8a6b4a, 12, { up: 1.0, speed: 1.8, life: 0.5, grav: 7 }); this.audio.swipe(); this.hud.showQuip(pick(STR.quips.den)); break;
+        case 'denExit': fx.burst(e.x, swimY + 0.15, e.z, 0x8a6b4a, 8, { up: 1.2, speed: 2.0, life: 0.45, grav: 7 }); this.audio.swipe(); break;
+        case 'mud': fx.burst(e.x, swimY + 0.1, e.z, 0x5a4632, 12, { up: 0.8, speed: 1.6, life: 0.6, grav: 8 }); this.audio.bonk(); this.hud.showQuip(pick(STR.quips.mud)); this._tut('mud'); break;
+        case 'ambush': this.hud.setVignette(0.7); this.hud.showQuip(pick(STR.quips.ambush)); break;
         case 'death': this._pendingDeath = { cause: e.cause, success: e.success }; break;
       }
     }
@@ -189,7 +215,8 @@ class Game {
   _hud() {
     const s = this.state, S = s.stats;
     const warmth = s.species.struggle === 'cold' ? s.warmth : null;
-    this.hud.setNeeds(S.hunger, S.energy, s.ageFrac * 100, warmth);
+    this.hud.setVitals(S.health, S.hunger, S.energy, s.ageFrac * 100, warmth);
+    this.hud.setGeneration(s.generation);
     this.hud.setObjective(STR.obj[s.objective] || STR.obj.survive);
     this.hud.setDna(liveDna(s));
     this.hud.setStage(s.stage);
@@ -219,6 +246,12 @@ class Game {
     const newNames = newly.map(id => speciesOf(id).name);
     save.save(this.save);
 
+    // dynasty: leaving young behind lets you carry on as your offspring
+    const dynastyScore = (s.lineageScore || 0) + (s.score || 0);
+    this._lineage = s.reproduced
+      ? { speciesId: s.speciesId, generation: (s.generation || 1) + 1, lineageScore: dynastyScore }
+      : null;
+
     this.mode = 'dead'; this.input.enabled = false; this.hud.showHud(false);
     this.hud.death({
       success: s.reproduced, cause: s.cause, speciesId: s.speciesId,
@@ -226,6 +259,8 @@ class Game {
       meals: s.meals, offspring: s.offspring, dna: earned, score: s.score || 0,
       genes: rw.genes, exp: rw.exp, levelUp: levels > 0, level: this.save.level,
       newUnlocks: newNames,
+      generation: s.generation || 1, dynastyScore,
+      canContinue: !!this._lineage, nextGen: this._lineage ? this._lineage.generation : 0,
     });
     if (s.reproduced || newly.length || levels) this.audio.success();
     this._pendingDeath = null; this.deathTimer = 0;

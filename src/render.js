@@ -89,6 +89,7 @@ export class Renderer {
     this.interactMeshes = []; this.fruitInst = null; this.twigInst = null; this.stepTimer = 0;
     this.ambient = null; this.ambData = null; this.ambKind = 'pollen';
     this.critters = [];
+    this.babies = []; this.healthBars = []; this._lastHeartTick = -1;
     this._fogNight = new THREE.Color(0x12172e); this._skyDay = new THREE.Color(0xffffff); this._skyNight = new THREE.Color(0x2a3566);
     this._fogDay = new THREE.Color(0xffffff); this._baseSun = 1; this._baseAmb = 1; this._sunAz = 0;
     this.biteRing = null; this.shock = null; this._biteFlash = 0; this._biteR = 2.5; this._lunge = 0;
@@ -121,6 +122,8 @@ export class Renderer {
     if (this.twigInst) { this.dyn.remove(this.twigInst); this.twigInst.geometry.dispose(); this.twigInst = null; }
     if (this.ambient) { this.scene.remove(this.ambient); this.ambient.geometry.dispose(); this.ambient.material.dispose(); this.ambient = null; this.ambData = null; }
     this.critters.forEach(c => clear(c.mesh)); this.critters = [];
+    this.babies.forEach(b => clear(b.mesh)); this.babies = [];
+    this.healthBars.forEach(h => { this.scene.remove(h); h.traverse(o => { if (o.geometry) o.geometry.dispose(); }); }); this.healthBars = [];
     if (this.biteRing) { this.scene.remove(this.biteRing); this.biteRing.geometry.dispose(); this.biteRing = null; }
     if (this.shock) { this.scene.remove(this.shock); this.shock.geometry.dispose(); this.shock = null; }
     clear(this.mateMesh); this.mateMesh = null;
@@ -253,7 +256,8 @@ export class Renderer {
     pm.scale.setScalar(Math.max(0.2, state.size));
     pm.rotation.y = P.heading;
     animateCreature(pm, dt, time, { dt, time, speed: P.speed, moving: P.moving });
-    pm.visible = !(state.invuln > 0 && Math.floor(time * 16) % 2 === 0);
+    // hide the player when denned underground in a burrow; blink during mercy frames
+    pm.visible = !state.inBurrow && !(state.invuln > 0 && Math.floor(time * 16) % 2 === 0);
     if (this._lunge > 0) { this._lunge -= dt; const k = Math.max(0, this._lunge / 0.22); pm.position.x += Math.sin(P.heading) * k * 0.7; pm.position.z += Math.cos(P.heading) * k * 0.7; pm.scale.multiplyScalar(1 + k * 0.14); }
 
     // footstep / wake puffs while moving
@@ -271,6 +275,7 @@ export class Renderer {
       m.userData.bsize = BUILD_SIZE[b] || 1; this.dyn.add(m);
       const ring = new THREE.Mesh(new THREE.RingGeometry(0.8, 1.1, 24), new THREE.MeshBasicMaterial({ color: 0xff3b30, transparent: true, opacity: 0.0, fog: false, side: THREE.DoubleSide }));
       ring.rotation.x = -Math.PI / 2; this.scene.add(ring); this.dangerRings.push(ring);
+      this.healthBars.push(this._makeHealthBar());
       return m;
     });
     for (let i = 0; i < state.predators.length; i++) {
@@ -279,6 +284,8 @@ export class Renderer {
       const baseY = fly ? 1.1 : (this.swimY);
       const moving = (Math.abs(e.vx) + Math.abs(e.vz)) > 0.4;
       this._syncCreature(m, e, baseY, m.userData.bsize, { dt, time, speed: Math.hypot(e.vx, e.vz), moving, diving: e.aggro && fly });
+      // hurt flash: a quick squash when freshly bitten
+      if (e.hurt > 0) m.scale.multiplyScalar(1 + Math.sin(e.hurt * 30) * 0.12);
       m.visible = e.domain !== 'gone';
       // danger ring
       const ring = this.dangerRings[i];
@@ -286,6 +293,8 @@ export class Renderer {
       const want = e.aggro ? 0.5 + Math.sin(time * 8) * 0.2 : 0;
       ring.material.opacity += (want - ring.material.opacity) * Math.min(1, dt * 8);
       const rs = e.aggro ? 1 + Math.sin(time * 8) * 0.08 : 1; ring.scale.setScalar(rs);
+      // enemy health bar (shows when damaged or hunting)
+      this._updateHealthBar(this.healthBars[i], e, baseY + 1.55 * m.userData.bsize + 0.7);
     }
 
     // --- prey ---
@@ -323,6 +332,10 @@ export class Renderer {
 
     // --- mate / nest + beacon ---
     this._syncRepro(state, dt, time);
+
+    // --- newborns trailing the player + the brief mating animation ---
+    this._syncBabies(state, dt, time);
+    this._syncMating(state, dt, time);
 
     // --- ambient particles ---
     if (this.ambient && this.ambData) {
@@ -437,6 +450,74 @@ export class Renderer {
       c.mesh.rotation.y = Math.atan2(c.vx, c.vz);
       const moving = Math.abs(c.vx) + Math.abs(c.vz) > 0.3;
       animateCreature(c.mesh, dt, time, { dt, time, speed: Math.hypot(c.vx, c.vz) * 3, moving, diving: false });
+    }
+  }
+
+  // a small camera-facing enemy health bar (dark track + colored fill)
+  _makeHealthBar() {
+    const g = new THREE.Group();
+    const bg = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 0.26), new THREE.MeshBasicMaterial({ color: 0x14110d, transparent: true, opacity: 0.78, fog: false, depthTest: false, side: THREE.DoubleSide }));
+    const fill = new THREE.Mesh(new THREE.PlaneGeometry(1.36, 0.16), new THREE.MeshBasicMaterial({ color: 0xff4030, fog: false, depthTest: false, side: THREE.DoubleSide }));
+    fill.position.z = 0.01; g.userData.fill = fill; g.userData.fw = 1.36;
+    g.add(bg); g.add(fill); g.visible = false; g.renderOrder = 20;
+    this.scene.add(g); return g;
+  }
+
+  _updateHealthBar(bar, e, y) {
+    if (!bar) return;
+    const frac = THREE.MathUtils.clamp((e.health != null ? e.health : e.maxHealth) / (e.maxHealth || 1), 0, 1);
+    const show = e.domain !== 'gone' && (e.aggro || frac < 0.999);
+    bar.visible = show;
+    if (!show) return;
+    bar.position.set(e.x, y, e.z);
+    bar.quaternion.copy(this.camera.quaternion);          // billboard toward camera
+    const fill = bar.userData.fill, w = bar.userData.fw;
+    fill.scale.x = Math.max(0.001, frac);
+    fill.position.x = -(w * (1 - frac)) / 2;               // deplete from the right
+    fill.material.color.setHex(frac > 0.5 ? 0x6ad24a : frac > 0.25 ? 0xffd23f : 0xff4030);
+  }
+
+  // newborns trail the player in a little conga line (dynasty: "see your young")
+  _syncBabies(state, dt, time) {
+    const cap = C.mech.maxBabies, want = Math.min(cap, state.offspring || 0), P = state.player;
+    while (this.babies.length < want) {
+      const m = buildCreature(state.species.build, state.species.colors, state.visuals);
+      const sc = Math.max(0.2, state.size) * 0.42;
+      m.scale.setScalar(sc);
+      const i = this.babies.length;
+      this.babies.push({ mesh: m, x: P.x, z: P.z, px: P.x, pz: P.z, heading: P.heading });
+      this.dyn.add(m);
+    }
+    for (let i = 0; i < this.babies.length; i++) {
+      const b = this.babies[i];
+      const back = 1.3 + i * 0.85;
+      const tx = P.x - Math.sin(P.heading) * back + Math.sin(time * 1.6 + i) * 0.45;
+      const tz = P.z - Math.cos(P.heading) * back + Math.cos(time * 1.3 + i * 1.7) * 0.45;
+      const k = Math.min(1, dt * 3.6);
+      b.x += (tx - b.x) * k; b.z += (tz - b.z) * k;
+      const dx = b.x - b.px, dz = b.z - b.pz; b.px = b.x; b.pz = b.z;
+      const moving = Math.hypot(dx, dz) > 0.004;
+      if (moving) b.heading = Math.atan2(dx, dz);
+      b.mesh.position.x = b.x; b.mesh.position.z = b.z;
+      b.mesh.userData.baseY = this.swimY;
+      b.mesh.rotation.y = b.heading;
+      b.mesh.visible = !state.inBurrow;
+      b.mesh.scale.setScalar(Math.max(0.2, state.size) * 0.42);
+      animateCreature(b.mesh, dt, time + i * 0.4, { dt, time, speed: 3.4, moving: true });
+    }
+  }
+
+  // brief mating animation: the pair bounce and pink hearts drift up between them
+  _syncMating(state, dt, time) {
+    if (!(state.matingTimer > 0)) return;
+    const P = state.player, pm = this.playerMesh;
+    if (pm) pm.scale.multiplyScalar(1 + Math.abs(Math.sin(time * 18)) * 0.07);
+    if (this.mateMesh && this.mateMesh.visible) this.mateMesh.scale.multiplyScalar(1 + Math.abs(Math.sin(time * 18 + 1.5)) * 0.07);
+    const tick = Math.floor(time * 12);
+    if (tick !== this._lastHeartTick) {
+      this._lastHeartTick = tick;
+      const m = state.mate, hx = m ? (P.x + m.x) / 2 : P.x, hz = m ? (P.z + m.z) / 2 : P.z;
+      this.fx.burst(hx, (this.swimY || 0) + 1.0, hz, 0xff5fa2, 3, { up: 1.6, speed: 0.7, life: 0.9, size: 0.85, grav: -1 });
     }
   }
 
