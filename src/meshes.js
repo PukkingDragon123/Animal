@@ -106,19 +106,19 @@ function fox(c) {
 function bee(c) {
   const g = new THREE.Group(); const parts = g.userData.parts = {};
   const body = new THREE.Group(); body.position.y = 0.6; g.add(body); parts.body = body;
-  body.add(mesh(SPH(0.34), matte(c.body), { scl: [1, 0.9, 1.25] }));
-  for (let i = -1; i <= 1; i++) body.add(mesh(CYL(0.31, 0.31, 0.12, 8), matte(c.accent), { pos: [0, 0, i * 0.16 - 0.05], rot: [Math.PI / 2, 0, 0], cast: false }));
-  const head = new THREE.Group(); head.position.set(0, 0, 0.38); body.add(head); parts.head = head;
-  head.add(mesh(SPH(0.22), matte(c.accent)));
-  eyes(g, head, 0xffffff, 0.07, 0.1, 0.17, 0.03);
-  for (const s of [-1, 1]) { const a = mesh(CYL(0.012, 0.012, 0.22, 4), matte(c.accent), { pos: [s * 0.08, 0.2, 0.05], rot: [0.3, 0, s * 0.3], cast: false }); a.add(mesh(SPH(0.04), matte(c.body), { pos: [0, 0.12, 0], cast: false })); head.add(a); }
-  body.add(mesh(CON(0.08, 0.2, 5), matte(c.accent), { pos: [0, 0, -0.42], rot: [-Math.PI / 2, 0, 0], cast: false }));
+  body.add(mesh(SPH(0.34), matte(c.body), { scl: [1, 0.9, 1.3] }));                                  // striped abdomen
+  for (let i = -1; i <= 1; i++) body.add(mesh(CYL(0.31, 0.31, 0.12, 8), matte(c.accent), { pos: [0, 0, i * 0.16 - 0.06], rot: [Math.PI / 2, 0, 0], cast: false }));
+  body.add(mesh(SPH(0.22), matte(0x6b5a2a), { pos: [0, 0.04, 0.18], scl: [1.15, 1.0, 0.85], cast: false }));   // fuzzy thorax
+  body.add(mesh(CON(0.08, 0.2, 5), matte(c.accent), { pos: [0, 0, -0.44], rot: [-Math.PI / 2, 0, 0], cast: false }));  // stinger
+  for (const s of [-1, 1]) body.add(mesh(SPH(0.09), matte(0xffcf3a), { pos: [s * 0.16, -0.16, -0.16], cast: false }));  // pollen baskets
+  const head = new THREE.Group(); head.position.set(0, 0.02, 0.4); body.add(head); parts.head = head;
+  head.add(mesh(SPH(0.2), matte(0x2b2520)));
+  for (const s of [-1, 1]) head.add(mesh(SPH(0.1), matte(0x14110f, { flat: false }), { pos: [s * 0.13, 0.03, 0.08], scl: [0.8, 1.2, 0.7], cast: false }));  // big dark compound eyes
+  for (const s of [-1, 1]) { const a = mesh(CYL(0.012, 0.012, 0.22, 4), matte(0x2b2520), { pos: [s * 0.08, 0.2, 0.06], rot: [0.3, 0, s * 0.3], cast: false }); a.add(mesh(SPH(0.04), matte(0x2b2520), { pos: [0, 0.12, 0], cast: false })); head.add(a); }
   parts.wings = [];
-  const wingMat = matte(0xeaf6ff, { opacity: 0.55, flat: false, rough: 0.4 });
-  for (const s of [-1, 1]) {
-    const w = mesh(SPH(0.26), wingMat, { pos: [s * 0.22, 0.16, 0.02], scl: [0.5, 0.08, 1.0], cast: false });
-    body.add(w); parts.wings.push(w);
-  }
+  const wingMat = matte(0xeaf6ff, { opacity: 0.5, flat: false, rough: 0.4 });
+  for (const s of [-1, 1]) { const w = mesh(SPH(0.26), wingMat, { pos: [s * 0.22, 0.18, 0.04], scl: [0.5, 0.08, 1.0], cast: false }); body.add(w); parts.wings.push(w); }
+  for (const s of [-1, 1]) { const h = mesh(SPH(0.18), wingMat, { pos: [s * 0.2, 0.14, -0.14], scl: [0.45, 0.07, 0.8], cast: false }); body.add(h); parts.wings.push(h); }  // hind wing pair
   parts.gait = 'fly'; return g;
 }
 
@@ -208,18 +208,21 @@ function shark(c) {
 }
 
 function bird(c) {
-  c = c || { body: 0x9a8c7a, belly: 0xeeeeee, accent: 0xd8b23a, eye: 0x141414 };
+  c = c || { body: 0xf2f3f5, belly: 0x9aa6b2, accent: 0xf0b53a, eye: 0x141414 };
   const g = new THREE.Group(); const parts = g.userData.parts = {};
-  const body = mesh(SPH(0.34), matte(c.body), { pos: [0, 0.5, 0], scl: [0.8, 0.8, 1.3] }); g.add(body);
-  g.add(mesh(CON(0.12, 0.3, 4), matte(c.body), { pos: [0, 0.5, -0.4], rot: [-Math.PI / 2, 0, 0], cast: false }));
+  const body = mesh(SPH(0.34), matte(c.body), { pos: [0, 0.5, 0], scl: [0.8, 0.8, 1.35] }); g.add(body);
+  g.add(mesh(SPH(0.3), matte(c.belly), { pos: [0, 0.6, -0.05], scl: [0.78, 0.5, 1.1], cast: false }));   // grey mantle/back
+  for (const s of [-1, 1]) g.add(mesh(CON(0.08, 0.34, 3), matte(c.body), { pos: [s * 0.08, 0.5, -0.42], rot: [-Math.PI / 2, 0, 0], cast: false }));   // forked tail
   const head = new THREE.Group(); head.position.set(0, 0.66, 0.34); g.add(head); parts.head = head;
   head.add(mesh(SPH(0.2), matte(c.body)));
-  head.add(mesh(CON(0.07, 0.2, 4), matte(c.accent || 0xd8b23a), { pos: [0, 0, 0.22], rot: [Math.PI / 2, 0, 0] }));
-  eyes(g, head, c.eye || 0x141414, 0.06, 0.1, 0.13, 0.05);
+  head.add(mesh(CON(0.06, 0.24, 4), matte(c.accent || 0xf0b53a), { pos: [0, -0.01, 0.24], rot: [Math.PI / 2, 0, 0] }));   // beak
+  head.add(mesh(SPH(0.035), matte(0xd83a2a), { pos: [0, -0.05, 0.32], cast: false }));   // gull's red bill spot
+  eyes(g, head, c.eye || 0x141414, 0.05, 0.1, 0.13, 0.06);
   parts.wings = [];
   for (const s of [-1, 1]) {
     const w = new THREE.Group(); w.position.set(s * 0.2, 0.55, 0);
-    w.add(mesh(BOX(0.6, 0.06, 0.34), matte(c.body), { pos: [s * 0.3, 0, 0] }));
+    w.add(mesh(BOX(0.62, 0.06, 0.34), matte(c.belly), { pos: [s * 0.3, 0, 0] }));                                  // grey wing
+    w.add(mesh(BOX(0.2, 0.06, 0.22), matte(0x2a2d33), { pos: [s * 0.62, 0, -0.04], cast: false }));                // black wingtip
     g.add(w); parts.wings.push(w);
   }
   parts.gait = 'flap'; parts.fly = true; return g;

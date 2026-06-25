@@ -19,7 +19,7 @@ const BUILD_SIZE = { rabbit: 0.9, fox: 1.05, bee: 0.7, penguin: 1.0, turtle: 1.0
 function predatorColors(build) {
   switch (build) {
     case 'fox': return { body: 0xe07a32, belly: 0xf3e2c8, accent: 0x7a2d20, eye: 0xd83a2a };
-    case 'bird': return { body: 0x8d8072, belly: 0xf0f0f0, accent: 0xcf4a2a, eye: 0xd83a2a };
+    case 'bird': return { body: 0xf2f3f5, belly: 0x9aa6b2, accent: 0xf0b53a, eye: 0xd83a2a };
     case 'seal': return { body: 0x7a8694, belly: 0xc9d3df, accent: 0x8a3b3b, eye: 0xd83a2a };
     case 'bear': return { body: 0x8a5a3c, belly: 0xa9774f, accent: 0x6e2f22, eye: 0xd83a2a };
     case 'fish': return { body: 0x6f93a8, belly: 0xdfe9ef, accent: 0x8a3b3b, eye: 0xd83a2a };
@@ -98,6 +98,7 @@ export class Renderer {
     this._fogDay = new THREE.Color(0xffffff); this._baseSun = 1; this._baseAmb = 1; this._sunAz = 0;
     this.biteRing = null; this.shock = null; this._biteFlash = 0; this._biteR = 2.5; this._lunge = 0;
     this.lureLight = null; this.femaleLight = null; this._dark = false;
+    this.water = null;
 
     this.camPos = new THREE.Vector3(0, 18, -14);
     this.camLook = new THREE.Vector3();
@@ -135,6 +136,7 @@ export class Renderer {
     if (this.shock) { this.scene.remove(this.shock); this.shock.geometry.dispose(); this.shock = null; }
     if (this.lureLight) { this.scene.remove(this.lureLight); this.lureLight = null; }
     if (this.femaleLight) { this.scene.remove(this.femaleLight); this.femaleLight = null; }
+    if (this.water) { this.scene.remove(this.water); this.water.geometry.dispose(); this.water.material.dispose(); this.water = null; }
     this._dark = false;
     clear(this.mateMesh); this.mateMesh = null;
     if (this.nestMesh) { this.dyn.remove(this.nestMesh); this.nestMesh = null; }
@@ -168,6 +170,16 @@ export class Renderer {
     }
 
     this.swimY = b.water ? 0.7 : 0;
+
+    // translucent rippling water surface (overhead when deep, just above you on a river)
+    if (b.water && !this._dark) {
+      const WR = (this._arenaR + 16) * 2;
+      const geo = new THREE.PlaneGeometry(WR, WR, 16, 16); geo.rotateX(-Math.PI / 2);
+      const mat = new THREE.MeshStandardMaterial({ color: b.waterColor || 0x2aa6c9, transparent: true, opacity: b.underwater ? 0.3 : 0.5, roughness: 0.25, metalness: 0, flatShading: true, depthWrite: false, side: THREE.DoubleSide });
+      this.water = new THREE.Mesh(geo, mat);
+      this.water.position.y = b.underwater ? 10 : 1.05; this.water.renderOrder = 2;
+      this.scene.add(this.water);
+    }
 
     // player (with its evolved skill-tree visuals) + a soft contact shadow
     this.playerMesh = buildCreature(state.species.build, state.species.colors, state.visuals);
@@ -394,6 +406,13 @@ export class Renderer {
     // --- day / night cycle (or abyssal dark for the anglerfish) ---
     this._applyDayNight(state);
     this._syncDark(state, time);
+
+    // --- rippling water surface ---
+    if (this.water) {
+      const p = this.water.geometry.attributes.position;
+      for (let i = 0; i < p.count; i++) { const x = p.getX(i), z = p.getZ(i); p.setY(i, Math.sin(time * 1.3 + x * 0.22) * 0.16 + Math.cos(time * 1.05 + z * 0.18) * 0.16); }
+      p.needsUpdate = true; this.water.geometry.computeVertexNormals();
+    }
 
     // --- camera + light follow ---
     this._placeCamera(state, false);

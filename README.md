@@ -26,7 +26,7 @@ python3 -m http.server 8080
 Or play it instantly from the branch (served via raw.githack.com, which sends
 the correct MIME types for ES modules):
 
-**https://raw.githack.com/PukkingDragon123/Animal/claude/inspiring-wright-5xmrsu/index.html?v=10**
+**https://raw.githack.com/PukkingDragon123/Animal/claude/inspiring-wright-5xmrsu/index.html?v=11**
 
 Open the URL on a phone or desktop. (ES modules need a real server — opening
 `index.html` from `file://` won't work.)
@@ -101,6 +101,13 @@ overlay doubles as a big tap target on mobile.
   anglerfish's bathypelagic "midnight zone", …).
 - **Filmic shading** — ACES tone mapping + exposure and soft **contact shadows**
   under animals ground the scene and lift it out of the flat-shaded look.
+- **Translucent rippling water** — aquatic levels (turtle, salmon, anglerfish)
+  get an animated water surface (overhead light when you're deep, a flowing
+  river skin when you're shallow).
+- **More true-to-life low-poly models** — the leatherback turtle (flat ridged
+  carapace + wing-like front flippers), the sockeye salmon (hooked spawning
+  "kype", dorsal + adipose fins), a fuzzier pollen-laden honey bee, and a proper
+  herring-gull predator (grey mantle, black wingtips, red-spot bill).
 - A more **serious, natural-history UI**: cinematic deep-teal screen backdrop,
   refined accents, and habitat/region framing.
 
