@@ -141,19 +141,24 @@ function penguin(c) {
 
 function turtle(c) {
   const g = new THREE.Group(); const parts = g.userData.parts = {};
-  const shell = mesh(SPH(0.6), matte(c.body), { pos: [0, 0.4, 0], scl: [1.1, 0.6, 1.25] }); g.add(shell);
-  // shell plates
-  for (let i = 0; i < 5; i++) { const a = (i / 5) * Math.PI * 2; shell.add(mesh(CON(0.14, 0.12, 5), matte(c.accent), { pos: [Math.cos(a) * 0.34, 0.34, Math.sin(a) * 0.42], cast: false })); }
-  shell.add(mesh(CON(0.16, 0.14, 6), matte(c.accent), { pos: [0, 0.42, 0], cast: false }));
-  g.add(mesh(SPH(0.5), matte(c.belly), { pos: [0, 0.16, 0], scl: [1.0, 0.4, 1.15], cast: false }));
-  const head = new THREE.Group(); head.position.set(0, 0.32, 0.66); g.add(head); parts.head = head;
-  head.add(mesh(SPH(0.22), matte(c.belly), { scl: [1, 0.9, 1.2] }));
-  eyes(g, head, c.eye, 0.07, 0.11, 0.16, 0.06);
-  parts.flippers = [];
-  for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
-    const f = mesh(BOX(0.5, 0.1, 0.26), matte(c.belly), { pos: [sx * 0.5, 0.22, sz * 0.34], rot: [0, sz > 0 ? sx * 0.5 : sx * -0.5 + Math.PI, 0] });
-    g.add(f); parts.flippers.push(f);
+  // a flat, wide leatherback carapace (low domed ellipsoid)
+  const shell = mesh(SPH(0.62), matte(c.body), { pos: [0, 0.34, -0.02], scl: [1.25, 0.5, 1.42] }); g.add(shell);
+  // the leatherback's signature: 5 longitudinal ridges running down the back
+  for (let i = -2; i <= 2; i++) {
+    const ridge = mesh(BOX(0.06, 0.13, 1.05), matte(c.accent), { pos: [i * 0.17, 0.52, -0.02], cast: false });
+    ridge.scale.z = 1 - Math.abs(i) * 0.13; shell.add(ridge);
   }
+  // pale plastron (underside)
+  g.add(mesh(SPH(0.56), matte(c.belly), { pos: [0, 0.12, 0], scl: [1.16, 0.3, 1.32], cast: false }));
+  // head reaching forward, slightly pointed
+  const head = new THREE.Group(); head.position.set(0, 0.3, 0.7); g.add(head); parts.head = head;
+  head.add(mesh(SPH(0.2), matte(c.belly), { scl: [0.95, 0.88, 1.2] }));
+  head.add(mesh(CON(0.1, 0.16, 5), matte(c.belly), { pos: [0, -0.02, 0.18], rot: [Math.PI / 2, 0, 0], cast: false }));
+  eyes(g, head, c.eye, 0.06, 0.11, 0.12, 0.06);
+  // large wing-like FRONT flippers (the swimming pair) + small rear flippers
+  parts.flippers = [];
+  for (const s of [-1, 1]) { const fr = mesh(BOX(0.72, 0.08, 0.32), matte(c.body), { pos: [s * 0.56, 0.26, 0.26], rot: [0, s * -0.5, 0] }); g.add(fr); parts.flippers.push(fr); }
+  for (const s of [-1, 1]) { const rr = mesh(BOX(0.34, 0.07, 0.22), matte(c.body), { pos: [s * 0.44, 0.22, -0.44], rot: [0, s * 0.6, 0] }); g.add(rr); parts.flippers.push(rr); }
   parts.gait = 'paddle'; parts.swim = true; return g;
 }
 
@@ -173,7 +178,25 @@ function fishBody(c, big) {
   head.add(mesh(SPH(0.05), matte(c.eye), { pos: [0, -0.02, 0.18 * k], cast: false }));
   parts.gait = 'swimfish'; parts.swim = true; return g;
 }
-const salmon = (c) => fishBody(c, false);
+// Sockeye salmon in spawning dress: red body, green hooked head (the "kype"),
+// streamlined, with dorsal + adipose fins and a forked tail.
+function salmon(c) {
+  const g = new THREE.Group(); const parts = g.userData.parts = {};
+  const body = mesh(SPH(0.4), matte(c.body), { pos: [0, 0.42, 0], scl: [0.6, 0.86, 1.95] }); g.add(body); parts.body = body;
+  g.add(mesh(SPH(0.34), matte(c.belly), { pos: [0, 0.3, 0.05], scl: [0.42, 0.5, 1.7], cast: false }));
+  const head = new THREE.Group(); head.position.set(0, 0.42, 0.66); g.add(head); parts.head = head;
+  head.add(mesh(SPH(0.26), matte(c.accent), { scl: [0.72, 0.82, 1.05] }));
+  head.add(mesh(CON(0.12, 0.28, 4), matte(c.accent), { pos: [0, 0.04, 0.2], rot: [Math.PI / 2, 0, 0] }));               // upper snout
+  head.add(mesh(CON(0.09, 0.18, 4), matte(c.accent), { pos: [0, -0.12, 0.22], rot: [-Math.PI / 2.3, 0, 0], cast: false })); // hooked kype
+  eyes(g, head, c.eye, 0.06, 0.14, 0.05, 0.06);
+  g.add(mesh(CON(0.14, 0.36, 3), matte(c.accent), { pos: [0, 0.78, -0.08], scl: [0.4, 1, 1.1], cast: false }));         // dorsal fin
+  g.add(mesh(CON(0.06, 0.12, 3), matte(c.accent), { pos: [0, 0.7, -0.52], scl: [0.4, 1, 0.8], cast: false }));         // adipose fin
+  const tail = new THREE.Group(); tail.position.set(0, 0.42, -0.72); g.add(tail); parts.tail = tail;
+  tail.add(mesh(CON(0.38, 0.5, 3), matte(c.body), { pos: [0, 0, -0.18], rot: [Math.PI / 2, 0, 0], scl: [1, 1, 0.42] })); // forked tail
+  parts.fins = [];
+  for (const s of [-1, 1]) { const f = mesh(CON(0.1, 0.3, 3), matte(c.accent), { pos: [s * 0.24, 0.36, 0.2], rot: [Math.PI / 2, 0, s * 0.7], cast: false }); g.add(f); parts.fins.push(f); }
+  parts.gait = 'swimfish'; parts.swim = true; return g;
+}
 const fish = (c) => fishBody(c, false);
 
 function shark(c) {
