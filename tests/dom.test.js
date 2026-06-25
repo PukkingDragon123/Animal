@@ -38,6 +38,7 @@ const save = { dna: 500, genes: 200, exp: 10, level: 2, evolution: {}, skills: {
 hud.menu(save);
 ok('menu: screen shown', $('screen').classList.contains('show'));
 ok('menu: play button', !!$('btnPlay'));
+ok('menu: rotating Earth globe canvas present', !!$('globeCanvas'));
 $('btnPlay').click();
 ok('menu: play → onPick', calls.onPick === 1);
 
@@ -45,6 +46,7 @@ ok('menu: play → onPick', calls.onPick === 1);
 hud.speciesSelect(save);
 ok('select: preview canvas present', !!$('previewCanvas'));
 ok('select: shows a species name', $('spName').textContent.length > 0);
+ok('select: shows the habitat', /🌍/.test($('spHabitat').innerHTML) && $('spHabitat').textContent.length > 5);
 ok('select: nav arrows present', !!$('prevSp') && !!$('nextSp'));
 const nm = $('spName').textContent; $('nextSp').click();
 ok('select: next changes species', $('spName').textContent !== nm);
@@ -91,6 +93,14 @@ hud.xpPopup(12); ok('hud: EXP popup shows', $('xppop').classList.contains('show'
 hud.familyMoment('Your eggs are buried in the sand.'); ok('hud: family moment shows', $('family').classList.contains('show') && /eggs/.test($('family').textContent));
 hud.setCarry('🌼 2/3 · 🍯 4'); ok('hud: carry chip shows', $('carryChip').style.display !== 'none' && /🍯/.test($('carryChip').innerHTML));
 hud.setCarry(null); ok('hud: carry chip hides', $('carryChip').style.display === 'none');
+// QTE / mini-game overlay
+hud.setQte({ kind: 'mash', label: 'DIG OUT!', hits: 3, need: 6 });
+ok('hud: QTE mash overlay shows', $('qte').classList.contains('show') && /DIG OUT/.test($('qteLabel').textContent));
+ok('hud: QTE mash bar reflects progress', parseFloat($('qteBarFill').style.width) === 50);
+hud.setQte({ kind: 'timing', label: 'LEAP THE RAPID!', pos: 0.5, zoneLo: 0.4, zoneHi: 0.62 });
+ok('hud: QTE timing track shown', $('qteTrack').style.display !== 'none' && $('qteBarWrap').style.display === 'none');
+ok('hud: QTE marker positioned', $('qteMarker').style.left === '50%');
+hud.setQte(null); ok('hud: QTE overlay hides', !$('qte').classList.contains('show'));
 hud.setObjective('Find food'); ok('hud: objective text', $('objective').textContent === 'Find food');
 hud.setDna(123); ok('hud: dna text', $('dnaVal').textContent === '123');
 hud.setStage('adult'); ok('hud: stage text', $('stageLabel').textContent === 'Adult');

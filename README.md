@@ -26,7 +26,7 @@ python3 -m http.server 8080
 Or play it instantly from the branch (served via raw.githack.com, which sends
 the correct MIME types for ES modules):
 
-**https://raw.githack.com/PukkingDragon123/Animal/claude/inspiring-wright-5xmrsu/index.html?v=8**
+**https://raw.githack.com/PukkingDragon123/Animal/claude/inspiring-wright-5xmrsu/index.html?v=9**
 
 Open the URL on a phone or desktop. (ES modules need a real server — opening
 `index.html` from `file://` won't work.)
@@ -80,10 +80,34 @@ nectar, mating — all feed **EXP** into your gene pool, so an active life level
 you up faster than a passive one. Leave young behind and you can **continue as
 your offspring** (a growing dynasty across generations).
 
+## Mini-games & quick-time events
+
+Key moments become little skill tests instead of passive waiting:
+
+- **Dig out** (Sea Turtle): the life opens with a **mash** QTE — tap to claw out
+  of the buried nest before you can scramble for the sea.
+- **Leap the rapid** (Salmon): the upstream run is a string of **timing** QTEs —
+  tap when the marker sweeps through the green zone to clear a rapid (and gain
+  ground + EXP); mistime it and the current sweeps you back down.
+
+The QTE engine lives in the deterministic sim (so it's testable) and the
+overlay doubles as a big tap target on mobile.
+
+## Presentation
+
+- **Rotating low-poly Earth** spins on the main menu, and each species' **real
+  habitat** is shown on its select card and birth screen (researched: the
+  turtle's tropical nesting beaches, the salmon's North-Pacific rivers, the
+  anglerfish's bathypelagic "midnight zone", …).
+- **Filmic shading** — ACES tone mapping + exposure and soft **contact shadows**
+  under animals ground the scene and lift it out of the flat-shaded look.
+- A more **serious, natural-history UI**: cinematic deep-teal screen backdrop,
+  refined accents, and habitat/region framing.
+
 ## Character select & unlocks
 
 A Slay-the-Spire-style carousel with a live spinning 3D preview of each animal,
-its diet and stat bars (Speed / Size / Longevity), and its signature ability.
+its diet and stat bars (Speed / Size / Longevity), habitat, and signature ability.
 The five lives unlock in a chain (shown on each locked card):
 
 *Reach the sea as a hatchling Turtle* → **Mayfly** · *Mate as a Mayfly* →

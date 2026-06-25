@@ -117,6 +117,9 @@ export const STR = {
     spent: ['That was everything you had. Worth it.'],
     dark: ['It is very, very dark down here.', 'Your lure is the only light for miles.'],
     goalDone: ['Life goal complete!'],
+    digout: ['Out of the nest! Now… RUN for the sea.', 'You claw to the surface. Daylight. Danger.'],
+    leapWin: ['Clean leap! The rapid is behind you.', 'Up and over — the gravel beds are closer now.'],
+    leapFail: ['Smacked the rocks — swept back downstream.', 'Missed the leap. The current wins this round.'],
   },
 
   // one-time contextual tutorial hints (💡)

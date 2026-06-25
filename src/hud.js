@@ -7,6 +7,7 @@ import { SPECIES, SPECIES_LIST } from './species.js';
 import { MUTATIONS } from './mutations.js';
 import { questFor } from './quests.js';
 import { Preview } from './preview.js';
+import { Globe } from './globe.js';
 import { expForLevel } from './evolution.js';
 import { SKILLS, SKILL_TIERS, speciesSkills, applySkills, canUnlock, reqMet } from './skills.js';
 
@@ -22,6 +23,8 @@ export class Hud {
       hearts: $('hearts'), foodRow: $('foodRow'), energy: $('fillEnergy'), life: $('fillLife'),
       warmthWrap: $('barWarmthWrap'), warmth: $('fillWarmth'),
       goals: $('goals'), xppop: $('xppop'), family: $('family'), carry: $('carryChip'),
+      qte: $('qte'), qteLabel: $('qteLabel'), qteTrack: $('qteTrack'), qteZone: $('qteZone'),
+      qteMarker: $('qteMarker'), qteBarWrap: $('qteBarWrap'), qteBarFill: $('qteBarFill'),
       quip: $('quip'), vignette: $('vignette'), dietChip: $('dietChip'), tut: $('tut'),
       joystick: $('joystick'), knob: $('joyKnob'), run: $('runbtn'), atk: $('atkbtn'),
       screen: $('screen'), pauseBtn: $('pauseBtn'),
@@ -49,10 +52,18 @@ export class Hud {
       a.addEventListener('pointercancel', off); a.addEventListener('pointerleave', off);
     }
     this.els.pauseBtn?.addEventListener('click', () => this.h.onPause?.());
+    // the QTE panel is itself a big tap target (mash / time your tap)
+    const q = this.els.qte;
+    if (q) {
+      const on = (e) => { this.h.setAttack?.(true); e.preventDefault(); };
+      const off = () => this.h.setAttack?.(false);
+      q.addEventListener('pointerdown', on); q.addEventListener('pointerup', off);
+      q.addEventListener('pointercancel', off); q.addEventListener('pointerleave', off);
+    }
   }
 
   // ---- in-play HUD ----
-  showHud(show) { this.els.hud?.classList.toggle('show', show); if (!show) { this.setGoals(null); this.setCarry(null); } }
+  showHud(show) { this.els.hud?.classList.toggle('show', show); if (!show) { this.setGoals(null); this.setCarry(null); this.setQte(null); } }
   setDna(n) { if (this.els.dna) this.els.dna.textContent = n; }
   setStage(stageKey) { if (this.els.stage) this.els.stage.textContent = STR.stage[stageKey] || ''; }
   setObjective(text) { if (this.els.obj) this.els.obj.textContent = text; }
@@ -72,7 +83,7 @@ export class Hud {
     this._tutTimer = setTimeout(() => t.classList.remove('show'), 4400);
   }
 
-  _disposePreview() { if (this.preview) { this.preview.dispose(); this.preview = null; } }
+  _disposePreview() { if (this.preview) { this.preview.dispose(); this.preview = null; } if (this.globe) { this.globe.dispose(); this.globe = null; } }
 
   // Minecraft-style vitals: hearts (health), drumsticks (food), stamina bar (energy).
   // hungerPct === null → this species cannot eat (mayfly/anglerfish): hide the food row.
@@ -124,6 +135,24 @@ export class Hud {
   // forager carry chip (worker bee): nectar load + lifetime deliveries
   setCarry(text) { const el = this.els.carry; if (!el) return; if (text == null) el.style.display = 'none'; else { el.style.display = 'block'; el.innerHTML = text; } }
 
+  // quick-time event / mini-game overlay (mash bar, or timing track + marker)
+  setQte(qte) {
+    const el = this.els.qte; if (!el) return;
+    if (!qte) { if (this._qteOn) { el.classList.remove('show'); this._qteOn = false; } return; }
+    this._qteOn = true; el.classList.add('show');
+    if (this.els.qteLabel) this.els.qteLabel.textContent = qte.label || '';
+    if (qte.kind === 'mash') {
+      if (this.els.qteTrack) this.els.qteTrack.style.display = 'none';
+      if (this.els.qteBarWrap) this.els.qteBarWrap.style.display = 'block';
+      if (this.els.qteBarFill) this.els.qteBarFill.style.width = Math.min(100, Math.round(100 * (qte.hits || 0) / (qte.need || 1))) + '%';
+    } else {
+      if (this.els.qteBarWrap) this.els.qteBarWrap.style.display = 'none';
+      if (this.els.qteTrack) this.els.qteTrack.style.display = 'block';
+      if (this.els.qteZone) { this.els.qteZone.style.left = (qte.zoneLo * 100) + '%'; this.els.qteZone.style.width = ((qte.zoneHi - qte.zoneLo) * 100) + '%'; }
+      if (this.els.qteMarker) this.els.qteMarker.style.left = (qte.pos * 100) + '%';
+    }
+  }
+
   setVignette(danger) {
     if (this.els.vignette) this.els.vignette.style.opacity = Math.min(0.7, danger * 0.7);
   }
@@ -152,6 +181,7 @@ export class Hud {
     this._disposePreview();
     const s = this._screen(`
       <div class="panel menu">
+        <canvas id="globeCanvas" class="globe"></canvas>
         <div class="logo">${esc(STR.title)}</div>
         <div class="tagline">${esc(STR.tagline)}</div>
         <div class="dnaBig">⭐ ${STR.levelLabel} <b>${save.level || 1}</b> · 🧬 <b>${save.genes || 0}</b> ${STR.genes}</div>
@@ -162,6 +192,7 @@ export class Hud {
         <div class="hint">${esc(STR.hint)}<br>${esc(STR.hintKeys)}</div>
       </div>`);
     if (!s) return;
+    this.globe = new Globe($('globeCanvas')); this.globe.start();
     $('btnPlay').onclick = () => this.h.onPick?.(null);     // null = random unlocked
     $('btnSelect').onclick = () => this.speciesSelect(save);
     $('btnEvolve').onclick = () => this.h.onEvolve?.(null);
@@ -186,6 +217,7 @@ export class Hud {
             <div class="bigdesc" id="spDesc"></div>
             <div class="dietRow"><span class="eats">${esc(STR.diet)}:</span> <span id="spDiet"></span></div>
             <div class="ability" id="spAbility"></div>
+            <div class="habitat" id="spHabitat"></div>
             <div class="evoMini" id="spEvo"></div>
             <div class="stats3" id="spStats"></div>
             <div class="spAction" id="spAction"></div>
@@ -213,6 +245,7 @@ export class Hud {
       $('spRarity').className = 'rarity ' + (sp.rarity || 'Common');
       $('spRarity').textContent = sp.rarity || 'Common';
       $('spAbility').innerHTML = `<b>${esc(STR.abilityLabel)}:</b> ${esc(sp.ability || '')}`;
+      $('spHabitat').innerHTML = `🌍 ${esc(sp.habitat || '')}`;
       const sk = speciesSkills(save, id);
       $('spEvo').textContent = sk.length ? `🧬 Mutations: ${sk.length}` : '';
       $('spStats').innerHTML = pip(STR.statSpeed, sp.rating.speed) + pip(STR.statSize, sp.rating.size) + pip(STR.statLife, sp.rating.life);
@@ -288,6 +321,7 @@ export class Hud {
       <div class="panel birth">
         <div class="ptitle">${esc(STR.birth.youAre)} ${esc(sp.article)} <span class="hi">${esc(sp.name)}</span></div>
         <div class="latin">${esc(sp.latin || '')} · <span class="statusword s${esc((sp.status || '').replace(/\s/g, ''))}">${esc(sp.status || '')}</span></div>
+        <div class="habitat">🌍 ${esc(sp.habitat || '')}</div>
         ${genHtml}
         <div class="fact">“${esc(sp.facts[Math.floor(Math.random() * sp.facts.length)])}”</div>
         <div class="mutLabel">${esc(STR.birth.aMut)}</div>

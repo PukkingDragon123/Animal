@@ -28,6 +28,7 @@ export const SPECIES = {
     predatorBuild: 'bird', predatorCount: 2,
     reproduce: 'nest', struggle: 'hatchling',
     desc: 'Born on a beach that is actively trying to eat you.',
+    habitat: 'Tropical & subtropical oceans worldwide; females nest on sandy beaches.',
     dietName: 'Jellyfish', dietIcon: '🪼', rating: { speed: 2, size: 4, life: 5 }, rarity: 'Common', unlockCost: 0,
     ability: 'Mad Dash — sprint past the gulls to the surf',
     lifeGoals: [
@@ -55,6 +56,7 @@ export const SPECIES = {
     reproduce: 'mate', struggle: 'ephemeral',
     noEat: true, dieAfterReproduce: true,
     desc: 'No mouth, no time. Find a mate before the clock runs out.',
+    habitat: 'Clean, well-oxygenated freshwater — rivers, streams and lake margins.',
     dietName: 'Nothing (no mouth!)', dietIcon: '⏳', rating: { speed: 5, size: 1, life: 1 }, rarity: 'Common', unlockCost: 0,
     ability: 'Ephemeral — adults cannot eat; race the lifespan clock',
     lifeGoals: [
@@ -81,6 +83,7 @@ export const SPECIES = {
     reproduce: 'nest', struggle: 'shortlife',
     forage: true,
     desc: 'Collect nectar, fly it home, feed the hive. Repeat until you drop.',
+    habitat: 'Meadows, gardens, orchards and woodland edges across the globe.',
     dietName: 'Nectar → Honey', dietIcon: '🍯', rating: { speed: 4, size: 1, life: 2 }, rarity: 'Rare', unlockCost: 0,
     ability: 'Forager — carry nectar back to the hive to feed the colony',
     lifeGoals: [
@@ -108,6 +111,7 @@ export const SPECIES = {
     reproduce: 'nest', struggle: 'upstream',
     dieAfterReproduce: true,
     desc: 'Climb the whole river against the current, spawn once, and die.',
+    habitat: 'The North Pacific — born in gravel rivers, returns from the sea to spawn.',
     dietName: 'Insects', dietIcon: '🐛', rating: { speed: 4, size: 3, life: 2 }, rarity: 'Epic', unlockCost: 0,
     ability: 'Semelparous Leap — one all-or-nothing spawning run',
     lifeGoals: [
@@ -134,6 +138,7 @@ export const SPECIES = {
     reproduce: 'mate', struggle: 'anglerfish',
     noEat: true, dark: true,
     desc: 'A tiny male in endless black. Find the giant female — or vanish.',
+    habitat: 'The bathypelagic “midnight zone”, roughly 1,000–4,000 m down in open ocean.',
     dietName: 'Stored reserves', dietIcon: '🔦', rating: { speed: 2, size: 1, life: 2 }, rarity: 'Legendary', unlockCost: 0,
     ability: 'Bioluminescent Lure — your glow is the only light down here',
     lifeGoals: [

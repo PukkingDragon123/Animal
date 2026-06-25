@@ -164,6 +164,35 @@ console.log('feature tests');
   ok('den: moving exits the den', s.inBurrow === false);
 }
 
+// --- quick-time events / mini-games ---------------------------------------
+{
+  // turtle dig-out: a mash QTE that locks movement until you tap it out
+  const s = createRun({ speciesId: 'turtle', seed: 3 });
+  ok('qte: hatchling opens with a dig-out mash', !!s.qte && s.qte.kind === 'mash');
+  const x0 = s.player.x;
+  step(s, { mx: 1, mz: 0 }, DT);
+  ok('qte: movement is locked while digging', Math.abs(s.player.x - x0) < 0.05);
+  let ended = false;
+  for (let i = 0; i < 40 && s.qte; i++) { step(s, { attack: i % 2 === 0 }, DT); if (s.events.some(e => e.t === 'qteEnd')) ended = true; }
+  ok('qte: mashing resolves the dig-out', !s.qte && ended);
+  const x1 = s.player.x; step(s, { mx: 1, mz: 0 }, DT); step(s, { mx: 1, mz: 0 }, DT);
+  ok('qte: movement is freed afterward', Math.abs(s.player.x - x1) > 0.001);
+}
+{
+  // salmon leap: a timing QTE during the upstream run; an in-zone tap wins
+  const s = createRun({ speciesId: 'salmon', seed: 5 }); s.predators.length = 0;
+  s.time = s.lifespan * 0.45; step(s, { mx: 0, mz: 0 }, DT);     // adulthood → migration begins
+  let saw = false, won = false;
+  for (let i = 0; i < 60 * 20 && s.alive; i++) {
+    let atk = false;
+    if (s.qte && s.qte.kind === 'timing') { saw = true; if (s.qte.pos >= s.qte.zoneLo && s.qte.pos <= s.qte.zoneHi) atk = true; }
+    step(s, { mx: 0, mz: 1, attack: atk }, DT);
+    if (s.events.some(e => e.t === 'leap' && e.success)) won = true;
+  }
+  ok('qte: salmon "leap the rapid" mini-game triggers', saw);
+  ok('qte: a well-timed tap wins the leap', won);
+}
+
 // --- dynasty: a continued run carries generation + accumulated score -------
 {
   const s = createRun({ speciesId: 'turtle', seed: 61, generation: 3, lineageScore: 500 });

@@ -109,6 +109,7 @@ export function createRun({ speciesId = 'turtle', seed = 1, bonus = null, visual
     pollen: 0, pollenCollected: 0, deliveries: 0, hive: null,    // worker bee
     female: null, fused: false, dark: !!species.dark,            // anglerfish
     dyingFuse: 0,                                                // semelparous wind-down
+    qte: null, qteCooldown: 0, _atkPrev: false,                 // quick-time / mini-game state
     alive: true, cause: null, lastHurtBy: null,
     danger: 0,
     objective: 'grow',
@@ -148,6 +149,8 @@ export function createRun({ speciesId = 'turtle', seed = 1, bonus = null, visual
     state.mate = { x: p.x, z: p.z, active: true, isFemale: true, court: 1 };
     state.female = state.mate;
   }
+  // hatchling sea turtle: the life opens with a "dig out of the nest" mash
+  if (species.struggle === 'hatchling') startQte(state, { kind: 'mash', label: 'DIG OUT!', need: 7, dur: 5, lock: true, effect: 'digout' });
 
   updateObjective(state);
   state.events.push({ t: 'born' });
@@ -260,9 +263,17 @@ export function step(state, input, dt) {
 
   const P = state.player, S = state.stats, sp = state.species;
 
+  // 1b) quick-time events / mini-games — the salmon's run is a string of rapids to leap
+  if (state.qteCooldown > 0) state.qteCooldown -= dt;
+  if (sp.struggle === 'upstream' && (state.stage === 'adult' || state.stage === 'elder') && !state.reproduced && !state.qte && state.qteCooldown <= 0) {
+    startQte(state, { kind: 'timing', label: 'LEAP THE RAPID!', dur: 3.2, speed: 1.15, zone: 0.24, effect: 'leap' });
+    state.qteCooldown = 7;
+  }
+  updateQte(state, input, dt);
+
   // 2) movement
   let mx = input.mx || 0, mz = input.mz || 0;
-  if (state.fused) { mx = 0; mz = 0; }                  // fused to the female — you will never move again
+  if (state.fused || (state.qte && state.qte.lock)) { mx = 0; mz = 0; }   // fused, or buried during a dig-out mash
   const mlen = Math.hypot(mx, mz);
   if (mlen > 1) { mx /= mlen; mz /= mlen; }
   if (state.mods.clumsy && mlen > 0.01) {                     // wobble
@@ -380,7 +391,7 @@ export function step(state, input, dt) {
 
   // 5c) attack verb (fight back / hunt / shake trees)
   if (state.attackCooldown > 0) state.attackCooldown -= dt;
-  if (input.attack && state.attackCooldown <= 0) doAttack(state);
+  if (input.attack && !state.qte && state.attackCooldown <= 0) doAttack(state);   // taps feed the QTE while one is active
 
   // 6) predators
   updatePredators(state, dt);
@@ -411,6 +422,7 @@ export function step(state, input, dt) {
   if (S.health <= 0 && state.alive) die(state, state.lastHurtBy || 'starved');
   if (state.time >= state.lifespan && state.alive) die(state, 'oldAge');
 
+  state._atkPrev = !!input.attack;     // remember the tap so the QTE can detect rising edges
   updateObjective(state);
   return state;
 }
@@ -718,6 +730,54 @@ function updateReproduction(state, dt) {
     // relocate the target so you can keep going
     if (sp.struggle === 'upstream' || sp.struggle === 'hatchling') { target.x += state.rng.range(-2, 2); } // fixed spot: small nudge
     else { const p = ringAround(state.rng, P.x, P.z, 12, 26); target.x = p.x; target.z = p.z; }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Quick-time events / mini-games (deterministic; resolved by the attack tap)
+//   'mash'   — tap repeatedly to fill a bar before time runs out (dig out)
+//   'timing' — a marker sweeps a track; tap inside the target zone (salmon leap)
+// ---------------------------------------------------------------------------
+function startQte(state, cfg) {
+  const q = { kind: cfg.kind, label: cfg.label, time: 0, dur: cfg.dur, lock: !!cfg.lock, effect: cfg.effect || null };
+  if (cfg.kind === 'mash') { q.need = cfg.need; q.hits = 0; }
+  else { q.pos = 0; q.dir = 1; q.speed = cfg.speed || 1.1; const zw = cfg.zone || 0.22; const lo = state.rng.range(0.14, 0.86 - zw); q.zoneLo = lo; q.zoneHi = lo + zw; }
+  state.qte = q;
+  state.events.push({ t: 'qteStart', kind: q.kind, label: q.label });
+}
+
+function updateQte(state, input, dt) {
+  const q = state.qte; if (!q) return;
+  q.time += dt;
+  const tapped = !!input.attack && !state._atkPrev;
+  if (q.kind === 'mash') {
+    if (tapped) q.hits++;
+    if (q.hits >= q.need) finishQte(state, true);
+    else if (q.time >= q.dur) finishQte(state, q.hits >= Math.ceil(q.need * 0.5));  // dig-out: a half-effort still gets you out
+  } else {
+    q.pos += q.dir * q.speed * dt;
+    if (q.pos > 1) { q.pos = 1; q.dir = -1; } else if (q.pos < 0) { q.pos = 0; q.dir = 1; }
+    if (tapped) finishQte(state, q.pos >= q.zoneLo && q.pos <= q.zoneHi);
+    else if (q.time >= q.dur) finishQte(state, false);
+  }
+}
+
+function finishQte(state, success) {
+  const q = state.qte; if (!q) return;
+  applyQteEffect(state, q, success);
+  state.events.push({ t: 'qteEnd', kind: q.kind, label: q.label, success });
+  state.qte = null;
+  state.attackCooldown = 0.3;     // the resolving tap shouldn't also fire an attack
+}
+
+function applyQteEffect(state, q, success) {
+  const P = state.player;
+  if (q.effect === 'digout') {
+    if (success) { state.actionExp += C.xp.goal; state.dnaRun += 5; state.events.push({ t: 'quip', key: 'digout' }); }
+  } else if (q.effect === 'leap') {
+    if (success) { P.z += 9; state.score += 30; state.actionExp += 4; state.events.push({ t: 'leap', x: P.x, z: P.z, success: true }); }
+    else { P.z -= 4; state.events.push({ t: 'leap', x: P.x, z: P.z, success: false }); }
+    state.qteCooldown = 7;
   }
 }
 

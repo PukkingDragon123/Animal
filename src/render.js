@@ -57,6 +57,9 @@ export class Renderer {
   constructor(canvas) {
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: !isMobile, powerPreference: 'high-performance', alpha: false });
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+    // filmic tone mapping lifts the flat-shaded look toward something richer + more realistic
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    this.renderer.toneMappingExposure = 1.08;
     this.shadows = !isMobile;
     this.renderer.shadowMap.enabled = this.shadows;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -84,6 +87,7 @@ export class Renderer {
     this.envGroup = null;
     this.playerMesh = null;
     this.predMeshes = []; this.preyMeshes = []; this.dangerRings = [];
+    this.playerShadow = null; this.predShadows = [];
     this.foodInst = null; this.foodColor = 0x57bf43;
     this.mateMesh = null; this.nestMesh = null; this.beacon = null; this.warmthMeshes = [];
     this.interactMeshes = []; this.fruitInst = null; this.twigInst = null; this.stepTimer = 0;
@@ -113,6 +117,8 @@ export class Renderer {
     if (this.envGroup) { this.scene.remove(this.envGroup); this.envGroup.userData.dispose?.(); this.envGroup = null; }
     const clear = (m) => { if (m) { this.dyn.remove(m); m.traverse(o => { if (o.geometry) o.geometry.dispose(); }); } };
     clear(this.playerMesh); this.playerMesh = null;
+    if (this.playerShadow) { this.scene.remove(this.playerShadow); this.playerShadow.geometry.dispose(); this.playerShadow = null; }
+    this.predShadows.forEach(s => { this.scene.remove(s); s.geometry.dispose(); }); this.predShadows = [];
     this.predMeshes.forEach(clear); this.predMeshes = [];
     this.preyMeshes.forEach(clear); this.preyMeshes = [];
     this.dangerRings.forEach(r => { this.scene.remove(r); r.geometry.dispose(); }); this.dangerRings = [];
@@ -162,10 +168,11 @@ export class Renderer {
 
     this.swimY = b.water ? 0.7 : 0;
 
-    // player (with its evolved skill-tree visuals)
+    // player (with its evolved skill-tree visuals) + a soft contact shadow
     this.playerMesh = buildCreature(state.species.build, state.species.colors, state.visuals);
     this.playerMesh.userData.baseY = this.swimY;
     this.dyn.add(this.playerMesh);
+    this.playerShadow = this._contactDisc(0.72);
 
     // food (instanced) for grazers
     if (state.species.diet.kind === 'graze') {
@@ -253,6 +260,12 @@ export class Renderer {
 
   _ensureCount(arr, n, makeFn) { while (arr.length < n) arr.push(makeFn(arr.length)); }
 
+  // a soft dark disc that grounds a creature (cheap fake contact shadow / AO)
+  _contactDisc(r) {
+    const m = new THREE.Mesh(new THREE.CircleGeometry(r, 18), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.26, depthWrite: false }));
+    m.rotation.x = -Math.PI / 2; m.renderOrder = 1; this.scene.add(m); return m;
+  }
+
   _syncCreature(mesh, e, baseY, scale, ctx) {
     mesh.position.x = e.x; mesh.position.z = e.z;
     mesh.userData.baseY = baseY;
@@ -274,6 +287,7 @@ export class Renderer {
     animateCreature(pm, dt, time, { dt, time, speed: P.speed, moving: P.moving });
     // hide the player when denned underground in a burrow; blink during mercy frames
     pm.visible = !state.inBurrow && !(state.invuln > 0 && Math.floor(time * 16) % 2 === 0);
+    if (this.playerShadow) { this.playerShadow.position.set(P.x, 0.04, P.z); this.playerShadow.scale.setScalar(Math.max(0.2, state.size)); this.playerShadow.visible = !state.inBurrow; }
     if (this._lunge > 0) { this._lunge -= dt; const k = Math.max(0, this._lunge / 0.22); pm.position.x += Math.sin(P.heading) * k * 0.7; pm.position.z += Math.cos(P.heading) * k * 0.7; pm.scale.multiplyScalar(1 + k * 0.14); }
 
     // footstep / wake puffs while moving
@@ -292,6 +306,7 @@ export class Renderer {
       const ring = new THREE.Mesh(new THREE.RingGeometry(0.8, 1.1, 24), new THREE.MeshBasicMaterial({ color: 0xff3b30, transparent: true, opacity: 0.0, fog: false, side: THREE.DoubleSide }));
       ring.rotation.x = -Math.PI / 2; this.scene.add(ring); this.dangerRings.push(ring);
       this.healthBars.push(this._makeHealthBar());
+      this.predShadows.push(this._contactDisc((BUILD_SIZE[b] || 1) * 0.8));
       return m;
     });
     for (let i = 0; i < state.predators.length; i++) {
@@ -309,6 +324,7 @@ export class Renderer {
       const want = e.aggro ? 0.5 + Math.sin(time * 8) * 0.2 : 0;
       ring.material.opacity += (want - ring.material.opacity) * Math.min(1, dt * 8);
       const rs = e.aggro ? 1 + Math.sin(time * 8) * 0.08 : 1; ring.scale.setScalar(rs);
+      const sh = this.predShadows[i]; if (sh) { sh.position.set(e.x, 0.04, e.z); sh.scale.setScalar(m.userData.bsize); sh.visible = e.domain !== 'gone'; }
       // enemy health bar (shows when damaged or hunting)
       this._updateHealthBar(this.healthBars[i], e, baseY + 1.55 * m.userData.bsize + 0.7);
     }

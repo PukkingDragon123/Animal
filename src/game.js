@@ -198,6 +198,9 @@ class Game {
         case 'denExit': fx.burst(e.x, swimY + 0.15, e.z, 0x8a6b4a, 8, { up: 1.2, speed: 2.0, life: 0.45, grav: 7 }); this.audio.swipe(); break;
         case 'mud': fx.burst(e.x, swimY + 0.1, e.z, 0x5a4632, 12, { up: 0.8, speed: 1.6, life: 0.6, grav: 8 }); this.audio.bonk(); this.hud.showQuip(pick(STR.quips.mud)); this._tut('mud'); break;
         case 'ambush': this.hud.setVignette(0.7); this.hud.showQuip(pick(STR.quips.ambush)); break;
+        case 'qteStart': this.audio.alert(); break;
+        case 'qteEnd': if (e.success) { this.audio.success(); fx.sparkleRing(P.x, swimY + 0.4, P.z, 0xffe27a, 14); } else { this.audio.bonk(); } break;
+        case 'leap': if (e.success) { fx.burst(e.x, swimY + 0.6, e.z, 0x9fe0ff, 14, { up: 3, speed: 3 }); this.hud.showQuip(pick(STR.quips.leapWin)); } else { fx.burst(e.x, swimY + 0.4, e.z, 0xbfb089, 8, { up: 1.5 }); this.hud.showQuip(pick(STR.quips.leapFail)); } break;
         case 'death': this._pendingDeath = { cause: e.cause, success: e.success }; break;
       }
     }
@@ -234,6 +237,7 @@ class Game {
     this.hud.setVignette(s.danger);
     this.hud.setClock(s.light);
     this.hud.setScore(s.score);
+    this.hud.setQte(s.qte);
     this.hud.updateJoystick(this.input.joyVisual());
     this._tutorials(s);
   }
