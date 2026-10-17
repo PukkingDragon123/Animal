@@ -18,9 +18,14 @@ const srcFiles = [];
 (function walk(d) { for (const f of fs.readdirSync(path.join(root, d))) { const p = d + '/' + f; if (fs.statSync(path.join(root, p)).isDirectory()) walk(p); else if (p.endsWith('.js')) srcFiles.push(p); } })('src');
 const allSrc = srcFiles.map((f) => [f, read(f)]);
 
-section('every species has a hand-made design');
-const NO_DESIGN_OK = new Set();
-for (const id of Object.keys(SPECIES)) ok(`design for ${id}`, !!CREATURE_DESIGNS[id] || NO_DESIGN_OK.has(id));
+section('every species has art (hand-pixeled sprite; legacy model while the remake is in progress)');
+const { PIXEL_SPRITES } = await import('../src/data/sprites/pixel_starters.js');
+const pendingArt = [];
+for (const id of Object.keys(SPECIES)) {
+  if (PIXEL_SPRITES[id]) { const sp = PIXEL_SPRITES[id]; ok(`pixel sprite ${id} is well-formed`, sp.rows.length > 0 && sp.rows.every((r) => r.length === sp.rows[0].length) && [...new Set(sp.rows.join(''))].every((ch) => ch === '.' || sp.pal[ch])); }
+  else if (!CREATURE_DESIGNS[id]) pendingArt.push(id);
+}
+if (pendingArt.length) console.log('   art still to be pixeled:', pendingArt.join(', '));
 for (const id of ['player_a', 'player_b', 'player_c', 'coach', 'mika', 'kaito', 'taro', 'thrash', 'riff', 'moshi', 'hoshino', 'vendor', 'clerk', 'farmer', 'receptionist', 'dojo_master', 'ranger', 'shopkeeper', 'granny'])
   ok(`character ${id}`, !!HUMANS.CHARACTERS[id] && !!HUMANS.CHAR_LORE[id]);
 

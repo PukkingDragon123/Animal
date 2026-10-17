@@ -1,4 +1,4 @@
-// Elemon procedural music: synthesis kit, instruments, step sequencer and track
+// Tokonmon procedural music: synthesis kit, instruments, step sequencer and track
 // data. Everything here targets ANY BaseAudioContext (realtime or offline), so
 // the same code renders live music and headless OfflineAudioContext checks.
 // No audio files: every sound is built from oscillators, noise and filters.
@@ -11,6 +11,10 @@
 //   4. compiler + TrackPlayer — lookahead step sequencer with swing, chords,
 //             chord-relative patterns and intensity layers
 //   5. TRACKS / STINGERS — the actual music
+//
+// Originality: every melody, riff, bass line and drum figure below is original
+// (docs/refs/music_albums.md §0.2). The League themes borrow only tempo, groove
+// family, instrumentation and harmonic vocabulary from their inspirations.
 
 // ---------------------------------------------------------------------------
 // 1. helpers
@@ -545,7 +549,11 @@ const VOWELS = { a: [730, 1090, 2440], o: [570, 840, 2410], u: [320, 870, 2240],
 I.choir = (k, dest, t, ev, o = {}) => {
   const v = k.v(dest), a = o.a ?? 0.6, r = o.r ?? 1.2, rel = t + Math.max(ev.dur, a), end = rel + r * 1.4;
   const src = v.gain(1), sum = v.gain(1), g = v.gain(0), lp = v.filter('lowpass', 3800), n = ev.notes.length, F = VOWELS[o.vowel || 'a'], oscs = [];
-  F.forEach((fq, i) => { const bp = v.filter('bandpass', fq, [5, 7, 9][i]), bg = v.gain([3.2, 2.0, 1.1][i]); v.chain(src, bp, bg, sum); });
+  const T = o.to && VOWELS[o.to]; // optional vowel sweep over the note (robot "o→i")
+  F.forEach((fq, i) => {
+    const bp = v.filter('bandpass', fq, [5, 7, 9][i]), bg = v.gain([3.2, 2.0, 1.1][i]); v.chain(src, bp, bg, sum);
+    if (T) { bp.frequency.setValueAtTime(fq, t + a * 0.5); bp.frequency.linearRampToValueAtTime(T[i], t + Math.max(ev.dur, a + 0.05)); }
+  });
   v.adsr(g.gain, t, ev.vel * (o.level || 0.26) / Math.sqrt(n), a, 0.8, 0.9, ev.dur, r);
   for (const m of ev.notes) { const f = mtof(m); for (const d of (k.lite ? [rr(-6, 6)] : [-8, 9])) { const s = v.osc('sawtooth', f, t, end, d); s.connect(src); oscs.push(s.detune); } }
   vibrato(v, t, end, 4.8, 12, 0.7, oscs);
@@ -631,13 +639,18 @@ I.drone = (k, dest, t, ev, o = {}) => {
   v.chain(lp, g); v.out(g); v.done();
 };
 
-// Gang vocal "HEY!": several shouting voices into one shared formant bank (e→i)
+// Gang vocal "HEY!": several shouting voices into one shared formant bank.
+// o.vowel: 'hey' (e→i, default) | 'ho' | 'oi' | 'hah' | 'hu' — wordless shouts only.
+const GANG_V = {
+  hey: [[620, 620], [1750, 2250], [2600, 2600]], ho: [[560, 520], [880, 820], [2450, 2400]], oi: [[540, 330], [900, 2200], [2450, 2900]],
+  hah: [[800, 760], [1250, 1200], [2600, 2500]], hu: [[380, 350], [850, 800], [2300, 2250]],
+};
 I.gang = (k, dest, t, ev, o = {}) => {
   const v = k.v(dest), vel = ev.vel, nv = o.voices || 4, src = v.gain(1), sum = v.gain(1), end = t + 0.45;
-  const F = [[620, 4, 3], [1750, 6, 2.2], [2600, 8, 1.2]];
-  F.forEach(([fq, q, gg], i) => {
-    const bp = v.filter('bandpass', fq, q), bg = v.gain(gg); v.chain(src, bp, bg, sum);
-    if (i === 1) bp.frequency.linearRampToValueAtTime(2250, t + 0.2);
+  const V = GANG_V[o.vowel || 'hey'] || GANG_V.hey;
+  [[4, 3], [6, 2.2], [8, 1.2]].forEach(([q, gg], i) => {
+    const bp = v.filter('bandpass', V[i][0], q), bg = v.gain(gg); v.chain(src, bp, bg, sum);
+    if (V[i][1] !== V[i][0]) { bp.frequency.setValueAtTime(V[i][0], t + 0.03); bp.frequency.linearRampToValueAtTime(V[i][1], t + 0.2); }
   });
   for (let i = 0; i < nv; i++) {
     const ti = t + rr(0, 0.02), f0 = rr(145, 205) * (o.pitch || 1);
@@ -649,6 +662,136 @@ I.gang = (k, dest, t, ev, o = {}) => {
   }
   const sh = v.shaper('soft'), hp = v.filter('highpass', 220), og = v.gain(0.9);
   v.chain(sum, sh, hp, og); v.out(og); v.done();
+};
+
+// Acoustic-ish piano: FM ratio-1 body (bright hammer attack mellowing fast) on
+// two slightly detuned "strings", pitch-dependent ring time, damper release and
+// a short hammer knock. o.honky = detune in cents for the saloon/music-hall sound.
+I.piano = (k, dest, t, ev, o = {}) => {
+  const n = ev.notes.length, lvl = (o.level || 0.3) / Math.sqrt(Math.max(1, n * 0.65));
+  ev.notes.forEach((m, i) => {
+    const f = mtof(m), v = k.v(dest), vel = clamp(ev.vel * (1 - i * 0.03), 0.05, 1), ti = t + (o.roll || 0) * i;
+    const ring = clamp(3.4 - (m - 48) * 0.05, 0.6, 4.2), rel = ti + Math.max(ev.dur, 0.04), stop = Math.min(rel, ti + ring), end = stop + 0.4;
+    const car = v.osc('sine', f, ti, end), mod = v.osc('sine', f, ti, end), mg = v.gain(0);
+    mg.gain.setValueAtTime(f * (0.7 + 1.9 * vel), ti); mg.gain.setTargetAtTime(f * (0.12 + 0.1 * vel), ti, 0.07 + 0.12 * (1 - vel));
+    v.chain(mod, mg); mg.connect(car.frequency);
+    const g = v.gain(0), peak = vel * lvl;
+    g.gain.setValueAtTime(0, ti); g.gain.linearRampToValueAtTime(peak, ti + 0.002);
+    g.gain.setTargetAtTime(peak * 0.42, ti + 0.002, 0.1); g.gain.setTargetAtTime(0, ti + 0.3, ring / 3.2); g.gain.setTargetAtTime(0, stop, 0.07);
+    car.connect(g);
+    if (!k.lite) { const c2 = v.osc('sine', f, ti, end, o.honky || 2.4), g2 = v.gain(0.7); mg.connect(c2.frequency); v.chain(c2, g2, g); }
+    const lp = v.filter('lowpass', Math.min(1800 + f * 5 + 5000 * vel, 12000), 0.7); v.chain(g, lp); v.out(lp);
+    const hn = v.noise('white', ti, ti + 0.03), hb = v.filter('bandpass', clamp(f * 3, 700, 4500), 1.2), hg = v.gain(0);
+    v.perc(hg.gain, ti, vel * lvl * 0.35, 0.001, 0.016); v.chain(hn, hb, hg); v.out(hg);
+    v.done();
+  });
+};
+
+// Electric 12-string jangle: each chord tone sounds with its octave course
+// (slightly detuned → the "chime"), quick strum, bright pick that mellows.
+I.jangle = (k, dest, t, ev, o = {}) => {
+  const v = k.v(dest), notes = ev.up ? [...ev.notes].reverse() : ev.notes, strum = o.strum ?? 0.011, lvl = (o.level || 0.24) / Math.sqrt(notes.length);
+  const mid = v.filter('peaking', 1900, 0.9, 4), air = v.filter('highshelf', 4200, 0.7, 3); v.chain(mid, air); v.out(air);
+  notes.forEach((m, i) => {
+    const f = mtof(m), ti = t + i * strum, dec = ev.mute ? 0.12 : Math.min(o.decay || 1.1, ev.dur + 0.45), end = ti + dec + 0.05;
+    const a = v.osc('sawtooth', f, ti, end, -3), lp = v.filter('lowpass', Math.min(f * 12, 10000), 0.9), g = v.gain(0);
+    lp.frequency.exponentialRampToValueAtTime(Math.min(f * 3.2, 5000), ti + 0.45);
+    v.perc(g.gain, ti, ev.vel * lvl, 0.002, dec); a.connect(lp);
+    if (!k.lite) { const b = v.osc('sawtooth', f * 2, ti, end, 5), bg = v.gain(0.5); v.chain(b, bg, lp); }
+    v.chain(lp, g, mid);
+  });
+  v.done();
+};
+
+// Stadium air horn (docs §B4): detuned square+saw per chord tone, scooped
+// attack, 1.6 kHz low-pass, a little rasp and a −30 cent sag on the tail.
+I.horn = (k, dest, t, ev, o = {}) => {
+  const v = k.v(dest), dur = Math.max(0.2, ev.dur), end = t + dur + 0.15, n = ev.notes.length, pk = ev.vel * (o.level || 0.22) / Math.sqrt(n);
+  const lp = v.filter('lowpass', o.cut || 1600, 1.1), body = v.filter('peaking', 850, 1.4, 6), sh = v.shaper('soft'), g = v.gain(0), am = v.gain(0.85);
+  g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(pk, t + 0.025); g.gain.setValueAtTime(pk, t + dur * 0.8); g.gain.linearRampToValueAtTime(0.0001, t + dur + 0.1);
+  const rasp = v.osc('square', o.rasp || 27, t, end), rg = v.gain(0.15); v.chain(rasp, rg); rg.connect(am.gain);
+  for (const m of ev.notes) {
+    const f = mtof(m);
+    for (const [w, d] of k.lite ? [['sawtooth', 0]] : [['square', -9], ['sawtooth', 8]]) {
+      const s = v.osc(w, f, t, end, d);
+      s.frequency.setValueAtTime(f * 0.93, t); s.frequency.exponentialRampToValueAtTime(f, t + 0.05);
+      s.detune.setValueAtTime(d, t + dur * 0.6); s.detune.linearRampToValueAtTime(d - 30, t + dur + 0.1);
+      s.connect(sh);
+    }
+  }
+  v.chain(sh, body, lp, am, g); v.out(g); v.done();
+};
+
+// Gong / tam-tam: inharmonic FM that "blooms" after the strike, long decay.
+I.gong = (k, dest, t, ev, o = {}) => {
+  const f = ev.notes && ev.notes.length ? mtof(ev.notes[0]) : (o.f || 92), v = k.v(dest), dec = o.decay || 4.5, end = t + dec + 0.1, vel = ev.vel, lvl = o.level || 0.42;
+  const car = v.osc('sine', f, t, end), m1 = v.osc('sine', f * 1.414, t, end), g1 = v.gain(0), m2 = v.osc('sine', f * 2.757, t, end), g2 = v.gain(0);
+  g1.gain.setValueAtTime(f * 0.3, t); g1.gain.linearRampToValueAtTime(f * 2.4, t + 0.6); g1.gain.setTargetAtTime(f * 0.25, t + 0.7, dec / 3);
+  g2.gain.setValueAtTime(f * 1.6, t); g2.gain.setTargetAtTime(f * 0.15, t, 0.35);
+  v.chain(m1, g1); g1.connect(car.frequency); v.chain(m2, g2); g2.connect(car.frequency);
+  const g = v.gain(0); v.perc(g.gain, t, vel * lvl, 0.006, dec); v.chain(car, g); v.out(g);
+  const n = v.noise('white', t, end), bp = v.filter('bandpass', 3400, 0.8), ng = v.gain(0);
+  ng.gain.setValueAtTime(0.0001, t); ng.gain.exponentialRampToValueAtTime(vel * lvl * 0.16, t + 0.3); ng.gain.exponentialRampToValueAtTime(0.0001, t + dec * 0.75);
+  v.chain(n, bp, ng); v.out(ng);
+  const th = v.osc('sine', f * 0.75, t, t + 0.5), tg = v.gain(0); th.frequency.exponentialRampToValueAtTime(f * 0.45, t + 0.4);
+  v.perc(tg.gain, t, vel * lvl * 0.8, 0.003, 0.4); v.chain(th, tg); v.out(tg);
+  v.done();
+};
+
+// Sitar-like pluck: saw through a sweeping "jawari" resonance (the buzzing
+// bridge), meend slide-in on '/', gamak vibrato on '~'.
+I.sitar = (k, dest, t, ev, o = {}) => {
+  for (const m of ev.notes) {
+    const f = mtof(m), v = k.v(dest), vel = ev.vel, dec = o.decay || 2.2, end = t + dec + 0.05;
+    const s = v.osc('sawtooth', f, t, end);
+    if (ev.slide) { s.frequency.setValueAtTime(f * 0.8909, t); s.frequency.exponentialRampToValueAtTime(f, t + 0.18); }
+    else { s.frequency.setValueAtTime(f * 1.006, t); s.frequency.exponentialRampToValueAtTime(f, t + 0.04); }
+    if (ev.vib) vibrato(v, t, end, 5.6, 28, 0.25, [s.detune]);
+    const bp = v.filter('bandpass', f * 2, 2.4), lp = v.filter('lowpass', Math.min(f * 14, 9000), 0.7), dry = v.gain(0.4), wet = v.gain(1.5), g = v.gain(0);
+    bp.frequency.exponentialRampToValueAtTime(Math.min(f * 9, 9500), t + 0.07); bp.frequency.exponentialRampToValueAtTime(Math.min(f * 3, 6000), t + dec * 0.6);
+    v.chain(s, bp, wet, lp); v.chain(s, dry, lp);
+    g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(vel * (o.level || 0.5), t + 0.004);
+    g.gain.exponentialRampToValueAtTime(vel * (o.level || 0.5) * 0.35, t + 0.3); g.gain.exponentialRampToValueAtTime(0.0001, t + dec);
+    v.chain(lp, g); v.out(g);
+    const n = v.noise('white', t, t + 0.03), hp = v.filter('highpass', 3000), ng = v.gain(0);
+    v.perc(ng.gain, t, vel * 0.08, 0.001, 0.012); v.chain(n, hp, ng); v.out(ng);
+    v.done();
+  }
+};
+
+// Tabla pair: o.drum 'dayan' (tuned ringing treble drum) | 'bayan' (bass drum
+// whose pitch rises with palm pressure; accents bend further).
+I.tabla = (k, dest, t, ev, o = {}) => {
+  const v = k.v(dest), vel = ev.vel, lo = o.drum === 'bayan', f = ev.notes && ev.notes.length ? mtof(ev.notes[0]) : (lo ? 98 : 587);
+  if (lo) {
+    const s = v.osc('sine', f, t, t + 0.65), g = v.gain(0);
+    s.frequency.setValueAtTime(f * 0.9, t); s.frequency.exponentialRampToValueAtTime(f * (vel > 0.9 ? 1.45 : 1.12), t + 0.22);
+    v.perc(g.gain, t, vel * 0.9, 0.003, vel > 0.9 ? 0.55 : 0.32); v.chain(s, g); v.out(g);
+    const n = v.noise('white', t, t + 0.04), lp = v.filter('lowpass', 900), ng = v.gain(0); v.perc(ng.gain, t, vel * 0.25, 0.001, 0.02); v.chain(n, lp, ng); v.out(ng);
+  } else {
+    const dec = vel > 0.9 ? 0.5 : vel < 0.5 ? 0.09 : 0.24;
+    for (const [r, a, d] of [[1, 0.55, dec], [2, 0.28, dec * 0.6], [3, 0.16, dec * 0.4], [4.2, 0.08, 0.05]]) {
+      const s = v.osc('sine', f * r, t, t + d + 0.05), g = v.gain(0); v.perc(g.gain, t, vel * a, 0.001, d); v.chain(s, g); v.out(g);
+    }
+    const n = v.noise('white', t, t + 0.03), bp = v.filter('bandpass', 3600, 1.5), ng = v.gain(0); v.perc(ng.gain, t, vel * 0.22, 0.001, 0.014); v.chain(n, bp, ng); v.out(ng);
+  }
+  v.done();
+};
+
+// Turntable scratch: a saw "record" + noise whose pitch rocks forward/back
+// in o.strokes strokes over the note, gated like a crossfader.
+I.scratch = (k, dest, t, ev, o = {}) => {
+  const v = k.v(dest), f = ev.notes && ev.notes.length ? mtof(ev.notes[0]) : 330, dur = Math.max(0.08, ev.dur), strokes = o.strokes || 2, end = t + dur + 0.05;
+  const s = v.osc('sawtooth', f, t, end), n = v.noise('white', t, end), ng = v.gain(0.5), bp = v.filter('bandpass', f * 2, 1.2), g = v.gain(0), lvl = ev.vel * (o.level || 0.3);
+  const seg = dur / strokes;
+  g.gain.setValueAtTime(0, t);
+  for (let i = 0; i < strokes; i++) {
+    const a = t + i * seg, fwd = i % 2 === 0;
+    s.frequency.setValueAtTime(f * (fwd ? 0.45 : 1.7), a); s.frequency.exponentialRampToValueAtTime(f * (fwd ? 1.7 : 0.4), a + seg * 0.9);
+    bp.frequency.setValueAtTime(f * (fwd ? 1 : 3.4), a); bp.frequency.exponentialRampToValueAtTime(f * (fwd ? 3.4 : 0.9), a + seg * 0.9);
+    g.gain.setValueAtTime(0, a); g.gain.linearRampToValueAtTime(lvl, a + 0.008); g.gain.setValueAtTime(lvl, a + seg * 0.7); g.gain.linearRampToValueAtTime(0, a + seg * 0.92);
+  }
+  s.connect(bp); v.chain(n, ng, bp); v.chain(bp, g); v.out(g); v.done();
 };
 
 // Shared guitar amp for a channel: tight pre-EQ → tanh drive → cab sim.
@@ -672,7 +815,7 @@ export function buildAmp(k, o = {}) {
 //      X=accent x=normal o=ghost m/M=palm-muted  O=open hat  1-4=tom pitch
 //      '-' extends the previous hit (chord parts), '.' rest. Loops if short.
 //  * tokens (melodies / basslines): "note:steps[mods]" separated by spaces.
-//      abs mode:  c5:2  f#4:4  bb3:1   r:4 (rest)
+//      abs mode:  c5:2  f#4:4  bb3:1   r:4 (rest)   c3+g3:16 (several notes at once)
 //      rel mode:  chord-relative degrees: 1 3 5 7 (chord-aware), b3 b7 9 #11 13,
 //                 8 = octave, ' / , = octave up/down, x = dead note,
 //                 > / < = chromatic approach to the next chord's root.
@@ -760,7 +903,7 @@ function compilePart(pat, len, part, chordAt, tr, warn, where) {
     }
     return out;
   }
-  const re = mode === 'abs' ? /^(r|[a-g][#b]?-?\d)(?::(\d+))?([!?m~/_]*)$/ : /^(r|x|>|<|[b#]?\d+[',]*)(?::(\d+))?([!?m~/_]*)$/;
+  const re = mode === 'abs' ? /^(r|[a-g][#b]?-?\d(?:\+[a-g][#b]?-?\d)*)(?::(\d+))?([!?m~/_]*)$/ : /^(r|x|>|<|[b#]?\d+[',]*)(?::(\d+))?([!?m~/_]*)$/;
   const toks = pat.split(/[\s|]+/).filter(Boolean).map((tk) => {
     const m = re.exec(tk); if (!m) throw new Error(`${tr.id || '?'} ${where}: bad token "${tk}"`);
     return { v: m[1], d: m[2] ? +m[2] : 1, mods: m[3] || '' };
@@ -776,7 +919,7 @@ function compilePart(pat, len, part, chordAt, tr, warn, where) {
       if (t.v === 'r') continue;
       const md = t.mods, e = { s: at, d, vel: md.includes('!') ? 1 : md.includes('?') ? 0.5 : 0.8, mute: md.includes('m'), vib: md.includes('~'), slide: md.includes('/') };
       if (md.includes('_')) e.gate = 0.45;
-      if (mode === 'abs') e.n = [noteToMidi(t.v) + shift];
+      if (mode === 'abs') e.n = t.v.split('+').map((x) => noteToMidi(x) + shift); // "c3+g3" = dyad/chord
       else {
         const ch = chordAt[at]; if (!ch) { warn.push(`${where}: no chord at step ${at}`); continue; }
         const base = part.base ?? 36;
@@ -805,14 +948,16 @@ export function compileTrack(tr) {
     }
     secs[name] = steps;
   }
-  const tl = []; let loopAt = 0;
+  const tl = [], barSec = [], formPos = []; let loopAt = 0;
   tr.form.forEach((sn, i) => {
     if (!secs[sn]) throw new Error(`${tr.id}: form references missing section ${sn}`);
     if (i === (tr.loop ?? 0)) loopAt = tl.length;
+    formPos.push(tl.length);
+    for (let b = 0; b < secs[sn].length / spb; b++) barSec.push([sn, b, i]); // bar → [section, bar in section, form index]
     for (const st of secs[sn]) tl.push(st);
   });
   const stepDur = 60 / tr.bpm / res;
-  const c = { tl, loopAt, spb, res, stepDur, warnings, total: tl.length * stepDur, loopLen: (tl.length - loopAt) * stepDur, events: tl.reduce((a, s) => a + s.length, 0) };
+  const c = { tl, loopAt, spb, res, stepDur, warnings, barSec, formPos, total: tl.length * stepDur, loopLen: (tl.length - loopAt) * stepDur, events: tl.reduce((a, s) => a + s.length, 0) };
   COMPILED.set(tr, c);
   return c;
 }
@@ -846,6 +991,25 @@ export class TrackPlayer {
     this.ch = {};
     for (const [name, p] of Object.entries(tr.parts)) this.ch[name] = this._channel(p);
     this.pos = 0; this.next = 0; this.running = false; this.ended = false; this.stopAt = Infinity;
+    this.barLog = []; this.jumpAt = null; this.jumpPos = 0;
+  }
+  // Beat-clock helpers (the engine's beat()/jump() use these).
+  get bpm() { return this.tr.bpm; }
+  get beatsPerBar() { return this.tr.beats || 4; }
+  // Section playing at context time t (from the log of scheduled bar starts).
+  sectionAt(t) {
+    const L = this.barLog; let e = null;
+    for (let i = L.length - 1; i >= 0; i--) if (L[i].t <= t + 1e-4) { e = L[i]; break; }
+    if (!e) e = L[0]; if (!e) return null;
+    const b = this.c.barSec[Math.floor(e.pos / this.c.spb)] || [];
+    return { name: b[0], bar: b[1], form: b[2] };
+  }
+  // Jump to the first form occurrence of `name` at context time t (must be a
+  // bar line that has not been scheduled yet; the engine picks it).
+  jump(name, t) {
+    const i = this.tr.form.indexOf(name);
+    if (i < 0) return false;
+    this.jumpPos = this.c.formPos[i]; this.jumpAt = t; return true;
   }
   _g(v) { const g = this.ctx.createGain(); g.gain.value = v; this.nodes.push(g); return g; }
   _bq(type, f, q) { const b = this.ctx.createBiquadFilter(); b.type = type; b.frequency.value = f; b.Q.value = q; this.nodes.push(b); return b; }
@@ -916,10 +1080,12 @@ export class TrackPlayer {
     const c = this.c;
     while (this.next < until) {
       if (this.next >= this.stopAt) { this.running = false; break; }
+      if (this.jumpAt != null && this.next >= this.jumpAt - 1e-4) { this.pos = this.jumpPos; this.jumpAt = null; }
       if (this.pos >= c.tl.length) {
         if (this.tr.once) { this.running = false; this.ended = true; this.endTime = this.next; break; }
         this.pos = c.loopAt;
       }
+      if (this.pos % c.spb === 0) { this.barLog.push({ t: this.next, pos: this.pos }); if (this.barLog.length > 24) this.barLog.shift(); }
       this._step(this.pos, this.next);
       this.pos++; this.next += c.stepDur;
     }
@@ -997,6 +1163,36 @@ const rep = (s, n) => Array(n).fill(s).join(' ');
 const dots = (n) => '.'.repeat(n);
 const once = (c, bars, spb = 16) => c + dots(bars * spb - 1);
 const every = (c, barsPer, bars, spb = 16) => rep(c + dots(barsPer * spb - 1), bars / barsPer);
+const seq = (...bars) => bars.join(' | ');
+
+// abs-token helpers used while writing the arrangements --------------------------
+const ABS_TOK = /^(r|[a-g][#b]?-?\d(?:\+[a-g][#b]?-?\d)*)(?::(\d+))?([!?m~/_]*)$/;
+const NAMES_B = ['c', 'db', 'd', 'eb', 'e', 'f', 'gb', 'g', 'ab', 'a', 'bb', 'b'], NAMES_S = ['c', 'c#', 'd', 'd#', 'e', 'f', 'f#', 'g', 'g#', 'a', 'a#', 'b'];
+const nameOf = (m, sharp) => (sharp ? NAMES_S : NAMES_B)[((m % 12) + 12) % 12] + (Math.floor(m / 12) - 1);
+const absToks = (str) => str.split(/[\s|]+/).filter(Boolean).map((tk) => { const m = ABS_TOK.exec(tk); if (!m) throw new Error('bad token ' + tk); return { v: m[1], d: m[2] ? +m[2] : 1, mods: m[3] || '' }; });
+// Transpose an abs melody by n semitones (sharp spelling for sharp keys).
+export function transposeAbs(str, n, sharp = false) {
+  return absToks(str).map((t) => (t.v === 'r' ? `r:${t.d}` : t.v.split('+').map((x) => nameOf(noteToMidi(x) + n, sharp)).join('+') + `:${t.d}${t.mods}`)).join(' ');
+}
+// Harmony voice under an abs melody: each note moves down to the `below`-th
+// chord tone under it (1 ≈ a 3rd below, 2 ≈ a 6th below). Notes that are not
+// chord tones (passing notes) take the nearest `scale` tone a 3rd/6th below.
+export function harmonize(mel, chords, below = 1, { scale = [0, 2, 4, 5, 7, 9, 11], key = 0, spb = 16, sharp = false } = {}) {
+  const toks = absToks(mel), total = toks.reduce((a, t) => a + t.d, 0), at = chordGrid(chords, Math.ceil(total / spb) * spb, spb);
+  const inScale = (pc) => scale.includes(((pc - key) % 12 + 12) % 12);
+  let pos = 0;
+  return toks.map((t) => {
+    const s = pos; pos += t.d;
+    if (t.v === 'r') return `r:${t.d}`;
+    const m = noteToMidi(t.v.split('+')[0]), ch = at[s];
+    const pcs = ch ? ch.iv.filter((x) => x < 12).map((x) => (ch.root + x) % 12) : [];
+    let h = null;
+    if (pcs.includes(m % 12)) { let cnt = 0; for (let k = m - 3; k >= m - 11; k--) if (pcs.includes(k % 12) && ++cnt === below) { h = k; break; } }
+    if (h == null) { const lo = below === 1 ? [3, 4] : [8, 9]; for (const d of lo) if (inScale(m - d) || pcs.includes((m - d) % 12)) { h = m - d; break; } }
+    if (h == null) h = m - (below === 1 ? 4 : 9);
+    return `${nameOf(h, sharp)}:${t.d}${t.mods}`;
+  }).join(' ');
+}
 
 export const TRACKS = {};
 
@@ -1187,7 +1383,7 @@ export const TRACKS = {};
   };
 }
 
-// ---- battle: J-rock (E minor), intensity layers -------------------------------------
+// ---- battle: J-rock (E minor), intensity layers; 144 bpm = 5 poses/beat (tempo grid) ----
 {
   const leadA = 'e5:3 g5:3 b5:2 a5:2 g5:2 f#5:2 d5:2 | e5:8 r:4 b4:2 d5:2 | e5:3 g5:3 c6:2 b5:2 a5:2 g5:2 e5:2 | f#5:8 r:4 d5:2 f#5:2 | '
     + 'e5:3 g5:3 b5:2 a5:2 g5:2 f#5:2 d5:2 | e5:8 r:4 e5:2 g5:2 | a5:3 g5:3 e5:2 c5:4 e5:4 | d#5:4 f#5:4 b5:8';
@@ -1196,7 +1392,7 @@ export const TRACKS = {};
   const leadC = 'e5:8 c5:4 e5:4 | a5:12 g5:4 | g5:8 f#5:4 e5:4 | b4:16 | c5:4 e5:4 a5:4 c6:4 | b5:8 a5:4 e5:4 | f#5:8 d#5:4 f#5:4 | b5:16';
   const gA = rep('X-m.m.mmX-m.m.mm', 8), gB = rep('X-x-x-x-X-x-x-x-', 8), gC = rep('X---------------', 6) + ' X-------x-x-x-x- mmmmmmmmMMMMMMMM';
   TRACKS.battle = {
-    id: 'battle', vol: 0.82, name: 'Osaka Clash — J-rock battle', bpm: 160, human: 0.003, rev: 0.08,
+    id: 'battle', vol: 0.82, name: 'Osaka Clash — J-rock battle', bpm: 144, human: 0.003, rev: 0.08,
     delay: { beats: 0.75, fb: 0.28, mix: 0.35 },
     parts: {
       kick: { inst: 'kick', vol: 0.85, o: { tone: 'rock' } },
@@ -1251,7 +1447,7 @@ export const TRACKS = {};
   };
 }
 
-// ---- battle_punk: thrash / punk-metal for Team Metallica (E, 184 bpm) -----------------
+// ---- battle_punk: thrash / punk-metal for Team Metallica (E, 180 bpm = 4 poses/beat) ---
 {
   const G = (n, d = 2, m = 'm') => `${n}:${d}${m}`;
   const gal = (n) => `${n}:2m ${n}:1m ${n}:1m`; // gallop: 8th + two 16ths
@@ -1270,7 +1466,7 @@ export const TRACKS = {};
   const l2 = 'd5:4 g5:4 b5:4 a5:4 | g5:4 b5:4 c6:8 | d6:4 c6:4 b5:4 a5:4 | b5:8 a5:4 f#5:4 | d5:4 g5:4 b5:4 a5:4 | g5:4 b5:4 c6:4 d6:4 | e6:4 d6:4 c6:4 b5:4 | a5:8 f#5:8';
   const amp = { drive: 6, scoop: -7, cab: 4600 };
   TRACKS.battle_punk = {
-    id: 'battle_punk', vol: 0.8, name: 'Master of Muppets — Team Metallica thrash', bpm: 184, human: 0.002, rev: 0.06,
+    id: 'battle_punk', vol: 0.8, name: 'Mosh Pit Monarchs — Team Metallica thrash', bpm: 180, human: 0.002, rev: 0.06,
     parts: {
       kick: { inst: 'kick', vol: 0.8, o: { tone: 'metal' } },
       kick2: { inst: 'kick', vol: 0.5, o: { tone: 'metal' }, int: [0.55, 0.72] },
@@ -1327,7 +1523,7 @@ export const TRACKS = {};
   const melB = 'a5:6 f5:2 d5:4 f5:4 | bb5:6 a5:2 f5:4 d5:4 | c6:6 a5:2 f5:4 a5:4 | g5:8 e5:4 c5:4 | d5:4 g5:4 bb5:4 d6:4 | d6:6 c6:2 bb5:4 f5:4 | e5:4 a5:4 c#6:4 e6:4 | e6:8 c#6:4 a5:4';
   const ost = '1:1 1:1 3:1 1:1 5:1 1:1 3:1 1:1';
   TRACKS.boss = {
-    id: 'boss', vol: 0.78, name: 'Soulstone Titan — boss', bpm: 140, human: 0.003, rev: 0.16,
+    id: 'boss', vol: 0.78, name: 'Soulstone Titan — boss', bpm: 144, human: 0.003, rev: 0.16,
     parts: {
       taiko: { inst: 'taiko', vol: 0.62, rev: 0.25 },
       shime: { inst: 'taiko', vol: 0.3, pan: 0.3, o: { size: 'small' } },
@@ -1602,6 +1798,450 @@ export const TRACKS = {};
       },
     },
     form: ['A', 'B'], loop: 0,
+  };
+}
+
+// ===========================================================================
+// THE LEAGUE — Elite Four ("The Beatles" tribute band), Champions ("Queen"
+// tribute supergroup), stadium hype, halftime show, starter pick, metal bullies.
+// Specs: docs/refs/music_albums.md Part B. Tempos are frame-locked (§0.4):
+// 120 = 6 poses/beat, 144 = 5, 180 = 4, 90 = 8. Every League theme has a
+// `sync` table: 1-based track bar numbers where phases, camera cuts and
+// ultimate impacts should land (the beat clock is audio.beat()).
+// Shared Elite Four "Brigade" signature: every A section opens with the rhythmic
+// cell short-short-long (8th, 8th, dotted quarter) on new pitches, and every B
+// section closes with the II7 → V7sus4 → V7 lift.
+// ===========================================================================
+
+// ---- e4_john — Elite Four "John" (Lenshorn, Echo): "Echo Chamber" ---------------
+// C Mixolydian pedal, tape-echo throws, drone, tom-heavy loop; sitar chant line.
+{
+  const sitA = seq('g4:2 bb4:2 c5:6~ bb4:1 a4:1 g4:4', 'a4:2/ g4:2 bb4:4/ a4:2 g4:6~', 'g4:2 bb4:2 c5:6~ d5:2/ c5:2 bb4:2', 'c5:8~ r:4 g4:2 bb4:2',
+    'c5:2 d5:2 e5:6/~ d5:2 c5:2 bb4:2', 'c5:4 bb4:2 g4:2 bb4:4/ g4:4', 'bb4:2 a4:2 g4:6/~ a4:2 bb4:2 a4:2', 'g4:12~ r:4');
+  const sitB = seq('d5:4 c5:2 bb4:2 c5:4/ d5:4', 'c5:6~ a4:2 f4:4 a4:4', 'g4:2 c5:2 e5:4/ d5:2 c5:2 g4:4', 'e5:12/~ r:4',
+    'f5:4 d5:2 bb4:2 c5:4/ d5:4', 'c5:4 a4:4 c5:2 f5:6~', 'f#5:4/ e5:2 d5:2 c5:4 a4:4', 'c5:8~ b4:4 d5:4');
+  const bassA = rep('c2:3 c2:1 c3:2 c2:2 bb1:3 c2:1 g1:2 c2:2', 8);
+  const bassB = seq('bb1:3 bb1:1 bb2:2 bb1:2 f2:3 f2:1 d2:2 bb1:2', 'a1:3 a1:1 a2:2 a1:2 c2:3 c2:1 f2:2 a1:2', 'c2:3 c2:1 c3:2 c2:2 bb1:3 c2:1 g1:2 c2:2', 'c2:3 c2:1 c3:2 c2:2 e2:2 g2:2 bb2:2 c3:2',
+    'bb1:3 bb1:1 bb2:2 bb1:2 f2:3 f2:1 d2:2 bb1:2', 'a1:3 a1:1 a2:2 a1:2 c2:3 c2:1 f2:2 a1:2', 'd2:3 d2:1 d3:2 d2:2 c2:3 c2:1 a1:2 f#1:2', 'g1:3 g1:1 g2:2 g1:2 f2:2 d2:2 b1:2 d2:2');
+  const gull = seq('r:8 g5:2 d6:2/ c6:4~', 'bb5:12~ r:4', 'r:16', 'r:4 e6:2 c6:2/ g5:8~');
+  TRACKS.e4_john = {
+    id: 'e4_john', vol: 1, name: 'Echo Chamber — Elite Four "John" (Lenshorn)', bpm: 120, human: 0.004, rev: 0.22,
+    delay: { beats: 0.75, fb: 0.38, mix: 0.5 },
+    sync: { intro: 1, A: 5, B: 13, A2: 21, cuts: [29, 30, 31, 32], ult: [13, 29] },
+    parts: {
+      drone: { inst: 'drone', mode: 'abs', vol: 0.45, rev: 0.3, chorus: 0.7, o: { cut: 900, rate: 0.13 } },
+      organ: { inst: 'pad', mode: 'chord', voicing: { center: 62, n: 3 }, vol: 0.3, pan: -0.25, rev: 0.25, chorus: 0.9, o: { wave: 'square', detune: 4, cut: 1700, a: 0.08, level: 0.18 } },
+      kick: { inst: 'kick', vol: 0.6, o: { tone: 'rock' } },
+      snare: { inst: 'snare', vol: 0.66, rev: 0.12, o: { tone: 'tight' } },
+      tom: { inst: 'tom', vol: 0.5, pan: -0.15, rev: 0.15 },
+      tom2: { inst: 'tom', vol: 0.32, pan: 0.2, rev: 0.15, int: [0.6, 0.8] },
+      hat: { inst: 'hat', vol: 0.16, pan: 0.3 },
+      tamb: { inst: 'tamb', vol: 0.2, pan: -0.4 },
+      bass: { inst: 'bass', mode: 'abs', vol: 0.28, hp: 38, o: { wave: 'triangle', cut: 700, env: 1, q: 1, sub: 0.3 } },
+      sitar: { inst: 'sitar', mode: 'abs', vol: 1.2, pan: 0.15, rev: 0.2, dly: 0.28 },
+      throw: { inst: 'sitar', mode: 'abs', vol: 1.0, pan: -0.2, rev: 0.25, dly: 0.95 },
+      gull: { inst: 'lead', mode: 'abs', vol: 0.5, pan: 0.3, rev: 0.4, dly: 0.45, o: { wave: 'sawtooth', glide: 0.12, vib: 30, cut: 2600, level: 0.2, a: 0.08 } },
+      echoLead: { inst: 'lead', mode: 'abs', oct: 1, vol: 0.22, pan: -0.3, rev: 0.25, dly: 0.55, int: [0.4, 0.6], o: { wave: 'square', wave2: 'triangle', cut: 2600, vib: 10, level: 0.2 } },
+      leslie: { inst: 'choir', mode: 'abs', vol: 0.26, rev: 0.35, chorus: 0.9, int: [0.45, 0.7], o: { vowel: 'u', a: 0.3 } },
+      gtr: { inst: 'jangle', mode: 'chord', voicing: { center: 64, n: 3 }, vol: 0.55, pan: 0.45, rev: 0.15, chorus: 0.4, nudge: 0.004 },
+    },
+    sections: {
+      intro: {
+        bars: 4, chords: 'C | C | C | C',
+        p: { drone: 'c3+g3:64', gull, tom: dots(48) + ' ........1.2.3.4.', snare: dots(56) + '....XXXX' },
+      },
+      A: {
+        bars: 8, chords: 'C | C | C | Bb/C | C | C | Bb/C | C',
+        p: {
+          drone: 'c3+g3:128', kick: rep('X..x....X.x.....', 8), snare: rep('....X.......X..o', 7) + ' ....X...X...XXXX', tom: rep('......12......3.', 8), tom2: rep('..1.....3...4...', 8),
+          hat: rep('x.x.x.x.x.xOx.x.', 8), tamb: rep('....x.......x...', 8), bass: bassA, sitar: sitA, echoLead: sitA, gtr: '..x...x...x...x.',
+        },
+      },
+      B: {
+        bars: 8, chords: 'Bb | F/A | C | C | Bb | F/A | D7 | G7sus4 G7',
+        p: {
+          kick: rep('X.......X.x.....', 8), snare: rep('....X.......X...', 7) + ' ....X...X.X.XXXX', tom: rep('..............3.', 7) + ' ........1.2.3.4.', tom2: rep('......1.....2...', 8),
+          hat: rep('x.x.x.x.x.x.x.x.', 8), tamb: rep('..x...x...x...x.', 8), bass: bassB, sitar: sitB, organ: rep('x---------------', 8),
+          leslie: seq('d4+f4:16', 'c4+f4:16', 'e4+g4:16', 'e4+g4:16', 'd4+f4:16', 'c4+a4:16', 'f#4+c5:16', 'f4+c5:8 f4+b4:8'),
+          gtr: 'x...x.x...x.x.x.', gull: seq('r:16', 'r:16', 'r:16', 'r:8 c6:2 g6:2/ e6:4~', 'r:16', 'r:16', 'r:16', 'r:16'),
+        },
+      },
+      C: {
+        bars: 4, chords: 'C | C | C | C',
+        p: {
+          kick: rep('X..x..x.X.......', 3) + ' X.X.X.X.XXXXXXXX', snare: rep('....X..x....X.x.', 3) + ' ....X.X.XXXXXXXX', tom: rep('1...2..1..3.4...', 3) + ' 1.1.2.2.3.3.4.4.',
+          hat: rep('x.x.x.x.x.xOx.x.', 4), bass: rep('c2:3 c2:1 c3:2 c2:2 bb1:3 c2:1 g1:2 c2:2', 4), drone: 'c3+g3:64',
+          throw: seq('r:12 c5:2 g5:2/', 'r:16', 'r:8 bb4:4/ r:4', 'r:4 e5:2 d5:2 c5:4 r:4'),
+        },
+      },
+    },
+    form: ['intro', 'A', 'B', 'A', 'C'], loop: 1,
+    // a reversed swell (tape-reverse feel) over intro bars 3–4
+    script: (k, dest, t, pl) => { const b = 16 * pl.c.stepDur; fxRiser(k, dest, t + 2 * b, 2 * b, { vol: 0.16, f0: 200, f1: 6000, p0: 130.8, p1: 523.3, noise: 'pink' }); },
+  };
+}
+
+// ---- e4_paul — Elite Four "Paul" (McCarapace, Hydro): "Canal Bounce" ------------------
+// Bb major music-hall piano rock: bouncy honky piano, melodic walking bass,
+// piccolo-trumpet answers, brass band in B, a bridge up a minor third (Db).
+{
+  const melA = seq('d5:2 f5:2 bb5:6 a5:2 g5:2 f5:2', 'g5:3 f5:1 d5:4 bb4:4 g5:4', 'eb5:3 f5:1 g5:4 c6:4/ bb5:4', 'a5:4 f5:2 g5:6~ r:4',
+    'd5:2 f5:2 bb5:6 c6:2 d6:2 bb5:2', 'a5:3 f#5:1 d5:4 a4:4 f#5:4', 'g5:4 eb5:4 gb5:4 eb5:4', 'd5:4 c5:2 bb4:2 g5:4~ r:4');
+  const melB = seq('g5:6 f5:2 eb5:4 bb4:4', 'f5:6 eb5:2 d5:4 f5:4', 'eb5:3 d5:1 c5:4 g5:4 bb5:4', 'a5:8~ r:4 c6:2 bb5:2',
+    'g5:6 f5:2 eb5:4 g5:4', 'bb5:6 a5:2 f5:4 d5:4', 'e5:4 g5:4 bb5:4 c6:4', 'bb5:6 a5:2 a5:4 c6:4');
+  const melBr = seq('f5:6 ab5:2 db6:8~', 'c6:4 bb5:4 f5:8', 'gb5:6 bb5:2 db6:4 eb6:4', 'c6:12~ r:4',
+    'f5:6 ab5:2 db6:6 c6:2', 'bb5:4 ab5:4 f5:8', 'g5:4 bb5:4 db6:4 eb6:4', 'eb6:4 c6:4 a5:4 f5:4');
+  const piccA = seq('r:16', 'r:8 bb5:2 c6:2 d6:4', 'r:16', 'r:12 c6:2 a5:2', 'r:16', 'r:8 a5:2 c6:2 f#6:4', 'r:16', 'r:12 a5:2 c6:2');
+  const piccB = seq('r:12 bb5:2 c6:2', 'r:12 bb5:2 d6:2', 'r:16', 'r:8 f6:4 eb6:2 c6:2', 'r:12 bb5:2 c6:2', 'r:12 c6:2 d6:2', 'r:16', 'r:8 c6:2 d6:2 eb6:2 e6:2');
+  TRACKS.e4_paul = {
+    id: 'e4_paul', vol: 1, name: 'Canal Bounce — Elite Four "Paul" (McCarapace)', bpm: 120, human: 0.005, rev: 0.16,
+    sync: { intro: 1, A: 3, B: 11, A2: 19, bridge: 27, B2: 35, tag: 43, cuts: [27, 35], ult: [11, 27, 43] },
+    parts: {
+      piano: { inst: 'piano', mode: 'chord', voicing: { center: 62, n: 4 }, vol: 0.4, pan: -0.15, rev: 0.12, o: { roll: 0.012, honky: 7 } },
+      pmel: { inst: 'piano', mode: 'abs', vol: 0.7, pan: 0.05, rev: 0.14, o: { honky: 7, level: 0.42 } },
+      bass: { inst: 'bass', mode: 'rel', base: 34, vol: 0.34, hp: 38, o: { wave: 'triangle', cut: 650, env: 1.2, q: 1, sub: 0.25 } },
+      picc: { inst: 'lead', mode: 'abs', vol: 0.45, pan: 0.3, rev: 0.2, dly: 0.12, int: [0.35, 0.55], o: { wave: 'square', wave2: 'triangle', mix2: 0.7, vib: 8, glide: 0.02, cut: 3800, level: 0.2, a: 0.012 } },
+      bmel: { inst: 'brass', mode: 'abs', vol: 0.72, pan: 0.12, rev: 0.22, o: { cut: 3000, level: 0.36 } },
+      brass: { inst: 'brass', mode: 'chord', voicing: { center: 63, n: 3 }, vol: 0.55, pan: -0.3, rev: 0.2 },
+      strings: { inst: 'strings', mode: 'chord', voicing: { center: 67, n: 3 }, vol: 0.32, pan: 0.2, rev: 0.3, chorus: 0.6 },
+      glock: { inst: 'glock', mode: 'abs', vol: 0.4, pan: 0.4, rev: 0.3, dly: 0.25 },
+      kick: { inst: 'kick', vol: 0.62, o: { tone: 'tight' } },
+      snare: { inst: 'snare', vol: 0.6, rev: 0.1, o: { tone: 'tight' } },
+      hat: { inst: 'hat', vol: 0.18, pan: 0.3 },
+      tamb: { inst: 'tamb', vol: 0.28, pan: -0.4, int: [0.2, 0.4] },
+      crash: { inst: 'crash', vol: 0.2, pan: 0.2 },
+    },
+    sections: {
+      intro: {
+        bars: 2, chords: 'Bb | F7',
+        p: { piano: 'X...x...x...x...', pmel: seq('f4:2 bb4:2 d5:2 f5:4 d5:2 bb4:2 f4:2', 'a4:2 c5:2 eb5:2 f5:4 eb5:2 c5:2 c5:2') },
+      },
+      A: {
+        bars: 8, chords: 'Bb | Gm7 | Eb | F7 | Bb | D7 | Eb Ebm6 | Bb F7',
+        p: {
+          piano: rep('x...X...x...X.x.', 7) + ' x...X...x.x.X...', pmel: melA, picc: piccA, crash: once('X', 8),
+          bass: rep('1:4 3:2_ 5:2_ 6:4 >:4', 6) + ' 1:4 3:2_ 5:2_ 1:4 b3:4 1:4 3:2_ 5:2_ 6:4 >:4',
+          kick: rep('X.......X..x....', 8), snare: rep('....X.......X...', 7) + ' ....X.......X.XX', hat: rep('x.x.x.x.x.x.x.x.', 8), tamb: rep('..x...x...x...x.', 8),
+          glock: 'r:60 bb6:4',
+        },
+      },
+      B: {
+        bars: 8, chords: 'Eb | Bb/D | Cm7 | F7 | Eb | Bb/D | C7 | F7sus4 F7',
+        p: {
+          piano: rep('x.x.X.x.x.x.X.x.', 8), bmel: melB, pmel: melB, picc: piccB, brass: rep('x--.....x-x.....', 7) + ' x-------X-------', crash: every('X', 4, 8),
+          bass: rep('1:4 5:2_ 8:2_ 5:4 >:4', 6) + ' 1:4 3:2_ 5:2_ b7:4 >:4 1:4 5:2 1:2 3:4 1:4',
+          kick: rep('X.....x.X..x....', 8), snare: rep('....X.......X...', 7) + ' ....X...X.X.XXXX', hat: rep('x.x.x.x.x.x.x.x.', 8), tamb: rep('..x...x...x...x.', 8),
+          glock: 'r:60 f6:4',
+        },
+      },
+      bridge: {
+        bars: 8, chords: 'Db | Bbm7 | Gb | Ab7 | Db | Bbm7 | Eb7 | F7',
+        p: {
+          piano: rep('x-----x-x-----x-', 8), pmel: melBr, strings: 'x---------------', brass: dots(96) + ' x---x---x-x-x-x- X---X---X-X-XXXX',
+          bass: rep('1:4 3:2_ 5:2_ 8:4 >:4', 8), crash: once('X', 8),
+          kick: rep('X.......X.......', 8), snare: rep('....X.......X...', 7) + ' ....X...XXXXXXXX', hat: rep('x...x...x...x...', 8),
+          glock: 'r:60 db7:4',
+        },
+      },
+      tag: {
+        bars: 2, chords: 'Bb | F7',
+        p: {
+          piano: 'X.x.X.x.X.x.X.x. X...X...X.X.X.X.', pmel: seq('d5:2 f5:2 bb5:6 a5:2 g5:2 f5:2', 'a5:4 c6:4 f6:6 r:2'), brass: 'X-------........ X---X---X-X-X-X-',
+          bass: '1:4 3:4 5:4 3:4 1:4 3:4 5:4 >:4', kick: 'X.......X....... X...X...X.X.X.X.', snare: '....X.......X... ....X...X.X.XXXX', crash: 'X...............',
+        },
+      },
+    },
+    form: ['intro', 'A', 'B', 'A', 'bridge', 'B', 'tag'], loop: 1,
+  };
+}
+
+// ---- e4_george — Elite Four "George" (Harrisun, Pyro): "Sunrise Raga" -------------------
+// D with a Khamaj-like double 7th (C# rising, C falling) over a D+A tanpura;
+// sitar, tabla pair, 12-string strums, then a bright portamento "sunrise" Moog.
+// The `dawn` section doubles as Harrisun's meditation→sunrise evolution cue.
+{
+  const dawn = seq('r:4 d5:8~/ e5:2 d5:2', 'c5:4/ a4:12~', 'r:4 f#4:4/ g4:4 a4:4', 'b4:6/ a4:2 g4:4 f#4:4',
+    'e4:4 f#4:2 a4:2 d5:8/~', 'e5:4/ f#5:4 e5:4 d5:4', 'c5:6/ b4:2 a4:8~', 'd4:12/~ r:4');
+  const sitA = seq('a4:2 b4:2 d5:6~ c#5:2 d5:2 e5:2', 'f#5:4/ e5:2 d5:2 a4:8~', 'g4:2 a4:2 c5:6/~ b4:2 a4:2 g4:2', 'a4:12~ f#4:2 a4:2',
+    'b4:2 d5:2 g5:6/~ f#5:2 e5:2 d5:2', 'e5:4 f#5:2 e5:2 d5:8~', 'e5:2 g5:2 b5:4/ a5:4 g5:2 e5:2', 'd5:12/~ r:4');
+  const moog = seq('g4:4 d5:4 b4:8~', 'a4:4 e5:4 c#5:8~', 'b4:4 f#5:4 d5:6 e5:2', 'c#5:4 a5:4 e5:8~',
+    'd5:4 g5:4 b5:8~', 'a5:4 d6:4 e6:8~', 'f#6:3 e6:3 d6:3 a5:3 f#5:2 a5:2', 'g5:3 e5:3 c#5:3 a4:3 c#5:2 e5:2');
+  const chB = 'G | A | Bm7 | A | G | A7sus4 | D/F# | A7';
+  const illus = 'X..X..X..X..X.X.';
+  TRACKS.e4_george = {
+    id: 'e4_george', vol: 1, name: 'Sunrise Raga — Elite Four "George" (Harrisun)', bpm: 120, human: 0.006, rev: 0.25,
+    delay: { beats: 0.75, fb: 0.3, mix: 0.35 },
+    sync: { dawn: 1, sunrise: 7, A: 9, B: 17, illusion: [23, 24], A2: 25, B2: 33, ult: [17, 33], evolveReveal: 17 },
+    parts: {
+      tanpura: { inst: 'drone', mode: 'abs', vol: 0.42, rev: 0.35, chorus: 0.6, o: { cut: 1100, rate: 0.09 } },
+      tpluck: { inst: 'sitar', mode: 'abs', vol: 0.32, pan: -0.35, rev: 0.45, o: { decay: 3, level: 0.3 } },
+      sitar: { inst: 'sitar', mode: 'abs', vol: 1.15, pan: 0.15, rev: 0.25, dly: 0.2 },
+      swarm: { inst: 'koto', mode: 'abs', vol: 0.4, pan: 0.4, rev: 0.4, dly: 0.3, o: { decay: 1.2 } },
+      tablaHi: { inst: 'tabla', note: 74, vol: 0.55, pan: 0.25, rev: 0.12, o: { drum: 'dayan' } },
+      tablaLo: { inst: 'tabla', note: 43, vol: 0.6, pan: -0.15, rev: 0.12, o: { drum: 'bayan' } },
+      ka: { inst: 'ka', vol: 0.3, pan: 0.4 },
+      acou: { inst: 'acoustic', mode: 'chord', voicing: { center: 62, n: 4, bass: 50 }, vol: 0.38, pan: -0.3, rev: 0.15, chorus: 0.5, o: { strum: 0.012 } },
+      moog: { inst: 'lead', mode: 'abs', vol: 1.1, pan: 0.05, rev: 0.22, dly: 0.25, o: { wave: 'sawtooth', wave2: 'square', mix2: 0.35, glide: 0.06, cut: 3000, vib: 10, level: 0.22 } },
+      moog2: { inst: 'lead', orn: true, mode: 'abs', vol: 0.6, pan: -0.25, rev: 0.22, dly: 0.25, int: [0.45, 0.65], o: { wave: 'sawtooth', glide: 0.06, cut: 2600, vib: 10, level: 0.2 } },
+      bass: { inst: 'bass', mode: 'rel', base: 33, vol: 0.26, hp: 38, o: { wave: 'sawtooth', cut: 900, env: 2, q: 2, drive: 1.6 } },
+      kick: { inst: 'kick', vol: 0.62, o: { tone: 'rock' } },
+      snare: { inst: 'snare', vol: 0.55, rev: 0.12, o: { tone: 'rock' } },
+      hat: { inst: 'hat', vol: 0.17, pan: 0.3 },
+      crash: { inst: 'crash', vol: 0.24 },
+    },
+    sections: {
+      dawn: {
+        bars: 8, chords: 'D | D | D | D | D | D | D | D',
+        p: {
+          tanpura: 'd3+a3:128', tpluck: rep('a2:4 d3:4 d3:4 d2:4', 8), sitar: dawn, swarm: 'd5:1 e5:1 f#5:1 a5:1 b5:1 d6:1 e6:1 f#6:9 r:112',
+          tablaLo: 'X............... ................ X............... ................ X.......X....... ........X....... X.......X....... X...X...X.X.X...',
+          tablaHi: dots(64) + ' ........x...x... ....x.......x... x.x.....x.xx.... x.xx..x.x.xxxxxx',
+        },
+      },
+      A: {
+        bars: 8, chords: 'D | D | C/D | D | G/D | D | Em7 A7sus4 | D',
+        p: {
+          tanpura: 'd3+a3:128', sitar: sitA, swarm: 'a4:1 b4:1 d5:1 e5:1 f#5:1 a5:1 b5:1 d6:9 r:112',
+          tablaHi: rep('x.xx..x.x.xx..x.', 8), tablaLo: rep('X.....x...X.....', 8), ka: rep('...x.......x....', 8),
+          kick: rep('X.....X.X.......', 8), snare: rep('....X.......X...', 7) + ' ....X.......XXXX', hat: rep('x.x.x.x.x.x.x.x.', 8), crash: once('X', 8),
+          acou: rep('x..xx.x.x..xx.x.', 8), bass: rep('1:4 r:2 1:2 5,:4 r:2 1:2', 8),
+        },
+      },
+      B: {
+        bars: 8, chords: chB,
+        p: {
+          tanpura: 'd3+a3:128', moog, moog2: harmonize(moog, chB, 1, { key: 2, sharp: true }),
+          sitar: seq('r:16', 'r:12 c#5:2 e5:2', 'r:16', 'r:12 e5:2 g5:2', 'r:16', 'r:16', 'r:16', 'r:16'),
+          tablaHi: rep('x.xx..x.x.xx..x.', 6) + dots(32), ka: rep('k.k...k.k...k.k.', 6) + dots(32),
+          kick: rep('X...X.....X.X...', 6) + ' ' + illus + ' ' + illus, crash: 'X' + dots(95) + ' ' + illus + ' ' + illus,
+          snare: rep('....X.......X...', 5) + ' ....X...X.X.XXXX' + dots(32), hat: rep('x.x.x.x.x.x.x.x.', 6) + dots(32),
+          acou: rep('x.x.xx.xx.x.xx.x', 6) + ' ' + illus + ' ' + illus,
+          bass: rep('1:2 1:2 1:2 1:2 5:2 5:2 8:2 5:2', 6) + ' ' + rep('1:3 1:3 1:3 1:3 1:2 1:2', 2),
+        },
+      },
+    },
+    form: ['dawn', 'A', 'B', 'A', 'B'], loop: 1,
+    // first light: a shimmer on dawn bar 7
+    script: (k, dest, t, pl) => fxShimmer(k, dest, t + 6 * 16 * pl.c.stepDur, 3, { vol: 0.16, base: 1174.7, count: 14 }),
+  };
+}
+
+// ---- e4_ringo — Elite Four "Ringo" (Starrab, Geo): "Coral Parade" -----------------------
+// G major sing-along oompah shuffle (drum-forward parade), final A up a whole
+// step; the 2-bar drum break (`brk`) is the team-combo showcase window.
+{
+  const melA = seq('d5:2 d5:2 g5:6 f#5:2 e5:2 d5:2', 'b4:4 c5:2 d5:2 e5:4 d5:4', 'e5:2 e5:2 g5:6 e5:2 d5:2 c5:2', 'd5:4 b4:4 g4:8',
+    'b4:2 b4:2 e5:6 d5:2 c5:2 b4:2', 'c5:4 a4:4 d5:4 f#5:4', 'g5:4 d5:4 e5:4 g#5:4', 'a5:4 g5:2 e5:2 d5:4 c5:2 a4:2');
+  const melB = seq('e5:6 d5:2 c5:4 e5:4', 'd5:6 b4:2 g4:8', 'a4:2 b4:2 c5:4 d5:4 f#5:4', 'r:4 b4:2 d5:2 g5:8',
+    'e5:6 d5:2 c5:4 g5:4', 'g5:6 f#5:2 e5:4 d5:4', 'c#5:4 e5:4 a5:4 g5:4', 'r:4 f#5:4 e5:4 d5:4');
+  const chA = 'G | G | C | G | Em | Am7 D7 | G E7 | Am7 D7', chA2 = 'A | A | D | A | F#m | Bm7 E7 | A F#7 | Bm7 E7';
+  const melA2 = transposeAbs(melA, 2, true);
+  const oompah = (bars) => rep('1:4 r:4 5,:4 r:4', bars);
+  TRACKS.e4_ringo = {
+    id: 'e4_ringo', vol: 1, name: 'Coral Parade — Elite Four "Ringo" (Starrab)', bpm: 120, swing8: 0.16, human: 0.007, rev: 0.18,
+    sync: { count: 1, A: 2, B: 10, A2: 18, breakWindow: [26, 27], ult: [18, 26] },
+    parts: {
+      tuba: { inst: 'bass', mode: 'rel', base: 31, vol: 0.36, hp: 30, o: { wave: 'triangle', cut: 500, env: 0.6, q: 1, sub: 0.4 } },
+      oom: { inst: 'brass', mode: 'chord', voicing: { center: 62, n: 3 }, vol: 0.8, pan: -0.25, rev: 0.15, o: { r: 0.08 } },
+      lead: { inst: 'brass', mode: 'abs', vol: 0.85, pan: 0.1, rev: 0.2, o: { cut: 3200, level: 0.36 } },
+      glock: { inst: 'glock', mode: 'abs', oct: 1, vol: 0.32, pan: 0.35, rev: 0.25 },
+      sing: { inst: 'choir', mode: 'abs', vol: 0.22, pan: -0.1, rev: 0.3, chorus: 0.6, int: [0.4, 0.6], o: { vowel: 'o', a: 0.05, r: 0.2, level: 0.34 } },
+      harm: { inst: 'brass', orn: true, mode: 'abs', vol: 0.5, pan: -0.35, rev: 0.2, int: [0.5, 0.7], o: { cut: 2800, level: 0.3 } },
+      gang: { inst: 'gang', vol: 0.65, rev: 0.3, o: { voices: 6 } },
+      kick: { inst: 'kick', vol: 0.65, o: { tone: 'rock' } },
+      snare: { inst: 'snare', vol: 0.62, rev: 0.12, o: { tone: 'rock' } },
+      hat: { inst: 'hat', vol: 0.2, pan: 0.3, o: { decay: 0.06 } },
+      tom: { inst: 'tom', vol: 0.55, pan: -0.15, rev: 0.12 },
+      crash: { inst: 'crash', vol: 0.24 },
+      tamb: { inst: 'tamb', vol: 0.3, pan: -0.4 },
+    },
+    sections: {
+      count: {
+        bars: 1, chords: 'D7',
+        p: { hat: 'X...X...X...X...', snare: '........x.x.XXXX', tom: '........1.2.3.4.', kick: 'X.......X.......' },
+      },
+      A: {
+        bars: 8, chords: chA,
+        p: {
+          lead: melA, glock: melA, sing: melA, harm: harmonize(melA, chA, 1, { key: 7, sharp: true }), tuba: oompah(8), oom: '....x-......x-..',
+          kick: rep('X.......X.......', 8), snare: rep('....X.......X...', 3) + ' ....X.......o.o.' + rep('....X.......X...', 3) + ' ....X...X.X.XXXX',
+          tom: dots(48) + ' ........1.2.3.4.' + dots(64), hat: rep('x.x.x.x.x.x.x.x.', 8), tamb: rep('....x.......x...', 8), crash: once('X', 8),
+        },
+      },
+      B: {
+        bars: 8, chords: 'C | G | D7 | G | C | G | A7 | D7',
+        p: {
+          lead: melB, glock: melB, sing: melB, harm: harmonize(melB, 'C | G | D7 | G | C | G | A7 | D7', 1, { key: 7, sharp: true }), tuba: oompah(8), oom: '....x-......x-..',
+          gang: dots(48) + ' X...............' + dots(48) + ' X...............', crash: dots(48) + ' X...............' + dots(48) + ' X...............',
+          kick: rep('X.......X.......', 8), snare: rep('....X.......X...', 7) + ' ....X...X.X.XXXX', hat: rep('x.x.x.x.x.x.x.x.', 8), tamb: rep('..x...x...x...x.', 8),
+          tom: dots(48) + ' ........1.2.3.4.' + dots(64),
+        },
+      },
+      A2: {
+        bars: 8, chords: chA2,
+        p: {
+          lead: melA2, glock: melA2, sing: melA2, harm: harmonize(melA2, chA2, 1, { key: 9, sharp: true }), tuba: oompah(8), oom: '....x-......x-..',
+          kick: rep('X.......X.......', 8), snare: rep('....X.......X...', 3) + ' ....X.......o.o.' + rep('....X.......X...', 3) + ' ....X...X.X.XXXX',
+          tom: dots(48) + ' ........1.2.3.4.' + dots(64), hat: rep('x.x.xOx.x.x.xOx.', 8), tamb: rep('..x...x...x...x.', 8), crash: every('X', 4, 8),
+        },
+      },
+      brk: {
+        bars: 2, chords: 'A | D7',
+        p: {
+          snare: 'X.x.X.x.X.xxX.xx X.X.X.X.XXXXXXXX', tom: '................ 1.1.2.2.3.3.4.4.', kick: 'X.......X....... X...X...X...X...',
+          gang: 'X............... ................', crash: 'X............... ................',
+        },
+      },
+    },
+    form: ['count', 'A', 'B', 'A2', 'brk'], loop: 1,
+  };
+}
+
+// ---- e4_final — Elite Four, all four: "Encore Suite" (medley method) -----------------------
+// Chained segments that reprise the four member themes' own cells, a hush, a
+// full-band reprise up a whole step, Starrab's drum solo, a three-voice lead
+// trade over an F blues (2 bars each, 2 rounds, round 2 in 16ths, every solo
+// hands its last note to the next soloist), then a 6/9 coda. Feel changes, BPM never.
+{
+  const ovt = seq('bb4:2 bb4:2 eb5:6 f5:2 g5:4', 'ab5:6 g5:2 f5:4 eb5:4', 'g5:2 g5:2 bb5:6 ab5:2 g5:4', 'f5:12~ eb5:2 f5:2',
+    'g5:2 g5:2 c6:6 bb5:2 ab5:4', 'ab5:6 bb5:2 c6:4 eb6:4', 'eb6:6 c6:2 a5:4 c6:4', 'd6:8~ ab5:4 f5:4');
+  const weight = seq('bb4:2 bb4:2 eb5:6 f5:2 g5:4', 'ab5:6 g5:2 f5:4 eb5:4', 'g5:2 g5:2 bb5:6 ab5:2 g5:4', 'f5:8~ ab5:4 d5:4',
+    'c5:2 c5:2 f5:6 g5:2 a5:4', 'bb5:6 a5:2 g5:4 f5:4', 'a5:2 a5:2 c6:6 bb5:2 a5:4', 'g5:12~ f5:2 g5:2');
+  const echoSit = seq('g4:2 bb4:2 c5:6~ bb4:1 a4:1 g4:4', 'a4:2/ g4:2 bb4:4/ a4:2 g4:6~', 'g4:2 bb4:2 c5:6~ d5:2/ c5:2 bb4:2', 'c5:8~ r:4 e5:2 d5:2');
+  const canal = seq('d5:2 f5:2 bb5:6 a5:2 g5:2 f5:2', 'g5:3 f5:1 d5:4 bb4:4 g5:4', 'e5:4 g5:4 bb5:4 c6:4', 'a5:6 g5:2 f5:4 c5:4');
+  const sunSit = seq('a4:2 b4:2 d5:6~ c#5:2 d5:2 e5:2', 'g4:2 a4:2 c5:6/~ b4:2 a4:2 g4:2', 'b4:2 d5:2 g5:6/~ f#5:2 e5:2 d5:2', 'r:16');
+  const parade = seq('d5:2 d5:2 g5:6 f#5:2 e5:2 d5:2', 'e5:2 e5:2 g5:6 e5:2 d5:2 c5:2', 'a4:2 b4:2 c5:4 d5:4 f#5:4', 'a5:4 f#5:4 d5:4 c5:4');
+  const lull = seq('g5:6 f5:2 eb5:8', 'd5:6 eb5:2 f5:8', 'g5:4 c6:4 bb5:4 g5:4', 'ab5:12 r:4', 'ab5:6 g5:2 f5:4 c5:4', 'd5:6 f5:2 ab5:8', 'g5:8 c6:8', 'bb5:12~ r:4');
+  const tJ1 = 'c5:2 eb5:2 f5:6~ eb5:2 c5:2 a4:2 | bb4:2 d5:2 f5:2 ab5:4 f5:2 c5:2 a4:2';
+  const tP1 = 'a4:2 c5:2 f5:6 e5:2 d5:2 c5:2 | bb4:2 c5:2 e5:2 g5:2 bb5:2 g5:2 e5:2 f5:2';
+  const tG1 = 'f5:4/ a5:4 c6:4/ a5:2 f5:2 | ab5:4 f5:2 d5:2 bb4:2 c5:2 d5:2 c5:2';
+  const tJ2 = 'c5:1 eb5:1 f5:1 g5:1 a5:2 f5:2 eb5:1 f5:1 eb5:1 c5:1 a4:2 c5:2 | g5:1 e5:1 c5:1 bb4:1 g4:2 bb4:2 c5:1 e5:1 g5:1 bb5:1 a5:2 a4:2';
+  const tP2 = 'a4:1 bb4:1 d5:1 f5:1 ab5:2 f5:2 d5:1 f5:1 ab5:1 bb5:1 d6:2 bb5:2 | ab5:1 f5:1 d5:1 bb4:1 c5:1 d5:1 f5:1 ab5:1 g5:2 f5:2 d5:2 f5:2';
+  const tG2 = 'f5:1 a5:1 c6:1 eb6:1 f6:4/ eb6:1 c6:1 a5:1 f5:1 g5:2 a5:2 | bb5:1 g5:1 e5:1 c5:1 e5:1 g5:1 bb5:1 c6:1 e6:4/ c6:4';
+  const R = (n) => 'r:' + n;
+  const illus = 'X..X..X..X..X.X.';
+  const drumCell = (dense) => dense
+    ? { tom: '4...3...2...1... 4.4.3.3.2.2.1.1.', kick: 'X.x.X.x.X.x.X.x. X.x.X.x.X.x.X.X.', snare: '..x...x...x...x. ....X..X..X.XXXX XXXXXXXXXXXXXXXX'.slice(0, 33).replace(/ $/, '') }
+    : { tom: '4...3...2...1... 4.4.3.3.2.2.1.1.', kick: 'X.......X....... X...X...X...X.X.', snare: '....x.......x... ....X..X..X.XXXX' };
+  const dA = drumCell(false);
+  TRACKS.e4_final = {
+    id: 'e4_final', vol: 1, name: 'Encore Suite — Elite Four finale (all four)', bpm: 120, human: 0.004, rev: 0.2,
+    delay: { beats: 0.75, fb: 0.3, mix: 0.4 },
+    sync: { overture: 1, spotlight: { john: 9, paul: 13, george: 17, ringo: 21 }, lull: 25, weight: 33, drums: 41, trade: 49, coda: 61, ult: [33, 41, 63], whiteSilence: 0 },
+    parts: {
+      strings: { inst: 'strings', mode: 'chord', voicing: { center: 66, n: 4 }, vol: 0.42, pan: 0.2, rev: 0.32, chorus: 0.6, o: { a: 0.3 } },
+      brass: { inst: 'brass', mode: 'chord', voicing: { center: 63, n: 4 }, vol: 0.55, pan: -0.25, rev: 0.22 },
+      bmel: { inst: 'brass', mode: 'abs', vol: 0.95, pan: 0.05, rev: 0.25, o: { cut: 3200, level: 0.36 } },
+      piano: { inst: 'piano', mode: 'chord', voicing: { center: 62, n: 4 }, vol: 0.4, pan: -0.15, rev: 0.15, o: { roll: 0.012, honky: 5 } },
+      pmel: { inst: 'piano', mode: 'abs', vol: 0.65, pan: 0.05, rev: 0.2, o: { honky: 4, level: 0.42 } },
+      choir: { inst: 'choir', mode: 'chord', voicing: { center: 62, n: 4 }, vol: 0.32, rev: 0.4, chorus: 0.6, o: { vowel: 'o', a: 0.4 } },
+      drone: { inst: 'drone', mode: 'abs', vol: 0.42, rev: 0.3, chorus: 0.6, o: { cut: 1000, rate: 0.12 } },
+      sitar: { inst: 'sitar', mode: 'abs', vol: 1.15, pan: 0.15, rev: 0.22, dly: 0.25 },
+      tablaHi: { inst: 'tabla', note: 74, vol: 0.5, pan: 0.25, o: { drum: 'dayan' } },
+      tablaLo: { inst: 'tabla', note: 43, vol: 0.55, pan: -0.15, o: { drum: 'bayan' } },
+      jangle: { inst: 'jangle', mode: 'chord', voicing: { center: 64, n: 3 }, vol: 0.5, pan: 0.45, rev: 0.15, chorus: 0.4 },
+      gtrL: { inst: 'guitar', mode: 'chord', voicing: { type: 'root', base: 39 }, vol: 0.36, pan: -0.7, amp: { drive: 3.5 } },
+      gtrR: { inst: 'guitar', mode: 'chord', voicing: { type: 'root', base: 39 }, vol: 0.36, pan: 0.7, nudge: 0.007, amp: { drive: 4, cab: 4300 } },
+      bass: { inst: 'bass', mode: 'rel', base: 33, vol: 0.3, hp: 38, o: { wave: 'triangle', cut: 750, env: 1.4, q: 1, sub: 0.25 } },
+      picc: { inst: 'lead', mode: 'abs', vol: 0.45, pan: 0.3, rev: 0.2, o: { wave: 'square', wave2: 'triangle', mix2: 0.7, vib: 8, glide: 0.02, cut: 3800, level: 0.2 } },
+      glock: { inst: 'glock', mode: 'abs', vol: 0.32, pan: 0.35, rev: 0.3 },
+      leadJ: { inst: 'lead', mode: 'abs', vol: 0.55, pan: -0.35, rev: 0.2, dly: 0.6, o: { wave: 'square', wave2: 'pulse', mix2: 0.4, cut: 3000, vib: 12, level: 0.2 } },
+      leadP: { inst: 'lead', mode: 'abs', vol: 0.85, pan: 0.05, rev: 0.18, o: { wave: 'triangle', wave2: 'sine', cut: 4000, vib: 9, level: 0.26 } },
+      leadG: { inst: 'lead', mode: 'abs', vol: 0.5, pan: 0.35, rev: 0.18, dly: 0.15, amp: { drive: 5, post: 0.24, cab: 4300 }, o: { wave: 'sawtooth', cut: 4200, vib: 20, glide: 0.05, det: 4, level: 0.3 } },
+      gang: { inst: 'gang', vol: 0.6, rev: 0.35, o: { voices: 6 } },
+      stomp: { inst: 'stomp', vol: 0.6, rev: 0.35 },
+      kick: { inst: 'kick', vol: 0.65, o: { tone: 'rock' } },
+      snare: { inst: 'snare', vol: 0.6, rev: 0.14, o: { tone: 'rock' } },
+      brush: { inst: 'snare', vol: 0.45, pan: 0.1, rev: 0.2, o: { tone: 'brush' } },
+      hat: { inst: 'hat', vol: 0.18, pan: 0.3 },
+      tom: { inst: 'tom', vol: 0.55, pan: -0.1, rev: 0.12 },
+      crash: { inst: 'crash', vol: 0.26 },
+      timp: { inst: 'tom', note: 39, vol: 0.55, rev: 0.3 },
+      timp2: { inst: 'tom', note: 46, vol: 0.5, rev: 0.3 },
+    },
+    sections: {
+      ovt: {
+        bars: 8, chords: 'Eb | Ab/Eb | Eb | Bb7sus4 | Cm | Ab | F7 | Bb7',
+        p: {
+          bmel: ovt, strings: 'x---------------', piano: 'x-------x-------', choir: dots(64) + ' ' + rep('x---------------', 4),
+          bass: rep('1:8 5,:8', 8), kick: rep('X.........X.....', 8), snare: rep('........X.......', 7) + ' ........X.X.XXXX', crash: 'X' + dots(63) + ' X' + dots(63),
+          timp: 'X' + dots(15) + rep('................', 2) + '........X.X.X.XX' + 'X' + dots(47) + '................', timp2: dots(112) + ' ........X.X.X.XX',
+        },
+      },
+      echo: {
+        bars: 4, chords: 'C | C | Bb/C | C',
+        p: {
+          drone: 'c3+g3:64', sitar: echoSit, jangle: '..x...x...x...x.', bass: rep('1:3 1:1 8:2 1:2 1:4 8:2 1:2', 4),
+          kick: rep('X..x....X.x.....', 4), snare: rep('....X.......X..o', 3) + ' ....X...X.X.XXXX', tom: rep('......12......3.', 4), hat: rep('x.x.x.x.x.xOx.x.', 4), crash: 'X',
+        },
+      },
+      canal: {
+        bars: 4, chords: 'Bb | Gm7 | C7 | F7',
+        p: {
+          pmel: canal, piano: 'x...X...x...X.x.', picc: seq(R(16), 'r:8 bb5:2 c6:2 d6:4', R(16), 'r:12 c6:2 eb6:2'), bass: rep('1:4 3:2_ 5:2_ 6:4 >:4', 4),
+          kick: rep('X.......X..x....', 4), snare: rep('....X.......X...', 3) + ' ....X.......X.XX', hat: rep('x.x.x.x.x.x.x.x.', 4), glock: 'r:60 f6:4', crash: 'X',
+        },
+      },
+      sun: {
+        bars: 4, chords: 'D | C/D | G/D | A7',
+        p: {
+          drone: 'd3+a3:64', sitar: sunSit, leadG: R(48) + ' e6:3 c#6:3 a5:3 e5:3 g5:2 a5:2', tablaHi: rep('x.xx..x.x.xx..x.', 3) + ' ' + illus, tablaLo: rep('X.....x...X.....', 3) + ' ' + illus,
+          bass: rep('1:4 r:2 1:2 5,:4 r:2 1:2', 3) + ' 1:3 1:3 1:3 1:3 1:2 1:2', kick: rep('X.....X.X.......', 3) + ' ' + illus, snare: rep('....X.......X...', 3) + dots(16),
+          hat: rep('x.x.x.x.x.x.x.x.', 3) + dots(16), crash: 'X' + dots(47) + ' ' + illus, gtrL: dots(48) + ' ' + illus, gtrR: dots(48) + ' ' + illus,
+        },
+      },
+      parade: {
+        bars: 4, chords: 'G | C | D7 | D7',
+        p: {
+          bmel: parade, glock: transposeAbs(parade, 12, true), bass: rep('1:4 r:4 5,:4 r:4', 4), brass: '....x-......x-..',
+          kick: rep('X.......X.......', 4), snare: rep('X..xX.x.X..xX.xx', 3) + ' X.x.X.x.XXXXXXXX', hat: rep('x.x.x.x.x.x.x.x.', 4), gang: dots(48) + ' ............X...', crash: 'X',
+        },
+      },
+      lull: {
+        bars: 8, chords: 'Eb | Gm/D | Cm | Ab | Fm7 | Bb7 | Eb/G Ab | Bb7sus4',
+        p: {
+          pmel: lull, piano: rep('x-----x-----x---', 8), choir: 'x---------------', brush: rep('....x.......x...', 8), bass: rep('1:12 5,:4', 8), timp: dots(112) + ' ........x.x.xxxx',
+        },
+      },
+      weight: {
+        bars: 8, chords: 'Eb | Ab/Eb | Eb | Bb7 | F | Bb/F | F | C7sus4',
+        p: {
+          bmel: weight, strings: 'x---------------', brass: rep('X--.....x-x.....', 8), choir: 'x---------------', piano: rep('x.x.x.x.x.x.x.x.', 8),
+          gtrL: rep('X-------x-x-x-x-', 8), gtrR: rep('X-------x-x-x-x-', 8), bass: rep('1:2 1:2 1:2 1:2 1:2 1:2 5,:2 >:2', 8),
+          kick: rep('X...X...X.x.X...', 8), snare: rep('....X.......X...', 3) + ' ....X...X.X.XXXX' + rep('....X.......X...', 3) + ' ....X...XXXXXXXX',
+          hat: rep('x.x.x.x.x.x.x.x.', 8), crash: 'X' + dots(63) + ' X' + dots(63), gang: dots(64) + ' X' + dots(63),
+        },
+      },
+      drums: {
+        bars: 8,
+        p: {
+          tom: rep(dA.tom, 2) + ' ' + rep('4...3...2...1... 4.4.3.3.2.2.1.1.', 2), kick: rep(dA.kick, 2) + ' ' + rep('X.x.X.x.X.x.X.x. X.x.X.x.X.x.X.X.', 2),
+          snare: rep(dA.snare, 2) + ' ' + rep('..x...x...x...x. ..X..X..X.XXXXXX', 1) + ' ..x.x.x.x.x.x.x. XXXXXXXXXXXXXXXX',
+          crash: 'X' + dots(63) + ' X' + dots(63), stomp: rep('X...X...X...X...', 8), gang: dots(64) + ' X...............' + dots(32) + ' X...X...X.......',
+        },
+      },
+      trade: {
+        bars: 12, chords: 'F7 | Bb7 | F7 | C7 | F7 | Bb7 | F7 | C7 | Bb7 | Bb7 | F7 | C7',
+        p: {
+          leadJ: seq(tJ1, R(64), tJ2, R(32)), leadP: seq(R(32), tP1, R(64), tP2, R(32)), leadG: seq(R(64), tG1, R(64), tG2),
+          piano: rep('..x...x...x...x.', 12), jangle: rep('x...x.x.x...x.x.', 12), bass: rep('1:4 3:4 5:4 6:4', 12),
+          kick: rep('X.....x.X.x.....', 12), snare: rep('....X.......X...', 11) + ' ....X...X.X.XXXX', hat: rep('x.xxx.xxx.xxx.xx', 12),
+          crash: rep('X' + dots(31), 6), gang: rep(dots(32), 5) + ' ................ ........X...X...',
+        },
+      },
+      coda: {
+        bars: 4, chords: 'Bb | C7sus4 | F69 | F69',
+        p: {
+          strings: 'x--------------- x--------------- X------------------------------- ', brass: 'x--------------- x-------x-x-x-x- X-------------------------------', choir: 'x---------------',
+          piano: 'x--------------- x--------------- X-------------------------------', bmel: 'd5:16 e5:8 g5:8 a5:32', glock: 'r:32 f6:1 a6:1 c7:1 d7:1 g7:28',
+          bass: '1:16 1:16 1:32', timp: 'x.x.x.x.x.x.x.x. xxxxxxxxxxxxxxxx X...............................', timp2: dots(16) + ' ' + dots(16) + ' X' + dots(31),
+          crash: dots(32) + ' X' + dots(31), kick: dots(32) + ' X' + dots(31), gang: dots(32) + ' X' + dots(31),
+        },
+      },
+    },
+    form: ['ovt', 'echo', 'canal', 'sun', 'parade', 'lull', 'weight', 'drums', 'trade', 'coda'], loop: 1,
+    // orchestral swell into the coda's 6/9 (first pass) — later passes get the timpani roll only
+    script: (k, dest, t, pl) => { const bar = 16 * pl.c.stepDur; fxRiser(k, dest, t + 60 * bar, 2 * bar, { vol: 0.2, f0: 220, f1: 7000, p0: 87.3, p1: 698.5 }); fxShimmer(k, dest, t + 62 * bar, 2.5, { vol: 0.16, base: 1396.9, count: 14 }); },
   };
 }
 

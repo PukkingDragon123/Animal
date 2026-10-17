@@ -2070,3 +2070,465 @@ the collection.
 - Don't reuse Persona's red/black palette, LINE's green or Rotom's face.
 - Don't reproduce real album covers on the disc sleeves.
 - Don't put tiny text below 8 px in Japanese.
+
+---------------------------------------------------------------------------------------------------
+
+## 7. Speech bubbles, dialogue, choice scenes with stat boosts, in-world signage
+
+### 7(a) References (all [K]; verify with Appendix A queries 7.x)
+
+**Dialogue presentation**
+- Wikipedia, *Oxenfree* (in-world speech bubbles; timed choice bubbles above the player): https://en.wikipedia.org/wiki/Oxenfree
+- Wikipedia, *Night in the Woods* (bubbles over characters, per-word text effects): https://en.wikipedia.org/wiki/Night_in_the_Woods
+- Wikipedia, *Celeste* (portrait boxes, wavy and shaky text, babble voices): https://en.wikipedia.org/wiki/Celeste_(video_game)
+- Wikipedia, *Undertale* (typewriter text with per-character voice blips): https://en.wikipedia.org/wiki/Undertale
+- Nookipedia, *Animalese* (voice generated from the text's letters): https://nookipedia.com/wiki/Animalese
+- Wikipedia, *A Short Hike* (small in-world bubbles in a pixel world): https://en.wikipedia.org/wiki/A_Short_Hike
+- Wikipedia, *Eastward* (pixel dialogue with portraits in a detailed pixel world): https://en.wikipedia.org/wiki/Eastward_(video_game)
+
+**Activities and stat boosts**
+- Wikipedia, *Persona 5* (social stats, stat-raising activities): https://en.wikipedia.org/wiki/Persona_5
+
+**Osaka's animated mechanical signs**
+- Wikipedia, *Dōtonbori* (the giant running-athlete sign, the animated crab sign, the drummer-clown
+  mascot): https://en.wikipedia.org/wiki/D%C5%8Dtonbori
+
+**Sibling doc**
+- `docs/refs/environments.md` §0.4 (signage rules) and `docs/refs/characters.md` §2 (portrait spec).
+  Keep them consistent.
+
+### 7(b) Study notes [K]
+
+**Oxenfree**
+- Lines appear as **bubbles above heads** in the world.
+- Choices appear as **2–3 bubbles above the player** that **fade if you wait**, and you can interrupt
+  others.
+- **Lesson:** choices can live in the world, not in a box.
+
+**Night in the Woods**
+- Bubbles have **per-word effects**: shaking for anger, big for shouting, small for mumbling.
+- **Lesson:** typography carries the acting.
+
+**Celeste**
+- A portrait box with **many expressions per character**.
+- **Wavy and shaky** text spans, and a **"babble" voice** per character.
+
+**Undertale**
+- **Typewriter text** with a **unique blip voice per character** and pauses on punctuation.
+- **Animal Crossing's Animalese** makes gibberish speech from the actual letters.
+
+**Persona 5 activities**
+- **Five social stats:** Knowledge, Guts, Proficiency, Kindness and Charm, each with **5 named ranks**.
+- **Raising them:** activities (study, books, part-time jobs, **eating challenges**) raise a stat, with
+  a short stat-up animation.
+- **Rank thresholds** unlock new choices.
+
+**Dōtonbori**
+- Osaka's identity is **giant animated mechanical signage**: a running athlete in lights, a **giant crab
+  whose legs move**, a drumming clown doll.
+- **Lesson for Osaka 2050:** in-world animated signs can carry information *and* identity.
+- Make them original: giant mechanical **Tokonmon** signs, not real brands.
+
+### 7(c) Design direction for Tokonmon
+
+#### 7.1 Speech bubble spec *(proposal; reference buffer 640×360)*
+
+**Construction:**
+- A **9-slice from 8×8 tiles**. The body is cream `#FFF8F0`, with a 1-px outline `#1B1420` and a 1-px
+  inner shadow `#E6DCCF` along the bottom.
+- **Padding:** 4 px.
+- **Max width:** 112 px (about 18 Latin characters at 6 px, or 14 kana at 8 px). Max 3 lines; longer
+  lines page.
+- **Tail:** 5×4 px, pointing at the speaker's head and clamped inside the bubble edge.
+
+**Placement:**
+- The anchor is 4 px above the sprite's head.
+- **At most 2 bubbles on screen.** A newer bubble pushes the older one up, and the older one steps down
+  its palette to 60% value, then pops.
+- Bubbles **avoid overlapping** by sliding sideways, and they clamp 8 px inside the screen edge.
+
+**Motion:**
+- **In:** scale 0.6 → 1.1 → 1.0 over 3 poses.
+- **Out:** shrink over 2 poses.
+
+**Typewriter:**
+- **Speed:** 40 characters per second for Latin text and 20 per second for kana.
+- **Pauses:** a comma pauses 120 ms; a period, "!" or "?" pauses 250 ms.
+- **Blips:** a **voice blip every 2 characters**, with a pitch and waveform per character (Mika high
+  square, Coach Gonda low saw, Dr. Hoshino soft triangle…).
+- **Advance:** tap to complete or advance.
+
+**Text effects:**
+
+| Effect | Use | Look |
+|---|---|---|
+| `shake` | anger | ±1 px random per letter per pose |
+| `wave` | joy, singing | 1-px sine per letter |
+| `big` | shouting | 2× letters in a jagged bubble |
+| `small` | whisper | ½-weight letters in a dotted outline |
+| **colour keywords** | items, places, Tokonmon names | items gold `#FFD23F`, places cyan `#3FF2FF`, Tokonmon names in their element colour |
+
+**Bubble types:**
+
+| Type | Look |
+|---|---|
+| **normal** | the standard cream bubble |
+| **shout** | jagged spikes |
+| **whisper** | dotted outline |
+| **thought** | a cloud with a 3-dot tail |
+| **PA / announcer** | a rectangle with a speaker glyph, anchored to the stadium speakers |
+| **phone** | Tokon OS colours, used when the player reads a text in-world |
+
+**Tokonmon don't talk.** Their bubbles hold **pictograms** only (♪ ! ? ♥ 💧 💢 …), 9×9 px, and they
+reuse the ack-icon style (§1.1).
+
+**Portraits:** for story lines and choice scenes, an **expressive portrait** slides in from the
+speaker's side over 3 poses, attached to the bubble (bible §1). See the portrait spec in
+`characters.md` (expressions, blink, 2–3 frame mouth flap synced to the blips).
+
+**Battle barks** use the bubble too: they auto-dismiss after 1.5 s plus 50 ms per character, and they
+never need a tap.
+
+#### 7.2 Ambient world talk
+- NPCs say **one-line bubbles** when the player passes within 2 m, one NPC at a time, with a 20 s
+  cooldown each.
+- **Interactables** show a **bobbing "…" or "!" pictogram bubble**, not a button prompt.
+
+#### 7.3 Choice scenes with stat boosts (bible §2: "detailed animated choice scenes with stat boosts")
+
+**Choices** (the Oxenfree model):
+- 2–3 **choice bubbles fan out in an arc above the player's head** (left, top, right) over 3 poses,
+  staggered by 1 pose.
+- **Optional timer** (dramatic scenes only): each bubble's outline **drains clockwise**. If time runs
+  out, the scene uses a default.
+- **Pick:** the chosen bubble pops (1.15× plus a 1-tick flash), and the others **deflate** over 3 poses.
+- **No stat icons on the choices**: you roleplay, then you find out.
+
+**Staging ("detailed animated" scenes):**
+- **Camera:** a tilt-shift push-in, with **cuts on bar lines** when music plays (§5.6).
+- **Acting:** characters play bespoke emotes.
+- **Big moments:** a portrait cut-in.
+
+**Stat boost feedback:**
+- An **in-world stamp** rises 8 px above the player (or the Tokonmon) over 6 poses: a gold `#FFD23F`
+  label with a 1-px `#7A4A12` outline, e.g. "GUTS +1" or "BOND +1". A chime plays, and it lands on the
+  next beat.
+- **Thresholds** (a rank-up) get the bigger P5-style card stamp (§6.6).
+- **Which stats** a choice boosts (the player's social stats, a Tokonmon's five stats, or bond ranks) is
+  an **(open question for owner)**. The stamp works for any of them.
+- **If they are Tokonmon stats:** the stamp also sparkles that vertex of the radar (§6.7) the next time
+  the phone opens.
+
+#### 7.4 Animated in-world signage instead of HUD *(proposal; follow `environments.md` §0.4)*
+
+**Information that lives on signs:**
+
+| Sign | What it shows |
+|---|---|
+| **League board** (Umeda HQ lobby) | the **player's current rank** and the next match, on an LED ticker |
+| **Shop windows** | **food-sample displays** with price tags (see §8) |
+| **Station boards** | the travel destinations unlocked |
+| **The stadium jumbotron** | everything in battle (§2.4) |
+
+**Giant mechanical Tokonmon signs** (the Dōtonbori lesson):
+- *Examples:* a crab sign with moving legs (a Kanizumo-like original), a giant lionfish lantern that
+  inflates, a drumming Tokonmon automaton.
+- **They animate on the music's beat**, like everything else.
+
+**Tutorial hints:** shown as **in-world screens or NPC lines** (Coach Gonda's bubbles, a dojo scroll),
+or as phone texts. Never as a floating tooltip.
+
+### 7(d) Do / Don't
+
+**Do**
+- Keep text in bubbles tied to the speaker.
+- Give each character a voice blip and a text style.
+- Fan choices around the player.
+- Show stat boosts as in-world stamps on the beat.
+- Put information on signs, screens and the phone.
+
+**Don't**
+- Don't use full-width text boxes for ordinary chatter.
+- Don't let Tokonmon speak human words.
+- Don't show more than 2 bubbles at once.
+- Don't add floating tooltips or button-prompt overlays.
+- Don't use real brand signs.
+
+---------------------------------------------------------------------------------------------------
+
+## 8. First-person ordering & eating zoom-ins; dojo training & roster display
+
+### 8(a) References (all [K]; verify with Appendix A queries 8.x)
+
+**Ordering and drink-making**
+- Wikipedia, *VA-11 Hall-A* (first-person bartending: the scene plus a mixing interface): https://en.wikipedia.org/wiki/VA-11_Hall-A
+- Wikipedia, *Coffee Talk* (first-person barista; ingredients plus latte art; a phone app for recipes): https://en.wikipedia.org/wiki/Coffee_Talk_(video_game)
+
+**Cooking and eating with Pokémon**
+- Bulbapedia, *Pokémon Camp* (curry cooking: fan the fire, stir, add heart, then the group eating shot): https://bulbapedia.bulbagarden.net/wiki/Pok%C3%A9mon_Camp
+- Bulbapedia, *Curry* (curry classes, from Koiking class up to Charizard class): https://bulbapedia.bulbagarden.net/wiki/Curry
+- Bulbapedia, *Picnic* (Scarlet/Violet physics sandwiches): https://bulbapedia.bulbagarden.net/wiki/Picnic
+
+**Food as a stat activity, and food art**
+- Wikipedia, *Persona 5* (eating challenges as stat activities): https://en.wikipedia.org/wiki/Persona_5
+- TV Tropes, *Food Porn* (lovingly over-detailed food art and reactions): https://tvtropes.org/pmwiki/pmwiki.php/Main/FoodPorn
+- Wikipedia, *Kuidaore* (Osaka's "eat till you drop" food culture): https://en.wikipedia.org/wiki/Kuidaore
+
+**Rosters, collections and training**
+- Bulbapedia, *Pokémon Storage System* (30-slot boxes, 6×5, since Gen III; wallpapers): https://bulbapedia.bulbagarden.net/wiki/Pok%C3%A9mon_Storage_System
+- Megami Tensei wiki, *Velvet Room* (the compendium as a collection book): https://megamitensei.fandom.com/wiki/Velvet_Room
+- Bulbapedia, *Super Training* (X/Y stat-training minigames, punching bags): https://bulbapedia.bulbagarden.net/wiki/Super_Training
+- Wikipedia, *Digimon World* (stat-training gyms with short training animations): https://en.wikipedia.org/wiki/Digimon_World_(video_game)
+
+**Dojo culture**
+- Wikipedia, *Dojo* (the kamiza honoured wall; etiquette): https://en.wikipedia.org/wiki/Dojo
+- Wikipedia, *Makiwara* (the striking post): https://en.wikipedia.org/wiki/Makiwara
+
+### 8(b) Study notes [K]
+
+**VA-11 Hall-A**
+- **Screen split:** the **bar scene with the customer and dialogue** on one side, the **mixing station**
+  on the other.
+- **Mixing:** five fictional ingredients dispensed by count, plus ice and ageing toggles. Mixing past a
+  time threshold **blends** instead of mixes.
+- **The drink drives the conversation.**
+- **Lesson:** a first-person service scene = **portrait + counter + tactile station**.
+
+**Coffee Talk**
+- An unseen first-person barista at a rainy-night counter. Customers sit across the counter.
+- **Brewing:** pick base, primary and secondary ingredients, then a **latte-art** drawing minigame.
+- **Recipes live in a phone app.**
+- **Lesson:** the *phone* is where recipes and friends live, matching Tokonmon's phone-first design.
+
+**Pokémon Sword/Shield curry**
+- **Cooking:** pick ingredients and berries, then **fan the flames** (rapid input), **stir** (circular
+  input), **add "heart"** (a timed press).
+- The result is graded **Koiking class → … → Charizard class**.
+- **Group shot:** everyone eats together, with a lingering group shot.
+- **Scarlet/Violet** stacks sandwich ingredients with **physics**.
+- **Lesson:** a short, physical, funny cooking interaction, then a **communal payoff shot**.
+
+**Persona**
+- **Food challenges** (giant beef bowl, giant burger) are **stat-raising activities**, a direct match
+  for the bible's "eating teaches passives".
+
+**Food Porn convention**
+- Food is drawn **more detailed than anything else in the scene**: specular glints, steam, a slight
+  zoom, reaction faces.
+- **Osaka's kuidaore culture:** takoyaki, okonomiyaki, kushikatsu, plus window **plastic food samples**
+  and **meal-ticket machines** at ramen counters (real Japanese ordering rituals; search to verify the
+  exact names, Appendix A).
+
+**Pokémon boxes**
+- **30 slots per box (6 columns × 5 rows)**, with box wallpapers and names.
+- Mini icons bob when selected.
+
+**Velvet Room compendium**
+- The roster is a **collection book**, with completion and a re-summon option.
+- Its **velvet-blue room and attendant** give the menu a *place*.
+
+**Training games**
+- **Super Training:** stat training as minigames (balloon targets, punching bags).
+- **Digimon World:** a **gym per stat**, with a short training animation and a stat result. It can
+  fail.
+
+**Dojo**
+- The **kamiza** (front wall of honour, often with a small shrine shelf) and wooden floors.
+- **Makiwara** striking posts.
+- **Wooden name plaques of members, hung in rank order**: a real dojo custom, and a perfect diegetic
+  roster. Verify the custom's Japanese name in Appendix A.
+
+### 8(c) Design direction for Tokonmon
+
+#### 8.1 First-person ordering at a counter (bible §1, §9 zoom-in scenes) *(proposal)*
+
+**Entering:** the camera **dollies in and tilts** over 1.0 s (12 poses, ease-in-out) from the
+side-scroll street to the counter POV. The street's background layers blur (tilt-shift).
+
+**Layout:**
+```
+┌──────────────────────────────────────────────────────────────┐
+│  [MENU BOARD — in-world: 6–8 items, pixel food thumbnails,   │
+│   prices; neon outline on hover]          [ticket machine]   │
+│                                                              │
+│            ( VENDOR — big pixel portrait, chest-up,          │
+│              e.g. Takoyaki Taisho / Yuzu; 3–6 expressions )  │
+│ ════════════════════ COUNTER (wood/steel) ════════════════════│
+│  [your Tokonmon on the stool, bobbing]   [phone: tap-to-pay] │
+└──────────────────────────────────────────────────────────────┘
+```
+
+**Choosing:**
+- Tap an item **on the board itself**: a neon outline plus the vendor's line in a bubble. An Osaka
+  ramen-style **ticket machine** is an alternative interaction for some shops.
+- **Paying:** the player's **phone taps the reader** (2 poses plus a chime). The phone is the wallet.
+
+**Reactions:**
+- The vendor plays 2 reaction poses and calls the order (blip voice).
+- The **Tokonmon** reacts with pictogram bubbles: ♥ for liked food, 💧 for spicy foreshadowing.
+
+**Serving:** the plate **slides in** over 4 poses with a steam puff. Go straight into §8.2, or take it
+away.
+
+#### 8.2 Eating zoom-in at a table *(proposal)*
+
+**Composition:**
+- The **dish is the hero**, about 128×96 px at the reference buffer. It is the most detailed art in the
+  game (Food Porn), with hue-shifted shading, 1-px specular glints that twinkle, and **steam wisps**.
+- **Steam:** 3 columns, a 4-frame loop with a 1-px sine sway, using the steam ramp.
+- **Across the table:** the Tokonmon in its `Eat` loop, plus friends (the ice-cream scene with the coach
+  and the gang, bible §2).
+
+**Bites:**
+- Each **tap is a bite**: lift, chew, swallow (3 poses). A chopstick or spoon hand enters from below.
+- **The dish has 4 states:** full, ⅔, ⅓, empty with crumbs or a sauce smear.
+
+**Spicy food** (bible §7: super-spicy curry → Heat Tolerance; lots of spicy food → fire breathing):
+- **Per bite:** Chilichick's **tears intensify** (the stream doubles, then triples), steam jets from its
+  head, its face steps one ramp redder, and the screen edges get a **heat shimmer** (rows offset ±1 px
+  on a sine).
+- **At the unlock moment:**
+  1. The music drops for 1 beat.
+  2. A **stamp lands on the downbeat** over the Tokonmon: "HEAT TOLERANCE!".
+  3. The phone buzzes in-world.
+  4. Next time the phone opens, the **radar star** for that passive ignites (§6.7).
+  5. For a new skill such as fire breath, Chilichick **involuntarily breathes a small flame** (a 6-frame
+     puff, §3.1), a gag reveal.
+
+**Payoff shot** (the curry lesson): a **2 s group still** of everyone mid-bite, with a slight zoom and a
+warm vignette, then back to the world.
+
+#### 8.3 Dojo: training and roster display (bible §7) *(proposal)*
+
+**The space:** a cut-away dojo interior, with tatami and wood, a **kamiza** wall with a small shrine
+shelf, makiwara posts and a waterfall courtyard behind shoji (for meditation; Harrisun's evolution needs
+dojo meditation, bible §3). Master Genryu is the host.
+
+**Roster display: the name-plaque wall.**
+- Every owned Tokonmon has a **wooden plaque**: 8×24 px, its name brushed vertically, with a 6×6 icon
+  burned at the top.
+- **Ordering:** plaques hang in rows, ordered by level or bond (toggle).
+- **Completion:** empty hooks show how many are left, the Velvet-compendium completion feel.
+- **Tap a plaque:** that Tokonmon **walks out onto the tatami** and bows (6 poses), and its scan card
+  opens on the phone.
+
+**The phone's roster grid** (for quick access) uses **6×5 pages** (the box lesson), with 24×24 icons
+that bob 2 frames when selected.
+
+**Swapping passives and abilities** at the dojo (bible §7): the master's **scroll** unrolls in-world
+(8 poses) and mirrors the phone tree (§6.7).
+
+**Training drills** *(proposal: one drill per radar stat, each 20–30 s, beat-synced)*:
+
+| Stat | Drill | Feel |
+|---|---|---|
+| **Damage** | **Makiwara strikes**: a shrinking ring around the post; tap when it matches the post | heavy-hit treatment on success (hitstop, spark, stamp) |
+| **Element** | **Element lanterns**: light or douse the right lanterns in sequence (aim for Hydro, charge for Pyro…) | element VFX from §3 |
+| **Defense** | **Parry drill**: a training machine pitches practice balls; parry on time | the §3.14 parry VFX |
+| **Speed** | **Agility course**: dash between floor marks **on the beat** | afterimages |
+| **Health** | **Waterfall meditation**: hold steady while the water pours (stamina breathing) | Hydro foam, calm music |
+
+- **Results:** stamps, and the radar polygon grows with the spring animation (§6.7).
+- **Auto-training** (kept from v1; very slow): idle Tokonmon train in the background with a looping
+  `Train` animation, sweat drops (Hydro 5), and "zz" when resting. The plaque gets a tiny tally mark per
+  auto-level.
+
+### 8(d) Do / Don't
+
+**Do**
+- Make food the most detailed art on screen.
+- Keep ordering tactile and in-world: the board, the ticket machine, tap-to-pay.
+- Land unlock stamps on the beat.
+- Make the roster a physical wall of plaques.
+- Mirror every dojo screen on the phone.
+
+**Don't**
+- Don't use a generic list menu for ordering.
+- Don't make eating a loading screen. Every bite gets a reaction.
+- Don't copy real shop brands, mascots or menus.
+- Don't make drills longer than about 30 s.
+
+---------------------------------------------------------------------------------------------------
+
+## Appendix A. Follow-up search queue (run when the WebSearch budget allows)
+
+Run these to turn every **[K]** above into **[S]**, and to add visual study notes. These are exact
+queries, in priority order. Mode is "standard" unless marked (ext).
+
+**Topic 2: broadcast presentation**
+- 2.1 `video game crowd reaction system stadium audio dynamic crowd design talk`
+- 2.2 `Smash Bros Melee Pokemon Stadium stage transformation screen preview fire water grass rock`
+- 2.3 `Pokemon Battle Revolution colosseum list themes`
+- 2.4 `fighting game versus screen character select animation timing breakdown`
+- 2.5 `NBA Jam "on fire" mechanic announcer`
+- 2.6 `Pokemon Unite final stretch announcement two minutes`
+
+**Topic 3: pixel VFX**
+- 3.1 `Pedro Medeiros saint11 pixel art fire tutorial frames`
+- 3.2 `pixel art explosion animation tutorial frame by frame flash smoke`
+- 3.3 `pixel art slash smear effect tutorial frames`
+- 3.4 `pixel art water splash bubble animation tutorial`
+- 3.5 `Guilty Gear Xrd GDC art style limited animation 3D 2D Motomura` (ext)
+- 3.6 `Dead Cells 3D pipeline 2D animation pixel art article`
+- 3.7 `Soft & Wet JoJolion bubble ability plunder`
+- 3.8 `Pokemon catch shake checks wobbles critical capture`
+- 3.9 `Red Cross emblem video games request remove`
+- 3.10 `Street Fighter III parry blue flash hitstop frames`
+
+**Topic 4: emotes**
+- 4.1 `Smash Bros taunts that do damage list Luigi down taunt`
+- 4.2 `Art of Fighting taunt drains spirit gauge`
+- 4.3 `Street Fighter III 3rd Strike personal action effects per character`
+- 4.4 `Devil May Cry taunt devil trigger gauge`
+
+**Topic 5: animation, transformation and music sync**
+- 5.1 `PMDCollab SpriteCollab animation list AnimData names`
+- 5.2 `Pokemon evolution animation sequence silhouette alternating speed`
+- 5.3 `Mega Evolution animation key stone mega stone light`
+- 5.4 `magical girl transformation sequence structure breakdown`
+- 5.5 `Digivolution sequence stock footage description`
+- 5.6 `Hi-Fi Rush GDC beat synced combat animation timing` (ext)
+- 5.7 `Crypt of the NecroDancer beat window timing indicator`
+- 5.8 `Sayonara Wild Hearts level design music timeline`
+
+**Topic 6: the phone**
+- 6.1 `Persona 5 UI design phone chat interview` (ext)
+- 6.2 `The World Ends with You scan mode thoughts Noise`
+- 6.3 `Yo-kai Watch lens search summon medal song tribe`
+- 6.4 `NookPhone apps grid phone case`
+- 6.5 `Metroid Prime scan visor colors scanned unscanned critical`
+- 6.6 `Dead Space diegetic UI RIG spine health hologram inventory`
+- 6.7 `decoden phone case cream cabochons rhinestones`
+- 6.8 `Japanese driver license gold blue green band meaning`
+- 6.9 `Pokemon trainer card colors stars generations`
+- 6.10 `LINE app chat read receipt 既読 stickers design`
+- 6.11 `Pokemon contest condition pentagon chart`
+- 6.12 `Skyrim skill constellation perk tree design`
+- 6.13 `Japanese pixel font k8x12 Misaki PixelMplus`
+
+**Topic 7: dialogue**
+- 7.1 `Oxenfree dialogue bubbles timed choices design`
+- 7.2 `Night in the Woods speech bubble text effects`
+- 7.3 `Persona 5 social stats ranks list`
+- 7.4 `Dotonbori Kani Doraku moving crab sign Glico sign`
+
+**Topic 8: food and dojo**
+- 8.1 `VA-11 Hall-A bartending interface ingredients mixing`
+- 8.2 `Coffee Talk brewing latte art Brewpad`
+- 8.3 `Pokemon Sword Shield curry cooking minigame classes`
+- 8.4 `shokuhin sampuru plastic food display` and `Japanese meal ticket machine ramen`
+- 8.5 `dojo name plaques board members rank` (find the exact Japanese term)
+- 8.6 `Pokemon PC box 30 slots generations`
+- 8.7 `Persona Velvet Room compendium UI`
+
+## Appendix B. Cross-references
+- `docs/TOKONMON.md`: the bible (always wins).
+- `docs/MODELING.md`:
+  - animation archetypes and quirks (§5.1 builds on them);
+  - particle emitter types: `flame, ember, smoke, steam, drip, bubble, spore, leaf, petal, spark, note,
+    dust, snow, glow, star, wisp, rift, gem, zz`. These map directly to the VFX here, so reuse the names.
+- `docs/refs/tokonmon_roster.md`: per-creature designs (the Rolling Stone line, Heartbox → Inbloom).
+  Keep the crack-per-kill proposal consistent with §3.11 and §5.4.
+- `docs/refs/characters.md`: human sprites and dialogue portraits (used by §7.1 and §6.6).
+- `docs/refs/environments.md`: the stage-set grammar, signage rules, stadium and arenas (used by §2.2,
+  §7.4 and §8).

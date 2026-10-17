@@ -239,7 +239,7 @@ export default {
       { species: 'yukiusa', x: 12.5, z: 6.5, r: 3, level: [12, 15], weight: 1, hours: [20, 24], rare: true },
       { species: 'yukiusa', x: 12.5, z: 6.5, r: 3, level: [12, 15], weight: 1, hours: [0, 5], rare: true },
       { species: 'tengale', x: 15, z: 12, r: 3, level: [12, 16], weight: 1, rare: true },
-      { species: 'pebblips', x: 6, z: 37, r: 3.5, level: [10, 14], weight: 1, rare: true },
+      { species: 'moglow', x: 6, z: 37, r: 3.5, level: [10, 14], weight: 1, rare: true },
     ],
     beasts: [
       { species: 'rift_boar', path: [[23, 38.5], [21.6, 33], [19.6, 27.2], [25, 30.6], [31.4, 28.6], [25, 30.6], [19.6, 27.2], [13, 28.6]], speed: 2.2 },

@@ -6,6 +6,7 @@ import { buildGrid } from './map.js';
 import { findPath } from './nav.js';
 import { buildEnvironment, updateEnvironment, disposeEnvironment, restoreProps, setPropLibrary } from '../gfx/env.js';
 import { Actor } from '../gfx/actor.js';
+import { SpriteActor, spriteSetFor } from '../gfx/sprite.js';
 import { shared } from '../gfx/materials.js';
 import { SPR } from '../gfx/particles.js';
 import { creatureDesign, humanDesignFor, PROPS, HUMANS, characterLore } from '../data/designs/index.js';
@@ -15,6 +16,13 @@ import { hashStr } from '../core/rng.js';
 import { tileDef } from './tiles.js';
 
 setPropLibrary(PROPS);
+// Humans are 2D pixel sprites (baked from their chibi models); Tokonmon are 3D
+// models rendered to look 2D. `opts.model3d` forces the 3D model for a human.
+export const isHumanDesign = (d) => !!(d && d.look && d.arch === 'biped');
+export function makeActor(gfx, design, key, opts = {}) {
+  if (isHumanDesign(design) && !opts.model3d && !globalThis.__noSprites) return new SpriteActor(gfx, spriteSetFor(gfx.renderer, design, design.id), opts);
+  return new Actor(gfx, design, key, opts);
+}
 const mapCache = new Map();
 export async function loadMapDef(id) {
   if (mapCache.has(id)) return mapCache.get(id);
@@ -124,7 +132,7 @@ export class WorldScene {
     if (cur && cur.lookKey === key) return cur;
     let pos = null, yaw = 0;
     if (cur) { pos = cur.actor.pos.clone(); yaw = cur.actor.yaw; cur.actor.dispose(); }
-    const actor = new Actor(this.gfx, humanDesignFor(look), null, {});
+    const actor = makeActor(this.gfx, humanDesignFor(look), null, {});
     const rec = { id: 'player', actor, kind: 'player', path: null, speed: 4.6, lookKey: key };
     this.actors.set('player', rec);
     if (pos) { actor.setPos(pos.x, pos.y, pos.z); actor.face(yaw, true); }
@@ -146,7 +154,7 @@ export class WorldScene {
   }
   addActor(id, design, x, z, face = 0, opts = {}) {
     if (this.actors.has(id)) this.removeActor(id);
-    const actor = new Actor(this.gfx, design, opts.key || null, opts);
+    const actor = makeActor(this.gfx, design, opts.key || null, opts);
     const y = this.grid ? this.grid.heightAt(x, z) : 0;
     actor.setPos(x, y, z); actor.face((face * Math.PI) / 180, true);
     const rec = Object.assign({ id, actor, kind: opts.kind || 'npc', speed: opts.speed || 3.6, path: null }, opts.rec || {});
@@ -256,7 +264,11 @@ export class WorldScene {
     await this.walkTo('player', ap[0], ap[1], { stop: 0.15 });
     if (h.face != null) pl.actor.face((h.face * Math.PI) / 180); else pl.actor.faceTo(h.x, h.z);
     if (h.kind === 'door' && h.to) { if (this.app.enterScene) this.app.enterScene(h.to, h.spawn); return; }
-    const fn = this.handlers.get('hs:' + h.id) || (this.app.story && this.app.story.hotspot && ((x) => this.app.story.hotspot(x)));
+    // a scripted handler, else the story (returns true when it handled it), else the generic activities
+    const fn = this.handlers.get('hs:' + h.id) || (async (x) => {
+      if (this.app.story && this.app.story.hotspot && (await this.app.story.hotspot(x))) return;
+      if (this.app.activities) await this.app.activities.run(x);
+    });
     if (fn) { this.app.busy = true; this.enableControl(false); try { await fn(h); } finally { this.app.busy = false; if (!this.app.director || !this.app.director.cutscene) this.enableControl(true); } }
   }
   screenToGround(x, y) {

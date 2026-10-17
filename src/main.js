@@ -1,4 +1,4 @@
-// Elemon — Osaka 2050. App shell: boots the renderer, UI, world, battle
+// Tokonmon — Osaka 2050. App shell: boots the renderer, UI, world, battle
 // scene, game services, director and story, then runs the frame loop.
 import { Gfx } from './gfx/renderer.js';
 import { Input } from './core/input.js';
@@ -13,6 +13,8 @@ import { Story } from './story/chapter1.js';
 import { LOCATIONS } from './data/locations.js';
 import { QUESTS, questProgress } from './data/quests.js';
 import * as S from './game/state.js';
+import { Activities } from './game/activities.js';
+import { recordVisit } from './data/progress.js';
 
 const $ = (id) => document.getElementById(id);
 const loadbar = $('loadbar'), loadmsg = $('loadmsg');
@@ -51,6 +53,7 @@ class App {
     this.screens = new Screens(this);
     this.hud = new WorldHud(this);
     this.director = new Director(this);
+    this.activities = new Activities(this);
     this.story = new Story(this);
     this.hud.show(false);
     addEventListener('resize', () => this.resize());
@@ -179,6 +182,7 @@ class App {
     this.gfx.setTime(this.state.time.hour);
     await this.world.load(L.map, spawn || L.spawn || 'arrive', this.story.mapOpts ? this.story.mapOpts(L.map) : {});
     S.unlockLocation(this.state, locId);
+    this.visited(L.map);
     await this.ui.fade(false, 600);
     this.busy = false;
     this.hud.show(true);
@@ -193,6 +197,27 @@ class App {
     // trail-to-trail links inside the safari
     const loc = Object.keys(LOCATIONS).find((k) => LOCATIONS[k].map === ex.to);
     if (loc) await this.travel(loc, ex.spawn);
+    else await this.enterScene(ex.to, ex.spawn);
+  }
+  // walk through a door into a linked stage set (restaurants, shops, dojo, stadium…)
+  async enterScene(mapId, spawn) {
+    if (this.busy && !this.director.cutscene) return;
+    const wasBusy = this.busy;
+    this.busy = true; this.world.enableControl(false);
+    this.audio.sfx('door');
+    await this.ui.fade(true, 380);
+    await this.world.load(mapId, spawn || 'door', this.story.mapOpts ? this.story.mapOpts(mapId) : {});
+    this.visited(mapId);
+    await this.ui.fade(false, 420);
+    this.busy = wasBusy;
+    if (!wasBusy) this.world.enableControl(true);
+    this.saveGame(true);
+    if (this.story.onArrive) await this.story.onArrive(mapId, null);
+    this.updateObjective();
+  }
+  // exploring together counts toward unlocks ({ explore: mapId })
+  visited(mapId) {
+    for (const mon of this.state.party) for (const u of recordVisit(mon, mapId, this.state.unlocks.slots)) this.activities.stamp(mon, u);
   }
 
   // ------------------------------------------------------------------ objectives & saving

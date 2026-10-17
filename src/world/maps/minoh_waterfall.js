@@ -272,7 +272,7 @@ export default {
       { species: 'cabbunny', x: 38, z: 25.5, r: 3, level: [7, 10], weight: 3 },
       { species: 'cabbunny', x: 10.5, z: 31, r: 3, level: [7, 10], weight: 2 },
       { species: 'hotarumi', x: 23.5, z: 15.5, r: 3.5, level: [10, 13], weight: 1, hours: [18, 22], rare: true },
-      { species: 'pebblips', x: 10.5, z: 19.5, r: 3.5, level: [9, 13], weight: 1, rare: true },
+      { species: 'moglow', x: 10.5, z: 19.5, r: 3.5, level: [9, 13], weight: 1, rare: true },
     ],
     beasts: [
       { species: 'rift_boar', path: [[30.5, 38.5], [29.2, 32], [33.5, 25], [29.5, 18.5], [25, 22.5], [28.5, 30]], speed: 2.2 },

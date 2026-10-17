@@ -401,7 +401,7 @@ These are the shared conventions for this whole section.
 | Hair | Charcoal-black bob with the two buns. Bangs in 3 rounded clumps. Angel-ring highlight broken into 3 dashes. A **yellow lightning-bolt hair clip** (3×5px) on the right bun. |
 | Outfit | Oversized white hoodie with **panda-ear hood** (black nubs show when the hood is down too), sleeves past the fingertips (sleeve-paws). Yellow pleated skirt with a zig-zag "lightning" hem (1px). Charcoal bike shorts. Chunky yellow-and-white sneakers. |
 | Accessories | Zapanda keychain on the bag. The phone has a panda case. Bracelet on the left wrist. Glow accent: the lightning clip pulses on emotes. |
-| Palette (14) | SK1 `#f9cfb0` `#e0a084` `#a8624e` · hair `#2b2838` `#45405c` `#7a7896` · hoodie `#fbf8f2` `#d8d2e6` · yellow `#ffe14d` `#f2b21c` `#b8701a` · shorts `#3b3550` · iris `#f29a2e` · blush (global) |
+| Palette (13) | SK1 `#f9cfb0` `#e0a084` `#a8624e` · hair `#2b2838` `#45405c` `#7a7896` · hoodie `#fbf8f2` `#d8d2e6` · yellow `#ffe14d` `#f2b21c` `#b8701a` · shorts `#3b3550` · iris `#f29a2e` · blush (global) |
 | Idle quirk | Bounces on her toes (1px up on frames 2 and 4: a double-time idle). Every few seconds she swings her sleeve-paws. |
 | Signature emote | **"Zap-V!"** A hop with a double V-sign at her cheeks, a 1-frame lightning spark from the hair clip, and a ♪ bubble. |
 | Portrait | The 7 base expressions plus **laughing** (eyes ^ ^, mouth wide), **pouty** (cheeks puffed, 1px pink outline), and **teary-happy**. Her "angry" is never scary: puffed cheeks and a 💢. |
@@ -545,7 +545,7 @@ These are the shared conventions for this whole section.
 | Hair | Indigo bun plus loose strands: 2 clumps falling at the temples. |
 | Outfit | Sand field coat with patch pockets and rolled sleeves, a navy turtleneck, cargo trousers tucked into lace-up boots. A **star-chart scarf** (navy with 1px yellow dots and lines: constellations). |
 | Accessories | A holographic tablet that projects a 5×5 star map (her glow accent), a magnifier on a cord, a brush in her pocket (archaeology). Bracelet. |
-| Palette (14) | SK1 `#f9cfb0` `#e0a084` `#a8624e` · hair `#2e2a52` `#4a4680` `#7c78b8` · coat `#d9c08a` `#b0925a` `#806236` · scarf `#23305e` · stars `#ffe27a` · holo `#8ff0ff` · boots `#5a3a2a` |
+| Palette (13) | SK1 `#f9cfb0` `#e0a084` `#a8624e` · hair `#2e2a52` `#4a4680` `#7c78b8` · coat `#d9c08a` `#b0925a` `#806236` · scarf `#23305e` · stars `#ffe27a` · holo `#8ff0ff` · boots `#5a3a2a` |
 | Idle quirk | Reads her tablet, pushes up her glasses (a 1px lens glint), and sometimes scribbles with a pencil from her bun. |
 | Signature emote | **"Eureka!"** The holo map flares, she spins it with one finger, a light-bulb bubble appears, and she does an excited 2-frame hop. |
 | Portrait | The 7 base expressions plus **lecture mode** (finger raised, eyes closed), **awestruck** (stars reflected in her lenses, for legend reveals), and **exhausted** (bags under her eyes, a pencil in her mouth). |
@@ -651,7 +651,7 @@ These are the shared conventions for this whole section.
 | Hair | White, short, mostly hidden. Bushy white brows. |
 | Outfit | Indigo noragi with sashiko stitch dots (1px light pixels), a white tenugui around the neck, grey work pants, dark jika-tabi boots. |
 | Accessories | A hoe. A woven basket of cabbages (Cabbunny's farm) in his farm idle. A 2050 touch: a tiny **farm drone** hovers beside him (an 8×5 companion sprite) as his glow accent. |
-| Palette (13) | Tan skin `#d8a070` `#b07648` `#7a4a2a` · hair and stubble `#f4f0e6` `#c8c4bc` · straw `#e8c870` `#b8903e` · noragi `#334a7a` `#22305a` · tabi `#3a3440` · cabbage `#8fd16a` · metal `#9aa2b0` · tenugui shares `#f4f0e6` |
+| Palette (12) | Tan skin `#d8a070` `#b07648` `#7a4a2a` · hair and stubble `#f4f0e6` `#c8c4bc` · straw `#e8c870` `#b8903e` · noragi `#334a7a` `#22305a` · tabi `#3a3440` · cabbage `#8fd16a` · metal `#9aa2b0` · tenugui shares `#f4f0e6` |
 | Idle quirk | Leans on the hoe, then pats his lower back (a 2-frame "oof"). |
 | Signature emote | **"Fine harvest!"** Lifts a giant cabbage over his head with both arms and laughs with his eyes closed. |
 | Portrait | The 7 base expressions plus **wise nod** and **sleepy**. His "shocked" is the only time we see his full eyes. That is the joke. |
@@ -684,7 +684,7 @@ These are the shared conventions for this whole section.
 | Hair | Blue-black glossy bob with a crisp 2-segment angel ring. |
 | Outfit | White uniform jacket with **royal-blue side panels and gold piping**, a League emblem badge on the cap, white gloves, and blue low heels. |
 | Accessories | A floating tablet (it follows her hand 1 frame late). A headset mic. |
-| Palette (14) | SK1 `#f9cfb0` `#e0a084` `#a8624e` · hair `#1a2240` `#2c3a6a` `#5a7ac0` · uniform `#f6f8fc` `#c8d0e8` · blue `#2a6fdb` `#1a46a0` · gold `#f2c14e` · holo `#6ff0ff` · lips `#e86a7a` |
+| Palette (13) | SK1 `#f9cfb0` `#e0a084` `#a8624e` · hair `#1a2240` `#2c3a6a` `#5a7ac0` · uniform `#f6f8fc` `#c8d0e8` · blue `#2a6fdb` `#1a46a0` · gold `#f2c14e` · holo `#6ff0ff` · lips `#e86a7a` |
 | Idle quirk | Hands folded at her waist with a polite 1px head tilt. She taps the floating tablet. |
 | Signature emote | **"Welcome to the League."** A 30° bow (3 frames down, a 6-tick hold, 2 frames up), then the open-palm "this way" gesture. |
 | Portrait | The 7 base expressions plus **professional smile** (eyes closed ^ ^) and **flustered** (holo-monocle glitches and tablet juggling). Her "angry" is an icy polite smile with a 💢. |
@@ -723,7 +723,7 @@ These are the shared conventions for this whole section.
 | Hair | A lilac-to-pink gradient twin-tail set (3 tones plus pink tips). The tails swing 1 frame behind the body. |
 | Outfit | A pink-and-white idol dress with a sailor-ish collar and a big ribbon. **LED trim on the hem** (cyan dashes: her glow accent, which animates in a 3-step chase loop). White platform boots. |
 | Accessories | A headset mic. A star-tipped hand mic for emotes. A ★ hair clip on each tail. Bracelet styled as a star bangle. |
-| Palette (14) | SK1 `#f9cfb0` `#e0a084` `#a8624e` · hair `#c9a7ff` `#9d7aee` · tips `#ff9ad5` · dress `#ff6fb5` `#cf3f8b` · white `#fff6fb` `#e6d4f0` · LED `#5ff6ff` · star `#ffe45a` · iris `#ff4fa8` |
+| Palette (13) | SK1 `#f9cfb0` `#e0a084` `#a8624e` · hair `#c9a7ff` `#9d7aee` · tips `#ff9ad5` · dress `#ff6fb5` `#cf3f8b` · white `#fff6fb` `#e6d4f0` · LED `#5ff6ff` · star `#ffe45a` · iris `#ff4fa8` |
 | Idle quirk | Practises choreography: a 4-frame step-touch with a hand wave, and the twin tails swing. |
 | Signature emote | **"Lumi★Wink!"** A peace sign over one eye with a wink, a star sparkle burst (FX), and a heart bubble. |
 | Portrait | The 7 base expressions plus **idol-mode** (perfect smile, sparkles), **off-stage tired** (a dull ahoge droop, which reveals the real her: a friend-bond beat), and **starstruck**. |
@@ -758,7 +758,7 @@ These are the shared conventions for this whole section.
 | Hair | A neat side part, a little thin on top: 1px of skin showing through at the crown. Grey at the temples. |
 | Outfit | Navy suit, white shirt, **red tie loosened** by 2px, dark shoes, an ID lanyard. |
 | Accessories | A briefcase. A 2050 smartwatch (glow accent: it pings on his "late" emote). A convenience-store coffee in a variant. |
-| Palette (14) | SK2 `#eeb68e` `#c9846a` `#8a4c3c` · hair `#2a2a30` `#484856` · suit `#2e3a5c` `#1e2640` `#4a5a86` · shirt `#f2f4f8` `#c6ccda` · tie `#c8323e` · briefcase `#6a4428` · glasses `#9aa6b8` |
+| Palette (13) | SK2 `#eeb68e` `#c9846a` `#8a4c3c` · hair `#2a2a30` `#484856` · suit `#2e3a5c` `#1e2640` `#4a5a86` · shirt `#f2f4f8` `#c6ccda` · tie `#c8323e` · briefcase `#6a4428` · glasses `#9aa6b8` |
 | Idle quirk | Checks his watch, sighs (shoulders drop 1px), and wipes his forehead with a handkerchief. |
 | Signature emote | **"Sumimasen!"** A 45° bow that is too deep, so his glasses slip, then a sweat drop. |
 | Portrait | The 7 base expressions plus **overworked** (spiral eyes, dark circles), **relieved** (a weekend smile), and **tie-on-head party mode**. |
@@ -861,7 +861,7 @@ These are the shared conventions for this whole section.
 | Hair | A tight purple perm: a curl texture of 1px dots in 2 tones. |
 | Outfit | A **leopard-print top** with chunky 2×2 spots (pixel-legible), a red shop apron with a white shop mark, dark purple slacks, and sandals. |
 | Accessories | A white visor, a gold chain necklace, a **calculator** (bargaining prop), and a candy pouch. Glow accent: an e-price-tag gun that blinks red. |
-| Palette (14) | SK2 `#eeb68e` `#c9846a` `#8a4c3c` · perm `#7a3a9a` `#5a2470` `#a868c8` · leopard `#f2b43a` `#c9842a` `#3a2418` · apron `#e83a5a` · visor `#ffffff` · gold `#ffd84a` · slacks `#3a3456` |
+| Palette (13) | SK2 `#eeb68e` `#c9846a` `#8a4c3c` · perm `#7a3a9a` `#5a2470` `#a868c8` · leopard `#f2b43a` `#c9842a` `#3a2418` · apron `#e83a5a` · visor `#ffffff` · gold `#ffd84a` · slacks `#3a3456` |
 | Idle quirk | Taps on the calculator, then waves to passers-by. |
 | Signature emote | **"Nande ya nen!"** A backhand comedy slap at the air, eyes wide, mouth open, then she cracks up laughing. A second emote, **"Maido!"**, is a big wave with a gold-tooth gleam. |
 | Portrait | The 7 base expressions plus **bargaining** (one eye narrowed, calculator up), **cackle**, and **gossip-whisper**. |
@@ -984,7 +984,7 @@ These are the shared conventions for this whole section.
 | Head / eyes | 2×2 eyes, a megawatt grin, a thin moustache. |
 | Outfit | Gold sequined jacket (a sparkle cycle: 3 frames of shifting 1px highlights), black shirt, white bow tie, black slacks. |
 | Accessories | A headset mic with a glowing boom tip (glow), and a cue card tablet. |
-| Palette (12) | SK2 `#eeb68e` `#c9846a` `#8a4c3c` · hair `#2a2228` `#4a3e48` · jacket `#f6c945` `#b0802a` `#fff09a` · shirt `#1e1e28` · tie `#ffffff` · LED `#ff5fa8` |
+| Palette (11) | SK2 `#eeb68e` `#c9846a` `#8a4c3c` · hair `#2a2228` `#4a3e48` · jacket `#f6c945` `#b0802a` `#fff09a` · shirt `#1e1e28` · tie `#ffffff` · LED `#ff5fa8` |
 | Idle quirk | Leans into the mic, adjusts the headset, sequins sparkle. |
 | Signature emote | **"Arena… CHANGE!"** Both arms sweep wide (4 frames). Synced to the arena-select moment (rocky, grassy, water) at the start and at halftime (bible §6). |
 | Portrait | The 7 base expressions plus **hype scream** (mouth huge, speed lines). |
@@ -1239,7 +1239,7 @@ These are the shared conventions for this whole section.
 | Hair | Curly mass: a round silhouette built from 1px curl highlights. |
 | Outfit | A black leather jacket with silver shoulder spikes, the team vest underneath (visible at the back), a ripped white tee, black skinny jeans with knee rips, pointed boots. |
 | Accessories | A purple pointy guitar (an original body shape), and the **padlocked dues jar** clipped to his belt. Glow accent: the guitar's LED fret markers. |
-| Palette (14) | SK1 `#f9cfb0` `#e0a084` `#a8624e` · hair `#2a1e26` `#463440` · bandana `#c8283a` `#8a1a2a` · leather `#2a2630` `#3e3a48` `#5a5668` · spikes `#d8dee8` · tee `#e8e4ea` · guitar `#6a3ab8` `#42207a` · coins `#ffd23a` |
+| Palette (14) | SK1 `#f9cfb0` `#e0a084` `#a8624e` · hair `#2a1e26` `#463440` · bandana `#c8283a` `#8a1a2a` · leather `#2a2630` `#3e3a48` `#5a5668` · spikes and tee `#d8dee8` · guitar `#6a3ab8` `#42207a` · coins `#ffd23a` |
 | Idle quirk | **Flips a coin** (a 4-frame arc with a glint), catches it, and checks it greedily. |
 | Signature emote | **"Shred!"** A knee-slide air-guitar solo (6 frames) with music-note FX. |
 | Portrait | The 7 base expressions plus **greedy** (coin-eyes: ¥-shaped highlights), **sly**, and **panicked** (the dues jar is stolen back). |
@@ -1634,7 +1634,7 @@ These are the shared conventions for this whole section.
 | Alt outfit ("Live Aid") | A **white tank**, **light-wash jeans**, a **studded belt** and a **studded armband on the right bicep**, white boxing-style boots. Used for training and hangout scenes. |
 | Finale outfit ("Regalia") | A **red velvet robe with white ermine trim** and a **gold crown** (§6.5). Used when you challenge the Champions and at the credits. |
 | Accessories | The **half mic stand**: a 2×12px chrome rod with a 3×3 mic head, and the glow accent (an LED ring on the mic). The bracelet is gold. |
-| Palette (14) | SK2 `#eeb68e` `#c9846a` `#8a4c3c` · hair `#1a1418` `#3a3040` · jacket `#ffd23a` `#e0a01c` `#fff09a` · gold `#f6c945` `#b0802a` · trousers `#f8f6f0` `#cfcbd8` · stripe `#e02a3a` · chrome `#dfe6f0` `#8a96aa` |
+| Palette (14) | SK2 `#eeb68e` `#c9846a` `#8a4c3c` · hair `#1a1418` `#3a3040` · jacket `#ffd23a` `#e0a01c` `#fff09a` · gold `#f6c945` `#b0802a` · trousers `#f8f6f0` `#cfcbd8` · stripe `#e02a3a` · chrome `#8a96aa` (chrome highlights reuse the trouser whites) |
 | Idle quirk | One hand on his hip, the mic stand resting on his shoulder, a slow chin-up survey of the crowd. |
 | Signature emote | **"Call and response."** The mic stand goes up and he gives a wordless call, a speech bubble with a ♪ appears, and **the crowd answers** with a crowd-wide ♪ burst one beat later. **Second emote:** a mic-stand **twirl and point** at his opponent ("You're next"). |
 | Portrait | The 7 base expressions plus **showman** (chin up, eyes half-closed, a proud smile), **roaring** (an open-mouth stadium shout), and **tender** (soft eyes, for the post-battle respect beat). |
@@ -1651,7 +1651,7 @@ These are the shared conventions for this whole section.
 | Outfit | A **white pleated winged top** (the cape folds are vertical 1px pleat lines in light and shadow, like Zandra Rhodes), dark slim trousers, **wooden clogs** (2050: hover-soled clogs with a faint glow). The **cape lining shows a star map** (navy with gold dots: the astrophysics nod). |
 | Instrument | A **deep red mahogany guitar** with an original body shape, 3 pickups, and a **row of small switches** (6 pixels) as the tell. A **silver coin pick** that glints. |
 | Accessories | Star-map lining (glow accent: 3–4 twinkling star pixels). |
-| Palette (14) | SK1 `#f9cfb0` `#e0a084` `#a8624e` · curls `#2a1e1e` `#4a3632` `#7a5e58` · cape `#fbfbf8` `#d4d0e0` `#a8a2c0` · guitar `#a8242e` `#6a1420` · coin `#e8e8f0` · lining `#2a2a5a` · stars `#ffe27a` · trousers `#2a2630` |
+| Palette (14) | SK1 `#f9cfb0` `#e0a084` `#a8624e` · curls `#2a1e1e` `#4a3632` `#7a5e58` · cape `#fbfbf8` `#d4d0e0` `#a8a2c0` · guitar `#a8242e` `#6a1420` · coin `#e8e8f0` · lining `#2a2a5a` · stars `#ffe27a` (trousers reuse the lining navy) |
 | Idle quirk | Tunes a string (head tilted, listening), then looks up at the stadium sky. |
 | Signature emote | **"Guitar to the stars."** He raises the guitar overhead like a trophy, the coin pick flicks up and glints, the cape wings spread, and a starfield sparkle plays (FX). |
 | Portrait | The 7 base expressions plus **stargazing** (eyes reflect stars), **solo focus** (eyes closed, brows up), and **gentle laugh**. |
@@ -1714,3 +1714,567 @@ This is what the Champions wear for the final challenge, and what the **player w
 - **Don't** make Freddie's overbite or any physical trait a caricature. These are respectful homages.
 
 ---------------------------------------------------------------------------------------------------
+
+## 7. League opponents themed on songs, artists and album covers (Topic 7)
+
+**Bible:** "Super cool trainers based on songs, artists and album covers." *They are rank-match opponents, safari rivals and bullies themed on music.*
+
+**Twelve rank-match opponents** are proposed below. Each one:
+- has an **original in-world name** (a placeholder the owner can rename)
+- uses partners **only from the bible's roster**
+- borrows **era clothing language and one gesture** from its reference, never a likeness, logo, artwork or lyric
+
+**Shared spec:**
+- **Size:** 44–48px, head 18px.
+- **Palette:** 12–14 own colours.
+- **Animations:** the trainer battle poses plus one signature emote, and portraits with the 7 base expressions plus 1 extra.
+
+**References.** All are [C] canonical pages; verify them in the follow-up pass.
+- Plastic Love: https://en.wikipedia.org/wiki/Plastic_Love
+- City pop: https://en.wikipedia.org/wiki/City_pop
+- Hiroshi Nagai: https://en.wikipedia.org/wiki/Hiroshi_Nagai
+- Yellow Submarine (film): https://en.wikipedia.org/wiki/Yellow_Submarine_(film)
+- Thriller (song): https://en.wikipedia.org/wiki/Thriller_(song)
+- Ziggy Stardust: https://en.wikipedia.org/wiki/Ziggy_Stardust_(character)
+- Kansai Yamamoto: https://en.wikipedia.org/wiki/Kansai_Yamamoto
+- Purple Rain (film): https://en.wikipedia.org/wiki/Purple_Rain_(film)
+- Hotel California: https://en.wikipedia.org/wiki/Hotel_California
+- Daft Punk: https://en.wikipedia.org/wiki/Daft_Punk
+- Lemon (Kenshi Yonezu song): https://en.wikipedia.org/wiki/Lemon_(Kenshi_Yonezu_song)
+- Kenshi Yonezu: https://en.wikipedia.org/wiki/Kenshi_Yonezu
+- Graduation (album): https://en.wikipedia.org/wiki/Graduation_(album)
+- Takashi Murakami: https://en.wikipedia.org/wiki/Takashi_Murakami
+- Smells Like Teen Spirit: https://en.wikipedia.org/wiki/Smells_Like_Teen_Spirit
+- Grunge fashion: https://en.wikipedia.org/wiki/Grunge_fashion
+- Angus Young: https://en.wikipedia.org/wiki/Angus_Young
+- Dancing Queen: https://en.wikipedia.org/wiki/Dancing_Queen
+- ABBA: https://en.wikipedia.org/wiki/ABBA
+- Roller disco: https://en.wikipedia.org/wiki/Roller_disco
+
+### 7.1 "Rina Yorunami": city-pop night singer (*Plastic Love* / Hiroshi Nagai)
+- **Study notes [C]:**
+  - 1980s Japanese **city pop**: Mariya Takeuchi's "Plastic Love" (1984).
+  - The visual world is Hiroshi Nagai's illustration: **pastel pools, palm trees, clean blue skies, hard shadows, mid-century buildings**.
+  - Fashion: **shoulder-padded blazers with pushed sleeves**, high-waisted trousers, **permed shoulder-length hair**, gold hoops, sunglasses on the head, a cassette player.
+- **Design:**
+  - 46px. A big soft perm.
+  - A **pastel lilac blazer with shoulder pads** over a teal camisole, white high-waisted pleated trousers, kitten heels.
+  - Gold hoop earrings and **sunglasses perched in her hair**.
+  - Glow accent: a **cassette-style mic** with a neon tape window.
+  - She arrives on a palm-lit stage with a sunset gradient.
+- **Palette:** SK1 · hair `#4a2a3a` `#7a4a5e` · blazer `#c9a7ff` `#9d7aee` · cami `#3ad6c8` · trousers `#f8f6f0` `#d4d0e0` · hoops `#f6c945` · sunset `#ff9a8a` `#ffd08a` · neon `#ff5fa8`
+- **Idle:** a slow city-pop sway, finger-snap on the off-beat.
+- **Emote:** "Night drive". Sunglasses slide down onto her eyes, a hair flip, and a pastel sunset gradient flashes behind her.
+- **Portrait extra:** **wistful** (a half-lidded, faraway look).
+- **Partner:** **Idolark** (Echo).
+- **Do / Don't:** Do use the Nagai-style pastel sky palette. Don't reproduce any real record cover photo.
+
+### 7.2 "Captain Kiiro": Yellow Submarine captain
+- **Study notes [S/C]:**
+  - *Yellow Submarine* (1968) is Heinz Edelmann's **flat pop-art psychedelia**: a yellow sub with round portholes, rivets and a periscope, wavy sea lines.
+- **Design:**
+  - 46px, round-bellied.
+  - A **yellow captain's cap** with a **porthole badge**, a **yellow double-breasted sea coat** with brass rivet buttons, navy trousers, rubber boots.
+  - A **periscope-shaped spyglass** (the prop).
+  - A white beard with **psychedelic wave-pattern trim** on his coat hem (1px wavy lines in pink, teal and orange).
+  - Glow accent: the porthole badge lights up.
+- **Palette:** SK2 · beard `#ffffff` `#d8d4e0` · coat `#ffe14d` `#f2b21c` `#b8701a` · navy `#2a4a8a` · brass `#d8a040` · waves `#ff6fb5` `#3ad6c8` `#ff9d42` · porthole `#5fd8e8`
+- **Idle:** looks through the periscope-spyglass, adjusting it 1px up and down.
+- **Emote:** "Dive!" He salutes, blows a captain's whistle, and bubbles rise (FX).
+- **Portrait extra:** **jolly sea-shanty laugh**.
+- **Partner:** **Kappachi** (Hydro). Yellowsub belongs to Elite Ringo.
+- **Do / Don't:** Do tie him to Yuzu's "Yellow Submarine Soft-Serve" palette (yellow, navy, aqua). Don't use the film's characters or Blue Meanies.
+
+### 7.3 "Zombie Jin": Thriller dancer
+- **Study notes [C]:**
+  - The 1983 short film: a **red leather jacket with black V-shaped stripes**, **red leather trousers**, white socks, black loafers.
+  - Zombie make-up, and **the claw-hands zombie dance** in unison.
+- **Design:**
+  - 46px, lean dancer.
+  - A **crimson jacket with an original black chevron-and-zipper pattern** (not the exact V layout), slim red trousers, **white socks and black loafers** (the read when he moonwalks *backward* in idle).
+  - **Zombie-pale skin with green under-eye shading** (comedic, not gory).
+  - Glow accent: glowing green eyes during his emote only.
+- **Palette:** zombie skin `#d8e8c8` `#a8c49a` `#6a8a6a` · hair `#1e1830` `#3a2a4a` · jacket `#d8203a` `#98142a` `#ff5a6a` · stripes `#1e1a24` · socks `#ffffff` · loafers `#22202a` · eye glow `#a6ff3a`
+- **Idle:** a smooth backward glide (moonwalk-style slide: feet alternate on 4 frames while his position drifts back).
+- **Emote:** "Zombie claw". Both hands claw, shoulders hunch, a head tilt to one side, then a 4-frame unison shuffle. **Nearby crowd NPCs join in.**
+- **Portrait extra:** **ghoul grin** (glowing eyes).
+- **Partner:** **Thrillghoul** (Ecto).
+- **Do / Don't:** Do keep the zombie comedic. Don't draw a real dancer's face, a single glove, or the exact jacket.
+
+### 7.4 "Starman Zigg": Ziggy-era glam rocker
+- **Study notes [C]:**
+  - Ziggy Stardust (1972–73): a **spiky red mullet**, platform boots and glitter.
+  - **Kansai Yamamoto**, a Japanese designer, made the **asymmetric one-legged knit bodysuits** and the striped vinyl "Tokyo Pop" jumpsuit. That is a strong **Japan connection** for an Osaka game.
+  - Avoid the *Aladdin Sane* lightning-bolt face, which is a specific album artwork.
+- **Design:**
+  - 47px.
+  - A **spiky red mullet**, an **asymmetric one-legged knit bodysuit** (one leg patterned, one bare with a sparkle tight), and **tall platform boots** (+3px).
+  - A **small silver star** on his forehead (not a lightning bolt) and glitter shoulder pieces.
+  - Glow accent: the forehead star.
+- **Palette:** SK1 (pale) · hair `#ff4a2a` `#c8282a` `#ff9a6a` · knit `#3ad6c8` `#ff6fb5` `#ffe14d` · tight `#c8d0dc` · boots `#f4f0f8` `#b4b0c8` · star `#e8f0ff`
+- **Idle:** a hip-cocked pose with a slow arm sweep across the sky.
+- **Emote:** "Starman". He points to the sky, star sparkles fall, he spins on his platforms, and the forehead star flares.
+- **Portrait extra:** **alien serene** (heavy glitter lids).
+- **Partner:** **Ziggystar** (Astro/Volto).
+- **Do / Don't:** Do let the platform boots and the asymmetric bodysuit carry the silhouette. Don't use the lightning-bolt face or Bowie's likeness.
+
+### 7.5 "Murasaki Rider": Purple Rain rocker
+- **Study notes [C]:**
+  - *Purple Rain* (1984): a **purple brocade or velvet coat**, a **white ruffled jabot shirt**, high-heeled boots, and a **purple motorcycle**.
+  - Rain and purple light. The bible's starter line also nods to Prince (Princeidon, and the alt evolution named Purple Rain).
+- **Design:**
+  - 46px.
+  - A **long purple coat with gold brocade cuffs**, a **white ruffle** at the throat, tight black trousers, heeled boots.
+  - Curly black hair and a thin moustache.
+  - Arrives on a **purple hover-bike** (a 48×24 prop sprite).
+  - His guitar is an original **raindrop-shaped** white body (not the "Cloud" guitar or the Love Symbol).
+  - Glow accent: purple rain particles fall only around him.
+- **Palette:** SK3 · hair `#1e1830` `#3a2a4a` · coat `#7a3ac8` `#4e2090` `#a878f0` · brocade `#f6c945` · ruffle `#fbf8f2` `#d8d2e6` · trousers `#22202a` · bike `#6a3ab8` · rain `#c6a8ff`
+- **Idle:** coat-tail sway, then a guitar held high with his head bowed.
+- **Emote:** "Purple downpour". He kneels, raises the guitar, and purple rain plus light shafts pour down (FX).
+- **Portrait extra:** **smoulder** (half-lid, side glance).
+- **Partner:** **Hotarumi** (Volto/Bio): fireflies glowing in purple rain. *The Bubblion line stays the player's.*
+- **Do / Don't:** Do lean on purple-and-white contrast. Don't use the Love Symbol or the Cloud guitar.
+
+### 7.6 "Bellhop Kanata" at the "Hotel Califuji": Hotel California bellhop
+- **Study notes [C]:**
+  - The 1976 album cover is a hotel photographed at **dusk**: a **golden-orange glow, black palm silhouettes, a violet sky**.
+  - Classic bellhop uniform: **pillbox cap**, **short jacket with brass buttons**, a luggage trolley.
+  - The song's mood is eerie. You can check in…
+- **Design:**
+  - 44px.
+  - A **maroon pillbox cap and short jacket** with brass buttons and gold piping, white gloves, a luggage trolley (prop).
+  - **Slightly translucent at the edges**: a 1px ghostly outline in violet during his emote.
+  - Glow accent: the **service bell**.
+- **Palette:** SK1 · hair `#2a1e26` · uniform `#8a1a3a` `#5a0e26` `#c8405a` · brass `#f6c945` `#b0802a` · gloves `#f8f6f0` · dusk `#ffb04a` `#ff7a5a` `#6a3a8a` · ghost edge `#c6a8ff`
+- **Idle:** stands perfectly straight, then a 1px bow to passers-by.
+- **Emote:** "Ding: check-in". He rings the bell, then fades out to 50% and fades back in a step closer (a spooky comedy beat).
+- **Portrait extra:** **unsettling smile**.
+- **Partner:** **Chochobake** (Ecto).
+- **Do / Don't:** Do use the dusk palette. Don't recreate the album photo, and never quote the lyrics.
+
+### 7.7 "Robo Futari": robot DJ duo (a Daft Punk-like double battle)
+- **Study notes [C]:**
+  - A French electronic duo in **robot helmets**, one **chrome** and one **gold**, with LED visor displays.
+  - Matching **black leather jackets** in one era, **sequin suits** in another. They are anonymous: the helmets *are* the faces.
+- **Design:**
+  - Two 46px DJs sharing one turntable rig (a 48×16 prop).
+  - **Original helmets with cat-ear fins** (a twist that ties them to Mechanyan):
+    - **Unit Ag:** a chrome dome with a **scrolling pixel-text visor** (3px marquee).
+    - **Unit Au:** a gold dome with an **equaliser visor** (bouncing bars).
+  - Matching black leather jackets with a silver stripe, studded gloves, and (alt) silver and gold sequin suits.
+  - Glow accent: the visors.
+- **Palette:** chrome `#dfe6f0` `#8a96aa` `#4a5468` · gold `#ffe27a` `#f6c945` `#b0802a` · visor `#1e1830` · LED `#ff3a5a` `#3affb4` `#6ff0ff` · leather `#22202a` `#3a3846`
+- **Idle:** alternate head-nods (offset by 1 beat), and Unit Au scratches the deck.
+- **Emote:** "Drop". Both point up, the visors flash in sync, the screen flashes on the bass drop, and they go into a synchronized robot dance (4 frames).
+- **Portrait:** a visor-only expression set. **The visor shows icons** for each emotion (♥, !, ?, 💢, ^^, T_T): a fun twist on the 7 base expressions.
+- **Partners:** **Mechanyan** (Ferro/Volto) ×2.
+- **Do / Don't:** Do make the helmets original (the cat-ear fins). Don't copy the real helmet shapes or visor graphics.
+
+### 7.8 "Remon": the Lemon singer (Kenshi Yonezu-like)
+- **Study notes [C]:**
+  - **"Lemon"** (2018) is a huge Japanese ballad hit.
+  - The artist is known for a **very tall, lanky** frame, **long dark bangs falling over his eyes**, and **dark, plain clothing**. He paints his own cover art.
+  - The mood is **bittersweet and melancholy**, with lemon yellow as the single bright note.
+- **Design:**
+  - **50px**, lanky (a long torso and arms).
+  - **Long black bangs covering both eyes** (only a 1px glint shows).
+  - A **long charcoal coat**, a white shirt, black trousers.
+  - Holds **a single bright lemon**: the only saturated colour on him and the read.
+  - Glow accent: the lemon has a faint inner glow.
+- **Palette:** SK1 (pale) · hair `#1a1622` `#2e2838` · coat `#3a3846` `#26242e` `#5a5868` · shirt `#f2f4f8` · trousers `#1e1a24` · lemon `#fff04a` `#f2c41c` `#c8901a` · leaf `#5cb85c`
+- **Idle:** gazes at the lemon in his palm, and his bangs sway.
+- **Emote:** "Bittersweet". He raises the lemon to the light, his bangs part to show sad-gentle eyes for 6 ticks, and lemon-scent sparkles drift.
+- **Portrait extra:** **eyes revealed** (the rare, emotional beat).
+- **Partners:** **Lemmo** and **Alpha Lemmo** (Volto).
+- **Do / Don't:** Do make the lemon the only warm colour. Don't draw the artist's real face or the single's cover art.
+
+### 7.9 "Grad Kumada": Graduation bear grad (Kanye *Graduation* / Takashi Murakami)
+- **Study notes [C]:**
+  - *Graduation* (2007): the cover art is by **Takashi Murakami**, a Japanese superflat artist, in a **candy pink, purple and cyan anime cityscape** with a **teddy-bear mascot** (Dropout Bear).
+  - **Shutter-shade glasses** were the era's signature accessory (the "Stronger" video).
+  - The bible's **Gradbear** (Geo) is the Kanye *Graduation* bear Tokonmon.
+- **Design:**
+  - 45px.
+  - A **graduation gown and mortarboard** (the tassel swings), with a **varsity jacket** underneath, **shutter-shade glasses** (horizontal 1px slats), and big high-tops.
+  - A **teddy-bear backpack**.
+  - Superflat palette: candy pink, purple, cyan.
+  - Glow accent: the shutter shades light up in a gradient sweep.
+- **Palette:** SK4 · gown `#7a3ac8` `#4e2090` · varsity `#ff6fb5` `#f8f6f0` · shades `#ffe45a` `#ff5fa8` · tassel `#f6c945` · backpack bear `#b07a52` `#7a4a2a` · high-tops `#3ad6c8` `#f8f6f0`
+- **Idle:** flips his tassel, then adjusts the shades with a finger.
+- **Emote:** "Graduated!" He throws the mortarboard up in a spinning arc (FX), it lands back on his head, and confetti falls.
+- **Portrait extra:** **proud flex**.
+- **Partner:** **Gradbear** (Geo).
+- **Do / Don't:** Do use superflat candy colours. Don't use Murakami's flowers or the real Dropout Bear design.
+
+### 7.10 "Hiro": grunge pep-rally kid (Nirvana, "Smells Like Teen Spirit")
+- **Study notes [C]:**
+  - The 1991 video is set at a **high-school gym pep rally**: cheerleaders with an **anarchy "A"** on their uniforms, and a janitor.
+  - Grunge fashion: **oversized flannel shirts, ripped jeans, a fuzzy cardigan, worn sneakers**, unwashed blond hair.
+  - The bible's **Heartbox → Inbloom** is the Nirvana Tokonmon (the heart-shaped box; the *In Utero* angel).
+- **Design:**
+  - 43px teen.
+  - **Messy blond hair to the jaw**, an **oversized moss cardigan over a red flannel**, ripped knees, scuffed canvas sneakers.
+  - Carries **pep-rally pom-poms** with an original scribble "A" or heart.
+  - Glow accent: a **heart-shaped locket** that glows when Heartbox bonds.
+- **Palette:** SK1 · hair `#f2d27a` `#c8a04a` · cardigan `#6a7a4a` `#4a5632` · flannel `#c8283a` `#22202a` · jeans `#7a9ac8` `#5a78a8` · sneakers `#e8e4dc` · locket `#ff5a7a`
+- **Idle:** a slouch, then a sudden headbang burst and back to the slouch.
+- **Emote:** "Pep rally". The pom-poms go up in a lazy cheer that becomes a wild jump, and a heart pops.
+- **Portrait extra:** **apathetic** (half-lids, flat mouth).
+- **Partner:** **Heartbox** (Ecto). In story beats it can break into Inbloom.
+- **Do / Don't:** Do keep him gentle-grunge, a teen. Don't use Kurt Cobain's likeness or the smiley-face logo.
+
+### 7.11 "Thunder Kid Raito": AC/DC-style schoolboy shredder
+- **Study notes [C]:**
+  - The lead guitarist plays in a **schoolboy uniform**: a velvet blazer, **short trousers**, a tie and a **school cap**, with a horned double-cutaway guitar.
+  - His **duck-walk** (hopping on one leg while playing) is the signature.
+  - The bible's lore dragon **Back in Black** gives AC/DC an in-world echo.
+- **Design:**
+  - 40px (small, but intense).
+  - A **green velvet school blazer**, **shorts**, a tie flying, a **school cap** with a lightning badge, knee socks.
+  - A **cherry-red horned guitar** (an original).
+  - Glow accent: crackling Volto sparks on the strings.
+- **Palette:** SK2 · hair `#3a2a22` · blazer `#2f7a4a` `#1e5232` `#4ea86a` · shirt `#f8f6f0` · tie `#c8283a` · shorts `#2a2a30` · guitar `#c8202e` `#8a1420` · sparks `#fff04a`
+- **Idle:** a fast head-nod and a cap adjust.
+- **Emote:** "Duck-walk". He hops across 16px on one leg while shredding (6 frames), and sparks fly.
+- **Portrait extra:** **manic grin**.
+- **Partner:** **Tengale** (Aero). *Interpretation: a stormy wind partner.*
+- **Do / Don't:** Do let the duck-walk be the hero animation. Don't use the AC/DC logo.
+
+### 7.12 "Mirrorball Mimi": Dancing-Queen disco roller (ABBA)
+- **Study notes [C]:**
+  - 1970s ABBA: **satin jumpsuits with wide flares**, **silver platform boots**, glitter and capes.
+  - A **star-shaped guitar** (Eurovision 1974).
+  - The disco and **roller-disco** scene, with mirrorball light flecks.
+- **Design:**
+  - 45px.
+  - **Feathered blonde hair**, a **white-and-sky-blue satin jumpsuit with huge flares**, a short cape, **platform roller skates** (+3px).
+  - A **star-shaped tambourine**.
+  - A **mirrorball light** follows her: scattering 1px light flecks on the ground (FX), which is the glow accent.
+- **Palette:** SK1 · hair `#ffe08a` `#e0b04a` `#fff4c8` · jumpsuit `#f8f6f0` `#d4d0e0` · sky `#7fd0ff` `#3a9ad8` · skates `#c8d0dc` `#8a96aa` · star `#ffe45a` · flecks `#ffffff`
+- **Idle:** a smooth skate in place (side-to-side glide, 4 frames) and a tambourine tap.
+- **Emote:** "Disco spin". She does a spin on her skates (8 frames) under a mirrorball sparkle burst, and the tambourine shakes.
+- **Portrait extra:** **dazzling** (sparkle eyes).
+- **Partner:** **Yukiusa** (Cryo): an ice-disco pairing.
+- **Do / Don't:** Do lean on flares and platforms for the silhouette. Don't reproduce ABBA's faces or costumes exactly.
+
+**Bench (extra opponents if the owner wants more):**
+
+| Opponent | Look | Partner |
+|---|---|---|
+| **Rocket pianist** (Elton John, 1975 [C]) | Glitter glasses and a sequined baseball uniform | Tengale |
+| **Tiger boxer** ("Eye of the Tiger" [C]) | A tiger-stripe satin robe and headband, in Osaka Tigers yellow and black | Fivestones |
+| **Rolling-Stone folk drifter** ("Like a Rolling Stone" [C]) | A harmonica neck-rack, sunglasses and curly hair | Rollingstone |
+| **Decora pop kid** (*PONPONPON*-era Harajuku decora [C]) | Clips all over, pastel layers | Idolark |
+
+### 7.13 Do / Don't (all opponents)
+- **Do** pick **one era gesture** per opponent (the moonwalk-slide, the duck-walk, the tassel toss) and make it their hero emote.
+- **Do** ensure every opponent has a **colour family not shared** with the Elite or Champions.
+- **Don't** let any opponent wear a real logo, a real album artwork element, or a lyric.
+- **Don't** give opponents Tokonmon that the bible assigns to named characters (Yellowsub, Blackbyrd, Lucydiamond, the Queen five, Zapanda, Kanizumo).
+
+---------------------------------------------------------------------------------------------------
+
+## 8. Cast scale line-up and silhouette roster
+
+This is a quick check for the sprite team: every row must read differently as a **solid silhouette** at 1×.
+
+| Character | Height | Width | Head | Silhouette hook | Glow accent |
+|---|---|---|---|---|---|
+| Taro | 35 | 22 (hat) | 17 | huge straw brim plus net | cage LED |
+| Granny Fuku | 34 | 18 | 16 | perm cloud plus cane plus hunch | — |
+| Old Man Kubo | 40 | 22 | 18 | flat straw hat plus hoe diagonal | farm drone |
+| Yuzu | 40 | 18 | 18 | soft-serve swirl bun | porthole badge |
+| Mika | 41 | 20 | 18 | two panda buns plus a bell skirt | lightning clip |
+| Lumi★ | 41 | 26 (tails) | 18 | knee-long twin tails | LED hem chase |
+| Player | 42 | 20 | 18 | preset headwear (cap, visor, ponytail) | soul stone |
+| Kaito | 43 | 20 | 18 | coat tails plus scarf flutter | teal streak |
+| Master Genryu | 42 | 22 | 18 | brow-wings plus beard plus hakama bell | — (dojo holo-scroll) |
+| Auntie Kazu | 44 | 26 | 18 | visor plus perm plus leopard | price gun |
+| Ringo (Elite) | 44 | 22 | 18 | side-mop plus beard plus drum riser | — |
+| Riff | 45 | 22 | 18 | curl poof plus bandana plus guitar | fret LEDs |
+| Ms. Aoi | 46 | 18 | 18 | asymmetric bob plus pill cap | holo-monocle |
+| Mr. Tanaka | 46 | 20 | 18 | briefcase plus loosened tie | smartwatch |
+| Paul (Elite) | 46 | 24 | 18 | dome mop plus violin bass (left-handed) | — |
+| Roger (Champion) | 46 | 22 | 18 | blond feathers plus gong | lens glint |
+| John (Champion) | 46 | 22 | 18 | neat hair plus sunburst bass plus stillness | amber stone |
+| Dr. Hoshino | 47 | 22 | 18 | pencil bun plus long coat flare | holo star map |
+| John (Elite) | 47 | 22 | 18 | curtain hair plus round glasses | diamond sparkle |
+| George (Elite) | 47 | 26 | 18 | thick swept hair plus big hollow-body | sun pendant |
+| Thrash | 48 | 22 | 18 | waist-length hair cape | DUES watch |
+| Ranger Sora | 48 | 22 | 18 | campaign hat plus binoculars plus scarf | radio LED |
+| Freddie (Champion) | 48 | 24 | 18 | moustache plus cropped jacket plus half stand | mic LED |
+| Takoyaki Taisho | 50 | 28 | 19 | hachimaki knot plus raised picks | stall holo sign |
+| Brian (Champion) | 50 | 24 | 18 | curl cloud plus white wings | star lining |
+| Moshi | 52 | 30 | 19 | cat-ear beanie plus slouch plus hoodie | (befriended) paw charm |
+| Coach Gonda | 54 | 32 | 19 | trapezoid mass plus tiny topknot | tablet edge |
+
+---------------------------------------------------------------------------------------------------
+
+## 9. Character Sprite Style Guide
+
+These rules bind every human sprite in Tokonmon. They align with bible §1:
+- anime chibi
+- crisp outlines
+- limited palettes
+- 4 directions
+- walk, idle and emote
+- 2–3 hard bands with hue-shifted shadows
+- 1px outlines
+- stepped "on twos" at 12 fps
+
+### 9.1 Canvas, pivot, export, display
+- **Cell:** **64×64 px**. The pivot (feet centre) is at **x=32, y=61**. Rows 61–63 are reserved for the ground-contact shadow, which the engine draws (it is not baked).
+- **Emote bubbles** are separate **11×11** sprites, anchored 3px above the head-top of each character (stored per character as a `bubbleY` value).
+- **Sheet layout:**
+  - rows are animations
+  - columns are frames
+  - one sheet per direction set in the order **down, left, right, up**
+  - `right` may be a mirror only when §9.11 allows it
+- **Export:** indexed PNG, transparent background, plus an **emissive mask** (`_emit.png`: the glow accent pixels only) for engine bloom. The main cast can also ship an optional hand-painted **normal map** (`_n.png`) so the diorama's dynamic lights can wrap them (the Octopath and Eastward lesson).
+- **Display:**
+  - Nearest-neighbour only; no filtering and **no mipmaps**.
+  - Sprites are billboards with alpha-cutout.
+  - The camera keeps the **sprite pixel at an integer screen multiple** (×2 to ×6 zoom steps) and snaps sprite positions to the sprite-pixel grid.
+  - **Never** rotate or non-integer-scale a sprite.
+  - Squash and stretch is drawn, not transformed.
+
+### 9.2 Height tiers (at 64px cell)
+
+| Tier | Height | Head (chin to skull) | Head share | Who |
+|---|---|---|---|---|
+| Crowd mini | 28 (in a **32×32** cell) | 14 | 50% | stadium crowd |
+| Kid | 34–36 | 17 | 47–50% | Taro, schoolkids |
+| Elder (stooped) | 34–40 | 16–18 | 45% | Granny Fuku, Old Man Kubo |
+| Teen | 40–43 | 18 | 42–44% | player, Mika, Kaito, Yuzu, Lumi★, students |
+| Adult | 44–48 | 18 | 38–40% | most adults, Elite, Champions, opponents |
+| Tall adult | 48–50 | 18–19 | 36–38% | Brian, Remon, Sora, Takoyaki Taisho |
+| Big | 52–56 | 19–20 | 35% | Coach Gonda, Moshi, Biker Bruiser |
+
+- **Max footprint:** 58px tall (hair, hats and props included) and 40px wide (instruments may reach 52px).
+
+### 9.3 Proportions and construction (front view, teen, 42px)
+- **Build order:** a **circle on a box** (the Pokémon DS method).
+  1. Paint the shapes in colour first.
+  2. Refine the silhouette.
+  3. Outline last (the tiny-sprite method).
+- **Head:** 18 tall × 18–20 wide. **Eye line at row 10–11** from the head top (below the head's midpoint, which is the chibi cute zone).
+- **Torso:** 10px (shoulders to hips), 12–14 wide.
+- **Legs:** 12–13px. **Feet:** 4×2 each, with a 2px gap between them.
+- **Arms:** 10px. Hands are **3×3 mitten blobs** (no fingers except in emotes, where they show as 1px notches). The arms reach mid-thigh.
+- **Neck:** 1px (or 0 for kids and Granny). The chin overlaps the collar.
+- **Adults:** add the height to the **legs and torso**, not the head.
+- **Big characters:** add **width at the shoulders** and keep the head small.
+
+### 9.4 Skin ramps (shared by everyone)
+
+| Ramp | Highlight | Base | Shadow | Line (outline on skin) |
+|---|---|---|---|---|
+| **SK1** fair | `#ffe9d6` | `#f9cfb0` | `#e0a084` | `#a8624e` |
+| **SK2** light-medium | `#fbdcbc` | `#eeb68e` | `#c9846a` | `#8a4c3c` |
+| **SK3** tan | `#f0c294` | `#d39566` | `#a5643f` | `#6a3a26` |
+| **SK4** deep | `#c48a5e` | `#9a6340` | `#6e4128` | `#43251a` |
+
+- Sprites use **base + shadow + line**. The highlight is reserved for portraits and the nose-tip or cheek glint in big emotes.
+- **Skin outlines** use the ramp's line colour (warm brown), **never** the violet global outline. This keeps faces clean.
+
+### 9.5 Outlines (selout)
+- **1px** everywhere. **No double-thick outlines** and no stair-stepped "jaggies": curves follow consistent 1-2-3 step runs, with **no L-shaped corner doubles** (pixel-perfect lines).
+- **Exterior silhouette:** the global outline `#1e1830` on the **shadow side and bottom**. On the **lit side** (top-left) the outline switches to the material's **shadow tone** (selout).
+- **Interior lines:** only where two materials meet with **less than 2 value steps of contrast**. Otherwise let the colour change be the line. Interior lines use the darker material's shadow tone, never `#1e1830`.
+- **Hair outlines:** use hair shadow minus one step (hue-shifted toward violet).
+- **Eyes and lashes:** always the darkest tone available (global outline): this is the face's anchor.
+
+### 9.6 Eyes and face (front view)
+
+**Legend for the grids below:**
+- `K` = lash or outline
+- `D` = iris dark
+- `M` = iris mid or light
+- `H` = highlight (`#ffffff`)
+- `.` = skin
+
+```
+Teen girl (3×4, outer lash flick)    Teen boy (2×3)    Adult (2×2)    Elder / happy (arc)
+  K K K                                K K                K K            . K K .
+  H D .                                H D                H D            K . . K
+  D D .                                M M
+  M M .
+```
+
+- **The highlight pixel is fixed** at the top-inner corner for **every** frame. It never moves during walk bobs, so the gaze stays stable.
+- **Eye spacing:** 4px between the inner edges for teens, 5px for adults.
+- **Side view:** one eye, 2px wide, set 2px in from the face edge, plus a 1px brow.
+- **Back view:** no face. The hair covers the head, and ear tips show as 1 skin pixel.
+- **Mouth:** **none by default**. Mika and Lumi★ have a 1px "smile line" in the skin line colour.
+- **Emote mouths:** 2–4px wide in `#8a3a3a`, plus 1px of `#ff8fa3` tongue inside open mouths.
+- **Blush:** 2×1 per cheek, in the global blush colour. It is optional in idle and **required** in happy and embarrassed emotes.
+- **Brows:** 2–3px wide, 1px tall, in hair shadow. Coach Gonda and Genryu have 2px-tall brows as an acting feature.
+- **Glasses:** a 1px frame, with the lens drawn as a tint over the eye **plus one glint pixel**. Never hide the eye entirely, except for Roger's shades and the robot visors.
+
+### 9.7 Hair
+- **Build hair in 3–5 big clumps** (bangs) plus 2–4 side and back clumps. Each clump tip ends in a **single pixel point**.
+- **3 tones:** base, shadow (bottoms of the clumps and under the bangs), and highlight.
+  - The highlight is an **"angel-ring" band**: a broken arc of 2–4 short dashes across the crown that follows the head's curve.
+  - Hair takes **at least a 25% value step** between tones (wider than the low-contrast example in the study), so it reads at 1×.
+- **Secondary motion:**
+  - Short hair is rigid.
+  - Ponytails, twin tails, scarves, coat tails and capes **lag 1 frame** (2 ticks) behind the body.
+  - Very long hair (Thrash, Lumi★'s tails, Remon's bangs) **lags 2 frames**, and gets a **2-frame sway** in idle.
+- **Curly hair** (Brian, Riff): use C-shaped 1px highlight hooks and a lumpy silhouette.
+- **Spiky hair** (Kaito, punks): use hard triangular clumps with a highlight on the top face of each spike.
+
+### 9.8 Shading bands and light
+- **The light** is **top-left-front** and fixed for every sprite. The diorama's dynamic lights add a rim and colour on top of it in the engine.
+- **Every material gets 3 tones** (base, shadow, plus a highlight *or* a darker accent shadow). That is **2 hard bands** over the base, which matches the bible's "2–3 hard bands".
+- **Where the shadows go:**
+  - the right side of the forms
+  - under the chin (a 1px row on the neck and collar)
+  - under the bangs (a 1px row on the forehead)
+  - inside the sleeves and under the skirt or jacket hems
+  - cloth folds as 1–2px strokes at the elbows, knees and waist
+- **No pillow shading.** **No dithering** on sprites. No anti-aliasing against transparency. **Internal** 1px AA is allowed only on large hair curves (portrait-grade characters only).
+- **Hue shift:**
+
+  | Tone | Hue | Saturation | Value |
+  |---|---|---|---|
+  | **Shadow** | 12–20° toward blue or violet (blues shift toward violet; skin shifts toward red-violet) | +5–15% | −18–25% |
+  | **Highlight** | 8–15° toward yellow | −5–15% | +12–20% |
+
+  Never grey-out a shadow.
+
+### 9.9 Palette rules
+- **Counts:**
+
+  | Type | Own colours | Notes |
+  |---|---|---|
+  | Named character sprite | **10–14** | Plus the globals (outline, eye white, highlight, blush, soul-stone glow); a hard cap of **18 including the globals actually used**; aim for 16, the GBA/SNES 16-slot discipline |
+  | Townsfolk | ≤ 10 | |
+  | Crowd mini | ≤ 8 | |
+  | Portrait | ≤ 24 | The sprite ramps plus 1 extra tone per ramp |
+
+- **Shared ramps:** skin (SK1–SK4), metals (silver `#d8dee8` `#8a94a8`, gold `#f4c542` `#b8862a`) and denim.
+  - Reusing them keeps the cast in one world.
+  - **Palette swaps** for NPC variants change only 1–2 ramps.
+- **The 2050 glow rule:** **one or two glow accents per character**, drawn with the brightest, most saturated colour on the sprite and exported in `_emit.png`. Glow colours belong to the cyan, pink, lime and amber families. Everything else stays **natural and slightly warm**.
+- **Forbidden:**
+  - `#000000` fills
+  - pure `#ffffff` fills larger than 2×2 (white cloth uses `#f4f0ea`-family tones)
+  - fully saturated primaries (`#ff0000`, `#00ff00`, `#0000ff`)
+  - glow colours used on non-glowing materials
+- **Group identity:**
+
+  | Group | Colour identity |
+  |---|---|
+  | Elite | four satin brights plus gold |
+  | Champions | crimson plus gold plus white |
+  | Team Metallica | denim plus black plus studs plus red |
+  | League staff (Ms. Aoi, announcer) | royal blue, gold and white |
+
+### 9.10 Animation frame counts and timings (12 fps; 1 tick = 83ms)
+
+| Animation | Frames | Hold per frame | Loop | Notes |
+|---|---|---|---|---|
+| **idle** | 4 | 4 ticks (333ms) | 1.33s | Breathing: frames 3–4 torso and head **down 1px**. Hair and accessories lag 1 frame. Big characters bob 2px. |
+| **blink** (overlay) | half → closed → half | 1 / 2 / 1 ticks | every 2.5–5s, random | Skipped during emotes and "shocked". |
+| **walk** | 4 (contact R, pass, contact L, pass) | 2 ticks (167ms) | 0.67s | Body **+1px up on the pass frames**. Arms swing opposite the legs. Long hair, coats and scarves lag 1–2 frames. NPCs may use the 3-unique-frame variant (stand, L, stand, R). |
+| **run** (main cast, player) | 6 | 1 tick | 0.5s | Lean 1px forward, 2px bob, a hair stream. Mika's run is bespoke (flailing arms). |
+| **sneak** (player, Sora; safari) | 4 | 3 ticks | 1.0s | Crouched 6px lower, arms forward. |
+| **turn** | 0–1 | 1 tick | — | NPCs snap. The main cast gets 1 transition frame (a ¾ blend drawn by hand). |
+| **talk** (overworld) | 2 | 3 ticks | while speaking | A 1px head bob plus a hand gesture on frame 2. |
+| **react** (surprise hop) | 3 | 1 / 2 / 2 | one-shot | A 3px hop with an "!" bubble. |
+| **emote** (signature) | 6–8 | anticipation 2 ticks → key pose **hold 6–12 ticks** → recovery 2 ticks | 1.2–2.0s | Front-facing only is allowed. The bubble pops in 3 ticks (0 → 120% → 100%, drawn frames, not scaled). |
+| **battle ready** | 2 | 6 ticks | 1.0s | Feet planted, phone in hand. |
+| **command** | 3 | 1 / 1 / 6 | one-shot | Point plus phone raised. Fast in, long hold. |
+| **cheer** | 4 | 2 ticks | 0.67s | |
+| **bond** | 4 | 2 / 2 / 2 / hold | one-shot | The wrist is raised to the sky. The soul-stone beam and aura are separate FX layers. |
+| **hurt** | 2 | 1 / 3 | one-shot | Flinch back 2px. |
+| **defeat** | 3 | 2 / 2 / hold | one-shot | A character-specific slump (Thrash's hair over his face, Kaito turning away). |
+| **victory** | 4 | 2 / 2 / 2 / hold | one-shot | |
+| **sit** | 1–2 | 8 ticks | loop | Side and front views (restaurants, ice-cream scene, dinner). |
+| **eat** | 4 | 3 ticks | loop | Chopsticks up, chew ×2, happy squint. `react-spicy`: 3 frames (flush red, sweat, a steam puff). |
+| **crowd idle / cheer / wave / clap-overhead** | 2 / 4 / 6 / 2 | 4 / 1 / 2 / 3 ticks | loop | **Start frames are offset per fan.** The wave is offset per seat column. |
+
+- **Music-sync mode** (bible §6 and §10): crowd loops, Elite and Champion idles and Champion emotes **re-time their holds so that one loop equals one or two beats** at the track's BPM. For example, at 120 BPM a beat is 6 ticks, so the idle uses 4 frames × 3 ticks = 2 beats. Key poses land **on the beat**.
+- **On twos:** every hold is a whole number of ticks. **No tweening** on sprites; position moves happen in whole sprite pixels.
+
+### 9.11 Directions and mirroring
+- **Four directions:** down (front), left, right and up (back). There are no diagonals.
+- The **right view may be a horizontal mirror of the left** *only if* the character is symmetrical. **Hand-draw the right view** for any character with:
+  - an **instrument** (guitars and basses keep their handedness: Paul is left-handed, everyone else right-handed)
+  - one-sided **hair or accessories** (Kaito's bangs and streak, Ms. Aoi's bob and monocle, Mika's hair clip, Freddie's armband, Riff's bandana knot, the Visual-kei hair)
+  - **text, crests or patches** that would read backwards (Team Metallica's back patch shows on the up view, the reporter's mic flag)
+- **The up (back) view** must still carry the silhouette hook: the hair shape, the back patch, the cape or the twin tails.
+
+### 9.12 Emote bubble icon set (11×11, 3-frame pop)
+- **Icons:**
+
+  | Icon | Meaning |
+  |---|---|
+  | `!` | |
+  | `?` | |
+  | `…` | |
+  | `♪` | |
+  | `♥` | |
+  | `💢` | anger cross |
+  | `💧` | sweat |
+  | `★` | |
+  | `Zzz` | |
+  | `💡` | |
+  | `¥` | bullies collecting money |
+  | `🐾` | Moshi's cats |
+  | `🍦` | Yuzu |
+
+- **Style:** a white bubble (`#f8f6f0`) with an outline of `#1e1830`, and a coloured glyph using the character's accent.
+- **No lyric or word text in bubbles.** Dialogue lives in speech bubbles and portraits.
+
+### 9.13 Portraits (summary of §2)
+- **96×96 bust, ≤ 24 colours**, the same base hexes as the sprite.
+- Swap layers: brows, eyes, mouth and FX.
+- **7 required expressions:** normal, happy, angry, sad, shocked, smirk, thinking. Add 1–3 character extras.
+- **Blink:** 3-state. **Talk:** a 3-state mouth at 1 tick.
+- **Mini 32×32** for phone contacts.
+- **Display:** integer ×3 or ×4 only.
+
+### 9.14 Review checklist (before any sprite is approved)
+1. **Silhouette test:** as a solid fill at 1×, can you name the character? (Compare with the §8 line-up.)
+2. Is it readable at the **furthest camera zoom** (×2) and crisp at the closest (×6)?
+3. Is the **palette count** within limits, with no forbidden colours, the globals used correctly, and the shared skin and metal ramps reused?
+4. Is the **selout** correct, with no black outlines on skin and no doubled lines?
+5. Is the **eye highlight fixed** across all frames?
+6. Are the **timings in whole ticks**, with the idle breath, the walk bob on pass frames, and the hair lag?
+7. **Mirroring:** are instruments, one-sided accessories and text hand-drawn on the right view?
+8. Do **one or two glow accents** exist, and are they exported in `_emit.png`?
+9. **Homage check:** no real face, logo, artwork or lyric, and the reference is *transformed* (bible §1)?
+10. Do the **portrait and the sprite** read as the same person (same hexes, same hair clumps)?
+
+---------------------------------------------------------------------------------------------------
+
+## 10. Follow-up research pass and open questions
+
+### 10.1 Verify these before final art lock
+The web-search budget ran out during this pass. Items tagged [C] or *(verify)* need a search pass:
+- **Pokémon sprite specs:**
+  - BW and Pt overworld frame layout (3 unique walk frames per direction?)
+  - BW animated trainer battle sprites
+  - the exact Gen 4 class-design notes
+- **The PMD portrait emotion list** and portrait size (40×40?).
+- **Brian May:**
+  - Red Special details (fireplace mahogany, pickups, switch count, sixpence pick)
+  - 1970s Zandra Rhodes tops and clogs
+- **Roger Taylor:** the gong, his hair and shades by era.
+- **John Deacon:** bass model and look by era.
+- **The Queen crest** components and their zodiac mapping.
+- **The Magic Tour** crown-and-robe finale, and the late-70s crown lighting rig.
+- **Sgt. Pepper:** the John green-vs-yellow conflict (majority green), and whether caps were worn on the cover.
+- **Metallica 1983–86 looks:** member by member, for an accurate *era* homage without likeness.
+- **Osaka obachan** fashion (leopard print, perms, candy) and the **Hanshin Tigers** fan rituals (balloon release, megaphones).
+- **Every League-opponent reference** in §7.
+
+### 10.2 Open questions for the owner
+1. **George's partner Tokonmon:** the bible lists only three Beatles partners. The art keeps George partner-free until decided.
+2. **Partner assignments** for Team Metallica, the bullies, the Champions and the opponents are *suggestions*. Confirm or replace them.
+3. **Genders:** Dr. Hoshino (drawn as a woman) and Ranger Sora (drawn as a young man) are interpretations.
+4. **Two Johns:** confirm the nameplate scheme ("John · The Beatles" vs "John · Queen").
+5. **Coach Gonda's sumo past** is an interpretation, linked to his partner Kanizumo.
+6. **Opponent names** in §7 are placeholders.

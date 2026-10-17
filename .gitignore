@@ -5,3 +5,4 @@ scratchpad/
 dist/
 *.zip
 play-out/
+__pycache__/

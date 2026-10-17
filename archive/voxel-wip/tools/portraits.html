@@ -1,0 +1,91 @@
+<!doctype html><html><head><meta charset="utf-8"><title>portraits</title>
+<style>
+html,body{margin:0;background:#1b1426;color:#fff;font:11px monospace}
+#c{position:fixed;left:0;top:0;width:4px;height:4px;opacity:0}
+#out{padding:6px;display:flex;flex-wrap:wrap;gap:6px;align-items:flex-start}
+.box{background:var(--bg,#2a2238);border:1px solid #4a3a66;padding:3px}
+.box canvas{image-rendering:pixelated;display:block}
+.lab{color:#ffd36b;margin:0 0 2px;white-space:nowrap}
+.row{display:flex;gap:2px}
+.sub{color:#b8a8d8;font-size:10px;text-align:center}
+</style></head>
+<body><canvas id="c"></canvas><div id="out"></div>
+<script type="module">
+// Portrait + line-up review tool (character art).
+//  mod=<designs module> (default humans.js)  id=<CHARACTERS keys | DESIGNS ids, comma list>  all=1 (every DESIGNS entry)
+//  mode=portraits (default): Baker.portrait 96×96 for every expression in exprs=normal,happy,sad,angry,surprised,closed,talk
+//  mode=lineup: 64×64 sprite frames (front / side / back idle, 32 px/m, albedo like the game) side by side at 1× and zoom×,
+//               labelled with height (px), head share and face count — the §8 silhouette line-up check
+//  zoom=3  w=96 h=96  bg=#2a2238 (box background; try a scene colour)  dirs=front,side,back  sil=1 (also a solid-fill silhouette row)
+import { Gfx } from '../src/gfx/renderer.js';
+import { baker } from '../src/gfx/bake.js';
+import { getTemplate } from '../src/gfx/model.js';
+const q = new URLSearchParams(location.search);
+const mod = await import(q.get('mod') || '../src/data/designs/humans.js');
+const mode = q.get('mode') || 'portraits';
+const zoom = +(q.get('zoom') || 3);
+const W = +(q.get('w') || 96), H = +(q.get('h') || 96);
+const bg = q.get('bg') || '#2a2238';
+document.documentElement.style.setProperty('--bg', bg);
+let ids = q.has('all') ? Object.keys(mod.DESIGNS || {}) : (q.get('id') || 'player_a').split(',');
+const designOf = (id) => {
+  if (mod.DESIGNS && mod.DESIGNS[id]) return mod.DESIGNS[id];
+  const fn = mod.chibiDesign || mod.humanDesign;
+  const look = (mod.CHARACTERS && mod.CHARACTERS[id]) || {};
+  const d = fn(look); d.id = d.id || 'pt_' + id; return d;
+};
+const g = new Gfx(document.getElementById('c'), { quality: 'high' });
+g.resize(8, 8);
+const B = baker(g.renderer);
+const out = document.getElementById('out');
+const scaled = (cv, k) => { cv.style.width = cv.width * k + 'px'; cv.style.height = cv.height * k + 'px'; return cv; };
+const errs = [];
+for (const id of ids) {
+  let d;
+  try { d = designOf(id); } catch (e) { errs.push(id + ': ' + e.message); continue; }
+  const box = document.createElement('div'); box.className = 'box';
+  const lab = document.createElement('div'); lab.className = 'lab'; box.append(lab);
+  const row = document.createElement('div'); row.className = 'row'; box.append(row);
+  try {
+    if (mode === 'lineup') {
+      const tpl = getTemplate(d, d.id);
+      const hpx = Math.round(tpl.bounds.max.y * 32);
+      const head = tpl.parts.find((p) => p.name === 'head');
+      const neck = head ? head.pivot[1] : 0;
+      const share = Math.round(((tpl.bounds.max.y - neck) / tpl.bounds.max.y) * 100);
+      lab.textContent = `${id} · ${hpx}px · head ${share}% · ${tpl.faces}f`;
+      const dirs = { front: 0.3, side: Math.PI / 2, back: Math.PI };
+      const want = (q.get('dirs') || 'front,side,back').split(',');
+      const sh = B.sheet(d, { w: 64, h: 64, ppm: 32, pitch: 0.14, anchor: [32, 61], dirs: Object.fromEntries(want.map((k) => [k, dirs[k]])), anims: { idle: { frames: 1, dur: 1.6 } }, mode: q.get('albedo') === '0' ? 'display' : 'albedo' });
+      for (const dn of want) {
+        const f = sh.frames.idle[dn][0];
+        const c1 = document.createElement('canvas'); c1.width = 64; c1.height = 64;
+        c1.getContext('2d').drawImage(sh.canvas, f.x, f.y, 64, 64, 0, 0, 64, 64);
+        const cz = document.createElement('canvas'); cz.width = 64; cz.height = 64; cz.getContext('2d').drawImage(c1, 0, 0);
+        const col = document.createElement('div');
+        col.append(scaled(cz, zoom));
+        if (dn === want[0]) { const one = document.createElement('div'); one.append(c1); col.append(one); }
+        if (q.has('sil') && dn === want[0]) {
+          const s = document.createElement('canvas'); s.width = 64; s.height = 64; const sx = s.getContext('2d');
+          sx.drawImage(c1, 0, 0); sx.globalCompositeOperation = 'source-in'; sx.fillStyle = '#100c18'; sx.fillRect(0, 0, 64, 64);
+          col.append(scaled(s, 1));
+        }
+        row.append(col);
+      }
+    } else {
+      const exprs = (q.get('exprs') || 'normal,happy,sad,angry,surprised,closed,talk').split(',');
+      lab.textContent = id + (d.portrait ? ` · y=${(+d.portrait.y).toFixed(2)} size=${(+(d.portrait.size || 0)).toFixed(2)}` : '');
+      for (const ex of exprs) {
+        const cv = B.portrait(d, { w: W, h: H, expr: ex === 'talk' ? null : ex, talk: ex === 'talk' });
+        const col = document.createElement('div');
+        col.append(scaled(cv, zoom));
+        const s = document.createElement('div'); s.className = 'sub'; s.textContent = ex; col.append(s);
+        row.append(col);
+      }
+    }
+  } catch (e) { errs.push(id + ': ' + e.message); lab.textContent = id + ' ERROR ' + e.message; }
+  out.append(box);
+}
+if (errs.length) console.error(errs.join('\n'));
+document.title = 'ready';
+</script></body></html>

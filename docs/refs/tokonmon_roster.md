@@ -2727,3 +2727,1493 @@ its own, and the admin is the one dancing." (v1 data typed it Ecto/Ferro; the bi
   - Make plate-armour dinosaurs (Aggron) or chain snakes (Steelix).
 
 ---------------------------------------------------------------------------------------------------
+
+## 11. The Beatles (Elite Four) partners: Yellowsub, Blackbyrd, Lucydiamond
+
+**Owner (bible §3, verbatim):**
+> | The Beatles (Elite Four) partners | **Yellowsub** (Hydro/Ferro, "Yellow Submarine"), **Blackbyrd** (Aero, "Blackbird"), **Lucydiamond** (Astro/Cryo, "Lucy in the Sky with Diamonds") |
+
+And §4: "**Elite Four: The Beatles.** *In-world they are a Beatles tribute band of master trainers…
+styled after Sgt. Pepper / Abbey Road looks.*"
+
+**Shared Elite-Four look:**
+- These are master-trainer aces, so they get **the most polished palettes** in the roster.
+- Each carries **one gold-braid accent** (`#ffd23f`), echoing Beatlet's Sgt. Pepper braid, so the
+  Elite Four's team feels like one set.
+
+### 11.1 Yellowsub (Hydro/Ferro, about 2.2 m long, arch `swimmer` with hover)
+
+**a. References**
+- [K] Wikipedia, *Yellow Submarine* (1968 animated film; directed by George Dunning; **art direction
+  by Heinz Edelmann**; Pepperland, the Blue Meanies, the Sea of Holes, the Flying Glove):
+  https://en.wikipedia.org/wiki/Yellow_Submarine_(film)
+- [K] Wikipedia, Heinz Edelmann: https://en.wikipedia.org/wiki/Heinz_Edelmann
+- [K] Wikipedia, "Yellow Submarine" (song, 1966, sung by Ringo): https://en.wikipedia.org/wiki/Yellow_Submarine_(song)
+- [K] Wikipedia, Psychedelic art: https://en.wikipedia.org/wiki/Psychedelic_art
+- [K] Bulbapedia, Remoraid / Octillery (cannon fish), Wailmer, Dhelmise (ship's-anchor ghost): https://bulbapedia.bulbagarden.net/wiki/Octillery_(Pok%C3%A9mon)
+
+**b. Study notes**
+- **Edelmann's *Yellow Submarine* style [K]:**
+  - **Flat, unshaded colour shapes**.
+  - **Art-nouveau curves mixed with pop-art and op-art**.
+  - Collage-like surreal sequences.
+  - Exaggerated, rubbery character proportions.
+  - Psychedelic swirl and rainbow bands.
+  - A **pastel-to-acid palette** with high-contrast black linework.
+- **The submarine (knowledge):**
+  - A chunky, toy-like yellow sub with **round portholes**, a periscope and a propeller.
+  - Decorative trim and stacked funnels/vents.
+  - Approx: yellow `#ffd21f`, shadow `#e08a1a`, trim red `#e83a2a`, porthole brass `#d8a03a`.
+- **Pokémon [K]:**
+  - Octillery is an octopus with a cannon mouth.
+  - Dhelmise is a ghost-anchor made of ship parts.
+  - **Lesson:** a **vehicle-as-creature** works when the vehicle parts become anatomy: portholes as
+    eyes, the propeller as a tail.
+
+**c. Design direction**
+- **Silhouette:**
+  - A **round, toy-like yellow submarine-whale**, half creature and half sub.
+  - **Several round portholes along its side are eyes** (one big "main" eye at the front porthole and 2
+    small blinking porthole-eyes behind it).
+  - **A periscope is its antenna or "crest"** and looks around independently.
+  - **A propeller tail** and two fin-rudders.
+  - Rivets along the hull seams (Ferro).
+  - It **hovers and swims through the air** above water as well (Hydro).
+- **Psychedelic signature:**
+  - **Flat, unshaded swirl decals** painted on the hull: 2–3 original art-nouveau swirl bands in pink,
+    sky and mint, and a small flower-power motif.
+  - Like Gradbear's belly, these are deliberately flat inside a cel-shaded body (the Edelmann flatness
+    nod).
+- **Face:** the main porthole eye has a big anime iris behind glass (a reflection highlight across the
+  glass). The mouth is a happy little hatch under it.
+- **Accessory anchor:** on top, beside the periscope.
+- **Palette:**
+
+| Role | Hex |
+|---|---|
+| Outline | `#3a2010` |
+| Hull deep | `#a0501a` |
+| Hull shadow | `#e08a1a` |
+| Hull base | `#ffd21f` |
+| Hull light | `#fff27a` |
+| Hull highlight | `#fffbe0` |
+| Brass | `#d8a03a` / `#8a5a1a` |
+| Rivets | Ferro `#b8c4d0` |
+| Porthole glass | `#8ff0ff` / reflection `#ffffff` |
+| Iris | `#2fa8ff` |
+| Swirls (flat) | `#ff6fae`, `#6ab8ff`, `#7fe8b0`, `#8a5aff` |
+| Braid accent | `#ffd23f` |
+| Hydro VFX | `#2fa8ff` bubbles |
+
+- **Animations:**
+  - **Idle:** a gentle bob. The propeller spins on twos, the periscope swivels, and the porthole-eyes
+    blink in sequence.
+  - **Attack "Torpedo Tune":** the front hatch opens and a **bubble-torpedo** fires on an aimed arc
+    (Hydro precision).
+  - **Attack "Periscope Lock":** the periscope locks on and a targeting reticle forms of rings, then a
+    triple shot.
+  - **Hit:** the hull rings like a bell, rivets pop, and it re-seals.
+- **64 px:**
+  - A 60 px wide, 36 px tall sprite.
+  - The yellow hull plus 3 porthole circles plus the periscope. Swirls are 2 px flat bands, two at most.
+- **Elemental Form idea (Hydro/Ferro, if final): "Pepper Fleet".** The hull's swirls **animate and
+  spill off** into a flat psychedelic aura. Two **mini-subs** dock and orbit as drones, and the
+  propeller becomes a rainbow-band jet.
+
+**d. Do / Don't**
+- **Do:** use a toy sub as a creature, portholes as eyes, the periscope as a crest, flat Edelmann-like
+  swirls, and pastel-acid colours.
+- **Don't:**
+  - Copy the film's submarine design or trim layout.
+  - Use Blue Meanies, the Flying Glove or Pepperland characters.
+  - Draw the Beatles' cartoon likenesses.
+
+### 11.2 Blackbyrd (Aero, about 1.0 m, arch `flyer`)
+
+**a. References**
+- [K] Wikipedia, "Blackbird" (Beatles song, 1968, *The White Album*; McCartney, solo acoustic
+  finger-picking; he has linked it to the US civil-rights struggle): https://en.wikipedia.org/wiki/Blackbird_(Beatles_song)
+- [K] Wikipedia, *The Beatles* ("White Album", Richard Hamilton's plain white cover): https://en.wikipedia.org/wiki/The_Beatles_(album)
+- [K] Wikipedia, Common blackbird (*Turdus merula*; male glossy black with an **orange-yellow bill and
+  eye-ring**; sings at dusk and dawn): https://en.wikipedia.org/wiki/Common_blackbird
+- [K] Bulbapedia, Murkrow / Honchkrow / Corviknight / Talonflame / Swellow: https://bulbapedia.bulbagarden.net/wiki/Corviknight_(Pok%C3%A9mon)
+
+**b. Study notes**
+- **Common blackbird [K]:**
+  - Male **all glossy black**, with a **bright orange-yellow bill** and a **yellow eye-ring**.
+  - A fluting, melodic song from rooftops at dusk.
+  - Approx: plumage `#14141e`, bill `#ffb21f`, eye-ring `#ffc83a`.
+- **"Blackbird" [K]:**
+  - A delicate acoustic piece, accompanied by a **foot-tap** and a recorded blackbird.
+  - Themes of **freedom, healing, learning to fly at night**.
+  - **What we take:** **night flight**, **delicacy**, **monochrome on white** (the White Album) with one
+    warm accent.
+- **Corvid Pokémon [K]:**
+  - Murkrow is a witch-hat crow; Corviknight is an armoured raven; Talonflame is a fire falcon.
+  - **Lesson:** avoid hat-feathers (Murkrow) and plate armour (Corviknight). Ours is **a slender
+    songbird**, elegant rather than menacing.
+
+**c. Design direction**
+- **Silhouette:**
+  - A **sleek, slender songbird** with very long elegant wings.
+  - **Six long primary feathers per wing, each with a fine bright line along its shaft**, like the six
+    strings of an acoustic guitar. When it flaps, the "strings" catch moonlight.
+  - A long tapering tail.
+- **Signature:**
+  - **Monochrome black with blue iridescence**, plus the **golden bill and eye-ring** as the only warm
+    accent.
+  - One **white feather** at its throat (the White Album nod).
+- **Face:** a gentle, determined anime eye inside the gold ring, and a small open bill (a singing pose).
+- **Accessory anchor:** on the crown, behind the eye-rings.
+- **Palette:**
+
+| Role | Hex |
+|---|---|
+| Outline | `#08080e` |
+| Plumage deep | `#0e0e16` |
+| Plumage base | `#14141e` |
+| Plumage light | `#2a2a3a` |
+| Iridescent sheen | `#3a4a7a` / `#6a8aff` |
+| String lines | `#e8f0ff` |
+| Bill / eye-ring | `#ffb21f` / `#ffd86a` |
+| Throat feather | `#ffffff` |
+| Eye | `#2a1a10` with `#ffffff` |
+| Aero VFX | `#a8f5c8` / `#ffffff` |
+| Braid accent | a thin `#ffd23f` band on its leg |
+
+- **Animations:**
+  - **Idle:** perched, it **taps one foot on the beat** (the song's foot-tap nod) and sings with little
+    note-less breath puffs. Wings shuffle.
+  - **Attack "Night Glide":** a long silent glide (minimal flaps, Aero mobility) and a slicing pass, with
+    a moonlit feather trail.
+  - **Attack "String Gust":** it flares its wings and the **six string-feathers vibrate**, then a sharp
+    wind-wave.
+  - **Hit:** it drops 3 px, flutters, and recovers. Delicate, never clumsy.
+- **64 px:**
+  - About 40 px wide in flight.
+  - A black silhouette with **the gold bill plus eye-ring** as the only warm pixels.
+  - String lines are 1 px light lines on 2–3 primaries.
+  - Needs a blue-violet rim outline on dark maps.
+- **Elemental Form idea (Aero, if final): "Into the Light".**
+  - The plumage turns to **pearl-white with black string lines** (inverted).
+  - The wings grow long luminous streamer feathers.
+  - **A dawn halo** forms behind the head, the night-to-dawn arc of the song made visual.
+
+**d. Do / Don't**
+- **Do:** be a real blackbird (gold bill and eye-ring), use string-shaft feathers, the foot-tap idle,
+  and a monochrome-plus-one-accent palette.
+- **Don't:**
+  - Use a crow or raven silhouette (Murkrow/Corviknight).
+  - Draw a guitar on the bird.
+  - Show lyrics. Never use civil-rights imagery as decoration.
+
+### 11.3 Lucydiamond (Astro/Cryo, about 1.2 m, arch `floater`)
+
+**a. References**
+- [K] Wikipedia, "Lucy in the Sky with Diamonds" (1967, *Sgt. Pepper*). It was inspired by Julian
+  Lennon's nursery-school drawing of his classmate Lucy O'Donnell, and its dream imagery is
+  Lewis-Carroll-like: https://en.wikipedia.org/wiki/Lucy_in_the_Sky_with_Diamonds
+- [K] Wikipedia, Lucy (Australopithecus) (the 1974 fossil, named after the song): https://en.wikipedia.org/wiki/Lucy_(Australopithecus)
+- [K] Wikipedia, Kaleidoscope: https://en.wikipedia.org/wiki/Kaleidoscope
+- [K] Wikipedia, Diamond cut (brilliant cut: table, crown, pavilion, 57–58 facets): https://en.wikipedia.org/wiki/Diamond_cut
+- [K] Bulbapedia, Diancie / Carbink / Minior / Cryogonal / Clefairy: https://bulbapedia.bulbagarden.net/wiki/Diancie_(Pok%C3%A9mon) · https://bulbapedia.bulbagarden.net/wiki/Cryogonal_(Pok%C3%A9mon)
+
+**b. Study notes**
+- **The song [K]:**
+  - A **child's drawing of a girl in the sky with diamond-stars**.
+  - Surreal **sky colours in citrus/marmalade tones**.
+  - **Kaleidoscopic** visual imagery, and a dreamy boat-and-river journey.
+  - **What we take:**
+    - the child's-drawing star shapes (crayon-like 5-point stars)
+    - a sunset/citrus-to-blue sky gradient
+    - kaleidoscope eyes as **faceted, rotating irises** (a visual idea, not lyric text)
+- **Diamond brilliant cut [K]:** an octagonal-ish top **table**, a sloped **crown**, and a deep pointed
+  **pavilion**. It reads as "diamond" in 2D as an **upside-down kite or pentagon with facet lines**.
+- **Diancie [K]:** a pink jewel princess with a big diamond. **Lesson:** avoid "princess plus big gem
+  bust". Ours is **a floating sky creature made of a diamond**, not a human girl.
+- **Cryogonal [K]:** a snowflake-crystal face. **Lesson:** avoid a snowflake-shaped body.
+- **Clefairy [K]:** moon-fairy charm. A tone reference for "cute cosmic".
+
+**c. Design direction**
+- **Silhouette:**
+  - **A brilliant-cut diamond body (point down)**, floating.
+  - **A flowing sky-gradient veil or cape** hangs from the diamond's girdle like a skirt of evening sky
+    (citrus orange at the top to deep blue at the hem, with stars).
+  - Two small crystal "arms" and a pair of long ribbon-like crystal antennae with **crayon-style star
+    tips**.
+- **Kaleidoscope eyes:** two large eyes whose **irises are faceted rosettes** (6-segment) that **slowly
+  rotate** like a kaleidoscope. This is the creature's signature.
+- **Child's drawing touch:** **3–5 wobbly crayon-outlined stars** orbit it. They have a hand-drawn
+  jitter outline (boil animation) as the only "naive" line in the roster, a nod to Julian's drawing.
+- **Accessory anchor:** on the table (flat top) of the diamond.
+- **Palette:**
+
+| Role | Hex |
+|---|---|
+| Outline | `#2a2a6e` |
+| Diamond facets | `#6a8aff` / `#9fefff` / `#e8fbff` / `#ffffff` with prism flecks `#ff8af2`, `#ffe23a` |
+| Sky veil | tangerine `#ff9a3a` → marmalade `#ffb84a` → rose `#ff6fae` → violet `#8a5aff` → deep `#2a2a6e` |
+| Crayon stars | `#ffe23a` with an `#ff9a3a` outline |
+| Eye facets | `#5ff4ff` / `#ff8af2` / `#ffe23a` |
+| Astro VFX | `#ffd98a` / `#6a8aff` |
+| Cryo VFX | `#9fefff` |
+| Braid accent | `#ffd23f` girdle band |
+
+- **Animations:**
+  - **Idle:** a slow float and spin of the diamond (4 facet-light poses). The veil ripples, and the
+    stars orbit with a crayon boil.
+  - **Attack "Diamond Sky":** it raises its arms and a **rain of small diamond shards** falls from above
+    (Astro plus Cryo freeze).
+  - **Attack "Kaleidoscope Gaze":** the eyes spin fast and the target is confused by prism fragments.
+  - **Hit:** the facets crack-flash white, and a star drops and re-orbits.
+- **64 px:**
+  - About 52 px.
+  - The inverted diamond plus the sky-gradient veil (4 bands of 3 px).
+  - Kaleidoscope irises need 6 px eyes with 3 colours.
+- **Elemental Form idea (Astro/Cryo, if final): "Sky of Diamonds".**
+  - The veil expands into a **full night-sky mantle** with moving constellations.
+  - The diamond splits into **three orbiting diamond segments** around a light core.
+  - The crayon stars become real light-stars.
+
+**d. Do / Don't**
+- **Do:** use a diamond body, a citrus-to-violet sky veil, rotating kaleidoscope irises, and naive
+  crayon stars.
+- **Don't:**
+  - Draw a human girl (Lucy) or a likeness of Julian's drawing.
+  - Use drug-reference imagery or the "LSD" letters.
+  - Make a jewel princess (Diancie) or a snowflake body (Cryogonal).
+  - Write lyric phrases on it.
+
+---------------------------------------------------------------------------------------------------
+
+## 12. Queen (Champions) partners: Killerqueen, Bohemoth, Dontstopmeow, Radiogaga, Bitesdust
+
+**Owner (bible §3, verbatim):**
+> | Queen (Champions) partners | **Killerqueen** (Ecto/Bio queen bee, "Killer Queen"), **Bohemoth** (Echo/Ecto, "Bohemian Rhapsody"), **Dontstopmeow** (Volto speed cat, "Don't Stop Me Now"), **Radiogaga** (Echo/Volto radio robot, "Radio Ga Ga"), **Bitesdust** (Geo, "Another One Bites the Dust") |
+
+And §4: "**Champions: Queen.** *A Queen tribute supergroup with the stage names Freddie, Brian, Roger and
+John.*"
+
+**Shared Champions look:**
+- These are the final, flashiest team.
+- Each has a **regal stage accent**: crown-gold `#ffcf3a` plus royal violet `#5a2a8a`.
+- Each has a **"stage-light" rim light** in its cut-in.
+- Never use the Queen crest or logo.
+
+**Shared Queen references**
+- [K] Wikipedia, *News of the World* (1977). The cover by **Frank Kelly Freas** adapts his 1953
+  *Astounding Science Fiction* cover: **a giant, sad-eyed metal robot** holding the band's fallen bodies,
+  reaching through a roof: https://en.wikipedia.org/wiki/News_of_the_World_(album)
+- [K] Wikipedia, Frank Kelly Freas: https://en.wikipedia.org/wiki/Frank_Kelly_Freas
+- [K] Wikipedia, Mick Rock (*Queen II* cover photo: four faces lit from above in a diamond on black): https://en.wikipedia.org/wiki/Mick_Rock
+- [K] Wikipedia, *Queen II* (1974): https://en.wikipedia.org/wiki/Queen_II
+
+**News of the World robot study [K].** The task asked for this specifically.
+- A **huge grey-silver robot** with a **round dome head**, **big round, sad, glowing eyes**, and
+  a simple vertical-slat mouth.
+- Long tube-jointed fingers. Painted in a 1950s pulp-SF airbrush style with red blood accents.
+- Approx: metal `#9aa4b0` / `#5a6470`, eye glow `#e8f0ff`, background sky `#3a2a4a` *(approx.)*.
+- **What we take, for Radiogaga only:** **"sad, gentle giant robot eyes"**, meaning a melancholy face on
+  a machine, plus pulp-SF chrome.
+- **Never use:** the bodies, the blood, or the hand-through-roof composition.
+
+### 12.1 Killerqueen (Ecto/Bio queen bee, about 1.7 m, arch `flyer` / upright `insect`)
+
+**a. References**
+- [K] Wikipedia, "Killer Queen" (1974, *Sheer Heart Attack*; a sophisticated, high-class femme-fatale
+  character; the lyrics name-drop champagne and Marie Antoinette): https://en.wikipedia.org/wiki/Killer_Queen
+- [K] Wikipedia, *Sheer Heart Attack*: https://en.wikipedia.org/wiki/Sheer_Heart_Attack
+- [K] Wikipedia, Marie Antoinette (rococo fashion: towering **pouf** hairstyles, **panniers** widening
+  skirts, pastel silks, ribbons): https://en.wikipedia.org/wiki/Marie_Antoinette
+- [K] Wikipedia, Queen bee (larger abdomen, smooth stinger reusable, royal jelly): https://en.wikipedia.org/wiki/Queen_bee
+- [K] Bulbapedia, Vespiquen (its honeycomb abdomen is a skirt and a hive) / Combee: https://bulbapedia.bulbagarden.net/wiki/Vespiquen_(Pok%C3%A9mon)
+
+**b. Study notes**
+- **"Killer Queen" [K]:**
+  - Elegance with danger: a refined lady who is lethal.
+  - The 1974 era look: glam, **black nail polish**, feather boas, satin, the Mick Rock photographs.
+  - **What we take:**
+    - a **rococo grande-dame silhouette**
+    - **black-lacquered claw tips**
+    - a **feather-boa collar** (as bee fuzz)
+    - **champagne-bubble** VFX as Bio sleep or poison (a visual nod, no text)
+- **Marie Antoinette [K]:** the pouf hairstyle (tall, decorated with ornaments) and side-panniered
+  gowns. Translate them into **a royal-jelly pouf crest** and **pannier wings or hips**.
+- **Queen bee [K]:** a longer abdomen than workers, a smooth curved stinger that can sting repeatedly,
+  attended by workers.
+- **Vespiquen [K]:** the abdomen as a honeycomb skirt-hive with grubs. **Lesson:** don't use a
+  honeycomb-skirt hive. Ours puts the panniers **at the hips as translucent ghost-wings**, and the
+  abdomen is a **striped satin gown**.
+
+**c. Design direction**
+- **Silhouette:**
+  - A tall, slender upright queen bee.
+  - A **towering "pouf" crest** of gold royal-jelly fluff with a tiny crown-pin.
+  - A **fuzzy feather-boa collar** (white-violet fuzz).
+  - A narrow waist, then **a wide striped gown abdomen with pannier flares** at the hips.
+  - **Four translucent Ecto wings** with ghostly eye-spots, held like a fan behind her.
+  - **A slender stinger like a jewelled hatpin** at the abdomen tip.
+  - Four arms: two hold a **lace fan**, two rest elegantly.
+- **Face:** half-lidded, lashed, confident eyes (gold iris) and a sly smile. **Black-lacquered claw
+  tips.**
+- **Accessory anchor:** the crown-pin on the pouf (the trainer's hat replaces the pin).
+- **Palette:**
+
+| Role | Hex |
+|---|---|
+| Outline | `#1a0e1e` |
+| Gown black | `#1a1420` / `#3a2a40` |
+| Gown gold stripes | `#ffcf3a` / `#c8902a` / `#fff0b0` |
+| Body fuzz | `#f6efe0` / `#c9b8ff` |
+| Pouf | `#ffe08a` / `#e8a83a` |
+| Wings | Ecto `#8a5aff` at 50 % → edge `#ff7af2`, eye-spots `#ff7af2` |
+| Stinger | `#d0dae4` with a `#ff3a8a` jewel |
+| Lace fan | `#f4ecf8` |
+| Claws | `#14121c` gloss |
+| Royal violet | `#5a2a8a` |
+| Bio VFX (champagne bubbles) | `#ffe8b0` / `#e8ffd0` |
+
+- **Animations:**
+  - **Idle:** a languid fan flutter, and wings hum (a 2-pose buzz). The pouf bounces slightly, and she
+    inspects her claws.
+  - **Attack "Champagne Sting":** a lunge with the hatpin stinger (poison), with fizzing bubbles on hit.
+  - **Attack "Royal Court":** she summons **2 ghost-worker bees** that dart at the target (Ecto
+    trickery plus Bio).
+  - **Support:** bubbles that lull foes to sleep (Bio sleep).
+  - **Hit:** a gasp pose behind the fan, then she composes herself.
+- **64 px:**
+  - About 56 px.
+  - The tall pouf plus the wide striped gown (black and gold bands of 2 px) plus violet wings.
+  - The stinger glint is the last read.
+- **Elemental Form idea (Ecto/Bio, if final): "Dynamite Monarch"** (a nod to the song's "explosive
+  lady"). The gown becomes **ghost-silk trailing to the floor**, and a full crown of six golden spikes
+  replaces the pouf-pin. A swarm-halo of spectral bees orbits her, and the champagne bubbles turn into
+  floating gold explosions.
+
+**d. Do / Don't**
+- **Do:** use the rococo pouf and panniers, the striped satin gown, the hatpin stinger, black-lacquer
+  claws, champagne bubbles and ghost-worker bees.
+- **Don't:**
+  - Copy Vespiquen's honeycomb skirt with grubs.
+  - Use Freddie Mercury's likeness.
+  - Put the Queen crest or champagne-brand labels on it.
+  - Copy Marie Antoinette portraits.
+
+### 12.2 Bohemoth (Echo/Ecto, about 2.4 m, arch `floater`)
+
+**a. References**
+- [K] Wikipedia, "Bohemian Rhapsody" (1975). It has an operatic middle section, and its promo video
+  (Bruce Gowers) **recreated the *Queen II* cover: four heads in a diamond formation, lit from above on
+  black**, with **multiplying, echoing face effects**: https://en.wikipedia.org/wiki/Bohemian_Rhapsody
+- [K] Wikipedia, *Queen II* (Mick Rock's four-faces cover): https://en.wikipedia.org/wiki/Queen_II
+- [K] Wikipedia, Behemoth (the biblical colossal beast; the name source): https://en.wikipedia.org/wiki/Behemoth
+- [K] Wikipedia, Commedia dell'arte masks / Scaramouche (a stock clown character): https://en.wikipedia.org/wiki/Scaramouche
+- [K] Bulbapedia, Hydreigon (three heads), Dugtrio, Magneton (multi-unit), Meloetta (Aria form, opera): https://bulbapedia.bulbagarden.net/wiki/Hydreigon_(Pok%C3%A9mon)
+
+**b. Study notes**
+- **The video and the *Queen II* image [K]:**
+  - **Four faces arranged in a diamond** (top, left, right, bottom).
+  - **Hard top-light chiaroscuro on pure black**.
+  - **Video feedback multiplying faces**: echo trails of the same face receding.
+  - **What we take:**
+    - **four floating heads in a diamond**
+    - **top-lit chiaroscuro**
+    - **echo after-images**
+    - **opera** (bass, baritone, tenor, falsetto as four voices)
+- **Scaramouche [K]:** a commedia character, black-masked. The song's playful operatic cast suggests
+  using **theatre masks** for the heads rather than human faces, which avoids likeness.
+- **Hydreigon / Dugtrio [K]:** multi-headed reads. **Lesson:** keep the heads **separate and floating**
+  (no necks) so the silhouette is unique. A "behemoth" mass in the middle anchors it.
+
+**c. Design direction**
+- **Silhouette:**
+  - A **dark, cloaked void-body** (a heavy behemoth mantle that drapes to the ground like a stage
+    curtain).
+  - **Four floating porcelain opera-mask heads** in a **diamond formation** around and above it: top,
+    left, right, bottom-front.
+  - **Each head is a different voice:**
+    - **top** = falsetto: a tiny, high, serene mask with arched brows
+    - **left** = tenor: a heroic mask with an open mouth
+    - **right** = baritone: a smirking mask
+    - **bottom** = bass: a heavy jowled mask with a deep-open mouth
+  - The masks are **original**, not band faces.
+  - Two huge cloaked arms emerge from the curtain-body.
+- **Lighting signature:** **always top-lit**. Masks are bright on their brows and fall into black below
+  the cheekbones. Bake this into the masks' cel bands even in neutral light.
+- **Accessory anchor:** the top (falsetto) head.
+- **Palette:**
+
+| Role | Hex |
+|---|---|
+| Outline | `#06050a` |
+| Void body | `#0e0c16` / `#1e1a2a` |
+| Curtain fold light | `#3a2a4a` |
+| Curtain lining | theatre red `#c0182a` / `#6a0e1a` |
+| Mask porcelain | `#f4ece0` / `#c8b8a8` / shadow `#6a5a8a` / black fall-off `#1e1a2a` |
+| Mask gilding | `#ffcf3a` |
+| Echo VFX | `#b26bff` / `#5ff4ff` |
+| Ecto VFX | `#8a5aff` / `#ff7af2` |
+| Royal violet | `#5a2a8a` |
+
+- **Animations:**
+  - **Idle:** the four heads orbit the diamond very slowly, and each **sings in turn** (mouth open
+    1 pose, a little Echo ring). The curtain-body breathes.
+  - **Attack "Rhapsody":** an **operatic multi-phase attack**:
+    1. a ballad pulse from the bass head
+    2. a rapid "call and response" volley between the left and right heads, with **echo after-image
+       trails of each mask** (3 receding copies, dithered)
+    3. a rock blast where all four sing together for a huge Echo shockwave
+  - It must sync to the music's beat (bible §6).
+  - **Hit:** the masks scatter outward and **reassemble into the diamond**.
+- **64 px:**
+  - About 60 px.
+  - The four bright masks in a diamond on a black mass is a unique silhouette.
+  - Each mask is about 10 px with a strong top-light band.
+  - The red curtain lining shows as a 2 px edge.
+- **Elemental Form idea (Echo/Ecto, if final): "Galileo Form".** The four masks **multiply into a
+  ring of echoes** (8 after-image masks orbiting), the curtain-body opens to reveal a **starry
+  stage-void**, and a spotlight beam shines down from above, fixed.
+
+**d. Do / Don't**
+- **Do:** use four floating masks in a diamond, top-light chiaroscuro, echo after-image trails, a
+  behemoth curtain-body, and four vocal registers.
+- **Don't:**
+  - Use the band's faces or the *Queen II* photo composition with real people.
+  - Write lyric words ("Galileo", "Bismillah" and so on) as text. A form *name* nod must be owner-approved.
+  - Use Hydreigon-like necked heads.
+
+### 12.3 Dontstopmeow (Volto speed cat, about 1.0 m, arch `quad`)
+
+**a. References**
+- [K] Wikipedia, "Don't Stop Me Now" (1978, *Jazz*; an exuberant, accelerating piano-rock song about
+  unstoppable joy and speed): https://en.wikipedia.org/wiki/Don%27t_Stop_Me_Now
+- [K] Wikipedia, *Jazz* (Queen album, 1978). The cover is **black-and-white concentric circles** (an
+  op-art spiral): https://en.wikipedia.org/wiki/Jazz_(Queen_album)
+- [K] Wikipedia, Cheetah (the fastest land animal; tear marks; a long tail rudder): https://en.wikipedia.org/wiki/Cheetah
+- [K] Bulbapedia, Raikou / Luxray / Zeraora / Liepard: https://bulbapedia.bulbagarden.net/wiki/Zeraora_(Pok%C3%A9mon) · https://bulbapedia.bulbagarden.net/wiki/Raikou_(Pok%C3%A9mon)
+- [K] Wikipedia, Sonic the Hedgehog (character) (the speed-icon pose and shape language): https://en.wikipedia.org/wiki/Sonic_the_Hedgehog_(character)
+
+**b. Study notes**
+- **The song [K]:**
+  - A slow intro, then **acceleration to joyful full speed**.
+  - The theme is being unstoppable and "having a good time".
+  - **What we take:** **acceleration** as the animation arc (it gets faster the longer it runs) and a
+    **joyful grin** (speed with a smile, not aggression).
+- ***Jazz* cover [K]:** **concentric black and white rings**. **What we take:** a **concentric ring
+  marking** on its flank, like an op-art target.
+- **Cheetah [K]:**
+  - A tiny head, a deep chest, a thin waist, long legs, a long tail.
+  - Black **tear marks** from eye to mouth.
+  - Semi-retractable claws for grip.
+  - **The speed silhouette.**
+- **Electric cats [K]:**
+  - Raikou: a cloud-mane tiger.
+  - Luxray: a blue-black lynx with a star tail.
+  - Zeraora: a biped with lightning stripes.
+  - **Lesson:** avoid blue-black-plus-yellow lynx (Luxray) and avoid bipeds.
+
+**c. Design direction**
+- **Silhouette:**
+  - A **lean cheetah-proportioned house cat**: small head, big ears, deep chest, long legs.
+  - A **very long tail that ends in a comet tuft**.
+  - At full speed, the body stretches into a long low line, and the ears flatten into a streamlined
+    point.
+- **Markings:**
+  - **Concentric ring markings** on both flanks (2–3 white rings on black fur, the *Jazz* nod).
+  - **Lightning tear marks** under the eyes (the cheetah tear-line as a bolt).
+  - **Whiskers that crackle** with current.
+- **Colour logic:** **jet black + white rings + Volto yellow electricity**. This is a stark 3-value read
+  that's unmistakable.
+- **Face:** a huge happy grin with a fang, and bright cyan eyes with star highlights. It always looks
+  like it's having a great time.
+- **Accessory anchor:** between the ears (it must stay on at speed, so add a little cartoon hold-pose).
+- **Palette:**
+
+| Role | Hex |
+|---|---|
+| Outline | `#06060c` |
+| Fur deep | `#14121c` |
+| Fur base | `#24202e` |
+| Fur light | `#3a364a` |
+| Fur sheen | `#6a6680` |
+| Rings | `#f4f2ee` / shadow `#a8a6b8` |
+| Tear bolts | Volto `#ffe23a` |
+| Comet tuft | `#ffe23a` → `#ffffff` |
+| Eyes | `#5ff4ff` |
+| Nose | `#ff8fa8` |
+| Volto VFX | `#ffe23a` / `#ffffff` |
+| Crown-gold accent | collar tag `#ffcf3a` |
+
+- **Animations:**
+  - **Idle:** an impatient bounce on its toes, tail swishing; it **can't stand still** (a 6-pose loop
+    with a little hop).
+  - **Run cycle that accelerates:** 8 poses at normal speed, then 6, then a 4-pose blur with afterimages
+    (Volto speed). The comet tail trail lengthens.
+  - **Attack "Shooting Star":** a **lightning dash** through the target in a straight line, leaving a
+    bolt trail and a sonic pop.
+  - **Attack "Mr. Fahrenheit" (name only if owner-approved):** a spin that throws spark rings.
+  - **Hit:** it tumbles but **lands running**. It never stops (a 2-pose recovery into the run).
+- **64 px:**
+  - About 36 px tall, 56 px long.
+  - Black body with **two white ring targets** (6–8 px each).
+  - The yellow comet tail plus tear bolts are the only colour. A strong read.
+- **Elemental Form idea (Volto, if final): "Don't Stop Form".** The rings on its flanks become **spinning
+  lightning rings** that float off the body like speed-gears. Its fur gains white-hot edges, and it leaves
+  a permanent lightning afterimage of itself one step behind.
+
+**d. Do / Don't**
+- **Do:** use cheetah proportions, *Jazz* rings as markings, bolt tear-lines, a comet tail, acceleration
+  timing and a joyful grin.
+- **Don't:**
+  - Use Luxray's blue-black/yellow lynx scheme or Zeraora's biped stripes.
+  - Copy Sonic's spines or shoes.
+  - Show lyrics. A skill name using a lyric phrase needs owner sign-off; the bible allows renaming, but
+    the default should be original.
+
+### 12.4 Radiogaga (Echo/Volto radio robot, about 1.6 m, arch `biped`)
+
+**a. References**
+- [K] Wikipedia, "Radio Ga Ga" (1984, *The Works*; written by Roger Taylor). Its video by David Mallet
+  uses **footage from Fritz Lang's *Metropolis***, and the crowd's **synchronised double-clap with arms
+  raised** became iconic (and was huge at Live Aid 1985): https://en.wikipedia.org/wiki/Radio_Ga_Ga
+- [K] Wikipedia, *Metropolis* (1927 film; Art Deco megacity): https://en.wikipedia.org/wiki/Metropolis_(1927_film)
+- [K] Wikipedia, Maria (Metropolis) (the **Maschinenmensch**, the Art Deco female robot sculpted by
+  Walter Schulze-Mittendorff): https://en.wikipedia.org/wiki/Maria_(Metropolis)
+- [K] Wikipedia, Antique radio (1930s **cathedral/tombstone radios**: arched wooden cabinets, cloth
+  speaker grilles, round tuning dials): https://en.wikipedia.org/wiki/Antique_radio
+- [K] Wikipedia, Art Deco (sunbursts, stepped forms, chevrons, chrome): https://en.wikipedia.org/wiki/Art_Deco
+- [K] *News of the World* robot (see the Queen shared notes above).
+- [K] Bulbapedia, Rotom (appliance ghost), Magnezone, Klinklang: https://bulbapedia.bulbagarden.net/wiki/Rotom_(Pok%C3%A9mon)
+
+**b. Study notes**
+- **"Radio Ga Ga" [K]:**
+  - **Nostalgia for radio** in the age of video.
+  - The video mixes **Metropolis' Art Deco city, gears and the robot Maria** with a 1940s family
+    listening to the radio, plus the **double-clap crowd**.
+  - **What we take:**
+    - **Art Deco** shape language
+    - **a vintage radio as the body**
+    - **the double-clap emote** (*it fits Echo rhythm perfectly*)
+- **Cathedral radio [K]:**
+  - A gothic-arched walnut cabinet and a **fabric grille behind wooden fretwork**.
+  - A **round glowing tuning dial**, two knobs.
+  - **Lesson:** it is a perfect robot head or torso. The grille is the mouth, and the dial is the eye.
+- **Maschinenmensch [K]:**
+  - A sleek, female, Art Deco metal body with **concentric ring details** on the head.
+  - **Lesson:** avoid the female android likeness (iconic and protected). Use only **Deco ring and
+    chevron detailing**.
+- ***News of the World* robot [K]:** **gentle sad round eyes** on a giant machine. Radiogaga's dial-eye
+  can droop sadly when the music stops *(proposal)*.
+- **Rotom [K]:** an appliance possession. **Lesson:** ours is a built robot, not a plasma ghost.
+
+**c. Design direction**
+- **Silhouette:**
+  - An upright robot whose **head is a cathedral-arch radio cabinet** (walnut).
+  - The **fretwork grille is the mouth** and glows with sound when it "speaks".
+  - **One big round tuning-dial eye** (with a needle that swings, its "pupil") and a smaller knob eye.
+  - **A telescopic antenna** on top, the outline breaker.
+  - A **chrome Art Deco body**: stepped shoulders, a chevron chest plate with a **sunburst motif**,
+    segmented ring limbs, and big white-gloved-like chrome hands *for the clap*.
+- **Face read:** the dial needle moves to show emotion: happy is right, sad is left (the NotW sad-robot
+  nod).
+- **Accessory anchor:** around the antenna base on the cabinet top.
+- **Palette:**
+
+| Role | Hex |
+|---|---|
+| Outline | `#1a1014` |
+| Walnut deep | `#3a1e14` |
+| Walnut base | `#6a3a24` |
+| Walnut light | `#a0603a` |
+| Walnut highlight | `#d8985a` |
+| Grille cloth | `#e8d8b0` / `#a89870` |
+| Fretwork | `#4a2a1a` |
+| Chrome | `#d0dae4` / `#8a96a6` / `#5a6470` / glint `#ffffff` |
+| Brass trim | `#d8a03a` |
+| Dial glow | `#ffe8a0` / needle `#d8283a` |
+| Echo VFX | `#b26bff` / `#5ff4ff` |
+| Volto VFX | `#ffe23a` |
+| Crown-gold accent | `#ffcf3a` |
+
+- **Animations:**
+  - **Idle:** the antenna extends and retracts, and the dial needle drifts as if **scanning stations**.
+    The grille pulses softly.
+  - **Signature emote "Double Clap":** arms up over its head, **clap-clap on the beat**. It can buff
+    allies' rhythm *(Echo)*. This is a straight lift of the crowd *action*, which is a gesture, not a
+    copyrighted image.
+  - **Attack "Broadcast":** the antenna sparks (Volto) and **radio-wave rings** blast from the grille
+    (Echo), sweeping like a radar.
+  - **Attack "Static":** a burst of static noise (pixel snow) that confuses.
+  - **Hit:** a static flash with the dial spinning, then it re-tunes.
+- **64 px:**
+  - About 52 px.
+  - The arched brown radio head on a chrome body, a **round yellow dial eye**, and the antenna.
+- **Elemental Form idea (Echo/Volto, if final): "Metropolis Broadcast".**
+  - The body grows **Art Deco skyscraper-stepped shoulders and a sunburst halo** of radio towers.
+  - The antenna becomes a **broadcast tower crown** with orbiting signal rings.
+  - The grille glows full white-gold.
+
+**d. Do / Don't**
+- **Do:** use a cathedral radio head, Art Deco chrome, a tuning-dial eye with an emotional needle, the
+  double-clap emote, and radio-wave rings.
+- **Don't:**
+  - Copy the Maschinenmensch (Maria) design or the *Metropolis* poster.
+  - Use the NotW robot composition.
+  - Use radio brand logos or any Queen imagery.
+
+### 12.5 Bitesdust (Geo, about 1.3 m long, arch `serpent` / low `quad`)
+
+**a. References**
+- [K] Wikipedia, "Another One Bites the Dust" (1980, *The Game*; written by John Deacon; built on a
+  famous, repetitive **bassline**, funk/disco-influenced): https://en.wikipedia.org/wiki/Another_One_Bites_the_Dust
+- [K] Wikipedia, *The Game* (Queen album): https://en.wikipedia.org/wiki/The_Game_(Queen_album)
+- [K] Wikipedia, Bass guitar (four strings E-A-D-G; plucking and slapping): https://en.wikipedia.org/wiki/Bass_guitar
+- [K] Wikipedia, Dust devil: https://en.wikipedia.org/wiki/Dust_devil
+- [K] Wikipedia, Loudspeaker (woofer cone, dust cap, surround): https://en.wikipedia.org/wiki/Loudspeaker
+- [K] Bulbapedia, Sandaconda / Silicobra, Hippowdon, Dugtrio: https://bulbapedia.bulbagarden.net/wiki/Silicobra_(Pok%C3%A9mon) · https://bulbapedia.bulbagarden.net/wiki/Hippowdon_(Pok%C3%A9mon)
+
+**b. Study notes**
+- **The song [K]:**
+  - **A walking, repetitive, bouncing bassline** is the whole identity.
+  - A dry, minimal funk groove, and "dust" means defeat.
+  - **What we take:**
+    - **bass strings** as anatomy
+    - **thumping pulse rhythm** (each bass note kicks up dust)
+    - a cool, laid-back swagger
+- **Woofer [K]:**
+  - A **cone with a rubber surround and a centre dust-cap** that pumps with bass.
+  - It literally moves air and dust.
+  - **Lesson:** a **speaker-cone mouth or chest** that **puffs dust rings** on each beat.
+- **Dust devil [K]:** a spinning dust column. **Lesson:** the special attack shape.
+- **Sand serpents [K]:** Silicobra/Sandaconda have a sand-filled neck sac, and Hippowdon is a sand hippo.
+  **Lesson:** avoid the sand-sac snake read. Ours is a **low groovy creature with string-backed armour**.
+
+**c. Design direction**
+- **Silhouette:**
+  - A **low, long, armadillo-meets-sand-lizard** made of **packed dust and sandstone plates**.
+  - **Four taut metal strings** run from its snout to its tail tip along its back, stretched over the
+    plates like a bass neck. The plates act as frets.
+  - Its **chest/throat is a woofer cone** that thumps.
+  - A long tail that ends in a **tuning-peg-like knob** (four little pegs) *(it is a bass neck)*.
+  - Short, sturdy legs.
+- **Attitude:** **cool and laid-back**. Half-lidded eyes, a sly smile, and it **bobs its head on the
+  beat**. *(The John Deacon cool-bassist energy, with no likeness.)*
+- **Accessory anchor:** on its head plate (a pair of shades would be perfect for this one).
+- **Palette:**
+
+| Role | Hex |
+|---|---|
+| Outline | `#2a1a1e` |
+| Dust deep | `#5a3a3a` |
+| Dust shadow | `#7a5a5a` |
+| Dust base | `#c8a87a` |
+| Dust light | `#f0d8b0` |
+| Dust highlight | `#fff2d8` |
+| Sandstone plates | `#a87a5a` / `#d8a87a` |
+| Strings | `#d0dae4` / `#ffffff` glint |
+| Woofer cone | `#2a2a36` / `#4a4a5a` |
+| Dust cap | `#1a1420` |
+| Surround | `#3a3a46` |
+| Eyes | `#ffcf3a` |
+| Geo VFX | `#d39a5c` / `#f0d0a0` dust rings |
+| Crown-gold | peg tips `#ffcf3a` |
+
+- **Animations:**
+  - **Idle:** a **head-bob groove** on the beat. Each bob makes the woofer pump and puff **a small dust
+    ring**, and one string vibrates (2-pose wiggle).
+  - **Attack "Bassline Quake" (Geo):** it plucks its own back-strings with its tail (a 4-note walking
+    pattern). Each note sends a **ground shockwave ring**, and the 4th hits hardest.
+  - **Attack "Dust Devil":** it spins into a **dust tornado**.
+  - **Parry (Geo):** it curls up into an armoured ball (armadillo) with the strings on the outside.
+    Hits "twang".
+  - **Hit:** a dust puff out of the woofer, then it shakes it off, still grooving.
+  - **KO-ing a foe (emote):** a cool little dust-off of its shoulder plate.
+- **64 px:**
+  - About 26 px tall, 58 px long.
+  - **Four bright string lines** along its back (1 px each) plus the dark round woofer at the chest are
+    the read.
+- **Elemental Form idea (Geo, if final): "Groove Monolith".**
+  - It rears up on the tail and the back-strings become **giant glowing strings** spanning from the
+    ground to its raised head.
+  - A **ring of floating stone speaker-cones** pulses dust shockwaves.
+  - The sandstone plates turn **polished red-gold**.
+
+**d. Do / Don't**
+- **Do:** use strings as anatomy, a woofer chest that puffs dust rings, head-bob groove timing, a
+  walking 4-note attack rhythm, and laid-back cool.
+- **Don't:**
+  - Recreate the real bassline in SFX (bible §10: original melodies only).
+  - Use the band's leather-jacket look.
+  - Copy Sandaconda's sand-sac or Hippowdon's hippo body.
+
+---------------------------------------------------------------------------------------------------
+
+## 13. Other artists: Thrillghoul, Ziggystar
+
+**Owner (bible §3, verbatim):**
+> | Other artists | **Thrillghoul** (Ecto, "Thriller"), **Ziggystar** (Astro/Volto, "Ziggy Stardust") |
+
+### 13.1 Thrillghoul (Ecto, about 1.5 m, arch `biped`)
+
+**a. References**
+- [K] Wikipedia, *Michael Jackson's Thriller* (1983 music video, directed by John Landis; make-up by Rick
+  Baker; zombie dance choreographed by Michael Peters with Jackson; a 1950s B-movie horror parody that
+  includes a **werecat transformation**): https://en.wikipedia.org/wiki/Michael_Jackson%27s_Thriller_(music_video)
+- [K] Wikipedia, Deborah Nadoolman Landis. She designed the **red leather jacket with black V-shaped
+  stripes** worn in the video: https://en.wikipedia.org/wiki/Deborah_Nadoolman_Landis
+- [K] Wikipedia, Rick Baker (make-up): https://en.wikipedia.org/wiki/Rick_Baker
+- [K] Bulbapedia, Marshadow (shadow dancer), Cofagrigus (mummy coffin), Gengar, Dhelmise: https://bulbapedia.bulbagarden.net/wiki/Marshadow_(Pok%C3%A9mon)
+
+**b. Study notes**
+- **The video [K]:**
+  - A **red leather jacket with black V chevrons** across the chest and shoulders, plus red trousers.
+  - **The zombie dance**:
+    - claw-hands held to the side
+    - shoulder shrugs and head snaps
+    - a lurching side-step in formation
+  - Creatures crawl out of graves, and a werecat has yellow eyes.
+  - A moody blue-moonlit street palette with a red accent.
+  - Approx: jacket red `#c8202a`, chevrons `#14121c`, moonlight `#3a4a7a`, zombie skin `#8aa08a`
+    *(approx.)*.
+- **What we take:**
+  - **one red jacket-like carapace with black V-chevrons**
+  - **zombie-dance claw poses as its idle and attack keys**
+  - **moonlit blue palette with a single red accent**
+  - **a werecat** (the video's own creature) as the animal base, not a human zombie
+- **Marshadow [K]:** a small shadow-dancer martial artist. **Lesson:** avoid the hooded shadow look and
+  green flame hair.
+
+**c. Design direction**
+- **Silhouette:**
+  - A **lanky, undead werecat ghoul** standing upright.
+  - A long-limbed, loose-jointed, slightly hunched posture (it dances).
+  - Tattered cat ears, one bent. A long ragged tail.
+  - **A red, glossy "jacket" carapace** over its shoulders and chest with **black V-chevron plates**,
+    and slightly too-wide shoulders (80s silhouette).
+  - **Forearms with long claw hands held in the zombie-dance "claw" pose.**
+  - The lower body is wrapped in grave-cloth strips that float (Ecto).
+- **Face:** **glowing yellow werecat eyes**, a stitched grin, and grey-green undead fur with patches.
+  Spooky-cute, not gory.
+- **Accessory anchor:** between the ears.
+- **Palette:**
+
+| Role | Hex |
+|---|---|
+| Outline | `#0e0c18` |
+| Fur deep | `#3a4a4a` |
+| Fur shadow | `#5a6a6a` |
+| Fur base | `#8aa08a` |
+| Fur light | `#c0d0a8` |
+| Jacket | `#6a102a` / `#c8202a` / `#ff5a4a` / gloss `#ffc0b0` |
+| Chevrons | `#14121c` |
+| Grave cloth | `#d8d0b8` / `#9a9080` |
+| Eyes | `#ffe23a` / glow `#fff8b0` |
+| Moonlight rim | `#6a8aff` |
+| Ecto VFX | `#8a5aff` / `#ff7af2` |
+
+- **Animations:**
+  - **Idle:** a **zombie-dance loop**: shoulder shrug, then head snap to the side, then claws up.
+    Six poses, perfectly on the beat.
+  - **Attack "Graveyard Shuffle":** a **lurching side-step dash** with afterimage ghouls (2 dithered
+    copies dancing in formation), then a claw swipe.
+  - **Attack "Midnight Howl":** a werecat transformation flash (the eyes flare) and a curse wave.
+  - **Hit:** its head snaps back (a dance move) and pops forward again. Comedic.
+  - **Emote:** the full formation dance with 2 ghost-duplicates.
+- **64 px:**
+  - About 52 px.
+  - The **red carapace with two black V chevrons** is the single read on a grey-green body.
+  - Yellow eyes are 3 px with glow.
+- **Elemental Form idea (Ecto, if final): "Thrill Night".** The jacket becomes **a long red
+  spectral coat with glowing chevrons**, and **four ghost backup-dancers** materialise around it as part
+  of its body. A full-moon halo forms behind its head.
+
+**d. Do / Don't**
+- **Do:** use the red carapace with V-chevrons, zombie-dance poses, a werecat base, a moonlit blue plus
+  red accent palette, and ghost backup dancers.
+- **Don't:**
+  - **Likeness:** use Michael Jackson's likeness, hair, glove, or moonwalk-as-signature.
+  - **Exact replicas:** copy the exact jacket design with its many zippers and the specific stripe
+    layout.
+  - **Tone:** use gore.
+  - **Audio:** use the song's audio motifs or Vincent Price-style narration text.
+
+### 13.2 Ziggystar (Astro/Volto, about 1.4 m, arch `biped` with float)
+
+**a. References**
+- [K] Wikipedia, *The Rise and Fall of Ziggy Stardust and the Spiders from Mars* (1972). The cover photo by
+  Brian Ward in Heddon Street, London, was hand-coloured by Terry Pastor:
+  https://en.wikipedia.org/wiki/The_Rise_and_Fall_of_Ziggy_Stardust_and_the_Spiders_from_Mars
+- [K] Wikipedia, *Aladdin Sane* (1973). The cover by Brian Duffy shows the **red-and-blue lightning bolt
+  across the face** and a **teardrop on the collarbone**: https://en.wikipedia.org/wiki/Aladdin_Sane
+- [K] Wikipedia, Kansai Yamamoto. The Japanese designer created Ziggy-era stage costumes (kabuki-inspired
+  striped knit bodysuits and quick-change *hikinuki* reveals): https://en.wikipedia.org/wiki/Kansai_Yamamoto
+- [K] Wikipedia, Glam rock: https://en.wikipedia.org/wiki/Glam_rock
+- [K] Wikipedia, Kumadori (kabuki make-up lines): https://en.wikipedia.org/wiki/Kumadori
+- [K] Bulbapedia, Starmie / Jirachi / Clefable / Minior: https://bulbapedia.bulbagarden.net/wiki/Jirachi_(Pok%C3%A9mon) · https://bulbapedia.bulbagarden.net/wiki/Starmie_(Pok%C3%A9mon)
+
+**b. Study notes**
+- **Ziggy [K]:**
+  - An androgynous **alien rock star from space**.
+  - A **spiky red mullet**, glittery jumpsuits and platform boots.
+  - The persona's arc is the star's rise and fall.
+- ***Aladdin Sane* [K]:**
+  - **A red-and-blue zig-zag bolt** splitting the face.
+  - **A liquid teardrop** on the collarbone.
+  - An airbrushed, glossy look.
+  - Approx: bolt red `#e8283a`, bolt blue `#2f7aff`, skin highlight airbrush.
+- **Kansai Yamamoto [K]:**
+  - **A Japanese designer** whose kabuki-derived costumes were bold black/white/red stripes,
+    asymmetric knit bodysuits and **hikinuki** (costumes ripped away on stage to reveal another).
+  - This is a **perfect Osaka/Japan-native angle**: we take the **kabuki + stripes + quick-change
+    reveal** language.
+- **Kumadori [K]:** bold kabuki face lines (red = heroic, blue = villain). **Lesson:** a lightning bolt
+  across the face can be read as **kumadori**, which blends the two references into something new.
+- **Star Pokémon [K]:**
+  - Starmie is a gem starfish; Jirachi has a star head with tag-wishes.
+  - **Lesson:** don't make a five-point star body with a central gem (Starmie), or a three-point star cap
+    (Jirachi).
+
+**c. Design direction**
+- **Silhouette:**
+  - A **slender, androgynous alien-star creature** (a lithe biped) with **platform-boot-like hoof feet**.
+  - Long legs (60 % of the height) and a narrow torso.
+  - **A huge spiky red mullet that is actually a solar-flare crest**: the spikes are stylised star
+    rays.
+  - Shoulder pads shaped like **planetary rings**.
+- **Face:**
+  - Pale, glittering, pearl-white skin with mismatched eyes (one blue, one amber; an Astro "dual star"
+    read).
+  - **A zig-zag bolt across the face in kumadori style** (red plus blue split, original shape, extending
+    into the crest). It doubles as the **Volto symbol**.
+  - **A floating glitter teardrop** below one eye.
+- **Costume-body:**
+  - A **striped kabuki-knit pattern** on its legs and arms in black, white and red (Yamamoto nod,
+    original stripes).
+  - **The bodysuit can "hikinuki"**: it rips away on its ultimate to reveal a starfield body *(proposal;
+    visual only)*.
+- **Accessory anchor:** in front of the crest.
+- **Palette:**
+
+| Role | Hex |
+|---|---|
+| Outline | `#1e1a3a` |
+| Skin | `#fff6f0` / `#e8d0e0` / shadow `#a090c8` |
+| Crest mullet | `#ff5a2a` / `#e8283a` / `#8a1028` / tips `#ffd98a` |
+| Bolt | `#e8283a` + `#2f7aff`, edge `#ffffff` |
+| Stripes | `#14121c` / `#f4f2ee` / `#e8283a` |
+| Ring shoulders | Astro `#ffd98a` / `#6a8aff` |
+| Glitter | `#ffffff` |
+| Eyes | `#5ff4ff` and `#ffcf3a` |
+| Volto VFX | `#ffe23a` |
+| Astro VFX | `#ffd98a` / `#6a8aff` |
+
+- **Animations:**
+  - **Idle:** a **glam pose cycle**: hip-cocked stance, then a hand-to-sky "star" pose, then a hair
+    flick. The crest flickers like a solar flare, and glitter dither sparkles.
+  - **Attack "Starman Bolt":** it points to the sky, and **a zig-zag lightning bolt** strikes down in
+    exactly the shape of its face-bolt (Volto). Stars burst on the impact (Astro).
+  - **Attack "Spider Strings" (Spiders from Mars nod):** it shoots shimmering star-threads that
+    entangle.
+  - **Hit:** it strikes a dramatic recoil pose (it's a performer) with a glitter puff.
+- **64 px:**
+  - About 54 px.
+  - **The red spiky crest plus the red/blue face-bolt** is the read.
+  - Long thin legs with 2 px stripes. The teardrop is a single white pixel plus glow.
+- **Elemental Form idea (Astro/Volto, if final): "Stardust Hikinuki".**
+  - **The kabuki costume tears away** to reveal a **body made of starfield** with constellation lines.
+  - The crest becomes a full **solar corona**.
+  - Two orbiting ring-planets act as shields.
+  - The face-bolt becomes a living lightning arc.
+
+**d. Do / Don't**
+- **Do:** use the alien glam star, a bolt as kumadori, the floating teardrop, a solar-flare mullet,
+  Kansai Yamamoto–style stripes plus the hikinuki reveal, and planetary-ring shoulders.
+- **Don't:**
+  - Use David Bowie's face or likeness, or copy the *Aladdin Sane* bolt shape exactly (ours is original
+    and continues into the crest).
+  - Copy Yamamoto's actual costumes.
+  - Use Starmie or Jirachi star bodies.
+  - Use the K. West sign or Heddon Street scene.
+
+---------------------------------------------------------------------------------------------------
+
+## 14. Legendaries: Polaris, Solaris, Atomic
+
+**Owner (bible §3, verbatim):**
+> - **Legendaries**, catchable through archaeologist (Dr. Hoshino) quests:
+>   - **Polaris**, the sky whale (Aero/Astro)
+>   - **Solaris**, the giant lion (Pyro/Astro)
+> - **Final boss: Atomic** (Nucleo), a nuclear-shard, rift-born dragon crocodile that wants to reset the world. Catchable after defeat.
+
+And §2.1: "the sky whale Polaris passes overhead" in the opening cinematic.
+
+**Legendary sprite rule:**
+- A 128 px battle/cut-in sprite plus a 64 px dex head-and-shoulders crop.
+- The 3D model gets the most cel bands allowed (3) and **always** carries a glow element. Legendaries
+  are the only Tokonmon with a **permanent emissive pattern**.
+
+### 14.1 Polaris (Aero/Astro, about 10 m long, arch `flyer`)
+
+*v1 lore: "The great sky whale that swims the jet stream above Osaka Bay. Sailors once steered by the star
+on its brow; it is said to sing the aurora into being." The v1 model already places the Little Dipper on
+its back with **Polaris (the star) on the forehead** and humpback-style long pectoral fins. Keep both.*
+
+**a. References**
+- [K] Bulbapedia, Wailord / Lugia / Kyogre: https://bulbapedia.bulbagarden.net/wiki/Wailord_(Pok%C3%A9mon) · https://bulbapedia.bulbagarden.net/wiki/Lugia_(Pok%C3%A9mon) · https://bulbapedia.bulbagarden.net/wiki/Kyogre_(Pok%C3%A9mon)
+- [K] Wikipedia, Humpback whale (pectoral fins up to about 1/3 of body length with knobby leading-edge
+  tubercles; ventral throat pleats; breaching): https://en.wikipedia.org/wiki/Humpback_whale
+- [K] Wikipedia, *Fantasia 2000*, "Pines of Rome" segment (a family of **flying humpback whales** rising
+  above the clouds): https://en.wikipedia.org/wiki/Fantasia_2000
+- [K] Wikipedia, *Sky: Children of the Light* (thatgamecompany; luminous sky creatures, including whales
+  and manta rays gliding through clouds). *Interpretation of the brief's "Lumine whales": luminous
+  light-whales, also cf. Genshin Impact, whose protagonist is Lumine.*: https://en.wikipedia.org/wiki/Sky:_Children_of_the_Light
+- [K] Genshin Impact Wiki, All-Devouring Narwhal (a cosmic whale with a starry body): https://genshin-impact.fandom.com/wiki/All-Devouring_Narwhal
+- [K] Wikipedia, Ghibli Museum (its exclusive short *Kujiratori* / "Whale Hunt", 2001, by Miyazaki, about
+  children who catch a whale on a block-built ship. *Interpretation of "Ghibli sky whales": Miyazaki's
+  soft, friendly giants and cloudscapes.*): https://en.wikipedia.org/wiki/Ghibli_Museum
+- [K] Wikipedia, *Children of the Whales* (anime; an island-ship drifting on a sea of sand): https://en.wikipedia.org/wiki/Children_of_the_Whales
+- [K] Wikipedia, Polaris (the North Star, the end of the Little Dipper's handle): https://en.wikipedia.org/wiki/Polaris
+- [K] Wikipedia, Aurora: https://en.wikipedia.org/wiki/Aurora
+
+**b. Study notes**
+- **Wailord [K]:** a huge blimp-whale. **Lesson:** avoid the blimp oval. Ours has humpback anatomy.
+- **Lugia [K]:**
+  - White and silver, with blue belly plates and back fins.
+  - **Wing-hands with finger-feathers**, a guardian of the sea.
+  - **Lesson:** avoid fingered wing-hands. Ours uses **pectoral fins as wings**.
+- **Kyogre [K]:**
+  - Blue, with **red glowing circuit lines**.
+  - **Lesson:** glowing body lines are a legendary staple. Ours are **constellation lines plus aurora
+    pleats**, not circuitry.
+- **Fantasia 2000 whales [K]:** the **sense of scale** (tiny calf next to massive adults), **light
+  through cloud**, and slow majestic timing. That is the cinematic reference for the opening flyover.
+- **Sky (thatgamecompany) [K]:** light creatures read via **soft glow + simple silhouettes + particle
+  trails**.
+- **Humpback [K]:**
+  - **Long white-edged pectoral fins** with knobbed leading edges.
+  - **Throat pleats**, a small dorsal hump, and broad flukes with a serrated trailing edge.
+- **Approx sky palette:** night `#1e2a5a`, dawn `#ffb88a`, aurora `#a8f5c8` / `#b26bff` / `#5ff4ff`.
+
+**c. Design direction**
+- **Silhouette:**
+  - A **humpback sky-whale** with **very long pectoral fins used as wings** (40 % of body length, swept,
+    with tubercle bumps).
+  - The **throat pleats glow as aurora bands**.
+  - Flukes trail **streamers of cloud and aurora**.
+  - **The Little Dipper constellation on its back**, with **Polaris on the forehead** as a 4-point star
+    (v1).
+- **Face:** a wise, small, kind eye (whales have small eyes, and that keeps the scale feeling huge),
+  half-lidded. A long gentle mouth line.
+- **Accessory anchor:** at the forehead, just behind Polaris. The trainer's hat is tiny on it, which is
+  funny.
+- **Palette:**
+
+| Role | Hex |
+|---|---|
+| Outline | `#0e1430` |
+| Back deep | `#1e2a5a` |
+| Back base | `#2e4a8a` |
+| Back light | `#4a6ab8` |
+| Back rim | `#8aa8ff` |
+| Belly | `#e8f0ff` / `#b8c8e8` |
+| Fin edges | `#ffffff` |
+| Pleat aurora | Aero `#a8f5c8` → Echo-ish `#b26bff` → `#5ff4ff` (flowing gradient) |
+| Constellation stars | Astro `#ffd98a` / `#ffffff` |
+| Lines | `#6a8aff` |
+| Polaris star | `#fff6c8` / glow `#ffd98a` |
+| Cloud streamers | `#f4f8ff` |
+
+- **Animations:**
+  - **Idle (flight):** a slow undulating swim with fins as wings in a long 8-pose wave, and the aurora
+    pleats ripple from throat to tail.
+  - **Cinematic flyover:** passes overhead at dawn, its shadow sweeping the farm. A slow breach through
+    cloud with cloud wisps sliding off.
+  - **Attack "Aurora Song":** it opens its mouth and **sings**. Aurora ribbons sweep across the arena
+    (Aero) and a starfall comes down (Astro).
+  - **Attack "Jet Stream":** a fin-sweep gale.
+  - **Hit:** stars flicker and the aurora dims for 2 poses.
+- **64 px dex crop:** head plus the front of a fin. **The 4-point Polaris star on the brow** (5 px) is the
+  read, plus white fin edges.
+- **Elemental Form idea (Aero/Astro): "North Star".**
+  - The body becomes **semi-translucent night sky** with the full sky's constellations moving inside.
+  - The aurora pleats extend into **giant aurora wings** above the fins.
+  - Polaris on the brow flares into a beacon that casts a beam north.
+
+**d. Do / Don't**
+- **Do:** use humpback anatomy, fins as wings, aurora pleats, the Little Dipper and Polaris on the brow,
+  Fantasia-scale cinematics and a slow, majestic tempo.
+- **Don't:**
+  - Use the Wailord blimp.
+  - Use Lugia wing-hands or Kyogre circuit lines.
+  - Copy the Fantasia whale designs or the Genshin narwhal.
+
+### 14.2 Solaris (Pyro/Astro, about 4.5 m, arch `quad`)
+
+*v1 lore: "The sun-king that rose from the first dawn over Kansai. Where it walks, frost melts and crops
+ripen; when it roars, noon comes early." The v1 model has **cream-white fur, gold greaves, a two-layer
+corona mane of red-to-yellow spikes, and a 12-ray crown**. Keep that.*
+
+**a. References**
+- [K] Bulbapedia, Solgaleo (white sun lion with a sun-emblem forehead): https://bulbapedia.bulbagarden.net/wiki/Solgaleo_(Pok%C3%A9mon)
+- [K] Bulbapedia, Entei / Pyroar: https://bulbapedia.bulbagarden.net/wiki/Pyroar_(Pok%C3%A9mon)
+- [K] Wikipedia, Shisa (Okinawan guardian lion-dogs in pairs: one open mouth, one closed): https://en.wikipedia.org/wiki/Shisa
+- [K] Wikipedia, Komainu (shrine guardian lion-dogs; the *a-un* open/closed mouth pair): https://en.wikipedia.org/wiki/Komainu
+- [K] Wikipedia, Lion and Sun (the Persian emblem of a **lion with the sun rising behind its back**): https://en.wikipedia.org/wiki/Lion_and_Sun
+- [K] Wikipedia, Leo (constellation) (Regulus, "the little king"): https://en.wikipedia.org/wiki/Leo_(constellation)
+- [K] Wikipedia, Solar corona / Solar prominence: https://en.wikipedia.org/wiki/Solar_prominence
+
+**b. Study notes**
+- **Solgaleo [K]:**
+  - A **white, sleek lion** with a **sun emblem on the forehead** and a dark-blue cosmic face.
+  - Its "Radiant Sun" phase glows.
+  - **Lesson:** avoid the forehead sun-disc emblem and the blue cosmic face. Ours puts **the sun in the
+    mane**.
+- **Entei [K]:** a volcano mane with smoke. **Pyroar [K]:** a mane shaped like flames.
+- **Shisa / komainu [K]:**
+  - **Curly, spiral mane locks**, a squarish snout, bulging eyes.
+  - **The *a-un* pair**: one mouth open (*a*, the beginning) and one closed (*un*, the end).
+  - **Lesson:** our Solaris can use **spiral curls** for the corona prominences. Its **roar is the "a"**,
+    and its rest is the "un".
+- **Lion and Sun [K]:** the sun disc rising **behind** the lion's back. **Lesson:** a gorgeous mural and
+  cut-in composition (Dr. Hoshino's murals).
+- **Solar prominences [K]:** **looping arcs of plasma**. **Lesson:** spiral shisa curls plus
+  prominence loops become one shape.
+
+**c. Design direction**
+- **Silhouette:**
+  - A **giant regal lion**, heavy-chested and long-backed.
+  - **A huge corona mane** in two layers (v1): an inner ring of **spiral shisa-curls** (prominence loops)
+    and an outer ring of **long ray spikes**.
+  - A floating **12-ray crown** (v1) above the head.
+  - **Gold greaves** on the forelegs (v1).
+  - **A tail tipped with a small sun.**
+- **Astro:** **the Leo constellation** traced in faint star-points along its flank, with Regulus as a
+  bright star on its chest.
+- **Face:** a noble, strong muzzle and **bulging shisa-like eyes** made regal (gold iris, a fierce
+  highlight). Closed mouth at rest (*un*), open roar (*a*).
+- **Accessory anchor:** inside the crown ring (a hat sits *under* the floating crown).
+- **Palette** (consistent with the v1 `pal`):
+
+| Role | Hex |
+|---|---|
+| Fur | `#fff1d8` / `#efd2a2` / shadow `#d09a6a` → violet-shift `#a06a7a` |
+| Belly | `#ffe6bd` |
+| Gold | `#f7b324` / `#fff09a` / `#a8600a` |
+| Mane | `#f28a22` / `#c94f12` |
+| Corona | `#ff4a12` → `#ff9a1c` → `#ffd84a` → `#fff6c8` |
+| Crown | `#ffd84a` |
+| Leo stars | Astro `#ffd98a` / lines `#6a8aff` |
+| Pyro VFX | `#ff6a2b` / `#ffd23f` |
+
+- **Animations:**
+  - **Idle:** a slow, regal breath. The **corona prominences loop and ripple** (a 6-pose cycle), and the
+    crown turns slowly.
+  - **Attack "First Dawn" (Pyro charge):** it sits back, the corona **swells into a full sun disc behind
+    it** (the Lion and Sun composition), then it roars (*a*) and a solar beam fires.
+  - **Attack "Noon Pounce":** a leap with a sunflare trail.
+  - **Hit:** the corona flickers dimmer for 2 poses and reignites.
+- **64 px dex crop:** head plus mane. **A ring of orange spikes plus inner spiral curls plus a crown**
+  around a cream face.
+- **Elemental Form idea (Pyro/Astro): "Zenith".**
+  - The full **sun disc stays permanently behind its back** (Lion and Sun).
+  - The fur turns white-gold with solar granulation texture.
+  - The mane becomes pure plasma loops.
+  - The Leo constellation detaches and orbits it as a star-ring.
+
+**d. Do / Don't**
+- **Do:** use the corona mane with shisa spirals and prominences, the *a-un* mouth logic, the floating
+  crown, a sun disc *behind* it in cut-ins, and Leo stars.
+- **Don't:**
+  - Use Solgaleo's forehead emblem or blue cosmic face.
+  - Copy a national emblem's exact Lion and Sun layout (no sword, no flag composition).
+  - Copy Entei's volcano crown.
+
+### 14.3 Atomic (Nucleo, final boss, about 6 m, arch `quad`)
+
+*v1 lore: "Born in the reactor rift beneath the old bay… It intends to burn everything down to bedrock and
+let the world begin again." The v1 model is a dark scaled crocodile-dragon with **clusters of green
+nuclear crystals along the spine, glowing green rift cracks on its flanks, a long toothy snout and
+tattered wings**. Keep that.*
+
+**a. References**
+- [K] Wikipedia, Godzilla (1954). The design of **dorsal plates that glow before the atomic breath** and
+  **keloid-scarred skin** was inspired by radiation and by the Lucky Dragon No. 5 incident:
+  https://en.wikipedia.org/wiki/Godzilla
+- [K] Bulbapedia, Eternatus (alien dragon with a glowing core, Eternamax form): https://bulbapedia.bulbagarden.net/wiki/Eternatus_(Pok%C3%A9mon)
+- [K] Bulbapedia, Ultra Beast (alien creatures from Ultra Wormholes, with "otherworldly" design rules): https://bulbapedia.bulbagarden.net/wiki/Ultra_Beast
+- [K] Bulbapedia, Necrozma (prism crystal armour): https://bulbapedia.bulbagarden.net/wiki/Necrozma_(Pok%C3%A9mon)
+- [K] Wikipedia, Uranium glass (fluoresces bright green under UV): https://en.wikipedia.org/wiki/Uranium_glass
+- [K] Wikipedia, Cherenkov radiation (the **blue glow** in reactor cooling pools): https://en.wikipedia.org/wiki/Cherenkov_radiation
+- [K] Wikipedia, Saltwater crocodile (osteoderm scutes, armoured back rows, long jaw, interlocking teeth): https://en.wikipedia.org/wiki/Saltwater_crocodile
+
+**b. Study notes**
+- **Godzilla [K]:**
+  - **Rows of maple-leaf dorsal plates**.
+  - **The glow builds up the plates from tail to head before the breath**, the most famous "charge
+    tell" in film.
+  - Rough keloid skin, a primal silhouette.
+  - **Lesson:** Atomic's crystal spine should **light up tail-to-head as a charge tell**, using shards,
+    not maple plates.
+- **Eternatus [K]:** a **glowing chest core** with an alien, vertebra-like body and red-magenta energy.
+  **Lesson:** use a core weak-point, but in green, not red/pink.
+- **Ultra Beasts [K]:** **wrong-feeling anatomy** (glossy, alien materials). **Lesson:** the rift-born
+  parts (wings, crystals) should feel *not of this world*: glassy and too-smooth next to the
+  crocodile's rough scutes.
+- **Uranium glass [K]:** a **vivid yellow-green glow** under UV.
+  - Approx: `#8aff3a` / `#c8ff6a` (matches the game's Nucleo `#8aff3a`).
+- **Cherenkov [K]:** an **eerie electric blue** (`#4fd8ff` approx). **Lesson:** use it as the
+  **"critical moment"** colour (the breath's core) for a second danger read.
+- **Saltwater crocodile [K]:** a long, flat, armoured silhouette, **scute rows**, a heavy tail, an
+  interlocking toothy grin. The bulk sits low.
+
+**c. Design direction**
+- **Silhouette:**
+  - A **massive, low crocodile-dragon** with a long jaw and a long heavy tail.
+  - **Tattered wings** (v1) that look rift-torn, with glassy membrane fragments.
+  - **Rows of nuclear crystal shards** erupting along the back in place of scutes (v1 clusters), the
+    largest at the shoulders.
+  - **Rift cracks** along the flanks (v1).
+  - **A crystal reactor core in the chest** that can be seen glowing between the ribs.
+- **Charge tell (Godzilla lesson):** before its breath, **the spine crystals light up one cluster at a
+  time from tail to head**, shifting from green to **Cherenkov blue-white** at the head.
+- **Face:** small, deep-set **green-white eyes** and an interlocking croc grin with ivory teeth. It must
+  look **ancient and tired** (it "wants to reset the world"), not just angry.
+- **Accessory anchor:** on the brow ridge (once caught).
+- **Palette** (consistent with the v1 `pal`):
+
+| Role | Hex |
+|---|---|
+| Scales | `#1a1d23` / `#262a31` / `#3a404c` / `#565e6e` |
+| Belly | `#34342a` / `#4a4a3c` |
+| Teeth / horns | `#e6dfc6` / `#c9c2a8` |
+| Wing membrane | `#1e1420` / `#3a2238` with glass shards `#6b6372` |
+| Crystals | `#1f8a2a` / `#46d92a` / `#a8ff7a` / core `#c8ff6a` |
+| Rift cracks | `#58ff7a` |
+| Charge peak (Cherenkov) | `#4fd8ff` → `#e8fbff` |
+| Gums | `#5a1424` |
+| Nucleo VFX | `#8aff3a` / `#f0ffd0` |
+
+- **Animations:**
+  - **Idle:** a slow, heavy breath. Crystals pulse in sequence, and rift cracks flicker. Its tail sweeps,
+    and the wings half-open and close.
+  - **Attack "Reset Breath":** the full charge tell (8 poses tail-to-head), then a jaw open, then a
+    **green-to-blue atomic beam** with screen-wide light and radiation particles.
+  - **Attack "Fission Shard":** it fires crystal shards that split on impact (Nucleo fission).
+  - **Rift step:** it sinks into a rift crack and reappears.
+  - **Hit:** crystals crack-flash white, and fragments rain down.
+  - **Defeat (catchable):** crystals dim to a soft glow, and it lowers its head.
+- **64 px dex crop:** head plus shoulder crystals. **A dark croc head with bright green crystal spikes**
+  and green eyes.
+- **Elemental Form idea (Nucleo): "Critical Mass".**
+  - The crystals turn **Cherenkov blue at their core with green edges**.
+  - The chest reactor core opens.
+  - The wings become **full rift-portals** (holes in space with green edges).
+  - A ring of orbiting crystal shards orbits it like electrons around a nucleus.
+
+**d. Do / Don't**
+- **Do:** use the croc anatomy, crystal shards as scutes, the tail-to-head charge tell, the uranium-green
+  plus Cherenkov-blue two-stage danger read, a rift-glass "alien" material, and an ancient, weary face.
+- **Don't:**
+  - Copy Godzilla's maple-leaf plates or silhouette, or Eternatus' spine-and-core body.
+  - Use real nuclear disaster imagery or real hazard symbols on the body (the in-game ☢ icon stays in
+    UI only).
+  - Use a radiation trefoil as a body marking.
+
+---------------------------------------------------------------------------------------------------
+
+## 15. Untameable wild beasts: Rift Boar, Oni Bear
+
+**Owner (bible §3, verbatim):**
+> - **Untameable wild beasts** that disrupt exploration: Rift Boar and Oni Bear.
+
+And §9: "Untameable wild beasts disrupt exploration."
+
+*v1 lore:*
+- **Rift Boar:** "A mountain inoshishi swollen by rift radiation. It charges anything that moves and
+  cannot be tamed, only driven off." (1.6 m)
+- **Oni Bear:** "Once the guardian of a mountain shrine, this moon bear was twisted by the rift; its
+  sacred rope now hangs in tatters." (2.4 m reared)
+
+### 15a. References
+- [K] Wikipedia, *Princess Mononoke* (1997). **Okkoto** is the ancient, blind, white boar god; **Nago**
+  is the boar god turned demon, covered in writhing worm-like curse tendrils: https://en.wikipedia.org/wiki/Princess_Mononoke
+- [K] Ghibli Wiki, Okkoto: https://ghibli.fandom.com/wiki/Okkoto
+- [K] Wikipedia, Wild boar (Japanese *inoshishi*; striped piglets called *uribō*; a bristly dorsal
+  crest; tusks): https://en.wikipedia.org/wiki/Wild_boar
+- [K] Bulbapedia, Mamoswine / Piloswine (boar/mammoth): https://bulbapedia.bulbagarden.net/wiki/Mamoswine_(Pok%C3%A9mon)
+- [K] Wikipedia, Asian black bear ("moon bear", *tsukinowaguma*; **white crescent on the chest**): https://en.wikipedia.org/wiki/Asian_black_bear
+- [K] Bulbapedia, Ursaluna and its Bloodmoon form (scarred moon mark, peat armour): https://bulbapedia.bulbagarden.net/wiki/Ursaluna_(Pok%C3%A9mon)
+- [K] Wikipedia, Oni (horns, red or blue skin, tiger-skin loincloth, iron *kanabō* club): https://en.wikipedia.org/wiki/Oni
+- [K] Wikipedia, Shimenawa (sacred straw rope with zig-zag *shide* papers): https://en.wikipedia.org/wiki/Shimenawa
+
+### 15b. Study notes
+- **Okkoto / Nago [K]:**
+  - Okkoto: a **massive, ancient, white-haired boar** with a dignified, sorrowful presence.
+  - Nago: a demon **covered in writhing red/black worm-tendrils** that spread as a curse.
+  - **Lesson:** **corruption as a living surface material** reads instantly as "can't be tamed".
+  - **Ours:** **pixelated rift-crystal growths and green static**, never worms.
+- **Inoshishi [K]:** a dark bristly coat, **a raised dorsal mane of bristles**, short tusks, a wedge head,
+  and a fast straight-line charge (the *inoshishi musha* "charge headlong" idiom).
+- **Moon bear [K]:**
+  - Black, with a **white crescent (V) on the chest**, big round ears, and a ruff of longer neck fur.
+  - It rears up.
+- **Ursaluna [K]:** a moon mark on a huge peat-armoured bear, and the Bloodmoon form's scar.
+  **Lesson:** avoid the peat-armour hump and scar-eye. Ours is **the shrine-rope and oni horns**.
+- **Oni [K]:** **horns**, **red (*aka-oni*) or blue (*ao-oni*) skin**, tiger-striped loincloth, and an
+  iron studded **kanabō**. Oni are tied to the northeast "demon gate" (*kimon*) in Japanese tradition.
+- **Shimenawa [K]:** marks sacred boundaries. **Torn = sacred bond broken.**
+
+### 15c. Design direction
+
+**Shared beast rules:**
+- **No anime eyes.** Use small glowing eyes, which separates them from tameable Tokonmon at a glance.
+- **Rift-green corruption**, the same colours as the v1 `pal`: crystal `#46d92a` / `#a8ff7a` / rift
+  `#5cff3a`.
+- **No accessory anchor** (never bonded).
+- **No Elemental Form.**
+
+#### Rift Boar (1.6 m, arch `quad`)
+
+- **Silhouette:**
+  - A heavy wedge-headed *inoshishi* with a **tall dorsal bristle crest**.
+  - **Every 4th bristle is a rift crystal** (v1).
+  - **Tusks with glowing crystal tips.**
+  - **Swollen rift tumours**: lumpy crystal clusters breaking through the hide at the shoulder and hip.
+- **Eyes:** tiny, bloodshot, glowing green.
+- **Palette** (v1):
+  - Hide `#31251c` / `#4a382c` / `#6f5a48`
+  - Bristles `#1f1712` / tips `#8a7f74`
+  - Snout `#8f6c62`
+  - Crystal `#1f8a2a` / `#46d92a` / `#a8ff7a`
+  - Glow `#5cff3a` / `#d8ffa0`
+- **Animations:**
+  - **Idle:** snorting with steam, pawing the ground. The crystals pulse and the bristles twitch.
+  - **Charge:** a **3-pose telegraph** (head down, a crystal flash, a hoof scrape), then a **long
+    straight charge** that destroys props.
+  - **Hit/driven off:** it squeals, crystals crack, and it flees into the brush.
+- **VFX:** green static sparks (pixel noise), dust, and a **rift-trail** of fading green afterimages
+  while charging.
+- **64 px:** a low wedge plus the crest of spikes with **green crystal pixels in the crest** and green
+  tusk tips.
+
+#### Oni Bear (2.4 m reared, arch `quad`, rears to a biped stance)
+
+- **Silhouette:**
+  - A massive **moon bear** with a **white crescent chest mark** (v1).
+  - **Two oni horns** (red with gold bands, v1 `hn`/`hnb`) have **broken through its skull**, so the
+    rift twisted it into an oni.
+  - **A tattered shimenawa rope** hangs off its neck and shoulders with torn shide papers (v1).
+  - **Green rift cracks** run across its back (v1).
+  - **Forearms grow rows of crystal studs**, like a kanabō club made of its own arm.
+- **Eyes:** small, red-rimmed, glowing green, with a grief-stricken brow. It was a guardian.
+- **Palette** (v1):
+  - Fur `#121014` / `#1d1b20` / `#34303a`
+  - Crescent `#f2eee4`
+  - Muzzle `#6d5238` / `#a9845e`
+  - Horns `#5a0f0c` / `#c42a22` with bands `#e6c76a`
+  - Rope `#9a7a3a` / `#d8b56a`
+  - Papers `#fbfaf4`
+  - Cracks `#5cff3a`
+  - Crystal studs `#46d92a` / `#a8ff7a`
+- **Animations:**
+  - **Idle:** a heavy sway on all fours. It sniffs and the rope tatters swing.
+  - **Rear-and-roar:** it rises to 2.4 m (4 poses), the crescent glows, and a roar shockwave scatters
+    leaves.
+  - **Attack:** a **kanabō forearm smash** (crystal-studded arm) that leaves a crater.
+  - **Hit/driven off:** it staggers and the shide papers fly off. It retreats toward the old torii.
+- **64 px:** a black bulk with a **white crescent** and **two red horns**. The read is unmistakable.
+
+### 15d. Do / Don't
+- **Do:** use rift-crystal corruption as a material, an inoshishi crest and charge telegraph, a moon-bear
+  crescent, broken-through oni horns, a torn shimenawa, a kanabō crystal arm, and grief-stricken
+  guardian eyes.
+- **Don't:**
+  - Use Mononoke worm-tendrils, the white Okkoto colouring, or Ghibli's specific designs.
+  - Use Ursaluna's peat hump or Bloodmoon scar.
+  - Give the beasts anime Tokonmon eyes, accessories or Elemental Forms.
+  - Use a real shrine's name or rope style replica.
+
+---------------------------------------------------------------------------------------------------
+
+## 16. Lore only: the gods of light, Dark Side of the Moon and Back in Black
+
+**Owner (bible §3, verbatim):**
+> ### Lore only (do NOT add as Tokonmon yet)
+> The **gods of light** who made the world:
+> - **Dark Side of the Moon**, a prism-like dragon.
+> - **Back in Black**, a dark dragon.
+>
+> You can find them (murals, Dr. Hoshino's research, phone lore entries), but they cannot be met or caught yet.
+
+**Scope:** these are **2D art only**: murals (pixel-art wall paintings in ruins, shrines and the
+museum), Dr. Hoshino's research sketches, and phone lore-entry illustrations. **No 3D models, no battle
+sprites, no stats.**
+
+### 16a. References
+- [K] Wikipedia, *The Dark Side of the Moon* (Pink Floyd, 1973). The cover by **Hipgnosis** (Storm
+  Thorgerson / Aubrey Powell), illustrated by **George Hardie**, shows **a white beam entering a
+  triangular prism and splitting into a spectrum on black**. The spectrum continues across the gatefold
+  as a **heartbeat line**: https://en.wikipedia.org/wiki/The_Dark_Side_of_the_Moon
+- [K] Wikipedia, Hipgnosis: https://en.wikipedia.org/wiki/Hipgnosis
+- [K] Wikipedia, Dispersion (optics) / Prism: https://en.wikipedia.org/wiki/Dispersive_prism
+- [K] Wikipedia, *Back in Black* (AC/DC, 1980), the band's tribute to Bon Scott, who died in February
+  1980. The cover is **all black** with the band logo shown only as a **grey outline**. The album opens
+  with "Hells Bells" and the tolling of a **large bronze bell cast for the band**:
+  https://en.wikipedia.org/wiki/Back_in_Black · https://en.wikipedia.org/wiki/Hells_Bells
+- [K] Bulbapedia, Necrozma (Ultra Necrozma; prism and light dragon, an "avoid" reference), Rayquaza (sky
+  dragon mural precedent), Arceus (creation-god art style): https://bulbapedia.bulbagarden.net/wiki/Necrozma_(Pok%C3%A9mon) · https://bulbapedia.bulbagarden.net/wiki/Arceus_(Pok%C3%A9mon)
+- [K] Wikipedia, Takamatsuzuka Tomb and Kitora Tomb murals (Japanese ancient tomb murals with the Four
+  Symbols, including the **Azure Dragon**, a native mural-style reference): https://en.wikipedia.org/wiki/Takamatsuzuka_Tomb
+
+### 16b. Study notes
+- ***Dark Side of the Moon* [K]:**
+  - **Pure black ground**, one **thin white beam**, a **clean white-outlined triangle**, and **a fan of
+    spectral colour bands** (red, orange, yellow, green, blue, violet; *no indigo* in Hardie's
+    version).
+  - **What we take:**
+    - **the dragon's body as a prism**: crystalline, triangular cross-sections
+    - **white light entering and colour leaving**: the god that **gave the world its colours**
+    - **the heartbeat line**: life created
+  - Approx bands:
+
+| Band | Hex |
+|---|---|
+| Red | `#e8283a` |
+| Orange | `#ff8a2a` |
+| Yellow | `#ffe23a` |
+| Green | `#3ac85a` |
+| Blue | `#2f7aff` |
+| Violet | `#8a3aff` |
+
+  Ground `#0a0a0e`, prism line `#ffffff` / `#c8d0dc`.
+- ***Back in Black* [K]:**
+  - **Black on black**, with the subject indicated **only by a grey outline**.
+  - A **tolling bronze bell** (mourning, and a call).
+  - Approx: black `#050507`, outline grey `#8a8a96`, silver `#c8ccd4`, bronze `#a8743a` / `#e0b070`.
+  - **What we take:**
+    - **an outline-only dragon**: drawn as **grey/silver line art on black**, the god of the **dark that
+      makes light visible** (the canvas the light god paints on)
+    - **a great bell** in its chest or as its voice
+- **Japanese tomb murals [K]:** **flat mineral pigments on plaster**, faded with flaking edges, and the
+  Four Symbols (Azure Dragon and others) drawn as **long serpentine dragons in profile**. This is the
+  native style for our murals.
+- **Necrozma [K]:** a prism and light dragon. **Lesson:** avoid black crystalline armour with a light
+  core. Ours is **mural-flat and spectrum-fanned**.
+
+### 16c. Design direction (2D murals and lore art only)
+
+**Shared mural style:**
+- Long **serpentine dragons in profile**, painted as **flat mineral-pigment pixel art** on cracked
+  plaster.
+- Limited palette per mural (≤ 12 colours), with **flaking dither** at the edges and gold-leaf
+  highlights.
+- The two gods are always shown **as a pair**: **Light (prism) and Dark (outline)** making the world
+  together.
+
+**Dark Side of the Moon (the prism-like dragon):**
+- **Body:** the head and body are **elongated triangular prisms** (faceted, white-outlined, transparent).
+- **Light:** a **beam of white light enters its open mouth** and **leaves as a six-band spectrum** that
+  becomes its **wings and long tail-streamers**. Where the spectrum touches the ground in the mural,
+  land, sea and forest bloom in those colours (it "made the world's colours").
+- **Heartbeat:** the spectrum continues into a **heartbeat line** that runs along the mural's border,
+  marking life beginning.
+- **Mural palette:**
+  - Black ground `#0a0a0e`
+  - White `#ffffff`
+  - Pale prism `#c8d0dc`
+  - The six spectrum bands above
+  - Gold leaf `#ffd98a`
+- **Phone lore entry:** a 64 px glyph of a triangle-headed dragon with a 6-band fan, monochrome until
+  "researched", then the spectrum fills in *(proposal: presentation only)*.
+
+**Back in Black (the dark dragon):**
+- **Drawing:** drawn **only in grey and silver outline on pure black**. The body has **no fill**, so it
+  is the absence of light, which makes the outline glow.
+- **Bell:** **a great bronze bell** hangs in its ribcage (seen through the outline), or its head is
+  bell-shaped. When it "speaks" in lore cut-ins, concentric ring lines spread from the bell (sound made
+  visible).
+- **Composition:** in murals it **coils around the Prism dragon's light**, framing it. It is the dark
+  that lets the light be seen, so they made the world together.
+- **Mural palette:**
+  - Black `#050507` / `#1a1a22`
+  - Outline grey `#8a8a96`
+  - Silver `#c8ccd4`
+  - Bronze `#a8743a` / `#e0b070`
+  - A single white highlight `#ffffff` on the eye
+- **Phone lore entry:** a 64 px outline-only coiled dragon with a tiny bronze bell, the only colour.
+
+### 16d. Do / Don't
+- **Do:**
+  - Use the prism-beam-spectrum story, the heartbeat line, outline-only black-on-black, and the bronze
+    bell.
+  - Use Japanese tomb-mural flatness and pair them as co-creators.
+- **Don't:**
+  - **Covers:** reproduce the *DSOTM* prism-on-black composition as-is (it must be a dragon), or the
+    *Back in Black* cover.
+  - **Logos:** use the Pink Floyd or AC/DC logos (no lightning-bolt "AC/DC" shapes).
+  - **Scope:** turn them into battle sprites or 3D models. They are **lore only** (bible §3).
+  - **Lookalikes:** look like Necrozma.
+
+---------------------------------------------------------------------------------------------------
+
+## 17. Summary: signature read per Tokonmon (64 px checklist)
+
+| Tokonmon | Element | Arch | Signature read at 64 px | Accent hex |
+|---|---|---|---|---|
+| Rollingstone | Geo | blob | Pebble + stuck-out red tongue | `#e0323c` |
+| Fivestones | Geo | biped | Five pip-marked armour stones | `#ffb23a` |
+| Fiftystone | Geo | biped | Many-stone golem, grin + tongue, amber eyes | `#ffb23a` |
+| Gradbear | Geo | biped | Stone bear + slate mortarboard + gold tassel | `#ffcf3a` |
+| Heartbox | Ecto | biped | Heart-box golem, pink eye-holes, ribbon cross | `#ff7af2` |
+| Inbloom | Ecto | biped | Slim angel, glowing flower heart, blade wings | `#e04dbe` |
+| Beatlet | Bio | insect | Mop-top fringe shell + sprout | `#5fd35a` |
+| Lenshorn | Echo | insect | Round-glasses horn rings, acid-green shell | `#9ad42a` |
+| McCarapace | Hydro | insect | Violin-bass sunburst shell, sky-blue satin | `#6fb6ff` |
+| Harrisun | Pyro | insect | Sun halo + sitar horn, red-orange | `#ffd23f` |
+| Starrab | Geo | insect | Drum-body + octopus garden pebbles, pink | `#ff4fa3` |
+| Lemmo | Volto | hopper | Lemon + copper/zinc prongs | `#ffe23a` |
+| Alpha Lemmo | Volto | blob | Wedge-armoured lemon + 5-prong crown | `#fff2a0` |
+| Kagarou | Pyro | quad | Charcoal wolf, bonfire mane, iron cage collar | `#ff6a2b` |
+| Cabbunny | Bio | hopper | Cabbage body, leaf ears, pink nose | `#ffb3d9` |
+| Moglow | Geo | quad | Glowing star-nose lamp + amethyst geode | `#ffd27a` |
+| Kappachi | Hydro | biped | Water dish on head | `#8ff0ff` |
+| Hotarumi | Volto/Bio | flyer | Glow bulb + pink "+" shield | `#c8ff6a` |
+| Chochobake | Ecto | floater | Red lantern, torn mouth, tongue | `#d8283a` |
+| Tengale | Aero | flyer | Crow-tengu with leaf-fan wingtips | `#a8f5c8` |
+| Yukiusa | Cryo | hopper | Snow mound, red berry eyes, leaf ears | `#d2232a` |
+| Zapanda | Volto | quad | Ringed battery tail, bolt tear-tracks | `#ffe23a` |
+| Kanizumo | Hydro/Geo | insect | Wide red crab + navy mawashi + topknot | `#1f2a5a` |
+| Idolark | Echo | flyer | Twin-tail crest + penlight tail | `#ff6fae` |
+| Mechanyan | Ferro/Volto | biped | Always-raised beckoning paw, calico panels | `#5ff4ff` |
+| Studrat | Ferro | quad | Chrome stud mohawk | `#d0dae4` |
+| Moshbull | Geo | quad | Hump + headbang mane + meteorite horns | `#ff3a3a` |
+| Thrashark | Hydro | swimmer | Spinning saw dorsal fin | `#d0dae4` |
+| Marionoir | Ecto | floater | Floating cross-bar + glowing strings | `#c9a8ff` |
+| Sandmare | Ecto/Geo | quad | Sand-stream mane, blank white eyes | `#ffe8a0` |
+| Ironmaw | Ferro | quad | Vise maw + iron-filing fur, red/blue poles | `#e8402a` |
+| Yellowsub | Hydro/Ferro | swimmer | Yellow sub, porthole eyes, periscope | `#ffd21f` |
+| Blackbyrd | Aero | flyer | Black songbird, gold bill + eye-ring | `#ffb21f` |
+| Lucydiamond | Astro/Cryo | floater | Diamond body + sky veil + kaleidoscope eyes | `#ff9a3a` |
+| Killerqueen | Ecto/Bio | flyer | Pouf + black-gold striped gown + violet wings | `#ffcf3a` |
+| Bohemoth | Echo/Ecto | floater | Four top-lit masks in a diamond | `#f4ece0` |
+| Dontstopmeow | Volto | quad | Black cat + white ring targets + comet tail | `#ffe23a` |
+| Radiogaga | Echo/Volto | biped | Cathedral-radio head + dial eye + antenna | `#ffe8a0` |
+| Bitesdust | Geo | serpent | Four back-strings + woofer chest | `#d0dae4` |
+| Thrillghoul | Ecto | biped | Red carapace with black V-chevrons | `#c8202a` |
+| Ziggystar | Astro/Volto | biped | Red flare mullet + red/blue face bolt | `#e8283a` |
+| Polaris | Aero/Astro | flyer | Humpback sky whale, brow star, aurora pleats | `#ffd98a` |
+| Solaris | Pyro/Astro | quad | Corona mane + floating 12-ray crown | `#ffd84a` |
+| Atomic | Nucleo | quad | Dark croc-dragon + green crystal spine | `#8aff3a` |
+| Rift Boar | (beast) | quad | Bristle crest with green crystals | `#5cff3a` |
+| Oni Bear | (beast) | quad | Moon crescent + red oni horns + torn rope | `#c42a22` |
+| Dark Side of the Moon | lore | mural | Prism dragon, 6-band spectrum | spectrum |
+| Back in Black | lore | mural | Outline-only black dragon + bronze bell | `#a8743a` |
+
+**Follow-up for the next research pass** (web-search budget ran out):
+1. Run 2–3 searches per [K] entry to confirm the facts and URLs. Priority: Kani Doraku, *Yellow
+   Submarine*/Edelmann, *Master of Puppets* cover, *Jazz* cover, "Radio Ga Ga" video, *Aladdin Sane*,
+   Kansai Yamamoto, yuki-usagi and Genji firefly markings.
+2. Collect image boards (once downloads are allowed) into `docs/refs/img/<tokonmon>/` and sample real
+   hexes to replace the *approx.* values.
+3. Get owner sign-off on any skill or form name that quotes a lyric or title phrase (e.g. "Galileo",
+   "Mr. Fahrenheit"). Defaults stay original.
