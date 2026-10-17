@@ -1,0 +1,33 @@
+<!doctype html><html><head><meta charset="utf-8"><title>map</title>
+<style>html,body{margin:0;height:100%;background:#000;overflow:hidden}canvas{display:block;width:100%;height:100%}</style></head>
+<body><canvas id="c"></canvas>
+<script type="module">
+import * as THREE from '../vendor/three.module.js';
+import { Gfx } from '../src/gfx/renderer.js';
+import { buildGrid } from '../src/world/map.js';
+import { buildEnvironment, updateEnvironment, setPropLibrary } from '../src/gfx/env.js';
+const q = new URLSearchParams(location.search);
+try { const lib = await import('../src/data/designs/props.js'); setPropLibrary(lib); } catch (e) { console.warn('no props lib', e.message); }
+const def = (await import(q.get('map') || '../src/world/maps/_test.js')).default;
+const g = new Gfx(document.getElementById('c'), { quality: q.get('q') || 'high' });
+g.resize(innerWidth, innerHeight);
+const hour = parseFloat(q.get('h') || '15');
+g.setTime(hour);
+const grid = buildGrid(def);
+const t0 = performance.now();
+const env = buildEnvironment(def, grid);
+const ms = performance.now() - t0;
+g.world.add(env.group);
+for (const m of env.emissiveMats) g.registerEmissive(m, 1);
+g.lights.setStatic(env.lights);
+g.fx.debris.groundAt = (x, z) => grid.heightAt(x, z);
+const [cx, cz] = q.get('focus') ? q.get('focus').split(',').map(Number) : (def.spawns && def.spawns.start) || [def.size[0] / 2, def.size[1] / 2];
+g.rig.target.set(cx, 0, cz); g.rig.distT = parseFloat(q.get('dist') || '30'); g.rig.yawT = parseFloat(q.get('yaw') || String(Math.PI / 4)); g.rig.pitch = parseFloat(q.get('pitch') || '0.72'); g.rig.snap();
+updateEnvironment(env, 0.016, g.tod.night);
+const rr = g.renderer.render.bind(g.renderer); const post = g.post; g.post = null; g.renderer.render = () => {};
+for (let i = 0; i < 5; i++) g.frame(1 / 60);
+g.renderer.render = rr; g.post = post; g.frame(1 / 60);
+console.log('env build ms', ms.toFixed(0), 'props', env.props.length, 'lights', env.lights.length);
+document.title = 'ready';
+if (q.has('live')) { let last = performance.now(); const loop = (now) => { const dt = Math.min(0.05, (now - last) / 1000); last = now; updateEnvironment(env, dt, g.tod.night); g.frame(dt); requestAnimationFrame(loop); }; requestAnimationFrame(loop); }
+</script></body></html>

@@ -21,6 +21,7 @@ const PARRY_WIN = 0.3, PERFECT_PARRY = 0.15, PERFECT_DODGE = 0.18;
 const DODGE_DIST = 3.4, DODGE_TIME = 0.22, DODGE_IFRAMES = 0.26, DODGE_CD = 0.9;
 const GRAB_REACH = 1.5, GRAB_HOLD = 1.7;
 const COMBO_WINDOW = 1.25;
+const BASIC_MUL = 1.3, ATK_K = 0.045, DEF_K = 0.05, DMG_SCALE = 0.62, BASIC_RATE = 1.35;
 
 // ------------------------------------------------------------------ helpers
 const len = (x, z) => Math.hypot(x, z);
@@ -94,6 +95,7 @@ function makeUnit(st, snap, T, side) {
   };
   u.skills = (snap.skills || []).filter((id) => SKILLS[id]);
   u.ultSkill = snap.ult && SKILLS[snap.ult] ? snap.ult : null;
+  st.units.push(u);
   return u;
 }
 
@@ -157,13 +159,14 @@ function processCommand(st, u, c) {
     case 'parry': return doParry(st, u);
     case 'grab': return doGrab(st, u);
     case 'skill': return beginSkill(st, u, c.id || u.skills[c.slot], c);
-    case 'release': return releaseCharge(st, u);
+    case 'release': if (c.x != null) aimUpdate(st, u, c); return releaseCharge(st, u);
+    case 'aim': return aimUpdate(st, u, c);
     case 'ult': return beginUlt(st, u, c);
     case 'spectral': return beginSpectral(st, u);
     default: return true;
   }
 }
-const instantCmd = (c) => c.type === 'dodge' || c.type === 'parry' || c.type === 'move' || c.type === 'stop' || c.type === 'release' || c.type === 'charge';
+const instantCmd = (c) => c.type === 'dodge' || c.type === 'parry' || c.type === 'move' || c.type === 'stop' || c.type === 'release' || c.type === 'charge' || c.type === 'aim';
 
 // ------------------------------------------------------------------ action history (combos)
 function pushHist(st, u, a) { u.hist.push({ a, t: st.t }); if (u.hist.length > 6) u.hist.shift(); }
@@ -220,7 +223,7 @@ function startBasic(st, u, tgt, manual) {
   const step = u.chain % 3;
   u.chain++; u.chainT = 1.0;
   const b = u.basic;
-  const rate = b.rate / (1 + u.stats.spd * 0.012) / statMul(u, 'spd');
+  const rate = b.rate * BASIC_RATE / (1 + u.stats.spd * 0.012) / statMul(u, 'spd');
   u.act = { kind: 'basic', phase: 'windup', t: 0, w: step === 2 ? 0.2 : 0.12, a: 0.06, r: Math.max(0.14, rate - 0.2), step, tid: tgt ? tgt.id : null, manual };
   u.basicT = rate;
   pushHist(st, u, 'attack');
@@ -230,10 +233,10 @@ function startBasic(st, u, tgt, manual) {
 function execBasic(st, u) {
   const a = u.act, b = u.basic, tgt = unitById(st, a.tid);
   const finisher = a.step === 2;
-  const power = b.power * (finisher ? 1.6 : 1);
+  const power = b.power * BASIC_MUL * (finisher ? 1.6 : 1);
   if (b.type === 'ranged') {
     const [dx, dz] = tgt ? dirTo(u, tgt) : faceDir(u);
-    spawnProj(st, u, { power, speed: b.speed || 14, r: 0.22, scale: 'phys', aura: finisher ? 0.5 : 0, elem: u.elem, kind: 'basic', knock: finisher ? 2 : 0.4, range: b.range + 1.5, sprite: 'basic' }, dx, dz);
+    spawnProj(st, u, { power, speed: b.speed || 14, r: 0.22, scale: 'phys', aura: finisher ? 0.5 : 0, elem: finisher ? u.elem : null, kind: 'basic', knock: finisher ? 2 : 0.4, range: b.range + 1.5, sprite: 'basic' }, dx, dz);
   } else {
     const reach = (b.range || 1.5);
     let hitAny = false;
@@ -394,6 +397,14 @@ function beginSkill(st, u, skillId, c) {
   ev(st, 'cast', { u: u.id, skill: sk.id, phase: hold ? 'charge' : 'windup' });
   ev(st, 'anim', hold ? { u: u.id, mode: 'charge' } : { u: u.id, anim: sk.anim || 'cast' });
   if (sk.beat) u.act.beatAt = st.t;
+  return true;
+}
+function aimUpdate(st, u, c) {
+  const a = u.act;
+  if (!a || a.kind !== 'skill' || (a.phase !== 'charge' && a.phase !== 'windup')) return false;
+  a.aim = resolveAim(st, u, a.sk, c);
+  if (a.aim.face != null) u.face = a.aim.face;
+  if (a.tele) { const tl = st.tele.find((t) => t.id === a.tele); if (tl && !tl.follow) { tl.x = a.aim.x; tl.z = a.aim.z; tl.dx = a.aim.dx; tl.dz = a.aim.dz; } }
   return true;
 }
 function releaseCharge(st, u) {
@@ -560,7 +571,7 @@ function runEffects(st, u, sk, aim, mult = 1, grow = 1) {
         break;
       }
       case 'summon': {
-        if (e.kind === 'trap') st.traps.push({ id: 'tr' + st.nextId++, x: aim.x, z: aim.z, r: e.r, t: e.dur, owner: u.id, side: u.side, hit: Object.assign({}, base, { power: e.power * mult, aura: e.aura, status: e.status, knock: 0.5 }) });
+        if (e.kind === 'trap') st.traps.push({ id: 'tr' + st.nextId++, x: aim.x, z: aim.z, r: e.r, t: e.dur, arm: 0.7, owner: u.id, side: u.side, hit: Object.assign({}, base, { power: e.power * mult, aura: e.aura, status: e.status, knock: 0.5 }) });
         if (e.kind === 'clone') { st.clones.push({ id: 'cl' + st.nextId++, owner: u.id, x: u.x, z: u.z, face: u.face, t: e.dur, k: e.k }); ev(st, 'clone', { u: u.id }); }
         break;
       }
@@ -666,7 +677,7 @@ function teamComboExec(st, q, score) {
   if (!a || !t) return;
   const combo = d.combo, mult = 0.8 + score * 0.7;
   const elmAvg = (a.stats.elm + (b ? b.stats.elm : a.stats.elm)) / 2;
-  const power = 22 * combo.k * mult * (1 + elmAvg * 0.08) / (1 + a.stats.elm * 0.08);
+  const power = 22 * combo.k * mult * (1 + elmAvg * ATK_K) / (1 + a.stats.elm * ATK_K);
   for (const o of enemiesOf(st, a)) {
     if (len(o.x - t.x, o.z - t.z) - o.r > combo.r) continue;
     applyHit(st, a, o, { power, scale: 'elm', elem: a.elem, aura: 2, knock: 4, up: 4, kind: 'team', parryable: false, status: combo.status ? { s: combo.status, dur: combo.status === 'sleep' ? 2.4 : 1.2, k: 0.4 } : null, dir: dirTo(t, o) });
@@ -818,8 +829,8 @@ export function applyHit(st, src, tgt, h) {
   if (h.flat != null) dmg = h.flat;
   else {
     const atk = src ? atkStat(src, h.scale) : 10;
-    dmg = h.power * (1 + atk * 0.08);
-    dmg *= 1 / (1 + defStat(tgt) * 0.045);
+    dmg = h.power * (1 + atk * ATK_K);
+    dmg *= 1 / (1 + defStat(tgt) * DEF_K);
   }
   const eff = h.elem ? effectiveness(h.elem, tgt.elems) : 1;
   dmg *= eff * mult;
@@ -839,6 +850,7 @@ export function applyHit(st, src, tgt, h) {
   if (crit) dmg *= 1.5 + (src && src.mods.critDmg ? src.mods.critDmg : 0);
   dmg *= 0.95 + st.rng.next() * 0.1;
   if (tgt.boss) dmg *= 0.85;
+  if (h.flat == null) dmg *= DMG_SCALE;
   dmg = Math.max(1, Math.round(dmg));
   if (st.rules.noFaint && tgt.side === 0) dmg = Math.min(dmg, Math.max(0, tgt.hp - 1));
   // shield
@@ -850,6 +862,7 @@ export function applyHit(st, src, tgt, h) {
   tgt.k.taken += total;
   // meters
   if (src && !isDot) {
+    if (h.kind === 'basic') src.energy = Math.min(100, src.energy + 5);
     src.ult = Math.min(100, src.ult + (total / tgt.maxHp) * 75);
     st.sides[src.side].meter = Math.min(100, st.sides[src.side].meter + 2.5 * (src.mods.teamGain || 1) + (h.kind === 'skill' ? 1.5 : 0));
     if (src.elems.includes('pyro') && h.elem === 'pyro') src.heat = Math.min(100, src.heat + total * 0.6 * (src.mods.heatGain || 1));
@@ -859,6 +872,7 @@ export function applyHit(st, src, tgt, h) {
     if (src.snap.spectral) src.soul = Math.min(100, src.soul + (total / tgt.maxHp) * 30);
   }
   tgt.ult = Math.min(100, tgt.ult + (total / tgt.maxHp) * 45);
+  if (!isDot) tgt.energy = Math.min(100, tgt.energy + 3);
   if (tgt.snap.spectral) tgt.soul = Math.min(100, tgt.soul + (total / tgt.maxHp) * 55);
   if (tgt.mods.mosh && !isDot) addBuff(tgt, 'mosh', tgt.mods.mosh, 3);
   ev(st, 'hit', { src: src ? src.id : null, tgt: tgt.id, dmg: total, crit, eff, elem: h.elem || null, kind: h.kind, precise: crit && (h.crit === 'center' || h.precise), absorbed, x: tgt.x, z: tgt.z, combo: h.combo || null, skill: h.skill || null });
@@ -925,7 +939,7 @@ function doReaction(st, src, tgt, rx, h) {
   st.stats.reactions++; st.stats.reactionIds[rx.id] = (st.stats.reactionIds[rx.id] || 0) + 1;
   if (src) { src.k.reactions++; st.sides[src.side].meter = Math.min(100, st.sides[src.side].meter + 10); }
   ev(st, 'reaction', { id: rx.id, name: rx.name, color: rx.color, x: tgt.x, z: tgt.z, tgt: tgt.id, src: src ? src.id : null, a: auraE, b: h.elem });
-  const base = 20 * (1 + (src ? src.stats.elm : 10) * 0.09);
+  const base = 22 * (1 + (src ? src.stats.elm : 10) * 0.07);
   for (const f of rx.fx) {
     if (f.burst) {
       for (const o of st.units) {
@@ -1138,9 +1152,9 @@ function stepZones(st, dt) {
   }
   // traps
   for (let i = 0; i < st.traps.length; i++) {
-    const tr = st.traps[i]; tr.t -= dt;
+    const tr = st.traps[i]; tr.t -= dt; tr.arm = Math.max(0, (tr.arm || 0) - dt);
     let fired = false;
-    for (const o of st.units) {
+    if (tr.arm <= 0) for (const o of st.units) {
       if (!alive(o) || o.side === tr.side) continue;
       if (len(o.x - tr.x, o.z - tr.z) < tr.r + o.r) { applyHit(st, unitById(st, tr.owner), o, Object.assign({}, tr.hit, { parryable: false, kind: 'skill' })); ev(st, 'trap', { id: tr.id, x: tr.x, z: tr.z }); fired = true; break; }
     }
@@ -1219,8 +1233,8 @@ function endBattle(st, winner, reason) {
 
 // ------------------------------------------------------------------ main step
 export function step(st, dt = DT) {
-  if (st.over) return;
   st.events.length = 0;
+  if (st.over) return;
   // QTE pauses combat almost entirely (cinematic slow motion)
   if (st.qte) { st.qte.t += dt; dt *= 0.04; if (st.qte.t > st.qte.dur + 0.5) resolveQte(st, st.qte.id, st.qte.kind === 'escape' ? 0 : 0.4); }
   st.t += dt; st.tick++;
@@ -1284,7 +1298,7 @@ function stepUnit(st, u, dt) {
   u.parryT = Math.max(0, u.parryT - dt); u.parryAge += dt; u.dodgeAge += dt; if (u.dodgeAge > 0.5) u.perfectDodged = false;
   u.basicT = Math.max(0, u.basicT - dt); u.chainT = Math.max(0, u.chainT - dt);
   for (const k in u.cds) u.cds[k] = Math.max(0, u.cds[k] - dt);
-  u.energy = Math.min(100, u.energy + dt * (9 + u.stats.spd * 0.15));
+  u.energy = Math.min(100, u.energy + dt * (3.6 + u.stats.spd * 0.06));
   u.ult = Math.min(100, u.ult + dt * 0.8);
   if (u.spectral > 0) { u.spectral -= dt; if (u.spectral <= 0) ev(st, 'spectralEnd', { u: u.id }); }
   if (u.shield > 0 && u.shieldT != null) { u.shieldT -= dt; if (u.shieldT <= 0) u.shield = 0; }

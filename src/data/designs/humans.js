@@ -1,28 +1,38 @@
 // Elemon — parametric chibi humans (3D pixel art). See docs/MODELING.md.
 //
-//   humanDesign(look) → voxel DSL design (arch 'biped') for the player, NPCs and townsfolk.
-//   CHARACTERS        → named looks (player presets, Coach Gonda, Mika, Kaito, Team Metallica…)
-//   randomLook(seed)  → deterministic townsfolk (salaryman, student, tourist, granny, kid, worker…)
-//   DESIGNS           → ready-built designs for every named character (+ a few townsfolk)
+//   humanDesign(look)      → voxel DSL design (arch 'biped': body/head/armL/armR/legL/legR [+ hair parts])
+//   CHARACTERS / CHAR_LORE → named looks + story metadata (name, role, dialogue voice)
+//   randomLook(seed, role?)→ deterministic townsfolk (salaryman, student, tourist, granny, kid, worker…)
+//   withCosmetics(look, c) → equip/unequip cosmetics; characterDesign(key, cosmetics?)
+//   DESIGNS                → ready-built designs for every named character + 12 townsfolk
+//   catalogues for the character creator: SKIN_TONES, HAIR_COLORS, HAIR_STYLES, EYE_STYLES, IRIS_COLORS,
+//   MOUTH_STYLES, BROW_STYLES, TOP_STYLES, BOTTOM_STYLES, SHOE_STYLES, STONE_SHAPES, ACCESSORIES
 //
 // Model space: metres, +y up, +z = front, model's left = +x. Internally every
 // coordinate is written in VOXEL UNITS (1 = design.vs): voxel cell (i,j,k) is
 // centred on (i,j,k)·vs, so faces, seams and trims land crisply on the lattice.
 // The skull is always 9 voxels wide (i −4..4) with a flat face plane at
-// z = 4.5 (+hunch) so eye / mouth decals sit exactly on it (snap:false).
+// z = 4.5 (+1 for the elderly stoop) so eye / mouth decals sit exactly on it
+// (snap:false). Legs hang from the root (not the body) so 'bow' bends at the hips.
+// design.portrait = { y, dist, yaw } is a head-and-shoulders framing hint for
+// PortraitView.show(); design.look is the normalised look.
 //
 // look = {
-//   build: 'kid'|'teen'|'adult'|'big'|'old',   height: 0.92–1.08 (optional scale)
+//   build: 'kid'|'teen'|'adult'|'big'|'old',   height: 0.85–1.15 (uniform scale)
 //   skin: '#hex',
-//   hair:  { style (HAIR_STYLES), color, color2? (tips/streaks/ties) },
-//   eyes:  { style: 'anime'|'big'|'round'|'sharp'|'fierce'|'sleepy'|'bead'|'dot'|'tall'|'star', iris, lashes?, liner? },
-//   face:  { brows, browColor, mouth, blush, nose, freckles, stubble, beard, mustache, facial (colour), paint, scar, wrinkles },
-//   top:   { style (TOP_STYLES), color, color2, color3, graphic?, ears? },
-//   bottom:{ style (BOTTOM_STYLES), color, color2, ripped? },
-//   shoes: { style (SHOE_STYLES), color, color2, glow? } | '#hex',
-//   acc:   ['bracelet', 'watch', { type: 'earrings', style: 'hoops', color: '#ffd23a' }, …],
-//   cosmetics: { stone: { color, shape }, watch: 'gold', earrings: 'hoops', hairclip: 'star', grillz: true, badge: '#hex', … },
-//   anim:  { quirk: [...] }  (optional override)
+//   hair:  { style (HAIR_STYLES, aliases like 'twin buns'/'side-part' ok), color, color2 (tips/streaks/ties) },
+//   eyes:  { style (EYE_STYLES), iris, lashes?, liner? (punk eyeliner wings) },
+//   face:  { brows (BROW_STYLES), browColor, mouth (MOUTH_STYLES), blush: true|'lines'|'#hex', nose: false|'big',
+//            freckles, stubble, beard: 'full'|'goatee'|'long', mustache: 'thin'|'thick'|'walrus', facial (colour),
+//            paint (cheek paint colour), scar, wrinkles, tattoo (arm-sleeve colour), scalp (head-stripe colour) },
+//   top:   { style (TOP_STYLES), color, color2, color3, glow (neon trim), emblem (back), graphic (chest), ears ('panda'|'cat' hood),
+//            pattern ('leopard'), sleeves ('long' tee), patch, inner },
+//   bottom:{ style (BOTTOM_STYLES), color, color2, ripped, socks: 'high', tights, pleats: false, belt },
+//   shoes: { style (SHOE_STYLES), color, color2, glow } | '#hex',
+//   acc:   ['bracelet', 'watch', { type: 'earrings', style: 'hoops', color: '#ffd23a' }, …]   (see ACCESSORIES)
+//   cosmetics: { stone: { color, shape }, watch: 'gold', earrings: 'hoops', hairclip: 'star', grillz: true,
+//                badge: '#hex', <any accessory>: true | false (unequip) | 'style' | '#colour' | {style, color…} },
+//   anim:  { quirk: [...] }  (optional animator overrides)
 // }
 import { mulberry32, hashStr } from '../../core/rng.js';
 
@@ -90,11 +100,11 @@ export const ACCESSORIES = {
 //  hip: leg pivot row · torso: torso rows (= arm length) · cw/cd: torso half width/depth
 //  armW/legW: limb thickness · skullH: skull rows · neck: neck rows · hunch: elderly stoop
 const BUILDS = {
-  kid: { vs: 0.04, hip: 9, torso: 8, cw: 3, cd: 2, armW: 2, legW: 2, skullH: 9, neck: 0, bounce: 1.4, gait: 1.15, maxSpeed: 3.6 },
-  teen: { vs: 0.047, hip: 12, torso: 9, cw: 3, cd: 2, armW: 2, legW: 2, skullH: 10, neck: 1, bounce: 1.1, gait: 1, maxSpeed: 4.6 },
-  adult: { vs: 0.049, hip: 12, torso: 10, cw: 3, cd: 2, armW: 2, legW: 2, skullH: 10, neck: 1, bounce: 1, gait: 1, maxSpeed: 4.6 },
-  big: { vs: 0.05, hip: 14, torso: 14, cw: 5, cd: 3, armW: 3, legW: 3, skullH: 10, neck: 1, bounce: 0.8, gait: 0.9, maxSpeed: 4.2 },
-  old: { vs: 0.046, hip: 11, torso: 9, cw: 3, cd: 2, armW: 2, legW: 2, skullH: 10, neck: 0, hunch: 1, bounce: 0.6, gait: 0.75, maxSpeed: 2.6 },
+  kid: { vs: 0.04, hip: 8, torso: 8, cw: 3, cd: 2, armW: 2, legW: 2, skullH: 9, neck: 0, bounce: 1.4, gait: 1.15, maxSpeed: 3.6 },
+  teen: { vs: 0.048, hip: 11, torso: 9, cw: 3, cd: 2, armW: 2, legW: 2, skullH: 10, neck: 0, bounce: 1.1, gait: 1, maxSpeed: 4.6 },
+  adult: { vs: 0.05, hip: 11, torso: 10, cw: 3, cd: 2, armW: 2, legW: 2, skullH: 10, neck: 0, bounce: 1, gait: 1, maxSpeed: 4.6 },
+  big: { vs: 0.055, hip: 11, torso: 12, cw: 4, cd: 3, armW: 3, legW: 3, skullH: 10, neck: 0, bounce: 0.8, gait: 0.9, maxSpeed: 4.2 },
+  old: { vs: 0.046, hip: 10, torso: 9, cw: 3, cd: 2, armW: 2, legW: 2, skullH: 10, neck: 0, hunch: 1, bounce: 0.6, gait: 0.75, maxSpeed: 2.6 },
 };
 
 function dims(B) {
@@ -112,11 +122,11 @@ function dims(B) {
   D.legI0 = 1; D.legI1 = B.legW;               // leg columns (left side)
   D.legK0 = -1; D.legK1 = B.legW === 3 ? 1 : 0;
   const sh = B.skullH;
-  D.eyeY = D.J0 + (sh >= 10 ? 3.9 : 3.45);
+  D.eyeY = D.J0 + (sh >= 10 ? 3.7 : 3.3);      // eye centre (eyes ~3 voxels tall)
   D.eyeX = 2.2;
-  D.mouthY = D.J0 + (sh >= 10 ? 1.45 : 1.2);
-  D.browY = D.J0 + (sh >= 10 ? 6.15 : 5.6);
-  D.hairline = D.J0 + (sh >= 10 ? 7 : 6);      // first row of forehead hair
+  D.mouthY = D.J0 + (sh >= 10 ? 1.35 : 1.15);
+  D.browY = D.J0 + (sh >= 10 ? 5.85 : 5.35);
+  D.hairline = D.J0 + (sh >= 10 ? 7 : 6);      // first row of forehead hair (fringe-less styles)
   return D;
 }
 
@@ -220,6 +230,7 @@ function makePalette(L) {
     f, F: L.shoes.color2 || (lum(f) > 0.7 ? '#e8434f' : '#f2f2f2'), fs: L.shoes.sole || (L.shoes.style === 'boots' || L.shoes.style === 'rainboots' ? '#1d1b22' : '#fbfbf6'),
     k: '#1d1a24', w: '#fbfbf6', sock: L.bottom.sock || '#f5f5f5', g: '#ffd23a', si: '#c9d1dc',
     m: L.face.facial || dark(h, 0.35),
+    st: L.face.facial || mix(s, '#3e4a6a', 0.42), sv: mix(s, dark(h, 0.55), 0.22), bp: mix(b, '#1d1a2a', 0.18),
   };
 }
 
@@ -285,19 +296,19 @@ function buildBottom(C) {
   if (st === 'shorts') C.legWear = 'shorts';
   if (st === 'skirt') {
     C.legWear = L.bottom.tights ? 'tights' : 'bare';
-    const len = Math.max(3, Math.round(D.torso * 0.42));
-    Bd.push(C.cap([0, hip + 1.5, -0.2], [0, hip - len + 0.2, -0.2], cw + 0.2, cw + 1.6, 'b', { stripes: L.bottom.pleats === false ? undefined : { axis: 'x', p: 2, w: 1, col: 'B' } }));
+    const len = Math.max(3, Math.round(D.torso * 0.36));
+    Bd.push(C.cap([0, hip + 1.5, -0.3], [0, hip - len + 0.3, -0.3], cw + 0.25, cw + 1.15, 'b', { stripes: L.bottom.pleats === false ? undefined : { axis: 'x', p: 2, w: 1, col: 'bp' } }));
     Bd.push(C.vb(-cw - 2, cw + 2, hip - len, hip - len, -cd - 2, cd + 2, 'b2', { paint: 1 }));
     Bd.push(C.vb(-cw - 2, cw + 2, hip - len - 1, hip - len - 1, -cd - 2, cd + 2, 'b', { sub: 1 }));
   }
   if (st === 'long_skirt') {
     C.legWear = 'hidden';
-    Bd.push(C.cap([0, hip + 1.5, -0.2], [0, 3.6, -0.2], cw + 0.2, cw + 1.3, 'b', { stripes: { axis: 'x', p: 2, w: 1, col: 'B' } }));
+    Bd.push(C.cap([0, hip + 1.5, -0.2], [0, 3.6, -0.2], cw + 0.2, cw + 1.3, 'b', { stripes: { axis: 'x', p: 2, w: 1, col: 'bp' } }));
     Bd.push(C.vb(-cw - 2, cw + 2, 2, 2, -cd - 2, cd + 2, 'b2', { paint: 1 }));
   }
   if (st === 'hakama') {
     C.legWear = 'hidden';
-    Bd.push(C.cap([0, hip + 1.6, -0.2], [0, 2.6, -0.2], cw + 0.4, cw + 1.9, 'b', { stripes: { axis: 'x', p: 2, w: 1, col: 'B' } }));
+    Bd.push(C.cap([0, hip + 1.6, -0.2], [0, 2.6, -0.2], cw + 0.4, cw + 1.9, 'b', { stripes: { axis: 'x', p: 2, w: 1, col: 'bp' } }));
   }
   if (st === 'overalls') {
     // bib + straps drawn in buildTop (needs the torso)
@@ -315,215 +326,211 @@ function buildBottom(C) {
 function torso(C, col, o = {}) {
   const { D } = C, cw = D.cw + (o.wide || 0), cd = D.cd + (o.deep || 0);
   const j0 = o.j0 ?? D.hipJ + 2, j1 = D.shJ;
-  const sh = [];
-  if (D.hunch) {
-    sh.push(C.vbr ? null : null);
-    sh.push(C.box([0, (j0 + j1 - 3) / 2, 0], [cw + 0.45, (j1 - 3 - j0) / 2 + 0.45, cd + 0.45], col, { round: 1.5 }));
-    sh.push(C.box([0, j1 - 1.5, 0.5], [cw + 0.45, 1.95, cd + 0.45], col, { round: 1.5 }));
-  } else {
-    sh.push(C.box([0, (j0 + j1) / 2, 0], [cw + 0.45, (j1 - j0) / 2 + 0.45, cd + 0.45], col, { round: o.round ?? 1.6 }));
-  }
-  return sh.filter(Boolean);
+  const out = D.hunch
+    ? [C.box([0, (j0 + j1 - 3) / 2, 0], [cw + 0.45, (j1 - 3 - j0) / 2 + 0.45, cd + 0.45], col, { round: 1.5 }),
+      C.box([0, j1 - 1.5, 1], [cw + 0.45, 1.95, cd + 0.45], col, { round: 1.5 })]
+    : [C.box([0, (j0 + j1) / 2, 0], [cw + 0.45, (j1 - j0) / 2 + 0.45, cd + 0.45], col, { round: o.round ?? 1.6 })];
+  // sloped shoulders: drop the top outer column
+  out.push(C.vb(cw, cw, j1, j1, -cd - 1, cd + 2, col, { sub: 1, m: 1 }));
+  return out;
 }
 
 function buildTop(C) {
-  const { D, L } = C, Bd = C.parts.body, st = L.top.style, cw = D.cw, cd = D.cd, hip = D.hipJ, sh = D.shJ;
-  const fz = cd + (D.hunch ? 0 : 0);           // front surface row k
+  const { D, L } = C, Bd = C.parts.body, st = L.top.style, cw = D.cw, cd = D.cd, hip = D.hipJ, sh = D.shJ, hk = D.hz;
   const add = (...s) => Bd.push(...s);
-  const front = (i0, i1, j0, j1, col, o) => add(C.vb(i0, i1, j0, j1, fz, fz + (D.hunch && j0 >= sh - 3 ? 1 : 0), col, Object.assign({ paint: 1 }, o)));
-  const back = (i0, i1, j0, j1, col, o) => add(C.vb(i0, i1, j0, j1, -cd, -cd, col, Object.assign({ paint: 1 }, o)));
-  const hem = (col) => add(C.vb(-cw - 1, cw + 1, hip + 2, hip + 2, -cd - 1, cd + 1, col, { paint: 1 }));
+  // paint helpers on the torso's front / back / all-around surfaces (handles the elderly stoop)
+  const front = (i0, i1, j0, j1, col, o) => add(C.vb(i0, i1, j0, j1, cd, cd + hk, col, Object.assign({ paint: 1 }, o)));
+  const back = (i0, i1, j0, j1, col, o) => add(C.vb(i0, i1, j0, j1, -cd, -cd + hk, col, Object.assign({ paint: 1 }, o)));
+  const ring = (j0, j1, col, o) => add(C.vb(-cw - 1, cw + 1, j0, j1, -cd - 1, cd + 2, col, Object.assign({ paint: 1 }, o)));
+  const sides = (j0, j1, col, o) => add(C.vb(cw, cw, j0, j1, -cd, cd + hk, col, Object.assign({ paint: 1, m: 1 }, o)));
+  const neck = () => front(-1, 1, sh, sh, 's');
+  const glow = L.top.glow;
   C.sleeve = 'long';
-  const neckline = () => front(-1, 1, sh, sh, 's');    // skin V at the collar
   switch (st) {
     case 'hoodie': {
       add(...torso(C, 't', { j0: hip + 1 }));
-      hem('T');
-      front(-2, 2, hip + 3, hip + 5, 'T');                       // kangaroo pocket
-      front(-1, 1, hip + 4, hip + 4, 't');
-      // hood bunched behind the neck
-      add(C.ell([0, sh + 0.6, -cd - 0.6 + D.hz], [cw - 0.3, 1.9, 1.7], 't', { belly: 'T' }));
-      add(C.ell([0, sh + 1.0, -cd - 0.2 + D.hz], [cw - 1.5, 1.2, 1.0], 'T', { paint: 1 }));
-      if (L.top.ears === 'panda') add(C.sph([2.3, sh + 2.6, -cd - 1.2 + D.hz], 1.0, '#1f1d24', { m: 1 }));
-      if (L.top.ears === 'cat') add(C.cap([2.2, sh + 2, -cd - 1.2 + D.hz], [2.6, sh + 3.6, -cd - 1.4 + D.hz], 1.1, 0.3, 't', { m: 1 }));
-      // drawstrings
-      C.decal('body', [0.0, sh - 1.2, cd + 0.5], [0, 0, 1], ['w.w', 'w.w', 'w.w', '...', 'w.w'], { w: L.top.strings || '#f4f4f4' }, 0.45, { snap: false, lift: 0.05 });
-      if (L.top.graphic) chestGraphic(C, L.top.graphic, sh - 3.4);
+      ring(hip + 1, hip + 1, 'T');                                // ribbed hem
+      front(-2, 2, hip + 2, hip + 3, 'T');                        // kangaroo pocket
+      front(-1, 1, sh, sh, 'T');                                  // neck opening
+      // hood bunched behind the shoulders
+      add(C.ell([0, sh - 1.6, -cd - 1.6], [cw - 0.3, 2.1, 1.6], 't', { belly: 'T', bellyT: 0.3 }));
+      add(C.ell([0, sh - 0.8, -cd - 2.4], [cw - 1.4, 1.1, 0.9], 'T', { paint: 1 }));
+      if (L.top.ears === 'panda') add(C.sph([2.3, sh - 0.6, -cd - 3.2], 1.05, '#1f1d24', { m: 1 }));
+      if (L.top.ears === 'cat') add(C.cap([2.2, sh - 1, -cd - 2.8], [2.6, sh + 0.8, -cd - 3.4], 1.1, 0.3, 't', { m: 1 }));
+      C.decal('body', [0, sh - 1.3, cd + 0.5 + hk], [0, 0, 1], ['w.w', 'w.w', 'w.w', 'w.w'], { w: L.top.strings || '#fbfbf6' }, 0.42, { snap: false, lift: 0.04 });
+      if (L.top.graphic) chestGraphic(C, L.top.graphic, sh - 3.6);
       break;
     }
-    case 'jacket': { // 2050 techwear trainer jacket: colour-blocked yoke, neon piping, high collar
+    case 'jacket': { // 2050 trainer jacket: colour-blocked yoke + side panels, V inner, neon zip, glowing back emblem
       add(...torso(C, 't'));
-      front(-1, 1, hip + 2, sh, 't3');                           // inner tee
-      front(-2, -2, hip + 2, sh - 1, L.top.glow || 'g', { glow: L.top.glow ? 2 : 0 });
-      front(2, 2, hip + 2, sh - 1, 't2');                        // zipper flap
-      add(C.vb(-cw - 1, cw + 1, sh - 1, sh, -cd - 1, cd + 1, 't2', { paint: 1 }));   // yoke
-      hem('t2');
-      add(C.vb(-2, 2, sh + 1, sh + 1, -2 + D.hz, 1 + D.hz, 't2'));                   // high collar
-      add(C.vb(-1, 1, sh + 1, sh + 1, 1 + D.hz, 1 + D.hz, 't3', { paint: 1 }));
-      if (L.top.glow) add(C.vb(-cw - 1, cw + 1, sh - 2, sh - 2, -cd - 1, cd + 1, L.top.glow, { paint: 1, glow: 2, side: L.top.glow, sideT: 0.3, front: 't', frontT: 0.6 }));
-      // back emblem
-      const em = L.top.emblem || 'bolt';
-      backEmblem(C, em, sh - 3.5, L.top.glow || '#5ff6ff');
+      ring(sh - 1, sh, 't2');                                     // yoke
+      sides(hip + 2, sh - 2, 't2');                               // side panels
+      ring(hip + 2, hip + 2, 't2');                               // hem band
+      front(-1, 1, sh - 1, sh, 't3'); front(0, 0, sh - 2, sh - 2, 't3');            // inner tee V
+      front(0, 0, hip + 2, sh - 3, glow || 'w', { glow: glow ? 1 : 0 });             // zip line
+      front(-2, -2, hip + 3, hip + 4, 'T'); front(2, 2, hip + 3, hip + 4, 'T');       // pockets
+      backEmblem(C, L.top.emblem || 'bolt', sh - 3.6, glow || L.top.color2 || '#fff');
+      C.flags.cuff = 't2'; C.flags.cuffGlow = glow;
       break;
     }
     case 'tracksuit': {
       add(...torso(C, 't'));
-      front(0, 0, hip + 2, sh, 't2');                            // zip
-      add(C.vb(-cw - 1, cw + 1, hip + 2, hip + 2, -cd - 1, cd + 1, 't2', { paint: 1 }));
-      add(C.vb(-2, 2, sh + 1, sh + 1, -2 + D.hz, 1 + D.hz, 't'));                    // collar
-      add(C.vb(-2, 2, sh + 1, sh + 1, -2 + D.hz, 1 + D.hz, 't2', { paint: 1, top: 't2' }));
-      add(C.vb(-cw, -cw, hip + 2, sh - 1, -cd, cd, 't2', { paint: 1, side: 't2', sideT: 0.5 }));
-      add(C.vb(cw, cw, hip + 2, sh - 1, -cd, cd, 't2', { paint: 1, side: 't2', sideT: 0.5 }));
-      C.flags.armStripe = L.top.color2 || '#f4f4f4';
-      if (L.top.emblem) backEmblem(C, L.top.emblem, sh - 3.5, L.top.color2 || '#fff');
+      front(0, 0, hip + 2, sh, 't2');                             // zip
+      ring(sh, sh, 't2');                                         // collar
+      front(-1, 1, sh, sh, 't');
+      sides(hip + 2, sh - 1, 't2');                               // side stripes
+      ring(hip + 2, hip + 2, 't2');
+      C.flags.armStripe = L.top.color2 || '#fbfbf6';
+      if (L.top.emblem) backEmblem(C, L.top.emblem, sh - 3.6, L.top.color2 || '#fbfbf6');
       break;
     }
     case 'leather': { // studded biker jacket over a tee, back patch
       add(...torso(C, 't'));
-      front(-1, 1, sh - 3, sh, 't3');                            // inner tee V
-      front(0, 0, sh - 3, sh - 3, 't');
-      front(-cw, -2, sh - 1, sh, 'T'); front(2, cw, sh - 1, sh, 'T');               // lapels
-      front(1, 1, hip + 2, sh - 4, '#c9ccd6');                   // offset zip
-      hem('T');
-      // studs on the shoulders
-      for (const x of [-cw, -cw + 2, cw - 2, cw]) add(C.vb(x, x, sh + 1, sh + 1, 0, 0, '#d9dde6'));
-      if (L.top.patch !== false) backPatch(C, sh - 3.5);
+      front(-1, 1, sh - 1, sh, 't3'); front(0, 0, sh - 2, sh - 2, 't3');            // tee V
+      front(-3, -2, sh - 2, sh, 'tl'); front(2, 3, sh - 2, sh, 'tl');                 // lapels
+      front(-3, -3, sh, sh, 'si'); front(3, 3, sh, sh, 'si'); front(-2, -2, sh - 2, sh - 2, 'si'); front(2, 2, sh - 2, sh - 2, 'si');
+      for (let j = hip + 2; j <= sh - 3; j++) front(1, 1, j, j, 'si');              // offset zip
+      ring(hip + 2, hip + 2, 'T');
+      front(-1, -1, hip + 2, hip + 2, 'si');
+      if (L.top.patch !== false) backPatch(C, sh - 3.8);
+      C.flags.studs = true;
       break;
     }
-    case 'vest': { // sleeveless denim vest with patches
+    case 'vest': { // sleeveless denim vest over a tee, patches
       C.sleeve = 'none';
       add(...torso(C, 't'));
-      front(-1, 1, hip + 2, sh, 't2');                           // tee underneath
-      front(-cw, -2, sh - 1, sh, 'T'); front(2, cw, sh - 1, sh, 'T');
-      hem('T');
-      add(C.vb(-cw - 1, cw + 1, sh - 3, sh, -cd - 1, cd + 1, 'tl', { paint: 1, side: 'tl', sideT: 0.7 }));
-      // patches
-      C.decal('body', [-2.2, sh - 3.5, cd + 0.5], [0, 0, 1], ['rrr', 'ryr', 'rrr'], { r: '#e8434f', y: '#ffd33b' }, 0.5, { snap: false, lift: 0.05 });
-      C.decal('body', [2.3, hip + 4, cd + 0.5], [0, 0, 1], ['kkkk', 'kwwk', 'kkkk'], { k: '#1d1a24', w: '#62d36b' }, 0.45, { snap: false, lift: 0.05 });
-      backPatch(C, sh - 3.5, 'riff');
+      front(-1, 1, hip + 2, sh, 't2');                            // tee underneath
+      front(-2, -2, hip + 2, sh, 'tl'); front(2, 2, hip + 2, sh, 'tl');
+      ring(hip + 2, hip + 2, 'tl', { dither: { col: 'w', amt: 0.3 } });
+      sides(sh - 1, sh, 'tl', { dither: { col: 'w', amt: 0.35 } });
+      C.decal('body', [-2.6, sh - 3.2, cd + 0.5], [0, 0, 1], ['rrrr', 'ryyr', 'rrrr'], { r: '#e8434f', y: '#ffd33b' }, 0.42, { snap: false, lift: 0.04 });
+      C.decal('body', [2.7, hip + 3.6, cd + 0.5], [0, 0, 1], ['kkk', 'kgk', 'kkk'], { k: '#1d1a24', g: '#62d36b' }, 0.42, { snap: false, lift: 0.04 });
+      backPatch(C, sh - 3.6, 'riff');
       break;
     }
     case 'tank': {
       C.sleeve = 'none';
       add(...torso(C, 't'));
-      front(-1, 1, sh, sh, 's');
-      back(-1, 1, sh, sh, 's');
-      add(C.vb(-cw, -cw + 1, sh - 1, sh, -cd, cd, 's', { paint: 1 })); add(C.vb(cw - 1, cw, sh - 1, sh, -cd, cd, 's', { paint: 1 }));
+      front(-1, 1, sh, sh, 's'); back(-1, 1, sh, sh, 's');
+      sides(sh - 1, sh, 's'); add(C.vb(cw - 1, cw - 1, sh, sh, -cd, cd, 's', { paint: 1, m: 1 }));
       break;
     }
     case 'labcoat': {
       add(...torso(C, 't'));
-      front(-1, 1, sh - 3, sh, 't2');                            // shirt + tie
-      front(0, 0, sh - 4, sh - 1, 't3');
-      front(-2, -2, hip + 2, sh, 'T'); front(2, 2, hip + 2, sh, 'T');               // lapel edges
-      front(-cw, -cw + 1, hip + 4, hip + 4, 'T'); front(cw - 1, cw, sh - 3, sh - 3, 'T');
-      front(cw - 1, cw - 1, sh - 2, sh - 2, '#3a8bff');          // pen
-      // coat tails (open at the front)
-      const tl = Math.round(D.torso * 0.55);
-      add(C.vb(-cw, cw, hip - tl, hip + 1, -cd, cd, 't'));
+      front(-1, 1, sh - 3, sh, 't2'); front(0, 0, sh - 4, sh - 1, 't3');            // shirt + tie
+      front(-2, -2, hip + 2, sh, 'T'); front(2, 2, hip + 2, sh, 'T');                 // lapel edges
+      front(-3, -3, hip + 4, hip + 4, 'T'); front(3, 3, sh - 3, sh - 3, 'T');
+      front(3, 3, sh - 2, sh - 2, '#3a8bff');                     // pen
+      const tl = Math.round(D.torso * 0.6);
+      add(C.vb(-cw, cw, hip - tl, hip + 1, -cd, cd, 't'));          // coat tails, open at the front
       add(C.vb(-1, 1, hip - tl, hip + 1, 1, cd, 'b', { sub: 1 }));
       add(C.vb(-cw, cw, hip - tl, hip - tl, -cd, cd, 'T', { paint: 1 }));
-      C.flags.coat = tl;
+      add(C.vb(0, 0, hip - tl, hip - 2, -cd, -cd, 'T', { paint: 1 }));
       break;
     }
     case 'apron': {
       add(...torso(C, 't2'));
+      neck();
       C.sleeve = 'short';
-      C.flags.apron = { color: 't', len: Math.round(D.torso * 0.4) };
+      C.flags.apron = { color: 't', len: Math.round(D.torso * 0.45) };
       break;
     }
     case 'suit': {
       add(...torso(C, 't'));
-      front(-1, 1, sh - 4, sh, 't2');                            // shirt V
-      front(0, 0, sh - 5, sh - 1, 't3');                         // tie
-      front(0, 0, sh, sh, 't3');
-      front(-2, -2, sh - 4, sh, 'T'); front(2, 2, sh - 4, sh, 'T');                 // lapels
-      front(0, 0, hip + 3, hip + 3, '#20202a');                  // button
-      add(C.vb(-1, 1, sh + 1, sh + 1, -1 + D.hz, 1 + D.hz, 't2'));                    // shirt collar
+      front(-1, 1, sh - 3, sh, 't2');                             // shirt V
+      front(0, 0, sh - 4, sh - 1, 't3');                          // tie
+      front(-2, -2, sh - 3, sh, 'T'); front(2, 2, sh - 3, sh, 'T');                   // lapels
+      front(0, 0, hip + 3, hip + 3, '#20202a');
       C.flags.cuff = 't2';
       break;
     }
-    case 'happi': { // festival coat: contrasting collar band, obi, wide sleeves
+    case 'happi': { // festival coat: contrasting collar band, obi, wide sleeves, crest on the back
       add(...torso(C, 't'));
       front(-1, 1, hip + 3, sh, L.top.inner || 's');
-      front(-2, -2, hip + 2, sh, 't2'); front(2, 2, hip + 2, sh, 't2');
-      add(C.vb(-2, 2, sh, sh, -cd, cd, 't2', { paint: 1, top: 't2' }));
-      add(C.vb(-cw - 1, cw + 1, hip + 2, hip + 3, -cd - 1, cd + 1, 't3', { paint: 1 }));                          // obi
-      C.decal('body', [-2, sh - 2.5, cd + 0.5], [0, 0, 1], ['w', '.', 'w', 'w', '.', 'w'], { w: '#fbfbf6' }, 0.4, { snap: false, lift: 0.05 });
-      C.decal('body', [2, sh - 2.5, cd + 0.5], [0, 0, 1], ['w', 'w', '.', 'w', '.', 'w'], { w: '#fbfbf6' }, 0.4, { snap: false, lift: 0.05 });
-      backEmblem(C, 'matsuri', sh - 3.5, L.top.color2 || '#fff');
+      front(-2, -2, hip + 2, sh, 't2'); front(2, 2, hip + 2, sh, 't2'); back(-2, 2, sh, sh, 't2');
+      ring(hip + 2, hip + 3, 't3');                               // obi
+      C.decal('body', [-2, sh - 2.4, cd + 0.5 + hk], [0, 0, 1], ['w', '.', 'w', 'w'], { w: '#fbfbf6' }, 0.36, { snap: false, lift: 0.04 });
+      C.decal('body', [2, sh - 2.4, cd + 0.5 + hk], [0, 0, 1], ['w', 'w', '.', 'w'], { w: '#fbfbf6' }, 0.36, { snap: false, lift: 0.04 });
+      backEmblem(C, 'matsuri', sh - 3.6, L.top.color2 || '#fbfbf6');
       C.sleeve = 'wide';
       break;
     }
     case 'uniform': { // staff polo: collar, placket, name tag
       add(...torso(C, 't'));
-      add(C.vb(-2, 2, sh, sh + 1, -2 + D.hz, 1 + D.hz, 't2'));
-      add(C.vb(-1, 1, sh + 1, sh + 1, -1 + D.hz, 0 + D.hz, 't2', { sub: 1 }));
+      front(-2, 2, sh, sh, 't2'); back(-2, 2, sh, sh, 't2'); front(0, 0, sh, sh, 's');
       front(0, 0, sh - 3, sh - 1, 't2');
-      hem('T');
-      if (!L.acc.badge) C.decal('body', [2.1, sh - 2.5, cd + 0.5], [0, 0, 1], ['wwww', 'wkkw', 'wwww'], { w: '#fbfbf6', k: '#5a6170' }, 0.45, { snap: false, lift: 0.05 });
-      C.sleeve = 'short';
+      ring(hip + 2, hip + 2, 'T');
+      if (!L.acc.badge && L.top.tag !== false) C.decal('body', [2.1, sh - 2.4, cd + 0.5 + hk], [0, 0, 1], ['wwww', 'wkkw', 'wwww'], { w: '#fbfbf6', k: '#5a6170' }, 0.42, { snap: false, lift: 0.04 });
+      C.sleeve = 'short'; C.flags.cuff = 't2';
       break;
     }
     case 'sailor': {
       add(...torso(C, 't'));
-      add(C.vb(-cw - 1, cw + 1, sh - 1, sh, -cd - 1, cd + 1, 't2', { paint: 1 }));
-      back(-cw, cw, sh - 3, sh, 't2');
-      front(-1, 1, sh - 2, sh - 2, 't3'); front(0, 0, sh - 3, sh - 3, 't3');         // scarf
-      add(C.vb(-cw - 1, cw + 1, sh - 2, sh - 2, -cd - 1, -cd, 'w', { paint: 1 }));
+      ring(sh - 1, sh, 't2'); back(-cw, cw, sh - 3, sh, 't2'); back(-cw + 1, cw - 1, sh - 3, sh - 3, 'w');
+      front(-1, 1, sh, sh, 's'); front(0, 0, sh - 1, sh - 1, 's');
+      front(-1, 1, sh - 2, sh - 2, 't3'); front(0, 0, sh - 3, sh - 3, 't3');         // scarf knot
+      C.flags.cuff = 't2';
       break;
     }
     case 'gakuran': {
       add(...torso(C, 't'));
-      add(C.vb(-2, 2, sh + 1, sh + 1, -2 + D.hz, 1 + D.hz, 't'));
+      front(-2, 2, sh, sh, 'T'); back(-2, 2, sh, sh, 'T');
       for (let j = hip + 3; j <= sh - 1; j += 2) front(0, 0, j, j, '#e7c35a');
-      hem('T');
+      ring(hip + 2, hip + 2, 'T');
       break;
     }
     case 'kimono': case 'gi': {
       add(...torso(C, 't'));
-      // crossover collar (left over right): diagonal lining bands
-      for (let n = 0; n < 4; n++) { front(-1 + n - 1, -1 + n - 1, sh - n, sh - n, 't2'); front(1 - n + 1, 1 - n + 1, sh - n, sh - n, 't2'); }
-      front(0, 0, sh - 3, sh, 's'); front(-1, 1, sh, sh, 's');
-      add(C.vb(-cw - 1, cw + 1, hip + 2, hip + 3, -cd - 1, cd + 1, 't3', { paint: 1 }));                           // obi / belt
+      // crossover collar (left over right) — lining band + skin V
+      front(-1, 1, sh, sh, 's'); front(0, 0, sh - 1, sh - 1, 's');
+      front(-2, -2, sh, sh, 't2'); front(2, 2, sh, sh, 't2'); front(-1, -1, sh - 1, sh - 1, 't2'); front(1, 1, sh - 1, sh - 1, 't2');
+      for (let n = 0; n <= 3; n++) front(n, n, sh - 2 - n, sh - 2 - n, 't2');
+      back(-2, 2, sh, sh, 't2');
       if (st === 'kimono') {
-        add(C.box([0, hip + 3, -cd - 1.2], [2.2, 1.6, 1.0], 't3', { round: 0.8 }));                                // obi bow
+        ring(hip + 2, hip + 4, 't3');                             // wide obi
+        ring(hip + 3, hip + 3, L.top.obiCord || '#ffd33b');
+        add(C.box([0, hip + 3.5, -cd - 1.1], [2.4, 1.5, 0.9], 't3', { round: 0.7 }));   // obi bow
         C.sleeve = 'wide';
-        if (L.bottom.style !== 'hakama') { C.legWear = 'hidden'; add(C.cap([0, hip + 2, -0.2], [0, 2.4, -0.1], cw + 0.6, cw + 0.9, 't')); add(C.vb(-cw - 2, cw + 2, 2, 2, -cd - 2, cd + 2, 't2', { paint: 1 })); front(0, 0, 3, hip + 1, 't2'); }
-      } else C.sleeve = 'gi';
+        if (L.bottom.style !== 'hakama') {
+          C.legWear = 'hidden';
+          add(C.cap([0, hip + 2, -0.2], [0, 2.3, -0.1], cw + 0.5, cw + 0.9, 't'));
+          add(C.vb(-cw - 2, cw + 2, 2, 2, -cd - 2, cd + 2, 't2', { paint: 1 }));
+          add(C.vb(1, 1, 2, hip + 1, cd, cd + 2, 't2', { paint: 1 }));
+        }
+      } else { ring(hip + 2, hip + 2, 't3'); front(-1, -1, hip + 1, hip + 1, 't3'); C.sleeve = 'gi'; }
       break;
     }
     case 'field': { // khaki field shirt: collar, flap pockets, rolled sleeves
       add(...torso(C, 't'));
-      add(C.vb(-2, 2, sh, sh + 1, -2 + D.hz, 1 + D.hz, 'T'));
-      add(C.vb(-1, 1, sh + 1, sh + 1, -1 + D.hz, 0 + D.hz, 'T', { sub: 1 }));
-      front(-1, 1, sh, sh, 's'); front(0, 0, sh - 1, sh - 1, 's');
+      front(-2, 2, sh, sh, 'T'); back(-2, 2, sh, sh, 'T'); front(-1, 1, sh, sh, 's'); front(0, 0, sh - 1, sh - 1, 's');
       front(-2, -1, sh - 3, sh - 2, 'T'); front(1, 2, sh - 3, sh - 2, 'T');
       front(-2, -1, sh - 2, sh - 2, 't2'); front(1, 2, sh - 2, sh - 2, 't2');
       front(0, 0, hip + 2, sh - 2, 'T');
-      if (L.top.patch) C.decal('armL', [D.armI1 + 0.5, sh - 2.5, -0.5], [1, 0, 0], ['.gg.', 'gyyg', 'gyyg', '.gg.'], { g: L.top.patch, y: '#ffd33b' }, 0.45, { lift: 0.3 });
+      ring(hip + 2, hip + 2, 'T');
+      if (L.top.patch) C.decal('armL', [D.armI1 + 0.5, sh - 2.5, -0.5], [1, 0, 0], ['.gg.', 'gyyg', 'gyyg', '.gg.'], { g: L.top.patch, y: '#ffd33b' }, 0.4, { lift: 0.3 });
       C.sleeve = 'rolled';
       break;
     }
     case 'cardigan': {
-      add(...torso(C, 't', {}));
-      add(C.vb(-cw - 1, cw + 1, hip + 2, sh, -cd - 1, cd + 1, 't', { paint: 1, dither: { col: 'tl', amt: 0.25 } }));
-      front(-1, 1, sh - 3, sh, 't2');
+      add(...torso(C, 't'));
+      ring(hip + 2, sh, 't', { dither: { col: 'tl', amt: 0.22 } });
+      front(-1, 1, sh - 2, sh, 't2'); front(0, 0, sh, sh, 's');
       front(-2, -2, hip + 2, sh, 'T'); front(2, 2, hip + 2, sh, 'T');
-      for (let j = hip + 3; j <= sh - 3; j += 2) front(-2, -2, j, j, '#e7d9b8');
-      hem('T');
+      for (let j = hip + 3; j <= sh - 3; j += 2) front(-2, -2, j, j, '#efe2c2');
+      ring(hip + 2, hip + 2, 'T');
       break;
     }
     case 'sweater': {
       add(...torso(C, 't'));
-      add(C.vb(-cw - 1, cw + 1, hip + 2, sh, -cd - 1, cd + 1, 't', { paint: 1, stripes: L.top.stripes ? { axis: 'y', p: 2, w: 1, col: 't2', o: 0.5 } : undefined }));
-      add(C.vb(-2, 2, sh + 1, sh + 1, -2 + D.hz, 1 + D.hz, 'T'));
-      hem('T');
+      if (L.top.stripes) ring(hip + 2, sh, 't', { stripes: { axis: 'y', p: 2, w: 1, col: 't2', o: 0.5 } });
+      front(-2, 2, sh, sh, 'T'); back(-2, 2, sh, sh, 'T');
+      ring(hip + 2, hip + 2, 'T');
+      if (L.top.graphic) chestGraphic(C, L.top.graphic, sh - 3.4);
       break;
     }
     case 'hawaiian': {
       add(...torso(C, 't'));
-      add(C.vb(-cw - 1, cw + 1, hip + 2, sh, -cd - 1, cd + 1, 't', { paint: 1, spots: { col: 't2', d: 0.32, s: 1.1, seed: 3 } }));
+      ring(hip + 2, sh, 't', { spots: L.top.pattern === 'leopard' ? { col: 't2', d: 0.42, s: 0.62, seed: 5 } : { col: 't2', d: 0.34, s: 1.0, seed: 3 } });
       front(-1, 1, sh - 1, sh, 's'); front(0, 0, sh - 2, sh - 2, 's');
       front(-2, -2, sh - 2, sh, 'T'); front(2, 2, sh - 2, sh, 'T');
       C.sleeve = 'short';
@@ -531,38 +538,34 @@ function buildTop(C) {
     }
     case 'hivis': {
       add(...torso(C, 't2'));
-      add(C.vb(-cw - 1, cw + 1, hip + 2, sh, -cd - 1, cd + 1, 't', { paint: 1 }));
-      add(C.vb(-cw - 1, cw + 1, hip + 4, hip + 4, -cd - 1, cd + 1, '#e8eef2', { paint: 1, glow: 1 }));
-      front(-1, 1, sh - 2, sh, 't2');
-      C.sleeve = 'short';
+      ring(hip + 2, sh, 't');
+      ring(hip + 4, hip + 4, '#eef4f6', { glow: 1 });
+      front(-1, 1, sh - 1, sh, 't2'); front(0, 0, sh - 2, sh - 2, 't2');
+      C.sleeve = 'short'; C.flags.sleeveCol = 't2';
       break;
     }
-    case 'dress': { // idol dress: bodice + bow + frills
+    case 'dress': { // idol dress: bodice, white frill collar, chest bow
       add(...torso(C, 't'));
-      front(-1, 1, sh, sh, 's');
-      add(C.vb(-cw - 1, cw + 1, sh, sh, -cd - 1, cd + 1, 'w', { paint: 1, top: 'w' }));
-      add(C.box([0, sh - 1.2, cd + 0.9], [1.6, 0.7, 0.5], 't2'));                     // bow
-      add(C.vb(0, 0, sh - 1, sh - 1, cd + 1, cd + 1, 't3'));
-      add(C.vb(-cw - 1, cw + 1, hip + 2, hip + 2, -cd - 1, cd + 1, 't2', { paint: 1 }));
+      ring(sh, sh, 'w'); front(-1, 1, sh, sh, 's');
+      add(C.box([0, sh - 1.5, cd + 0.8 + hk], [1.6, 0.7, 0.45], 't2'));                // bow
+      add(C.vb(0, 0, sh - 1, sh - 2, cd + 1 + hk, cd + 1 + hk, 't3'));
+      ring(hip + 2, hip + 2, 't2');
       C.sleeve = 'puff';
       break;
     }
     case 'tee': default: {
       add(...torso(C, 't'));
-      neckline();
-      add(C.vb(-1, 1, sh, sh, -cd, -cd + 1, 'T', { paint: 1 }));
+      neck(); back(-1, 1, sh, sh, 'T');
       C.sleeve = L.top.sleeves || 'short';
-      if (L.top.graphic) chestGraphic(C, L.top.graphic, sh - 3);
+      if (L.top.graphic) chestGraphic(C, L.top.graphic, sh - 3.2);
       break;
     }
   }
   if (C.flags.overalls) {
-    front(-2, 2, hip + 2, sh - 2, 'b'); front(-2, 2, hip + 2, sh - 2, 'b');
-    add(C.vb(-2, 2, hip + 2, sh - 2, cd, cd, 'b'));
-    front(-2, -2, sh - 1, sh, 'b'); front(2, 2, sh - 1, sh, 'b');
+    front(-2, 2, hip + 2, sh - 3, 'b'); front(-2, -2, sh - 2, sh, 'b'); front(2, 2, sh - 2, sh, 'b');
     back(-2, -2, hip + 2, sh, 'b'); back(2, 2, hip + 2, sh, 'b');
-    front(-2, -2, sh - 2, sh - 2, '#e7c35a'); front(2, 2, sh - 2, sh - 2, '#e7c35a');
-    front(-1, 1, sh - 4, sh - 4, 'B');
+    front(-2, -2, sh - 3, sh - 3, '#e7c35a'); front(2, 2, sh - 3, sh - 3, '#e7c35a');
+    front(-1, 1, hip + 3, hip + 4, 'B');
   }
 }
 
@@ -574,10 +577,12 @@ const GRAPHICS = {
   takoyaki: ['.ooo.', 'obobo', 'ooooo', 'obobo', '.ooo.'],
   smile: ['.yyy.', 'ykyky', 'yyyyy', 'ykkky', '.yyy.'],
   stone: ['..c..', '.ccc.', 'cwccc', '.ccc.', '..c..'],
+  beetle: ['k....', '.k.b.', '.bbbb', 'bbobb', '.b.b.'],
 };
+const GRAPHIC_CMAP = { p: '#ff5d7c', y: '#ffd33b', o: '#d78a3c', b: '#5a2e1c', k: '#1d1a24', c: '#38f0ff', w: '#ffffff' };
 function chestGraphic(C, g, y) {
   const rows = GRAPHICS[g] || GRAPHICS.star;
-  C.decal('body', [0, y, C.D.cd + 0.5], [0, 0, 1], rows, { p: '#ff5d7c', y: '#ffd33b', o: '#d78a3c', b: '#5a2e1c', k: '#1d1a24', c: '#38f0ff', w: '#ffffff' }, 0.5, { snap: false, lift: 0.05 });
+  C.decal('body', [0, y, C.D.cd + 0.5 + C.D.hz], [0, 0, 1], rows, GRAPHIC_CMAP, 0.5, { snap: false, lift: 0.05 });
 }
 // glowing back emblems
 const EMBLEMS = {
@@ -603,239 +608,246 @@ function backPatch(C, y, kind) {
 
 // ============================================================ arms
 function buildArms(C) {
-  const { D, L } = C, sl = C.sleeve;
+  const { D, L } = C, sl = C.sleeve, sc = C.flags.sleeveCol || 't';
   const handCol = L.acc.gloves ? (L.acc.gloves.color || '#2b2b33') : 's';
   for (const s of [1, -1]) {
     const A = C.arm(s);
-    const i0 = s * D.armI0, i1 = s * D.armI1, io = s > 0 ? Math.max(i0, i1) : Math.min(i0, i1), ii = s > 0 ? Math.min(i0, i1) : Math.max(i0, i1);
-    const k0 = D.armK0 + (D.hunch ? 0 : 0), k1 = D.armK1;
+    const i0 = s * D.armI0, i1 = s * D.armI1, io = s > 0 ? D.armI1 : -D.armI1;
+    const k0 = D.armK0, k1 = D.armK1;
     const top = D.shJ - 1, wr = D.handJ1 + 1, h0 = D.handJ0, h1 = D.handJ1;
-    // sleeve / skin
     A.push(C.vb(i0, i1, wr, top, k0, k1, 's'));
-    if (sl === 'long' || sl === 'wide' || sl === 'gi') A.push(C.vb(i0, i1, wr, top, k0, k1, 't', { paint: 1 }));
-    if (sl === 'long') A.push(C.vb(i0, i1, wr, wr, k0, k1, C.flags.cuff || 'T', { paint: 1 }));
-    if (sl === 'short' || sl === 'puff') A.push(C.vb(i0, i1, top - 2, top, k0, k1, 't', { paint: 1 }));
-    if (sl === 'puff') A.push(C.vb(i0, io, top - 2, top - 1, k0 - 1, k1 + 1, 't'), C.vb(io + s, io + s, top - 2, top - 1, k0, k1, 't'), C.vb(i0, io + s, top - 2, top - 2, k0 - 1, k1 + 1, 'w', { paint: 1 }));
-    if (sl === 'rolled') A.push(C.vb(i0, i1, top - 4, top, k0, k1, 't', { paint: 1 }), C.vb(i0, i1, top - 4, top - 4, k0, k1, 'tl', { paint: 1 }));
+    if (sl === 'long' || sl === 'wide' || sl === 'gi') A.push(C.vb(i0, i1, wr, top, k0, k1, sc, { paint: 1 }));
+    if (sl === 'long') A.push(C.vb(i0, i1, wr, wr, k0, k1, C.flags.cuffGlow || C.flags.cuff || 'T', { paint: 1, glow: C.flags.cuffGlow ? 1 : 0 }));
+    if (sl === 'short' || sl === 'puff') A.push(C.vb(i0, i1, top - 2, top, k0, k1, sc, { paint: 1 }));
+    if (sl === 'short' && C.flags.cuff) A.push(C.vb(i0, i1, top - 2, top - 2, k0, k1, C.flags.cuff, { paint: 1 }));
+    if (sl === 'puff') A.push(C.vb(i0, i1 + s, top - 2, top - 1, k0 - 1, k1 + 1, 't'), C.vb(i0, i1 + s, top - 2, top - 2, k0 - 1, k1 + 1, 'w', { paint: 1 }));
+    if (sl === 'rolled') A.push(C.vb(i0, i1, top - 4, top, k0, k1, sc, { paint: 1 }), C.vb(i0, i1, top - 4, top - 4, k0, k1, 'tl', { paint: 1 }));
     if (sl === 'gi') A.push(C.vb(i0, i1, wr, wr + 2, k0, k1, 's', { paint: 1 }));
     if (sl === 'wide') { // hanging kimono / happi sleeve
-      A.push(C.vb(i0, io + s, wr, wr + 3, k0 - 1, k1 + 1, 't'));
-      A.push(C.vb(i0, io + s, wr, wr, k0 - 1, k1 + 1, 't2', { paint: 1 }));
+      A.push(C.vb(i0, i1 + s, wr, wr + 3, k0 - 1, k1 + 1, sc));
+      A.push(C.vb(i0, i1 + s, wr, wr, k0 - 1, k1 + 1, 't2', { paint: 1 }));
     }
-    if (C.flags.armStripe && (sl === 'long')) A.push(C.vb(io, io, wr + 1, top, k0, k1, C.flags.armStripe, { paint: 1 }));
+    if (C.flags.armStripe && sl === 'long') A.push(C.vb(io, io, wr + 1, top, k0, k1, C.flags.armStripe, { paint: 1, side: C.flags.armStripe, sideT: 0.5, front: sc, back: sc }));
+    if (C.flags.studs) for (const k of [k0, k1]) A.push(C.vb(io, io, top + 1, top + 1, k, k, 'si'));
     // hand
     A.push(C.vb(i0, i1, h0, h1, k0, k1, handCol));
     if (L.acc.gloves && L.acc.gloves.style === 'fingerless') A.push(C.vb(i0, i1, h0, h0, k0, k1, 's', { paint: 1 }));
-    // tattoos (paint stripes on bare upper arms)
-    if (L.face.tattoo && sl !== 'long') A.push(C.vb(i0, i1, top - 6, top - 1, k0, k1, L.face.tattoo, { paint: 1, stripes: { axis: 'y', p: 2, w: 1, col: L.face.tattoo }, dither: { col: 's', amt: 0.35 } }));
+    // tattoo sleeves on bare upper arms
+    if (L.face.tattoo && sl !== 'long') A.push(C.vb(i0, i1, top - 6, top - 1, k0, k1, L.face.tattoo, { paint: 1, stripes: { axis: 'y', p: 2, w: 1, col: L.face.tattoo }, dither: { col: 's', amt: 0.3 } }));
   }
 }
 
 // ============================================================ head & hair
 function headGeo(C) {
   const D = C.D;
-  return { J0: D.J0, J1: D.J1, z: D.hz, fz: D.faceZ, c: (D.J0 + D.J1) / 2, hl: D.hairline, eyeTop: D.eyeY + 1.6, small: D.skullH < 10 };
+  const G = { J0: D.J0, J1: D.J1, z: D.hz, fz: D.faceZ, c: (D.J0 + D.J1) / 2, small: D.skullH < 10 };
+  G.lo = D.browY + 0.5;              // lowest a fringe may hang over the brows
+  G.win = D.J1 - 1;                  // face window carved up to this row (fringe styles)
+  G.hl = D.hairline;                 // hairline for fringe-less styles
+  G.kf = Math.round(G.fz + 0.5);     // voxel layer just in front of the face
+  return G;
 }
 
-// hair helmet around the skull (before the skull is added); ext = thickness
+// rounded hair helmet around the skull (added BEFORE the skull); ext = thickness, lift = extra volume on top
 function shell(C, G, o = {}) {
-  const ext = o.ext ?? 1, bot = o.bot ?? G.J0, top = G.J1 + ext + (o.lift || 0);
-  const cy = (bot + top) / 2, hy = (top - bot) / 2 + 0.45;
-  return C.box([0, cy, G.z - 0.3 - (o.back || 0) * 0.5], [4.45 + ext + (o.wide || 0), hy, 4.4 + ext + (o.back || 0) * 0.5], 'h',
-    Object.assign({ round: o.round ?? 2.2, belly: 'H', bellyT: 0.5, noise: o.noise, noiseScale: o.noiseScale ?? 1.6 }, o.opts));
+  const ext = o.ext ?? 1, bot = o.bot ?? G.J0, top = G.J1 + ext + (o.lift ?? 1);
+  const back = o.back || 0, wide = o.wide || 0;
+  return C.box([0, (bot + top) / 2, G.z - 0.3 - back * 0.5], [4.45 + ext + wide, (top - bot) / 2 + 0.45, 4.4 + ext + back * 0.5], 'h',
+    Object.assign({ round: o.round ?? 2.8, belly: 'H', bellyT: 0.45, noise: o.noise, noiseScale: o.noiseScale ?? 1.6 }, o.opts));
 }
-// remove hair in front of the face below the hairline (cols −w..w)
-const faceWindow = (C, G, w = 4, hl = G.hl) => C.vb(-w, w, G.J0 - 3, hl - 1, 1 + G.z, 9 + G.z, 'h', { sub: 1 });
-// open the shell around the ears (short styles)
-const earCut = (C, G, j1 = G.J0 + 4) => C.vb(5, 6, G.J0 - 2, j1, -2 + G.z, 1 + G.z, 'h', { sub: 1, m: 1 });
-// fringe of downward spikes at the front (z = face + 1): xs = tip x, len = rows below the hairline
-function fringe(C, G, tips, o = {}) {
-  const out = [], zf = G.fz + 0.5 + (o.dz || 0);
-  for (const [x, low, w] of tips) {
-    const ww = w ?? 1.5, top = G.J1 + 0.5;
-    out.push(C.poly([0, 0, zf], [[x - ww, top], [x + ww, top], [x + (o.lean || 0), low]], 0.45, 'h', { plane: 'xy', belly: 'H', bellyT: 0.5 }));
-  }
-  return out;
+// carve the hair in front of the face (cols −w..w) up to row `top`
+const faceWindow = (C, G, top = G.win, w = 4) => C.vb(-w, w, G.J0 - 3, top, 1 + G.z, 10 + G.z, 'h', { sub: 1 });
+// open the shell exactly where the ears go (short styles)
+const earCut = (C, G) => C.vb(5, 7, G.J0 + 1, G.J0 + 4, -1 + G.z, 0 + G.z, 'h', { sub: 1, m: 1 });
+// fringe: one voxel layer in front of the forehead; edge = jagged bottom outline from x=+5 to x=−5
+function bangs(C, G, edge, o = {}) {
+  const top = G.J1 + 1.5, pts = [[-5.0, top], [5.0, top], ...edge];
+  return C.poly([0, 0, G.kf + (o.dz || 0)], pts, 0.45 + (o.thick || 0), 'h', { plane: 'xy', belly: 'H', bellyT: 0.5 });
 }
-const fringeBlock = (C, G, low, w = 4) => C.vb(-w, w, low, G.J1, Math.round(G.fz + 0.5), Math.round(G.fz + 0.5), 'h', { belly: 'H', bellyT: 0.6 });
-const spike = (C, a, b, r0, r1 = 0.3, o = {}) => C.cap(a, b, r0, r1, 'h', Object.assign({ belly: 'H', bellyT: 0.5 }, o));
+const spike = (C, a, b, r0, r1 = 0.35, o = {}) => C.cap(a, b, r0, Math.max(r1, 0.55), 'h', Object.assign({ belly: 'H', bellyT: 0.45 }, o));
+const tipOpt = (C) => (C.L.hair.color2 ? { tip: 'h2', tipT: 0.5 } : {});
+// side locks hanging in front of the ears
+const sideLocks = (C, G, low = G.J0 + 1, r = 1.25) => [spike(C, [4.9, G.J0 + 5.5, G.z + 2], [5.2, low, G.z + 2.6], r, 0.45), spike(C, [-4.9, G.J0 + 5.5, G.z + 2], [-5.2, low, G.z + 2.6], r, 0.45)];
+
+// fringe outlines (x from +5 → −5); y relative to G.lo (lowest-over-brows) unless absolute
+const FRINGE = {
+  spiky: (G) => { const l = G.lo; return [[5, l - 2.4], [4.1, l + 0.4], [3.2, l], [2.4, l + 1.0], [1.5, l - 0.1], [0.7, l + 1.0], [0, l - 1.6], [-0.7, l + 0.9], [-1.6, l], [-2.5, l + 1.1], [-3.4, l + 0.05], [-4.2, l + 0.6], [-5, l - 2.2]]; },
+  messy: (G) => { const l = G.lo; return [[5, l - 1.6], [3.9, l + 0.3], [2.9, l - 0.1], [1.8, l + 0.9], [0.5, l - 0.7], [-0.7, l + 0.7], [-2.0, l - 0.1], [-3.2, l + 0.8], [-4.2, l - 0.2], [-5, l - 1.4]]; },
+  blunt: (G) => [[5, G.lo - 0.1], [-5, G.lo - 0.1]],
+  curtain: (G) => { const l = G.lo; return [[5, l - 3.0], [3.6, l + 0.2], [1.6, l + 1.2], [0.5, G.J1 - 0.5], [-0.5, G.J1 - 0.5], [-1.6, l + 1.2], [-3.6, l + 0.2], [-5, l - 3.0]]; },
+  swoop: (G) => { const l = G.lo; return [[5, l + 2.2], [3.2, l + 1.7], [1.2, l + 0.9], [-0.8, l + 0.1], [-2.6, l - 0.1], [-3.9, l - 0.6], [-5, l - 2.6]]; },
+  wispy: (G) => { const l = G.lo; return [[5, l - 2.0], [3.6, l + 0.2], [2.4, l - 0.1], [1.2, l + 0.8], [0, l - 0.4], [-1.2, l + 0.8], [-2.4, l - 0.1], [-3.6, l + 0.2], [-5, l - 2.0]]; },
+};
 
 const HAIR = {
   spiky(C, G, pre, post, top) {
-    pre.push(shell(C, G, { ext: 1 }), faceWindow(C, G, 4), earCut(C, G));
-    const z = G.z, J1 = G.J1, c = G.c, tip = C.L.hair.color2 ? { tip: 'h2', tipT: 0.55 } : {};
-    top(spike(C, [0, J1 - 0.5, z - 0.5], [0.3, J1 + 3.6, z - 2.8], 2.1, 0.3, tip));
-    top(spike(C, [2.6, J1 - 0.8, z - 0.2], [4.6, J1 + 2.6, z - 2.2], 1.8, 0.3, tip));
-    top(spike(C, [-2.6, J1 - 0.8, z - 0.2], [-4.4, J1 + 2.8, z - 2.4], 1.8, 0.3, tip));
-    top(spike(C, [1.2, J1 - 0.5, z + 2.2], [2.2, J1 + 2.4, z + 4.0], 1.6, 0.3, tip));
-    top(spike(C, [-1.6, J1 - 0.5, z + 2.0], [-2.6, J1 + 2.2, z + 3.6], 1.5, 0.3, tip));
-    post.push(spike(C, [4.2, c + 2.5, z - 1.5], [7.4, c + 3.2, z - 3.2], 1.6, 0.3, tip));
-    post.push(spike(C, [-4.2, c + 2.5, z - 1.5], [-7.4, c + 2.8, z - 3.0], 1.6, 0.3, tip));
-    post.push(spike(C, [0, c + 1.5, z - 4.2], [0.3, c + 1.0, z - 7.6], 1.9, 0.3, tip));
-    post.push(spike(C, [3.0, c - 1, z - 4.0], [4.6, c - 2.6, z - 6.6], 1.6, 0.3, tip));
-    post.push(spike(C, [-3.0, c - 1, z - 4.0], [-4.6, c - 2.4, z - 6.4], 1.6, 0.3, tip));
-    post.push(spike(C, [4.6, G.J0 + 4.5, z + 1.5], [5.3, G.J0 + 1.4, z + 2.4], 1.2, 0.3));        // sideburn spikes
-    post.push(spike(C, [-4.6, G.J0 + 4.5, z + 1.5], [-5.3, G.J0 + 1.4, z + 2.4], 1.2, 0.3));
-    post.push(...fringe(C, G, [[-3.3, G.hl - 1.8, 1.6], [-0.9, G.hl - 2.6, 1.7], [1.7, G.hl - 2.2, 1.7], [3.7, G.hl - 1.4, 1.3]]));
+    pre.push(shell(C, G), faceWindow(C, G), earCut(C, G));
+    const z = G.z, J1 = G.J1, c = G.c, t = tipOpt(C);
+    top(spike(C, [0, J1 + 1, z - 0.8], [0.4, J1 + 5.2, z - 3.6], 2.7, 0.35, t));
+    top(spike(C, [2.8, J1 + 0.6, z - 0.4], [5.4, J1 + 3.6, z - 2.6], 2.4, 0.35, t));
+    top(spike(C, [-2.8, J1 + 0.6, z - 0.4], [-5.2, J1 + 3.9, z - 2.9], 2.4, 0.35, t));
+    top(spike(C, [1.6, J1 + 1, z + 2.4], [2.8, J1 + 3.6, z + 4.4], 2.1, 0.35, t));
+    top(spike(C, [-1.8, J1 + 1, z + 2.2], [-3.0, J1 + 3.3, z + 4.0], 2.0, 0.35, t));
+    post.push(spike(C, [4.4, c + 2.5, z - 1.5], [8.2, c + 3.4, z - 3.6], 2.0, 0.35, t));
+    post.push(spike(C, [-4.4, c + 2.5, z - 1.5], [-8.2, c + 3.0, z - 3.4], 2.0, 0.35, t));
+    post.push(spike(C, [0, c + 1.5, z - 4.4], [0.4, c + 0.6, z - 8.6], 2.4, 0.35, t));
+    post.push(spike(C, [3.0, c - 1.2, z - 4.2], [5.0, c - 3.2, z - 7.4], 2.0, 0.35, t));
+    post.push(spike(C, [-3.0, c - 1.2, z - 4.2], [-5.0, c - 3.0, z - 7.2], 2.0, 0.35, t));
+    post.push(...sideLocks(C, G, G.J0 + 1.5, 1.3));
+    post.push(bangs(C, G, FRINGE.spiky(G)));
   },
   messy(C, G, pre, post, top) {
-    pre.push(shell(C, G, { ext: 1, noise: 0.45 }), faceWindow(C, G, 4), earCut(C, G));
+    pre.push(shell(C, G, { noise: 0.28, noiseScale: 1.5 }), faceWindow(C, G), earCut(C, G));
     const z = G.z, J1 = G.J1;
-    top(spike(C, [1, J1, z - 1], [1.8, J1 + 2.2, z - 2.6], 1.6, 0.5));
-    top(spike(C, [-1.6, J1, z], [-2.8, J1 + 1.8, z - 1], 1.5, 0.5));
-    top(spike(C, [3, J1 - 1, z + 1], [4.6, J1 + 0.8, z + 2], 1.3, 0.5));
-    post.push(spike(C, [0, G.c, z - 4.5], [0.6, G.c - 1.6, z - 6.6], 1.5, 0.5));
-    post.push(spike(C, [3.6, G.c - 1.5, z - 3.5], [5.4, G.c - 3, z - 4.6], 1.3, 0.4));
-    post.push(spike(C, [-3.6, G.c - 1.5, z - 3.5], [-5.4, G.c - 2.6, z - 4.8], 1.3, 0.4));
-    post.push(...fringe(C, G, [[-3.2, G.hl - 1.6, 1.5], [-1.2, G.hl - 2.4, 1.4], [0.8, G.hl - 1.8, 1.3], [2.8, G.hl - 2.5, 1.6]], { lean: 0.6 }));
+    top(spike(C, [1, J1 + 1, z - 1], [1.9, J1 + 3.6, z - 2.8], 2.0, 0.5));
+    top(spike(C, [-1.8, J1 + 1, z], [-3.2, J1 + 3.0, z - 1.2], 1.9, 0.5));
+    top(spike(C, [3, J1, z + 1.2], [4.8, J1 + 1.8, z + 2.4], 1.6, 0.5));
+    post.push(spike(C, [0, G.c, z - 4.6], [0.6, G.c - 1.8, z - 7.0], 1.9, 0.5));
+    post.push(spike(C, [3.6, G.c - 1.5, z - 3.6], [5.8, G.c - 3.2, z - 5.0], 1.6, 0.4));
+    post.push(spike(C, [-3.6, G.c - 1.5, z - 3.6], [-5.8, G.c - 2.8, z - 5.2], 1.6, 0.4));
+    post.push(...sideLocks(C, G, G.J0 + 1.5));
+    post.push(bangs(C, G, FRINGE.messy(G)));
   },
   bob(C, G, pre, post) {
     C.earsVisible = false;
-    pre.push(shell(C, G, { ext: 1, bot: G.J0 - 1, round: 1.8, wide: 0.3 }), faceWindow(C, G, 4));
-    post.push(fringeBlock(C, G, G.hl - 1, 4));
-    post.push(C.vb(-5, 5, G.J0 - 1, G.J0 - 1, -5 + G.z, 4 + G.z, 'H', { paint: 1 }));
-    post.push(C.vb(-1, -1, G.hl - 1, G.hl - 1, Math.round(G.fz + 0.5), Math.round(G.fz + 0.5), 'h', { sub: 1 }));
-  },
-  ponytail(C, G, pre, post) {
-    pre.push(shell(C, G, { ext: 1 }), faceWindow(C, G, 4), earCut(C, G));
-    post.push(...fringe(C, G, [[-3.4, G.hl - 1.4, 1.6], [-1.6, G.hl - 2.0, 1.6], [3.0, G.hl - 2.6, 2.4]], { lean: -0.8 }));
-    post.push(spike(C, [-4.6, G.J0 + 5, G.z + 1.5], [-5.0, G.J0 + 0.8, G.z + 2.0], 1.1, 0.4), spike(C, [4.6, G.J0 + 5, G.z + 1.5], [5.0, G.J0 + 0.8, G.z + 2.0], 1.1, 0.4));
-    const piv = [0, G.c + 2.5, G.z - 5.6];
-    C.extra.push({ n: 'hairTail', parent: 'head', p: C.P(...piv), sway: { axis: 'z', amp: 0.1, freq: 1.3, move: 1.5 }, s: [
-      C.sph([0, G.c + 2.5, G.z - 5.6], 1.1, 'h2'),
-      spike(C, [0, G.c + 2.5, G.z - 6.4], [0, G.c + 0.8, G.z - 8.2], 1.8, 1.6),
-      spike(C, [0, G.c + 0.8, G.z - 8.2], [0, G.c - 4.0, G.z - 8.0], 1.6, 0.5),
-    ] });
-  },
-  twin_buns(C, G, pre, post, top) {
-    pre.push(shell(C, G, { ext: 1 }), faceWindow(C, G, 4), earCut(C, G));
-    post.push(...fringe(C, G, [[-3.2, G.hl - 1.8, 1.6], [-1.0, G.hl - 2.4, 1.6], [1.2, G.hl - 2.2, 1.6], [3.3, G.hl - 1.6, 1.5]]));
-    post.push(spike(C, [-4.6, G.J0 + 5, G.z + 1.6], [-5.0, G.J0 + 0.6, G.z + 2.2], 1.1, 0.4), spike(C, [4.6, G.J0 + 5, G.z + 1.6], [5.0, G.J0 + 0.6, G.z + 2.2], 1.1, 0.4));
-    top(C.sph([3.6, G.J1 + 1.4, G.z - 1.2], 2.5, 'h', { m: 1, belly: 'H', bellyT: 0.4, stripes: { axis: 'y', p: 1.6, w: 0.5, col: 'H', o: 0.3 } }));
-    top(C.tor([3.3, G.J1 - 0.3, G.z - 1.1], 1.7, 0.7, 'h2', { m: 1, rot: [0, 0, -20] }));
-  },
-  twin_tails(C, G, pre, post) {
-    pre.push(shell(C, G, { ext: 1 }), faceWindow(C, G, 4), earCut(C, G));
-    post.push(...fringe(C, G, [[-3.4, G.hl - 1.6, 1.4], [-1.4, G.hl - 2.4, 1.5], [0.8, G.hl - 2.2, 1.5], [3.0, G.hl - 1.8, 1.6]]));
-    post.push(spike(C, [-4.6, G.J0 + 5, G.z + 1.6], [-5.0, G.J0 + 0.6, G.z + 2.2], 1.1, 0.4), spike(C, [4.6, G.J0 + 5, G.z + 1.6], [5.0, G.J0 + 0.6, G.z + 2.2], 1.1, 0.4));
-    for (const s of [1, -1]) {
-      const piv = [s * 5.2, G.J1 - 0.5, G.z - 1.5];
-      C.extra.push({ n: s > 0 ? 'hairL' : 'hairR', parent: 'head', p: C.P(...piv), sway: { axis: 'z', amp: 0.09, freq: 1.4, move: 1.5, phase: s > 0 ? 0 : 1.2 }, s: [
-        C.sph(piv, 1.1, 'h2'),
-        spike(C, [s * 5.8, G.J1 - 0.6, G.z - 1.6], [s * 7.4, G.c - 1, G.z - 2.0], 1.8, 1.7),
-        spike(C, [s * 7.4, G.c - 1, G.z - 2.0], [s * 6.8, G.J0 - 5.5, G.z - 2.2], 1.7, 0.5),
-      ] });
-    }
-  },
-  long(C, G, pre, post) {
-    C.earsVisible = false;
-    pre.push(shell(C, G, { ext: 1, bot: G.J0 - 1, wide: 0.2 }), faceWindow(C, G, 4));
-    post.push(...fringe(C, G, [[-3.2, G.hl - 1.8, 1.7], [-0.6, G.hl - 2.5, 1.8], [2.0, G.hl - 2.0, 1.8], [3.8, G.hl - 1.4, 1.2]]));
-    // back curtain down to the shoulder blades + front side locks
-    post.push(C.box([0, G.J0 - 2.5, G.z - 4.2], [5.2, 3.6, 1.4], 'h', { round: 1.2, belly: 'H', bellyT: 0.4 }));
-    post.push(C.vb(-5, 5, G.J0 - 6, G.J0 - 6, -6 + G.z, -3 + G.z, 'h', { sub: 1, m: 0 }));
-    post.push(spike(C, [4.8, G.J0 + 4, G.z + 1.2], [5.0, G.J0 - 3.5, G.z + 1.0], 1.2, 0.8), spike(C, [-4.8, G.J0 + 4, G.z + 1.2], [-5.0, G.J0 - 3.5, G.z + 1.0], 1.2, 0.8));
+    pre.push(shell(C, G, { bot: G.J0 - 1, round: 2.2, wide: 0.4 }), faceWindow(C, G));
+    pre.push(C.vb(-6, 6, G.J0 - 1, G.J0 - 1, -7 + G.z, 6 + G.z, 'H', { paint: 1 }));
+    post.push(bangs(C, G, FRINGE.blunt(G)));
   },
   hime(C, G, pre, post) {
     C.earsVisible = false;
-    pre.push(shell(C, G, { ext: 1, bot: G.J0 - 1, round: 1.6, wide: 0.2 }), faceWindow(C, G, 4));
-    post.push(fringeBlock(C, G, G.hl - 1, 4));
-    post.push(C.vb(-5, -4, G.J0 - 1, G.J0 + 5, 1 + G.z, 5 + G.z, 'h'), C.vb(4, 5, G.J0 - 1, G.J0 + 5, 1 + G.z, 5 + G.z, 'h'));
-    post.push(C.box([0, G.J0 - 3, G.z - 4.0], [5.2, 4.2, 1.5], 'h', { round: 0.8, belly: 'H', bellyT: 0.4 }));
+    pre.push(shell(C, G, { bot: G.J0 - 1, round: 2.0, wide: 0.3 }), faceWindow(C, G));
+    post.push(bangs(C, G, FRINGE.blunt(G)));
+    post.push(C.vb(4, 5, G.J0 - 1, G.J0 + 5, 1 + G.z, G.kf, 'h', { m: 1, belly: 'H' }));          // straight side locks
+    post.push(C.box([0, G.J0 - 3.5, G.z - 4.1], [5.4, 4.2, 1.5], 'h', { round: 0.9, belly: 'H', bellyT: 0.4 }));
   },
-  mohawk(C, G, pre, post) {
-    // shaved sides (stubble paint is applied after the skull) + tall crest
-    C.flags.shaved = true;
-    const z = G.z, J1 = G.J1, tipc = C.L.hair.color2 ? { grad: { axis: 'y', to: 'h2', a: J1 + 2, b: J1 + 7 } } : { grad: { axis: 'y', to: 'hl', a: J1 + 3, b: J1 + 7 } };
-    const pts = [[4.2, J1 - 1.5], [5.6, J1 + 2.5], [3.4, J1 + 1.2], [3.2, J1 + 6.8], [1.2, J1 + 1.6], [0, J1 + 7.6], [-1.4, J1 + 1.6], [-2.6, J1 + 6.8], [-3.6, J1 + 1.0], [-6.4, J1 + 4.6], [-5.0, J1 - 1.0], [-5.6, G.c], [-4.6, G.c - 1]];
-    post.push(C.poly([0, 0, 0], pts.map(([zz, y]) => [zz + z, y]), 1.0, 'h', Object.assign({ plane: 'zy' }, tipc)));
-  },
-  buzz(C, G, pre, post) { C.flags.buzz = true; },
-  bald() { },
-  side_part(C, G, pre, post) {
-    pre.push(shell(C, G, { ext: 1, round: 2.6 }), faceWindow(C, G, 4), earCut(C, G));
-    const zf = G.fz + 0.5;
-    post.push(C.poly([0, 0, zf], [[-4.6, G.J1 + 0.5], [4.6, G.J1 + 0.5], [4.6, G.hl - 0.5], [1.5, G.hl - 1.5], [-0.8, G.hl + 0.6], [-4.6, G.hl]], 0.45, 'h', { plane: 'xy', belly: 'H', bellyT: 0.5 }));
-    post.push(C.vb(-2, -2, G.J1, G.J1 + 1, -3 + G.z, 3 + G.z, 'H', { paint: 1, top: 'H' }));
-    post.push(C.box([0.8, G.J1 + 1, G.z + 1.5], [3.4, 0.8, 2.6], 'h', { round: 0.8 }));
-  },
-  slick(C, G, pre, post) {
-    pre.push(shell(C, G, { ext: 1, round: 2.6 }), faceWindow(C, G, 4, G.hl + 1), earCut(C, G));
-    post.push(C.vb(-5, 5, G.c, G.J1 + 1, -6 + G.z, 6 + G.z, 'h', { paint: 1, stripes: { axis: 'x', p: 2, w: 1, col: 'hl' }, top: 'h' }));
-    post.push(C.box([0, G.J1 + 0.8, G.z + 2.5], [3.6, 1.0, 2.2], 'h', { round: 0.9, stripes: { axis: 'x', p: 2, w: 1, col: 'hl' } }));
-  },
-  pixie(C, G, pre, post, top) {
-    pre.push(shell(C, G, { ext: 1, noise: 0.25 }), faceWindow(C, G, 4), earCut(C, G));
-    post.push(C.poly([0, 0, G.fz + 0.5], [[-4.6, G.J1 + 0.5], [4.6, G.J1 + 0.5], [4.6, G.hl], [2.6, G.hl - 2.0], [0.4, G.hl - 1.0], [-1.8, G.hl - 2.6], [-4.6, G.hl - 0.5]], 0.45, 'h', { plane: 'xy', belly: 'H', bellyT: 0.5 }));
-    top(spike(C, [0.6, G.J1, G.z - 1], [1.2, G.J1 + 1.8, G.z - 2.6], 1.5, 0.5));
-  },
-  afro(C, G, pre, post) {
+  long(C, G, pre, post) {
     C.earsVisible = false;
-    pre.push(C.sph([0, G.c + 2.4, G.z - 1.2], 7.4, 'h', { noise: 0.6, noiseScale: 1.5, belly: 'H', bellyT: 0.45 }), faceWindow(C, G, 4, G.hl + 0.5));
+    pre.push(shell(C, G, { bot: G.J0 - 1, wide: 0.3 }), faceWindow(C, G));
+    post.push(bangs(C, G, FRINGE.curtain(G)));
+    post.push(C.box([0, G.J0 - 3.0, G.z - 4.1], [5.4, 4.0, 1.5], 'h', { round: 1.3, belly: 'H', bellyT: 0.4 }));
+    post.push(spike(C, [4.8, G.J0 + 4.5, G.z + 1.4], [5.1, G.J0 - 4.2, G.z + 1.2], 1.4, 0.8), spike(C, [-4.8, G.J0 + 4.5, G.z + 1.4], [-5.1, G.J0 - 4.2, G.z + 1.2], 1.4, 0.8));
   },
-  curly(C, G, pre, post) {
-    pre.push(C.ell([0, G.c + 1.4, G.z - 0.8], [6.0, 6.0, 6.0], 'h', { noise: 0.75, noiseScale: 1.1, belly: 'H', bellyT: 0.45, dither: { col: 'hl', amt: 0.18 } }), faceWindow(C, G, 4, G.hl), earCut(C, G, G.J0 + 3));
-    post.push(C.sph([-2.6, G.hl + 0.4, G.fz + 0.2], 1.6, 'h', { noise: 0.4, noiseScale: 1 }), C.sph([0.4, G.hl + 0.8, G.fz + 0.3], 1.6, 'h', { noise: 0.4, noiseScale: 1 }), C.sph([3.0, G.hl + 0.3, G.fz + 0.1], 1.5, 'h', { noise: 0.4, noiseScale: 1 }));
+  ponytail(C, G, pre, post) {
+    pre.push(shell(C, G, { lift: 0.5 }), faceWindow(C, G), earCut(C, G));
+    post.push(bangs(C, G, FRINGE.swoop(G)));
+    post.push(...sideLocks(C, G, G.J0 + 1, 1.1));
+    const piv = [0, G.J1 - 0.5, G.z - 5.4];
+    C.extra.push({ n: 'hairTail', parent: 'head', p: C.P(...piv), sway: { axis: 'z', amp: 0.12, freq: 1.3, move: 1.5 }, s: [
+      C.sph([0, G.J1 - 0.5, G.z - 5.6], 1.3, 'h2'),
+      spike(C, [0, G.J1, G.z - 6.4], [0, G.J1 - 0.5, G.z - 9.4], 2.3, 2.3),
+      spike(C, [0, G.J1 - 0.5, G.z - 9.4], [0, G.c - 2.5, G.z - 9.8], 2.3, 1.7),
+      spike(C, [0, G.c - 2.5, G.z - 9.8], [0, G.J0 - 4.5, G.z - 8.6], 1.7, 0.6),
+    ] });
+  },
+  twin_buns(C, G, pre, post, top) {
+    pre.push(shell(C, G, { lift: 0.5 }), faceWindow(C, G), earCut(C, G));
+    post.push(bangs(C, G, FRINGE.wispy(G)));
+    post.push(...sideLocks(C, G, G.J0 + 0.5, 1.15));
+    top(C.sph([3.7, G.J1 + 1.8, G.z - 1.2], 2.6, 'h', { m: 1, belly: 'H', bellyT: 0.35 }));
+    top(C.tor([3.2, G.J1 + 0.1, G.z - 1.0], 1.8, 0.7, 'h2', { m: 1, rot: [0, 0, -22] }));
+  },
+  twin_tails(C, G, pre, post) {
+    pre.push(shell(C, G, { lift: 0.5 }), faceWindow(C, G), earCut(C, G));
+    post.push(bangs(C, G, FRINGE.wispy(G)));
+    post.push(...sideLocks(C, G, G.J0 + 0.5, 1.15));
+    for (const s of [1, -1]) {
+      const piv = [s * 5.4, G.J1 - 0.5, G.z - 1.6];
+      C.extra.push({ n: s > 0 ? 'hairL' : 'hairR', parent: 'head', p: C.P(...piv), sway: { axis: 'z', amp: 0.1, freq: 1.4, move: 1.5 }, s: [
+        C.sph(piv, 1.2, 'h2'),
+        spike(C, [s * 6.0, G.J1 - 0.6, G.z - 1.7], [s * 7.8, G.c - 1, G.z - 2.0], 2.1, 1.9),
+        spike(C, [s * 7.8, G.c - 1, G.z - 2.0], [s * 7.0, G.J0 - 6, G.z - 2.2], 1.9, 0.6),
+      ] });
+    }
   },
   braid(C, G, pre, post) {
-    pre.push(shell(C, G, { ext: 1 }), faceWindow(C, G, 4), earCut(C, G));
-    post.push(...fringe(C, G, [[-3.2, G.hl - 2.0, 1.8], [-0.6, G.hl - 1.4, 1.7], [1.8, G.hl - 2.4, 1.9], [3.8, G.hl - 1.2, 1.1]]));
-    const piv = [0, G.J0 + 2, G.z - 5.2];
-    const s = [];
-    for (let n = 0; n < 6; n++) s.push(C.sph([0, G.J0 + 1.4 - n * 1.5, G.z - 5.6 - Math.min(n, 2) * 0.3], n % 2 ? 1.15 : 1.45, n % 2 ? 'H' : 'h'));
-    s.push(C.sph([0, G.J0 - 8, G.z - 6.2], 0.9, 'h2'), C.cap([0, G.J0 - 8.3, G.z - 6.2], [0, G.J0 - 10, G.z - 6.3], 1.1, 0.5, 'h'));
-    C.extra.push({ n: 'hairTail', parent: 'head', p: C.P(...piv), sway: { axis: 'z', amp: 0.08, freq: 1.2, move: 1.4 }, s });
+    pre.push(shell(C, G), faceWindow(C, G), earCut(C, G));
+    post.push(bangs(C, G, FRINGE.messy(G)));
+    post.push(...sideLocks(C, G, G.J0 + 1, 1.1));
+    const piv = [0, G.J0 + 2, G.z - 5.2], s = [];
+    for (let n = 0; n < 6; n++) s.push(C.sph([0, G.J0 + 1.4 - n * 1.6, G.z - 5.7 - Math.min(n, 2) * 0.35], n % 2 ? 1.2 : 1.55, n % 2 ? 'H' : 'h'));
+    s.push(C.sph([0, G.J0 - 8.4, G.z - 6.4], 0.95, 'h2'), C.cap([0, G.J0 - 8.8, G.z - 6.4], [0, G.J0 - 10.6, G.z - 6.5], 1.2, 0.5, 'h'));
+    C.extra.push({ n: 'hairTail', parent: 'head', p: C.P(...piv), sway: { axis: 'z', amp: 0.09, freq: 1.2, move: 1.4 }, s });
+  },
+  mohawk(C, G, pre, post) {
+    C.flags.shaved = true;
+    const z = G.z, J1 = G.J1, c = G.c;
+    const g = { grad: { axis: 'y', to: C.L.hair.color2 ? 'h2' : 'hl', a: J1 + 2, b: J1 + 8 } };
+    post.push(C.vb(-1, 1, G.c + 1, J1 + 1, -5 + z, 4 + z, 'h', { belly: 'H' }));                    // shaved-strip base
+    post.push(spike(C, [0, J1, z + 3.2], [0, J1 + 5.2, z + 6.4], 1.6, 0.45, g));
+    post.push(spike(C, [0, J1 + 0.5, z + 1.2], [0, J1 + 8.0, z + 2.4], 1.8, 0.45, g));
+    post.push(spike(C, [0, J1 + 0.5, z - 1.2], [0, J1 + 8.6, z - 1.0], 1.8, 0.45, g));
+    post.push(spike(C, [0, J1, z - 3.4], [0, J1 + 7.2, z - 5.0], 1.7, 0.45, g));
+    post.push(spike(C, [0, c + 1.5, z - 5.0], [0, c + 4.0, z - 9.4], 1.6, 0.45, g));
+  },
+  buzz(C) { C.flags.buzz = true; },
+  bald() { },
+  side_part(C, G, pre, post) {
+    pre.push(shell(C, G, { round: 3.0, lift: 1.2 }), faceWindow(C, G), earCut(C, G));
+    post.push(bangs(C, G, FRINGE.swoop(G), { thick: 0.0 }));
+    post.push(C.vb(2, 2, G.J1 + 1, G.J1 + 2, -4 + G.z, 3 + G.z, 'H', { paint: 1 }));              // the part line
+    post.push(C.box([-0.8, G.J1 + 1.6, G.z + 1.8], [3.6, 1.0, 2.8], 'h', { round: 0.9, belly: 'H' })); // swoop volume
+  },
+  slick(C, G, pre, post) {
+    pre.push(shell(C, G, { round: 3.0, lift: 0.8 }), faceWindow(C, G, G.hl + 1), earCut(C, G));
+    post.push(C.vb(-6, 6, G.c, G.J1 + 2, -7 + G.z, 7 + G.z, 'h', { paint: 1, stripes: { axis: 'x', p: 2, w: 1, col: 'H', o: 0.5 }, top: 'h', topT: 0.8 }));
+  },
+  pixie(C, G, pre, post, top) {
+    pre.push(shell(C, G, { noise: 0.12, lift: 0.2, round: 3.2 }), faceWindow(C, G), earCut(C, G));
+    post.push(bangs(C, G, FRINGE.swoop(G).map(([x, y]) => [-x, y]).reverse()));
+    top(spike(C, [0.6, G.J1 + 1, G.z - 1], [1.2, G.J1 + 3, G.z - 2.8], 1.7, 0.5));
+    post.push(...sideLocks(C, G, G.J0 + 2, 1.1));
+  },
+  afro(C, G, pre) {
+    C.earsVisible = false;
+    pre.push(C.sph([0, G.c + 2.6, G.z - 1.2], 7.6, 'h', { noise: 0.6, noiseScale: 1.5, belly: 'H', bellyT: 0.45 }), faceWindow(C, G, G.hl));
+  },
+  curly(C, G, pre, post) {
+    pre.push(shell(C, G, { lift: 0.5 }), C.ell([0, G.c + 1.6, G.z - 0.8], [6.1, 6.1, 6.1], 'h', { noise: 0.8, noiseScale: 1.1, belly: 'H', bellyT: 0.45, dither: { col: 'H', amt: 0.2 } }), faceWindow(C, G, G.hl), earCut(C, G));
+    post.push(C.sph([-2.6, G.hl + 0.6, G.fz], 1.7, 'h', { noise: 0.4, noiseScale: 1 }), C.sph([0.4, G.hl + 1.0, G.fz + 0.1], 1.7, 'h', { noise: 0.4, noiseScale: 1 }), C.sph([3.0, G.hl + 0.5, G.fz], 1.6, 'h', { noise: 0.4, noiseScale: 1 }));
   },
   cap(C, G, pre, post) {
-    pre.push(shell(C, G, { ext: 1, noise: 0.3 }), faceWindow(C, G, 4), earCut(C, G));
-    post.push(...fringe(C, G, [[-3.0, G.hl - 1.6, 1.5], [-0.8, G.hl - 2.2, 1.5], [1.4, G.hl - 1.8, 1.5], [3.4, G.hl - 1.4, 1.3]]));
-    post.push(spike(C, [3.6, G.J0 + 3, G.z - 3.6], [5.0, G.J0 + 0.8, G.z - 4.4], 1.1, 0.4), spike(C, [-3.6, G.J0 + 3, G.z - 3.6], [-5.0, G.J0 + 0.8, G.z - 4.4], 1.1, 0.4));
-    if (!C.L.acc.cap && !C.hat) C.hatAuto = 'cap';
+    pre.push(shell(C, G, { noise: 0.3 }), faceWindow(C, G), earCut(C, G));
+    post.push(bangs(C, G, FRINGE.messy(G)));
+    post.push(spike(C, [3.6, G.J0 + 3, G.z - 3.8], [5.2, G.J0 + 0.6, G.z - 4.6], 1.3, 0.4), spike(C, [-3.6, G.J0 + 3, G.z - 3.8], [-5.2, G.J0 + 0.6, G.z - 4.6], 1.3, 0.4));
   },
   bun(C, G, pre, post, top) {
-    pre.push(shell(C, G, { ext: 1, round: 2.6 }), faceWindow(C, G, 4, G.hl + 0.5), earCut(C, G));
-    post.push(C.poly([0, 0, G.fz + 0.5], [[-4.6, G.J1 + 0.5], [4.6, G.J1 + 0.5], [4.6, G.hl - 1], [0.5, G.hl + 0.4], [-0.5, G.hl + 0.4], [-4.6, G.hl - 1]], 0.45, 'h', { plane: 'xy', belly: 'H', bellyT: 0.5 }));
-    top(C.sph([0, G.J1 + 1.2, G.z - 2.6], 2.3, 'h', { belly: 'H', bellyT: 0.4, stripes: { axis: 'y', p: 1.5, w: 0.5, col: 'H' } }));
-    top(C.tor([0, G.J1 + 0.4, G.z - 2.2], 1.5, 0.6, 'h2', { rot: [-35, 0, 0] }));
+    pre.push(shell(C, G, { round: 3.0, lift: 0.6 }), faceWindow(C, G, G.hl), earCut(C, G));
+    post.push(C.poly([0, 0, G.kf], [[-5, G.J1 + 1.5], [5, G.J1 + 1.5], [5, G.hl - 1.5], [0.6, G.hl + 0.6], [-0.6, G.hl + 0.6], [-5, G.hl - 1.5]], 0.45, 'h', { plane: 'xy', belly: 'H', bellyT: 0.5 }));
+    top(C.sph([0, G.J1 + 0.6, G.z - 5.6], 2.3, 'h', { belly: 'H', bellyT: 0.4, stripes: { axis: 'y', p: 1.5, w: 0.5, col: 'H' } }));
+    top(C.tor([0, G.J1 + 0.1, G.z - 4.3], 1.5, 0.65, 'h2', { rot: [-70, 0, 0] }));
   },
   topknot(C, G, pre, post, top) {
-    // bald crown with a ring of hair at the back/sides and a tiny knot
-    pre.push(shell(C, G, { ext: 1, bot: G.J0 + 1 }), faceWindow(C, G, 4, G.hl + 2), earCut(C, G));
-    pre.push(C.vb(-6, 6, G.J1 - 1, G.J1 + 3, -2 + G.z, 7 + G.z, 'h', { sub: 1 }));
+    // bald crown, ring of hair at the back and sides, tiny knot
+    pre.push(shell(C, G, { bot: G.J0 + 1, lift: 0 }), faceWindow(C, G, G.hl + 2), earCut(C, G));
+    pre.push(C.vb(-7, 7, G.J1 - 1, G.J1 + 3, -3 + G.z, 8 + G.z, 'h', { sub: 1 }));
     C.flags.crownShine = true;
-    top(C.sph([0, G.J1 + 1.6, G.z - 2.5], 1.3, 'h'));
-    top(C.cap([0, G.J1 + 1.2, G.z - 2.9], [0, G.J1 + 0.4, G.z - 4.2], 0.7, 0.6, 'h2'));
+    top(C.sph([0, G.J1 + 1.3, G.z - 2.6], 1.3, 'h'));
+    top(C.cap([0, G.J1 + 1.0, G.z - 3.0], [0, G.J1 + 0.4, G.z - 4.4], 0.75, 0.6, 'h2'));
   },
 };
 
 function buildHead(C) {
-  const { D, L } = C, Hd = C.parts.head, G = headGeo(C), z = G.z;
+  const { L } = C, Hd = C.parts.head, G = headGeo(C), z = G.z;
   const style = L.hair.style;
   const pre = C.hairPre, post = C.hairPost;
-  const hatTop = C.hat ? (C.hatLine ?? G.J1 - 1) : Infinity;
-  // shapes that would poke through a hat are skipped when one is worn
-  const top = (sh) => { if (!C.hat) post.push(sh); };
+  const top = (sh) => { if (!C.hat) post.push(sh); };   // features that would poke through a hat
   (HAIR[style] || HAIR.messy)(C, G, pre, post, top);
-  if (C.hatAuto && !C.hat) { C.hat = C.hatAuto; }
-  // neck
-  if (D.neck) Hd.push(C.vb(-1, 1, D.shJ + 1, D.J0, -1 + z, 0 + z, 'S'));
-  else Hd.push(C.vb(-1, 1, D.shJ + 1, D.J0, -1 + z, 0 + z, 'S'));
   Hd.push(...pre);
-  // skull: rounded block, chin narrows one row
+  // skull: rounded block; chin narrows one row; underside shaded
   Hd.push(C.box([0, G.c, z], [4.45, (G.J1 - G.J0) / 2 + 0.45, 4.45], 's', { round: 1.25 }));
   Hd.push(C.vb(4, 4, G.J0, G.J0, 1 + z, 4 + z, 's', { sub: 1, m: 1 }));
   Hd.push(C.vb(-4, 4, G.J0, G.J0, -4 + z, 4 + z, 'S', { paint: 1, belly: 'S', bellyT: 0.5, front: 's', frontT: 0.6 }));
   // ears
-  if (C.earsVisible) Hd.push(C.vb(5, 5, D.J0 + 2, D.J0 + 4, -1 + z, 0 + z, 's', { m: 1 }), C.vb(5, 5, D.J0 + 3, D.J0 + 3, 0 + z, 0 + z, 'S', { m: 1, paint: 1 }));
-  // shaved / buzz / bald scalp treatments
-  if (C.flags.shaved) Hd.push(C.vb(-5, 5, G.J0 + 4, G.J1 + 1, -6 + z, 3 + z, 'm', { paint: 1, dither: { col: 's', amt: 0.45 } }));
+  if (C.earsVisible) Hd.push(C.vb(5, 5, G.J0 + 2, G.J0 + 4, -1 + z, 0 + z, 's', { m: 1 }), C.vb(5, 5, G.J0 + 3, G.J0 + 3, 0 + z, 0 + z, 'S', { m: 1, paint: 1 }));
+  // scalp treatments
+  if (C.flags.shaved) Hd.push(C.vb(-5, 5, G.J0 + 4, G.J1 + 1, -6 + z, 3 + z, 'sv', { paint: 1, dither: { col: mix(C.pal.s, C.pal.h, 0.3), amt: 0.2 } }));
+  if (L.face.scalp) Hd.push(C.vb(-5, 5, G.J0 + 4, G.J1 + 1, -6 + z, 3 + z, L.face.scalp, { paint: 1, stripes: { axis: 'z', p: 3, w: 1, col: L.face.scalp, o: 0.5 }, dither: { col: 'h', amt: 0.0 } }));
   if (C.flags.buzz) {
-    Hd.push(C.box([0, G.c + 0.5, z - 0.2], [4.6, (G.J1 - G.J0) / 2 + 0.6, 4.6], 'h', { round: 1.3, under: 1 }));
-    Hd.push(C.vb(-5, 5, G.J0 + 4, G.J1 + 1, -6 + z, 6 + z, 'h', { paint: 1, dither: { col: 'H', amt: 0.35 } }));
-    Hd.push(faceWindow(C, G, 4, G.hl + 1));
-    Hd.push(C.box([0, G.c, z], [4.45, (G.J1 - G.J0) / 2 + 0.45, 4.45], 's', { round: 1.25, under: 1 }));
-    Hd.push(C.vb(-5, 5, G.J0, G.hl, 1 + z, 6 + z, 's', { paint: 1 }));
-    if (C.earsVisible) Hd.push(C.vb(5, 5, D.J0 + 2, D.J0 + 4, -1 + z, 0 + z, 's', { m: 1 }));
+    Hd.push(C.vb(-5, 5, G.J0 + 1, G.J1 + 1, -6 + z, 6 + z, 'h', { paint: 1, dither: { col: 'H', amt: 0.14 } }));
+    Hd.push(C.vb(-4, 4, G.J0, G.hl - 1, 1 + z, 6 + z, 's', { paint: 1 }));                      // face
+    Hd.push(C.vb(-5, 5, G.J0, G.J0 + 1, -6 + z, -1 + z, 's', { paint: 1, dither: { col: 'h', amt: 0.25 } })); // fade at the nape
+    if (C.earsVisible) Hd.push(C.vb(5, 5, G.J0 + 2, G.J0 + 4, -1 + z, 0 + z, 's', { m: 1, paint: 1 }));
   }
   if (style === 'bald' || C.flags.crownShine) Hd.push(C.vb(1, 2, G.J1, G.J1, 0 + z, 1 + z, 'sl', { paint: 1 }));
   Hd.push(...post);
@@ -855,7 +867,9 @@ function buildFace(C) {
   const es = L.eyes.style in EYE_PX ? L.eyes.style : 'anime';
   const px = L.eyes.px || EYE_PX[es], ew = (EYE_W[es] || 5) * px, eh = (EYE_H[es] || 5) * px;
   const ex = D.eyeX + (es === 'big' ? 0.15 : 0), ey = D.eyeY;
-  C.eyes = { part: 'head', at: C.P(ex, ey, fz), dir: [0, 0, 1], style: es, iris: L.eyes.iris, px, snap: false, lift: 0.08 * C.u, cmap: L.eyes.cmap };
+  let iris = L.eyes.iris;
+  if ((es === 'sleepy' || es === 'round' || es === 'sharp' || es === 'fierce') && lum(iris) < 0.3) iris = mix(iris, '#c98a4a', 0.45);
+  C.eyes = { part: 'head', at: C.P(ex, ey, fz), dir: [0, 0, 1], style: es, iris, px, snap: false, lift: 0.08 * C.u, cmap: L.eyes.cmap };
   const eTop = ey + eh / 2, eBot = ey - eh / 2, eOut = ex + ew / 2;
   // lashes / eyeliner flicks at the outer-top corner
   if (L.eyes.lashes || L.eyes.liner) {
@@ -892,11 +906,11 @@ function buildFace(C) {
   const Hd = C.parts.head;
   // facial hair (voxels / paint)
   const fc = 'm';
-  if (f.stubble) Hd.push(C.vb(-4, 4, G.J0, G.J0 + 2, 0 + z, 4 + z, fc, { paint: 1, dither: { col: 's', amt: 0.55 }, jit: 0.03 }), C.vb(-4, 4, G.J0 + 3, G.J0 + 3, 2 + z, 4 + z, 's', { paint: 1 }), C.vb(-4, -4, G.J0 + 1, G.J0 + 4, -1 + z, 4 + z, fc, { paint: 1, m: 1, dither: { col: 's', amt: 0.5 } }));
+  if (f.stubble) Hd.push(C.vb(-4, 4, G.J0, G.J0 + 1, 0 + z, 4 + z, 'st', { paint: 1, dither: { col: 's', amt: 0.3 }, jit: 0.03 }), C.vb(-4, -4, G.J0 + 1, G.J0 + 3, -1 + z, 4 + z, 'st', { paint: 1, m: 1, dither: { col: 's', amt: 0.35 } }));
   if (f.beard === 'full') Hd.push(C.vb(-4, 4, G.J0 - 1, G.J0 + 1, 1 + z, 5 + z, fc), C.vb(-4, -4, G.J0, G.J0 + 4, -1 + z, 4 + z, fc, { m: 1, paint: 1 }), C.vb(-2, 2, G.J0 + 1, G.J0 + 1, 5 + z, 5 + z, 's', { sub: 1 }));
   if (f.beard === 'goatee') Hd.push(C.vb(-1, 1, G.J0 - 1, G.J0, 3 + z, 5 + z, fc));
   if (f.beard === 'long') {
-    Hd.push(C.cap([0, G.J0 + 0.5, z + 4.2], [0, G.J0 - 6, z + 4.2], 3.6, 1.4, fc, { noise: 0.25, noiseScale: 1.2, dither: { col: shade(C.pal.m, 0.9), amt: 0.2 } }));
+    Hd.push(C.cap([0, G.J0 - 0.6, z + 4.0], [0, G.J0 - 6.5, z + 4.6], 3.0, 1.2, fc, { noise: 0.2, noiseScale: 1.2, dither: { col: shade(C.pal.m, 0.9), amt: 0.2 } }));
     Hd.push(C.vb(-4, -4, G.J0, G.J0 + 4, -1 + z, 4 + z, fc, { m: 1, paint: 1 }));
   }
   if (f.mustache === 'thick' || f.mustache === 'walrus') {
@@ -937,57 +951,55 @@ function buildHats(C) {
 function buildAccessories(C) {
   const { D, L } = C, a = L.acc, Hd = C.parts.head, Bd = C.parts.body, G = headGeo(C), z = G.z, cd = D.cd, sh = D.shJ, hip = D.hipJ;
   const wrist = D.handJ1 + 1;
-  // ---------------------------------------------------------------- hats
+  // ---------------------------------------------------------------- hats (domes sit on rows J1-1.., never carve the hair)
+  const dome = (b, t, col, o = {}) => C.box([0, (b + t) / 2, z - 0.25], [5.45 + (o.w || 0), (t - b) / 2 + 0.45, 5.45 + (o.w || 0)], col, Object.assign({ round: o.round ?? 2.4 }, o.opts));
+  const capB = G.J1 - 1;
   if (C.hat === 'cap') {
     const o = a.cap || {}, col = o.color || L.hair.capColor || '#e8434f', col2 = o.color2 || shade(col, 0.75);
     const back = o.style === 'back';
-    Hd.push(C.box([0, G.J1 - 0.2, z - 0.2], [5.5, 2.5, 5.45], col, { round: 2.0, belly: shade(col, 0.8) }));
-    Hd.push(C.vb(-6, 6, G.J1 - 3, G.J1 - 2, -7 + z, 7 + z, col, { sub: 1 }));
-    Hd.push(C.vb(-5, 5, G.J1 - 1, G.J1 - 1, -6 + z, 6 + z, col2, { paint: 1 }));
-    Hd.push(C.vb(0, 0, G.J1 + 2, G.J1 + 2, -1 + z, 1 + z, col2));
-    if (back) Hd.push(C.box([0, G.J1 - 1, z - 6.4], [3.4, 0.45, 1.6], col2, { round: 0.4 }));
-    else Hd.push(C.box([0, G.J1 - 1.15, z + 6.2], [3.8, 0.45, 2.0], col2, { round: 0.5, rot: [-6, 0, 0] }));
+    Hd.push(dome(capB, G.J1 + 2, col, { opts: { belly: shade(col, 0.8) } }));
+    Hd.push(C.vb(-6, 6, capB, capB, -7 + z, 7 + z, col2, { paint: 1 }));
+    Hd.push(C.vb(0, 0, G.J1 + 3, G.J1 + 3, -1 + z, 0 + z, col2));
+    if (back) Hd.push(C.box([0, capB, z - 6.6], [3.4, 0.45, 1.6], col2, { round: 0.4 }));
+    else Hd.push(C.box([0, capB, z + 6.6], [3.9, 0.45, 1.7], col2, { round: 0.5 }));
     const em = o.emblem || L.hair.capEmblem;
-    if (em && !back) C.decal('head', [0, G.J1 + 0.6, G.fz + 1], [0, 0.25, 1], (GRAPHICS[em] || GRAPHICS.star), { p: '#ff5d7c', y: '#ffd33b', o: '#d78a3c', b: '#5a2e1c', k: '#1d1a24', c: '#38f0ff', w: '#ffffff' }, 0.42, { lift: 0.3 });
+    if (em && !back) C.decal('head', [0, capB + 1.8, z + 5.5], [0, 0, 1], (GRAPHICS[em] || GRAPHICS.star), GRAPHIC_CMAP, 0.36, { lift: 0.35 });
   }
   if (C.hat === 'safari_hat' || C.hat === 'straw_hat') {
     const straw = C.hat === 'straw_hat', o = a[C.hat] || {};
     const col = o.color || (straw ? '#e9c873' : '#c9b083'), band = o.color2 || (straw ? '#d2453a' : '#6b5232');
-    const yb = G.J1 - 1.2, R = straw ? 8.6 : 7.2;
-    Hd.push(C.box([0, G.J1 + 0.4, z - 0.2], [5.4, 2.5, 5.4], col, { round: 2.6, dither: straw ? { col: shade(col, 0.82), amt: 0.3 } : undefined }));
-    Hd.push(C.cyl([0, yb - 0.2, z], [0, yb + 0.2, z], R, col, { dither: straw ? { col: shade(col, 0.82), amt: 0.3 } : undefined, belly: shade(col, 0.75) }));
-    Hd.push(C.vb(-6, 6, yb + 1, yb + 1, -6 + z, 6 + z, band, { paint: 1 }));
-    Hd.push(C.vb(-5, 5, G.J1 + 1, G.J1 + 3, 5 + z, 9 + z, col, { sub: 1 }));
+    const yb = capB, R = straw ? 8.6 : 7.3, tex = straw ? { dither: { col: shade(col, 0.82), amt: 0.3 } } : {};
+    Hd.push(dome(capB, G.J1 + 3, col, { round: 2.6, opts: tex }));
+    Hd.push(C.cyl([0, yb - 0.4, z - 0.2], [0, yb + 0.4, z - 0.2], R, col, Object.assign({ belly: shade(col, 0.72) }, tex)));
+    Hd.push(C.vb(-6, 6, yb + 1, yb + 1, -7 + z, 7 + z, band, { paint: 1 }));
   }
   if (C.hat === 'hard_hat') {
     const col = (a.hard_hat || {}).color || '#ffc928';
-    Hd.push(C.box([0, G.J1 + 0.2, z - 0.1], [5.4, 2.6, 5.4], col, { round: 2.6 }));
-    Hd.push(C.vb(-6, 6, G.J1 - 3, G.J1 - 2, -7 + z, 7 + z, col, { sub: 1 }));
-    Hd.push(C.box([0, G.J1 - 1.2, z + 5.8], [4.4, 0.45, 1.2], col));
-    Hd.push(C.vb(0, 0, G.J1 + 1, G.J1 + 3, -5 + z, 5 + z, shade(col, 0.85)));
+    Hd.push(dome(capB, G.J1 + 3, col, { round: 2.8 }));
+    Hd.push(C.box([0, capB, z + 6.0], [4.4, 0.45, 1.2], col));
+    Hd.push(C.vb(0, 0, G.J1 + 3, G.J1 + 4, -5 + z, 5 + z, shade(col, 0.85)));
   }
   if (C.hat === 'beanie') {
     const col = (a.beanie || {}).color || '#3a4a6a';
-    Hd.push(C.box([0, G.J1 + 0.2, z - 0.2], [5.5, 2.7, 5.5], col, { round: 2.6, stripes: { axis: 'x', p: 2, w: 1, col: shade(col, 0.85) } }));
-    Hd.push(C.vb(-6, 6, G.J1 - 3, G.J1 - 3, -7 + z, 7 + z, col, { sub: 1 }));
-    Hd.push(C.vb(-6, 6, G.J1 - 2, G.J1 - 1, -6 + z, 6 + z, shade(col, 0.8), { paint: 1 }));
-    Hd.push(C.sph([0, G.J1 + 3.2, z - 0.5], 1.2, '#f4f1ea'));
+    Hd.push(dome(capB - 1, G.J1 + 3, col, { round: 2.8, opts: { stripes: { axis: 'x', p: 2, w: 1, col: shade(col, 0.86) } } }));
+    Hd.push(C.vb(-6, 6, capB - 1, capB, -7 + z, 7 + z, shade(col, 0.8), { paint: 1 }));
+    Hd.push(C.sph([0, G.J1 + 4.2, z - 0.4], 1.3, '#f4f1ea'));
   }
   if (C.hat === 'bandana') {
     const col = (a.bandana || {}).color || '#d6334a';
-    Hd.push(C.box([0, G.J1 - 0.4, z - 0.4], [5.5, 2.4, 5.4], col, { round: 2.2, spots: { col: '#fbfbf6', d: 0.18, s: 0.8, seed: 7 } }));
-    Hd.push(C.vb(-6, 6, G.J1 - 4, G.J1 - 3, -7 + z, 7 + z, col, { sub: 1 }));
-    Hd.push(C.cap([0, G.c, z - 5.6], [0.8, G.c - 3, z - 6.4], 1.0, 0.4, col), C.cap([0, G.c, z - 5.6], [-1.2, G.c - 2.6, z - 6.2], 1.0, 0.4, col));
+    Hd.push(dome(capB, G.J1 + 2, col, { opts: { spots: { col: '#fbfbf6', d: 0.18, s: 0.8, seed: 7 } } }));
+    Hd.push(C.sph([0, capB + 0.5, z - 6.0], 1.0, col), C.cap([0, capB, z - 6.0], [1.0, capB - 3, z - 6.6], 0.9, 0.4, col), C.cap([0, capB, z - 6.0], [-1.2, capB - 2.6, z - 6.4], 0.9, 0.4, col));
   }
   // ---------------------------------------------------------------- forehead / face
   if (a.headband) {
-    const o = a.headband, hachi = o.style === 'hachimaki', col = o.color || (hachi ? '#fbfbf6' : '#fbfbf6'), col2 = o.color2 || '#e8434f';
-    const y = G.hl + (hachi ? 0.5 : 0.2);
-    Hd.push(C.box([0, y, z - 0.3], [5.5, 0.95, 5.35], col, { round: 0.8 }));
-    if (!hachi) Hd.push(C.vb(-6, 6, Math.round(y), Math.round(y), -7 + z, 7 + z, col2, { paint: 1, front: col2, side: col2, back: col2, top: col, belly: col }));
+    const o = a.headband, hachi = o.style === 'hachimaki', col = o.color || '#fbfbf6', col2 = o.color2 || '#e8434f';
+    const shelled = !['buzz', 'bald', 'mohawk'].includes(L.hair.style);
+    const y = shelled ? G.J1 - 0.6 : G.J0 + 7, hw = shelled ? 5.95 : 4.95;
+    Hd.push(C.box([0, y, z - 0.25], [hw, 0.45, hw], col, { round: 1.6 }));
+    if (!hachi) Hd.push(C.vb(-7, 7, Math.round(y), Math.round(y), -7 + z, 7 + z, col2, { paint: 1, front: col, frontT: 0.9, side: col2, sideT: 0.5 }));
     if (hachi) {
-      C.decal('head', [0, y, G.fz + 1], [0, 0, 1], ['.rr.', 'rrrr', '.rr.'], { r: col2 }, 0.45, { lift: 0.3 });
-      Hd.push(C.sph([0, y, z - 6.1], 0.9, col), C.cap([0, y, z - 6.2], [1.6, y - 2.4, z - 6.8], 0.8, 0.5, col), C.cap([0, y, z - 6.2], [-1.0, y - 2.8, z - 6.6], 0.8, 0.5, col));
+      C.decal('head', [0, y, z + hw - 0.4], [0, 0, 1], ['.rr.', 'rrrr', '.rr.'], { r: col2 }, 0.42, { lift: 0.35 });
+      Hd.push(C.sph([0, y, z - hw - 0.6], 0.95, col), C.cap([0, y - 0.3, z - hw - 0.8], [1.5, y - 2.6, z - hw - 1.4], 0.8, 0.45, col), C.cap([0, y - 0.3, z - hw - 0.8], [-0.9, y - 2.9, z - hw - 1.2], 0.8, 0.45, col));
     }
   }
   if (a.mask) {
@@ -1000,9 +1012,9 @@ function buildAccessories(C) {
   if (a.glasses || a.sunglasses) glasses(C, a.glasses ? 'glasses' : 'sunglasses', a.glasses || a.sunglasses);
   if (a.earrings) {
     const o = a.earrings, st = o.style || 'studs', col = o.color || (st === 'lightning' ? '#ffe23b' : '#ffcf3a');
-    const rows = st === 'hoops' ? ['.yy.', 'y..y', 'y..y', '.yy.'] : st === 'lightning' ? ['.y', 'yy', 'y.', '.y'] : ['y'];
+    const rows = st === 'hoops' ? ['.yy.', 'y..y', 'y..y', '.yy.'] : st === 'lightning' ? ['..y', '.yy', 'yyy', 'yy.', 'y..'] : ['yw', 'yy'];
     const glow = st === 'lightning' ? 2 : st === 'studs' && o.gem ? 2 : 0;
-    C.decal('head', [5.2, G.J0 + (st === 'studs' ? 2.1 : 1.0), z - 0.5], [1, 0, 0.15], rows, { y: glow ? { c: col, glow } : col }, st === 'studs' ? 0.55 : 0.42, { mirror: true, lift: 0.25 });
+    C.decal('head', [5.2, G.J0 + (st === 'studs' ? 1.6 : 0.6), z - 0.4], [1, 0, 0.2], rows, { y: glow ? { c: col, glow } : col, w: lite(col, 0.7) }, st === 'studs' ? 0.45 : 0.42, { mirror: true, lift: 0.3 });
   }
   if (a.hairclip) {
     const o = a.hairclip, [rows, col] = CLIP_ROWS[o.style || 'star'] || CLIP_ROWS.star;
@@ -1080,15 +1092,15 @@ function buildAccessories(C) {
 
 function bracelet(C, o) {
   const { D } = C, A = C.parts.armL, wr = D.handJ1 + 1, i0 = D.armI0, i1 = D.armI1, k0 = D.armK0, k1 = D.armK1;
-  const band = o.color || '#262a36', neon = o.glow || '#38f0ff';
+  const band = o.color || '#2a2e3a', neon = o.glow || '#38f0ff';
   const st = o.stone || {}, sc = st.color || '#38f0ff', shape = STONE_ROWS[st.shape] ? st.shape : 'round';
-  A.push(C.vb(i0 - 0, i1 + 1, wr, wr + 1, k0 - 1, k1 + 1, band));                 // chunky band
-  A.push(C.vb(i0, i1 + 1, wr + 1, wr + 1, k0 - 1, k1 + 1, neon, { paint: 1, glow: 2, belly: band, top: band }));
-  A.push(C.vb(i1 + 1, i1 + 1, wr, wr + 1, k1 + 1, k1 + 1, sc, { glow: 2 }));     // gem socket (front-outer corner)
-  const gx = i1 + 1.5, gz = k1 + 1.5, gy = wr + 0.5;
-  const cm = shape === 'skull' ? { w: { c: '#f2efe6', glow: 1 }, g: { c: sc, glow: 3 } } : { g: { c: sc, glow: 2 }, w: { c: lite(sc, 0.75), glow: 3 } };
-  C.decal('armL', [gx, gy, gz], [0.7071, 0, 0.7071], STONE_ROWS[shape], cm, 0.36, { snap: false, lift: 0.08, depth: 1 });
-  C.fx.push({ part: 'armL', at: C.P(gx + 0.3, gy, gz + 0.3), type: 'gem', rate: 0.35, scale: 0.5, color: sc });
+  A.push(C.vb(i0, i1 + 1, wr, wr, k0, k1 + 1, band));                              // band (1 row, bulges front/outer)
+  A.push(C.vb(i0, i1 + 1, wr, wr, k0, k0, neon, { paint: 1, glow: 1 }));           // neon trim at the back edge
+  A.push(C.vb(i1 + 1, i1 + 1, wr, wr, k1 + 1, k1 + 1, sc, { glow: 1 }));           // gem socket (front-outer corner)
+  const gx = i1 + 1.5, gz = k1 + 1.5, gy = wr;
+  const cm = shape === 'skull' ? { w: { c: '#f2efe6', glow: 1 }, g: { c: sc, glow: 2 } } : { g: { c: sc, glow: 1 }, w: { c: lite(sc, 0.7), glow: 2 } };
+  C.decal('armL', [gx, gy, gz], [0.7071, 0, 0.7071], STONE_ROWS[shape], cm, 0.3, { snap: false, lift: 0.06, depth: 1 });
+  C.fx.push({ part: 'armL', at: C.P(gx + 0.3, gy, gz + 0.3), type: 'gem', rate: 0.3, scale: 0.45, color: sc });
 }
 
 function watch(C, o) {
@@ -1172,13 +1184,271 @@ export function humanDesign(look = {}) {
   ];
   const id = 'human_' + hashStr(JSON.stringify(look)).toString(36);
   const anim = Object.assign({ quirk: QUIRKS[L.build], bounce: B.bounce, gait: B.gait, stride: 1, maxSpeed: B.maxSpeed }, L.anim || {});
-  const headY = (D.J0 + D.J1) / 2 * u;
   return {
     id, vs: u, arch: 'biped', pal, anim,
     parts,
     eyes: C.eyes, mouth: C.mouth, decals: C.decals, fx: C.fx,
     // framing hint for dialogue portraits (PortraitView.show frame)
-    portrait: { y: headY - 0.03, dist: 1.45 + (D.J1 - D.J0) * u * 0.6, yaw: 0.3 },
+    portrait: { y: (D.J0 + 3) * u, dist: 42 * u, yaw: 0.3 },
     look: L,
   };
 }
+
+
+// Equip / unequip cosmetics on a look (returns a new look; false removes an item).
+//   withCosmetics(CHARACTERS.player_a, { watch: 'gold', grillz: true, stone: { color: '#ff4f9a', shape: 'heart' } })
+export function withCosmetics(look, cosmetics = {}) {
+  return Object.assign({}, look, { cosmetics: Object.assign({}, look.cosmetics, cosmetics) });
+}
+export function characterDesign(key, cosmetics) {
+  const look = CHARACTERS[key];
+  if (!look) return null;
+  return cosmetics ? humanDesign(withCosmetics(look, cosmetics)) : DESIGNS[key];
+}
+
+// ============================================================ named characters
+const STONE = { color: '#38f0ff', shape: 'round' };
+export const CHARACTERS = {
+  // ---- player presets (the bracelet + soul stone is always worn on the left wrist)
+  player_a: { build: 'teen', skin: SKIN_TONES[2], hair: { style: 'spiky', color: '#2b2540', color2: '#4a6bff' },
+    eyes: { style: 'big', iris: '#e89a1e' }, face: { brows: 'sharp', mouth: 'smile' },
+    top: { style: 'jacket', color: '#25304f', color2: '#ff7a2f', color3: '#f4f1ea', glow: '#38f0ff', emblem: 'bolt' },
+    bottom: { style: 'cargo', color: '#1f222b' }, shoes: { style: 'hightops', color: '#f4f4f4', color2: '#ff7a2f', glow: '#38f0ff' },
+    acc: ['bracelet'], cosmetics: { stone: STONE } },
+  player_b: { build: 'teen', skin: SKIN_TONES[1], hair: { style: 'ponytail', color: '#e8587c', color2: '#ffd33b' },
+    eyes: { style: 'big', iris: '#8a4fe0', lashes: true }, face: { brows: 'soft', mouth: 'cat', blush: true },
+    top: { style: 'jacket', color: '#f2eff6', color2: '#7b5cff', color3: '#1f1d2b', glow: '#ff4fd8', emblem: 'wing' },
+    bottom: { style: 'skirt', color: '#4b3f8a', socks: 'high' }, shoes: { style: 'hightops', color: '#7b5cff', color2: '#f4f4f4', glow: '#ff4fd8' },
+    acc: ['bracelet', { type: 'hairclip', style: 'star' }], cosmetics: { stone: { color: '#ff4fd8', shape: 'heart' } } },
+  player_c: { build: 'teen', skin: SKIN_TONES[4], hair: { style: 'pixie', color: '#a9a2e8', color2: '#62e0c8' },
+    eyes: { style: 'anime', iris: '#16b3c4' }, face: { brows: 'soft', mouth: 'smile' },
+    top: { style: 'jacket', color: '#2fbf9a', color2: '#1d2230', color3: '#f4f1ea', glow: '#c8ff3a', emblem: 'stone' },
+    bottom: { style: 'pants', color: '#2c3140' }, shoes: { style: 'sneakers', color: '#1d2230', color2: '#c8ff3a', glow: '#c8ff3a' },
+    acc: ['bracelet', { type: 'earrings', style: 'studs', color: '#c8ff3a' }], cosmetics: { stone: { color: '#c8ff3a', shape: 'star' } } },
+  // ---- story cast
+  coach: { build: 'big', height: 1.08, skin: SKIN_TONES[3], hair: { style: 'buzz', color: '#2a211d' },
+    eyes: { style: 'round', iris: '#3a2418' }, face: { brows: 'thick', mouth: 'grin', stubble: true, nose: 'big' },
+    top: { style: 'tracksuit', color: '#e0322e', color2: '#fbfbf6', emblem: 'whistle' }, bottom: { style: 'track', color: '#e0322e', color2: '#fbfbf6' },
+    shoes: { style: 'sneakers', color: '#fbfbf6', color2: '#e0322e' },
+    acc: [{ type: 'headband', style: 'sport', color: '#fbfbf6', color2: '#e0322e' }, { type: 'whistle', color: '#ffd33b' }, { type: 'watch', style: 'digital' }],
+    anim: { quirk: ['flex', 'stretch', 'laugh'] } },
+  mika: { build: 'teen', skin: SKIN_TONES[1], hair: { style: 'twin_buns', color: '#7a4a32', color2: '#ff5d7c' },
+    eyes: { style: 'big', iris: '#2aa86a', lashes: true }, face: { brows: 'soft', mouth: 'cat', blush: 'lines' },
+    top: { style: 'hoodie', color: '#ffcf2e', color2: '#1f1d24', ears: 'panda', graphic: 'smile' }, bottom: { style: 'shorts', color: '#3d6fd6', socks: 'high' },
+    shoes: { style: 'sneakers', color: '#fbfbf6', color2: '#ff5d7c' }, acc: [{ type: 'hairclip', style: 'heart' }],
+    anim: { quirk: ['hop', 'happy', 'sway'], bounce: 1.4 } },
+  kaito: { build: 'teen', skin: SKIN_TONES[1], hair: { style: 'spiky', color: '#17151f', color2: '#e8233a' },
+    eyes: { style: 'sharp', iris: '#e8233a' }, face: { brows: 'sharp', mouth: 'line' },
+    top: { style: 'jacket', color: '#17161d', color2: '#e8233a', color3: '#2b2a33', glow: '#ff2a3c', emblem: 'wing' },
+    bottom: { style: 'pants', color: '#1d1c24' }, shoes: { style: 'boots', color: '#1d1c24', color2: '#e8233a' },
+    acc: [{ type: 'gloves', style: 'fingerless', color: '#22212a' }, { type: 'earrings', style: 'studs', color: '#e8233a' }],
+    anim: { quirk: ['shrug', 'stretch'] } },
+  taro: { build: 'kid', skin: SKIN_TONES[3], hair: { style: 'cap', color: '#2d2220' },
+    eyes: { style: 'big', iris: '#4a2a1a' }, face: { brows: 'soft', mouth: 'w', freckles: true, blush: true },
+    top: { style: 'tee', color: '#fbfbf6', graphic: 'beetle' }, bottom: { style: 'shorts', color: '#d78a3c' },
+    shoes: { style: 'sneakers', color: '#3fae4a', color2: '#fbfbf6' },
+    acc: [{ type: 'cap', color: '#3fae4a', color2: '#ffd33b', emblem: 'beetle' }, { type: 'backpack', color: '#ffb02e' }],
+    anim: { quirk: ['hop', 'spin', 'cheer'] } },
+  thrash: { build: 'adult', height: 1.04, skin: '#f3d2bd', hair: { style: 'mohawk', color: '#33d65a', color2: '#d8ff3a' },
+    eyes: { style: 'fierce', iris: '#ffd33b', liner: true }, face: { brows: 'angry', browColor: '#22301f', mouth: 'grin' },
+    top: { style: 'leather', color: '#1b1a20', color3: '#e8233a' }, bottom: { style: 'jeans', color: '#3a3d48', ripped: true },
+    shoes: { style: 'boots', color: '#1b1a20', color2: '#c9ccd6' },
+    acc: [{ type: 'chain', style: 'gold' }, { type: 'chain', style: 'wallet' }, { type: 'earrings', style: 'hoops', color: '#dfe6ef' }, { type: 'wristbands', style: 'spiked' }],
+    cosmetics: { grillz: { style: 'gold' } }, anim: { quirk: ['headbang', 'flex', 'laugh'] } },
+  riff: { build: 'teen', skin: SKIN_TONES[2], hair: { style: 'spiky', color: '#f1e9d2', color2: '#ffb3d0' },
+    eyes: { style: 'sharp', iris: '#3a7bff' }, face: { brows: 'angry', mouth: 'fang' },
+    top: { style: 'vest', color: '#4a6fb0', color2: '#1d1c24' }, bottom: { style: 'pants', color: '#1d1c24' },
+    shoes: { style: 'boots', color: '#2a2a33' }, acc: [{ type: 'sunglasses', style: 'shades' }, { type: 'earrings', style: 'lightning' }],
+    anim: { quirk: ['headbang', 'shrug'] } },
+  moshi: { build: 'big', skin: SKIN_TONES[5], hair: { style: 'buzz', color: '#1d1a20' },
+    eyes: { style: 'sleepy', iris: '#2b1d18' }, face: { brows: 'thick', mouth: 'line', tattoo: '#2a3f6a', scalp: '#2a3f6a' },
+    top: { style: 'tank', color: '#1d1c24' }, bottom: { style: 'cargo', color: '#3a4030' }, shoes: { style: 'boots', color: '#1d1c24' },
+    acc: [{ type: 'wristbands', style: 'spiked' }, { type: 'chain', style: 'silver' }], anim: { quirk: ['flex', 'headbang'] } },
+  hoshino: { build: 'old', skin: SKIN_TONES[2], hair: { style: 'side_part', color: '#c7c9d1' },
+    eyes: { style: 'round', iris: '#5a3420' }, face: { brows: 'soft', mouth: 'smile', mustache: 'thin', wrinkles: true },
+    top: { style: 'field', color: '#c9b083', color2: '#a68c5e' }, bottom: { style: 'cargo', color: '#8a7a5a' }, shoes: { style: 'boots', color: '#6b4a2e' },
+    acc: [{ type: 'safari_hat' }, { type: 'glasses', style: 'round', color: '#6b4a2e' }, { type: 'satchel', color: '#8a5a32' }],
+    anim: { quirk: ['think', 'nod'] } },
+  vendor: { build: 'adult', skin: SKIN_TONES[3], hair: { style: 'buzz', color: '#2a2220' },
+    eyes: { style: 'sleepy', iris: '#2b1d18' }, face: { brows: 'thick', mouth: 'grin', mustache: 'thick' },
+    top: { style: 'apron', color: '#2a3e7a', color2: '#fbfbf6' }, bottom: { style: 'pants', color: '#3a3d48' }, shoes: { style: 'sandals', color: '#8a5a32', color2: '#2a2a33' },
+    acc: [{ type: 'headband', style: 'hachimaki', color: '#fbfbf6', color2: '#e0322e' }], anim: { quirk: ['laugh', 'nod'] } },
+  clerk: { build: 'teen', skin: SKIN_TONES[0], hair: { style: 'bob', color: '#ff9ec7' },
+    eyes: { style: 'anime', iris: '#e0567a', lashes: true }, face: { brows: 'soft', mouth: 'smile', blush: true },
+    top: { style: 'uniform', color: '#bff0e0', color2: '#ffb3cf' }, bottom: { style: 'skirt', color: '#ffb3cf', socks: 'high' }, shoes: { style: 'loafers', color: '#6b4a3a' },
+    acc: [{ type: 'cap', color: '#bff0e0', color2: '#ffb3cf', emblem: 'heart' }] },
+  farmer: { build: 'old', skin: SKIN_TONES[4], hair: { style: 'buzz', color: '#b9bcc4' },
+    eyes: { style: 'sleepy', iris: '#2b1d18' }, face: { brows: 'bushy', browColor: '#d9dbe0', mouth: 'smile', wrinkles: true },
+    top: { style: 'tee', color: '#6e8a5a', sleeves: 'long' }, bottom: { style: 'overalls', color: '#4a5f8a' }, shoes: { style: 'rainboots', color: '#2f4a32' },
+    acc: [{ type: 'straw_hat' }, { type: 'scarf', color: '#fbfbf6' }], anim: { quirk: ['nod', 'stretch'] } },
+  receptionist: { build: 'adult', skin: SKIN_TONES[1], hair: { style: 'bun', color: '#3d2b25', color2: '#2a3e7a' },
+    eyes: { style: 'anime', iris: '#5a3420', lashes: true }, face: { brows: 'soft', mouth: 'smile' },
+    top: { style: 'suit', color: '#2a3e7a', color2: '#fbfbf6', color3: '#e0322e' }, bottom: { style: 'skirt', color: '#2a3e7a', pleats: false, tights: true, color2: '#e2c4ae' },
+    shoes: { style: 'loafers', color: '#1d1c24' }, acc: ['headset', { type: 'badge', style: 'tag' }], anim: { quirk: ['bow', 'nod'] } },
+  idol: { build: 'teen', skin: SKIN_TONES[0], hair: { style: 'twin_tails', color: '#b46bff', color2: '#ff6ad5' },
+    eyes: { style: 'big', iris: '#ff4fb8', lashes: true }, face: { brows: 'soft', mouth: 'cat', blush: 'lines' },
+    top: { style: 'dress', color: '#ff8ac6', color2: '#fbfbf6', color3: '#ffd33b' }, bottom: { style: 'skirt', color: '#ff8ac6', color2: '#fbfbf6', socks: 'high' },
+    shoes: { style: 'idol', color: '#fbfbf6', color2: '#ff6ad5' }, acc: [{ type: 'hairclip', style: 'heart' }, { type: 'earrings', style: 'studs', color: '#ff6ad5', gem: true }],
+    anim: { quirk: ['sway', 'cheer', 'spin'] } },
+  salaryman: { build: 'adult', skin: SKIN_TONES[2], hair: { style: 'side_part', color: '#1e1b26' },
+    eyes: { style: 'sleepy', iris: '#2b1d18' }, face: { brows: 'worried', mouth: 'line' },
+    top: { style: 'suit', color: '#3a4152', color2: '#fbfbf6', color3: '#2f6fd6' }, bottom: { style: 'pants', color: '#3a4152' },
+    shoes: { style: 'loafers', color: '#2a1d18' }, acc: [{ type: 'glasses', style: 'square', color: '#1d1c24' }], anim: { quirk: ['scratch', 'stretch'] } },
+  granny: { build: 'old', height: 0.95, skin: SKIN_TONES[1], hair: { style: 'bun', color: '#d9dbe2', color2: '#8a6bd6' },
+    eyes: { style: 'dot', iris: '#2b1d18' }, face: { brows: 'soft', browColor: '#b9bcc4', mouth: 'smile', blush: true, wrinkles: true },
+    top: { style: 'cardigan', color: '#a48bd6', color2: '#fbfbf6' }, bottom: { style: 'long_skirt', color: '#6b5a8a' },
+    shoes: { style: 'loafers', color: '#6b4a3a' }, acc: [{ type: 'glasses', style: 'half', color: '#b08a3a' }], anim: { quirk: ['nod'] } },
+  dojo_master: { build: 'old', skin: SKIN_TONES[3], hair: { style: 'topknot', color: '#f1f1ee', color2: '#2a2a33' },
+    eyes: { style: 'sleepy', iris: '#2b1d18' }, face: { brows: 'bushy', browColor: '#f4f4f0', mouth: 'smile', beard: 'long', mustache: 'walrus', facial: '#f1f1ee', wrinkles: true },
+    top: { style: 'gi', color: '#f4f1ea', color2: '#d9d4c6', color3: '#1d1c24' }, bottom: { style: 'hakama', color: '#2a3550' },
+    shoes: { style: 'sandals', color: '#7a5232', color2: '#1d1c24' }, anim: { quirk: ['nod', 'think'] } },
+  shopkeeper: { build: 'adult', height: 0.95, skin: SKIN_TONES[2], hair: { style: 'curly', color: '#8a4fbf' },
+    eyes: { style: 'anime', iris: '#5a3420', lashes: true }, face: { brows: 'thin', mouth: 'lips', blush: true },
+    top: { style: 'hawaiian', color: '#e8b04a', color2: '#3a2216', pattern: 'leopard' }, bottom: { style: 'pants', color: '#2a2a33' }, shoes: { style: 'sandals', color: '#e0322e', color2: '#e0322e' },
+    acc: [{ type: 'earrings', style: 'hoops', color: '#ffcf3a' }, { type: 'apron', color: '#ff7aa8' }], anim: { quirk: ['laugh', 'nod'] } },
+  ranger: { build: 'adult', skin: SKIN_TONES[4], hair: { style: 'messy', color: '#3d2b25' },
+    eyes: { style: 'anime', iris: '#2aa86a' }, face: { brows: 'thick', mouth: 'smile' },
+    top: { style: 'field', color: '#4f7a45', color2: '#3d6036', patch: '#ffcf3a' }, bottom: { style: 'cargo', color: '#a6946a' }, shoes: { style: 'boots', color: '#5a3e26' },
+    acc: [{ type: 'cap', color: '#3d6036', color2: '#2f4a2a', emblem: 'star' }, { type: 'badge', style: 'star', color: '#ffcf3a' }, 'watch'], anim: { quirk: ['stretch', 'nod'] } },
+};
+
+// story metadata: display name, role, dialogue voice (beep pitch / speed)
+export const CHAR_LORE = {
+  player_a: { name: 'You', role: 'Rookie trainer', voice: { pitch: 1.05, speed: 1.05 } },
+  player_b: { name: 'You', role: 'Rookie trainer', voice: { pitch: 1.25, speed: 1.05 } },
+  player_c: { name: 'You', role: 'Rookie trainer', voice: { pitch: 1.12, speed: 1.0 } },
+  coach: { name: 'Coach Gonda', role: 'Ex-pro trainer, your mentor', voice: { pitch: 0.7, speed: 1 },
+    bio: 'A 1.95 m wall of red tracksuit. Former league semi-finalist turned coach; cracks Osaka-ben jokes nobody asked for, cries at every graduation.', dialect: 'osaka' },
+  mika: { name: 'Mika', role: 'Best friend', voice: { pitch: 1.35, speed: 1.2 },
+    bio: 'Runs on takoyaki and pure enthusiasm. Will hug your Elemon before asking its name.' },
+  kaito: { name: 'Kaito', role: 'Rival', voice: { pitch: 0.95, speed: 0.95 },
+    bio: 'Top of the academy and never lets you forget it. Secretly trains at dawn so nobody sees him try.' },
+  taro: { name: 'Taro', role: 'Bug-catching kid, beetle Elemon owner', voice: { pitch: 1.55, speed: 1.25 },
+    bio: 'Knows every beetle in Osaka by name. His backpack is 40% snacks, 60% bug jars.' },
+  thrash: { name: 'Thrash', role: 'Team Metallica leader', voice: { pitch: 0.8, speed: 1.1 },
+    bio: 'Self-proclaimed king of the Dotonbori underground. Gold grin, louder amp, zero chill.' },
+  riff: { name: 'Riff', role: 'Team Metallica punk', voice: { pitch: 1.1, speed: 1.2 }, bio: 'Thrash\'s hype-man. Has never once taken off the shades.' },
+  moshi: { name: 'Moshi', role: 'Team Metallica bruiser', voice: { pitch: 0.6, speed: 0.85 }, bio: 'Speaks rarely, headbangs constantly. Secretly feeds stray cats.' },
+  hoshino: { name: 'Dr. Hoshino', role: 'Archaeologist, soul-stone researcher', voice: { pitch: 0.85, speed: 0.9 },
+    bio: 'Has dug up half of Kansai looking for the origin of the soul stones. Kind, absent-minded, always dusty.' },
+  vendor: { name: 'Takoyaki Taisho', role: 'Takoyaki vendor', voice: { pitch: 0.8, speed: 1.15 }, dialect: 'osaka', bio: 'Eight balls a box, one free for good kids.' },
+  clerk: { name: 'Yuzu', role: 'Ice-cream shop clerk', voice: { pitch: 1.3, speed: 1.1 } },
+  farmer: { name: 'Old Man Kubo', role: 'Farmer', voice: { pitch: 0.75, speed: 0.8 } },
+  receptionist: { name: 'Ms. Aoi', role: 'Elemon League receptionist', voice: { pitch: 1.2, speed: 1.0 } },
+  idol: { name: 'Lumi★', role: 'Pop idol', voice: { pitch: 1.45, speed: 1.15 } },
+  salaryman: { name: 'Mr. Tanaka', role: 'Salaryman', voice: { pitch: 0.9, speed: 1.05 } },
+  granny: { name: 'Granny Fuku', role: 'Neighbour', voice: { pitch: 1.1, speed: 0.75 } },
+  dojo_master: { name: 'Master Genryu', role: 'Dojo master', voice: { pitch: 0.65, speed: 0.75 } },
+  shopkeeper: { name: 'Auntie Kazu', role: 'Shopkeeper', voice: { pitch: 1.15, speed: 1.3 }, dialect: 'osaka' },
+  ranger: { name: 'Ranger Sora', role: 'Safari ranger', voice: { pitch: 0.95, speed: 1.0 } },
+};
+
+// ============================================================ townsfolk
+const pick = (r, a) => a[Math.floor(r() * a.length)];
+const TOWN_ROLES = ['salaryman', 'office', 'student', 'student_sailor', 'tourist', 'grandma', 'grandpa', 'kid', 'worker', 'jogger', 'punk', 'shopper', 'chef', 'artist'];
+export function randomLook(seed = 1, role) {
+  const r = mulberry32((typeof seed === 'string' ? hashStr(seed) : seed) >>> 0);
+  role = role || pick(r, TOWN_ROLES);
+  const skin = pick(r, SKIN_TONES.slice(0, 7));
+  const dark = pick(r, ['#1e1b26', '#2b2220', '#3d2b25', '#5a3a2a']);
+  const anyHair = pick(r, [dark, dark, '#6e4431', '#a8693d', '#e9c47c', '#ff5d7c', '#3ac6ff', '#7b5cff']);
+  const iris = role === 'punk' || role === 'artist' ? pick(r, IRIS_COLORS) : pick(r, ['#5a3420', '#2b1d18', '#6a4a2a', '#2f6fd6', '#2aa86a', '#e89a1e', '#4a6a8a']);
+  const pastel = pick(r, ['#ffd1dc', '#c9f0ff', '#d6f5c9', '#fff1b8', '#e3d4ff', '#ffe0c2']);
+  const vivid = pick(r, ['#e8434f', '#2f6fd6', '#2fbf9a', '#ffb02e', '#7b5cff', '#ff6ad5', '#3fae4a', '#1d2230']);
+  const neutral = pick(r, ['#3a4152', '#2a2a33', '#5a5f6e', '#6b4a3a', '#d9d4c6', '#f4f1ea']);
+  const eyes = { style: pick(r, ['anime', 'anime', 'big', 'round', 'sleepy', 'bead']), iris };
+  const face = { brows: pick(r, ['soft', 'soft', 'thin', 'thick', 'worried']), mouth: pick(r, ['smile', 'smile', 'line', 'cat', 'tiny', 'w']), blush: r() < 0.3 };
+  const fem = r() < 0.5;
+  const L = { skin, eyes, face, acc: [] };
+  switch (role) {
+    case 'salaryman': case 'office':
+      Object.assign(L, { build: 'adult', hair: { style: role === 'office' ? pick(r, ['bob', 'bun', 'ponytail', 'hime']) : pick(r, ['side_part', 'slick', 'messy']), color: dark },
+        top: { style: 'suit', color: pick(r, ['#3a4152', '#2a2a33', '#4a4f5e', '#2a3e7a']), color2: '#fbfbf6', color3: pick(r, ['#e0322e', '#2f6fd6', '#3fae4a', '#7b5cff']) },
+        bottom: role === 'office' && r() < 0.6 ? { style: 'skirt', color: '#3a4152', pleats: false, tights: true, color2: '#e2c4ae' } : { style: 'pants', color: '#3a4152' }, shoes: { style: 'loafers', color: '#2a1d18' } });
+      if (r() < 0.4) L.acc.push({ type: 'glasses', style: pick(r, ['square', 'half']) });
+      if (r() < 0.3) L.acc.push({ type: 'mask' });
+      if (r() < 0.3) L.acc.push('watch');
+      break;
+    case 'student': case 'student_sailor':
+      Object.assign(L, { build: 'teen', hair: { style: pick(r, fem ? ['ponytail', 'twin_tails', 'bob', 'long', 'hime', 'twin_buns'] : ['spiky', 'messy', 'pixie', 'side_part']), color: anyHair },
+        top: role === 'student_sailor' ? { style: 'sailor', color: '#fbfbf6', color2: '#2a3550', color3: '#e0322e' } : { style: pick(r, ['gakuran', 'hoodie', 'sweater']), color: pick(r, ['#1d1c24', vivid, pastel]), color2: '#fbfbf6' },
+        bottom: role === 'student_sailor' ? { style: 'skirt', color: '#2a3550', socks: 'high' } : { style: 'pants', color: '#1d1c24' }, shoes: { style: 'loafers', color: '#3a2a22' } });
+      if (r() < 0.4) L.acc.push({ type: 'backpack', color: vivid });
+      if (r() < 0.25) L.acc.push({ type: 'hairclip', style: pick(r, ['star', 'heart', 'flower', 'bolt']) });
+      break;
+    case 'tourist':
+      Object.assign(L, { build: pick(r, ['adult', 'adult', 'big']), hair: { style: pick(r, ['messy', 'ponytail', 'bob', 'buzz', 'curly']), color: pick(r, ['#e9c47c', '#a8693d', '#6e4431', dark]) },
+        top: { style: 'hawaiian', color: pick(r, ['#2fbf9a', '#ffb02e', '#3ac6ff', '#ff6ad5']), color2: '#fbfbf6' }, bottom: { style: 'shorts', color: pick(r, ['#c9b083', '#d9d4c6', '#4a6fb0']) },
+        shoes: { style: 'sandals', color: '#6b4a3a', color2: '#2a2a33' } });
+      L.acc.push(r() < 0.5 ? { type: 'safari_hat', color: '#e9e2cf' } : { type: 'cap', color: vivid });
+      if (r() < 0.5) L.acc.push({ type: 'sunglasses', style: 'shades' });
+      if (r() < 0.5) L.acc.push({ type: 'backpack', color: neutral });
+      break;
+    case 'grandma': case 'grandpa': {
+      const g = role === 'grandma';
+      Object.assign(L, { build: 'old', hair: { style: g ? pick(r, ['bun', 'curly', 'bob']) : pick(r, ['buzz', 'side_part', 'topknot', 'bald']), color: pick(r, ['#d9dbe2', '#c8cbd6', '#b9bcc4', '#8a6bd6']) },
+        top: { style: g ? pick(r, ['cardigan', 'kimono']) : pick(r, ['cardigan', 'sweater', 'field']), color: g ? pick(r, ['#a48bd6', '#d67a8a', '#6b8ad6', '#8a6b4a']) : pick(r, ['#6b6e5a', '#8a6b4a', '#4a5a7a']), color2: '#fbfbf6', color3: '#6b2a3a' },
+        bottom: g ? { style: 'long_skirt', color: '#5a4a6a' } : { style: 'pants', color: '#5a5f6e' }, shoes: { style: 'loafers', color: '#6b4a3a' } });
+      L.eyes.style = pick(r, ['sleepy', 'dot', 'bead']);
+      L.face = Object.assign(L.face, { wrinkles: true, browColor: '#c9ccd4', mouth: 'smile' });
+      if (!g && r() < 0.5) L.face.mustache = 'thin';
+      if (r() < 0.5) L.acc.push({ type: 'glasses', style: pick(r, ['round', 'half']) });
+      break;
+    }
+    case 'kid':
+      Object.assign(L, { build: 'kid', hair: { style: pick(r, ['spiky', 'messy', 'bob', 'twin_tails', 'twin_buns', 'cap', 'ponytail']), color: anyHair, capColor: vivid },
+        top: { style: pick(r, ['tee', 'tee', 'hoodie']), color: pick(r, [vivid, pastel]), graphic: pick(r, ['star', 'heart', 'bolt', 'takoyaki', 'smile']) },
+        bottom: { style: pick(r, ['shorts', 'shorts', 'skirt']), color: pick(r, ['#4a6fb0', '#d78a3c', '#3a4152', '#ff8ac6']) }, shoes: { style: 'sneakers', color: vivid } });
+      L.eyes.style = 'big'; L.face.blush = true;
+      if (r() < 0.4) L.acc.push({ type: 'backpack', color: pick(r, ['#ffb02e', '#e8434f', '#3ac6ff']) });
+      break;
+    case 'worker':
+      Object.assign(L, { build: pick(r, ['adult', 'big']), hair: { style: pick(r, ['buzz', 'messy', 'side_part']), color: dark },
+        top: { style: 'hivis', color: '#d8ff3a', color2: pick(r, ['#3a4152', '#5a5f6e', '#2f6fd6']) }, bottom: { style: 'cargo', color: '#3a4152' }, shoes: { style: 'boots', color: '#5a3e26' } });
+      L.acc.push({ type: 'hard_hat', color: pick(r, ['#ffc928', '#fbfbf6', '#ff7a2f']) });
+      if (r() < 0.4) L.face.stubble = true;
+      break;
+    case 'jogger':
+      Object.assign(L, { build: pick(r, ['teen', 'adult']), hair: { style: pick(r, ['ponytail', 'buzz', 'messy', 'pixie']), color: anyHair },
+        top: { style: 'tracksuit', color: vivid, color2: '#fbfbf6' }, bottom: { style: 'track', color: vivid, color2: '#fbfbf6' }, shoes: { style: 'sneakers', color: '#fbfbf6', color2: vivid } });
+      L.acc.push({ type: 'headband', color: '#fbfbf6', color2: vivid });
+      if (r() < 0.5) L.acc.push({ type: 'watch', style: 'smart' });
+      break;
+    case 'punk':
+      Object.assign(L, { build: pick(r, ['teen', 'adult']), hair: { style: pick(r, ['mohawk', 'spiky', 'messy']), color: pick(r, ['#33d65a', '#ff5d7c', '#3ac6ff', '#f1e9d2', '#1e1b26']) },
+        top: { style: pick(r, ['leather', 'vest']), color: pick(r, ['#1b1a20', '#4a6fb0']), color2: '#1d1c24', color3: '#e8233a', patch: r() < 0.5 },
+        bottom: { style: 'jeans', color: '#3a3d48', ripped: true }, shoes: { style: 'boots', color: '#1b1a20' } });
+      L.eyes.style = pick(r, ['fierce', 'sharp']); L.face.brows = 'angry';
+      if (r() < 0.5) L.acc.push({ type: 'chain', style: 'wallet' });
+      if (r() < 0.5) L.acc.push({ type: 'earrings', style: pick(r, ['hoops', 'studs']) });
+      break;
+    case 'chef':
+      Object.assign(L, { build: pick(r, ['adult', 'big']), hair: { style: pick(r, ['buzz', 'messy']), color: dark },
+        top: { style: 'apron', color: pick(r, ['#2a3e7a', '#fbfbf6', '#3a2a22']), color2: '#fbfbf6' }, bottom: { style: 'pants', color: '#3a3d48' }, shoes: { style: 'sandals', color: '#6b4a3a' } });
+      L.acc.push({ type: 'headband', style: 'hachimaki', color2: pick(r, ['#e0322e', '#2a3e7a']) });
+      if (r() < 0.5) L.face.mustache = 'thick';
+      break;
+    case 'artist':
+      Object.assign(L, { build: pick(r, ['teen', 'adult']), hair: { style: pick(r, ['bob', 'pixie', 'curly', 'long', 'braid']), color: anyHair },
+        top: { style: 'sweater', color: pastel, color2: vivid, stripes: r() < 0.5 }, bottom: { style: pick(r, ['jeans', 'skirt', 'cargo']), color: pick(r, ['#4a6fb0', '#3a4152', '#c9b083']) }, shoes: { style: 'hightops', color: vivid } });
+      L.acc.push({ type: 'beanie', color: vivid });
+      if (r() < 0.5) L.acc.push({ type: 'glasses', style: 'round' });
+      break;
+    case 'shopper': default:
+      Object.assign(L, { build: pick(r, ['teen', 'adult', 'adult']), hair: { style: pick(r, fem ? ['long', 'bob', 'ponytail', 'twin_tails', 'hime', 'curly'] : ['messy', 'spiky', 'side_part', 'afro', 'buzz']), color: anyHair },
+        top: { style: pick(r, ['tee', 'hoodie', 'jacket', 'sweater']), color: pick(r, [vivid, pastel, neutral]), color2: pick(r, [vivid, '#fbfbf6', '#1d1c24']), graphic: pick(r, [undefined, 'heart', 'star', 'takoyaki']) },
+        bottom: { style: pick(r, ['jeans', 'pants', 'skirt', 'shorts', 'cargo']), color: pick(r, ['#4a6fb0', '#3a4152', '#2a2a33', '#c9b083', '#ff8ac6']) }, shoes: { style: pick(r, ['sneakers', 'hightops', 'loafers']), color: pick(r, ['#fbfbf6', vivid, neutral]) } });
+      if (r() < 0.25) L.acc.push({ type: 'scarf', color: vivid });
+      if (r() < 0.25) L.acc.push({ type: 'earrings', style: pick(r, ['studs', 'hoops']) });
+      if (r() < 0.2) L.acc.push({ type: 'mask' });
+      break;
+  }
+  L.role = role;
+  return L;
+}
+
+// ============================================================ ready-built designs (viewer + game)
+export const DESIGNS = {};
+for (const [k, look] of Object.entries(CHARACTERS)) DESIGNS[k] = Object.assign(humanDesign(look), { id: 'human_' + k });
+['salaryman', 'student_sailor', 'tourist', 'grandma', 'kid', 'worker', 'punk', 'office', 'jogger', 'grandpa', 'chef', 'artist']
+  .forEach((role, n) => { DESIGNS['town' + (n + 1)] = Object.assign(humanDesign(randomLook(1000 + n * 7919, role)), { id: 'human_town' + (n + 1) }); });

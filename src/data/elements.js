@@ -31,12 +31,12 @@ export function effectiveness(atk, def) {
   const defs = Array.isArray(def) ? def : [def];
   let m = 1;
   for (const d of defs) {
-    if (STRONG[atk] && STRONG[atk].includes(d)) m *= 1.5;
-    else if (WEAK[atk] && WEAK[atk].includes(d)) m *= 0.67;
+    if (STRONG[atk] && STRONG[atk].includes(d)) m *= 1.4;
+    else if (WEAK[atk] && WEAK[atk].includes(d)) m *= 0.7;
   }
   return m;
 }
-export function effLabel(m) { return m >= 1.4 ? 'Super effective!' : m <= 0.7 ? 'Resisted…' : ''; }
+export function effLabel(m) { return m >= 1.35 ? 'Super effective!' : m <= 0.72 ? 'Resisted…' : ''; }
 
 // Elemental reactions: an elemental hit on a target carrying a different
 // element's aura triggers a reaction (and consumes the aura).

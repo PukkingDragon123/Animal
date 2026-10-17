@@ -49,7 +49,7 @@ export function statsOf(mon, extra = null) {
   if (mon.astralStats) for (const k of STAT_KEYS) out[k] += mon.astralStats[k] || 0;
   return out;
 }
-export function maxHpOf(stats, level) { return Math.round(40 + stats.hp * 10 + level * 2); }
+export function maxHpOf(stats, level) { return Math.round(80 + stats.hp * 16 + level * 5); }
 export function maxHp(mon) { return maxHpOf(statsOf(mon), mon.level); }
 
 // Snapshot consumed by the battle sim.

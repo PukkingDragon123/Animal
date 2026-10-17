@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Elemon Audio Lab</title>
+<style>
+:root{--bg:#101318;--panel:#181d25;--line:#2a3240;--ink:#e6ebf2;--dim:#8d99ab;--acc:#ff5fa2;--acc2:#38d1ff;--ok:#4fd18b;--bad:#ff6b6b;--warn:#ffc857}
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.4 system-ui,-apple-system,Segoe UI,sans-serif}
+header{position:sticky;top:0;z-index:2;background:linear-gradient(180deg,#0c0f14,#101318ee);border-bottom:1px solid var(--line);padding:10px 16px;display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center}
+h1{font-size:17px;margin:0 8px 0 0;letter-spacing:.5px}h1 b{color:var(--acc)}
+main{padding:12px 16px 40px;display:grid;gap:14px;max-width:1300px;margin:0 auto}
+section{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px}
+h2{font-size:13px;text-transform:uppercase;letter-spacing:1.2px;color:var(--dim);margin:0 0 10px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.grid{display:flex;flex-wrap:wrap;gap:6px}
+button{background:#232a36;color:var(--ink);border:1px solid #334055;border-radius:7px;padding:6px 10px;font:inherit;font-size:13px;cursor:pointer}
+button:hover{border-color:var(--acc2)}button.on{background:#3a1f33;border-color:var(--acc)}button.primary{background:var(--acc);border-color:var(--acc);color:#14070e;font-weight:600}
+label{display:inline-flex;gap:6px;align-items:center;color:var(--dim);font-size:12px}input[type=range]{width:110px}
+.small{font-size:11px;color:var(--dim)}#typed{min-height:24px;font-size:16px;margin-top:8px;color:var(--acc2)}
+table{width:100%;border-collapse:collapse;font-size:12px;font-variant-numeric:tabular-nums}th,td{padding:3px 6px;border-bottom:1px solid #222a35;text-align:left}th{color:var(--dim);font-weight:500}
+td.bad{color:var(--bad);font-weight:600}td.ok{color:var(--ok)}td.warn{color:var(--warn)}
+.bar{height:6px;background:#222a35;border-radius:3px;overflow:hidden;flex:1;min-width:120px}.bar i{display:block;height:100%;width:0;background:var(--acc2)}
+input[type=text],select{background:#0f1319;color:var(--ink);border:1px solid #334055;border-radius:6px;padding:5px 8px;font:inherit}
+.meter{display:inline-block;width:90px;height:6px;background:#222a35;border-radius:3px;vertical-align:middle;position:relative;overflow:hidden}.meter i{position:absolute;left:0;top:0;bottom:0;background:var(--ok)}
+@media (max-width:600px){header{padding:8px 12px}main{padding:10px 12px}input[type=range]{width:80px}}
+</style></head>
+<body>
+<header>
+  <h1>Elemon <b>Audio Lab</b></h1>
+  <button id="unlock" class="primary">Enable audio</button>
+  <button id="mute">Mute</button>
+  <span id="vols"></span>
+  <span class="small" id="state">ctx: locked</span>
+</header>
+<main>
+  <section><h2>Music <button id="mstop">Stop (fade)</button><label>Intensity <input id="int" type="range" min="0" max="1" step="0.01" value="0"><span id="intv">0.00</span></label><span class="small" id="now"></span></h2><div class="grid" id="tracks"></div></section>
+  <section><h2>Stingers</h2><div class="grid" id="stingers"></div></section>
+  <section><h2>SFX <label>Pitch <input id="pitch" type="range" min="0.5" max="2" step="0.01" value="1"><span id="pv">1.00</span></label><label>Pan <input id="pan" type="range" min="-1" max="1" step="0.05" value="0"></label></h2><div class="grid" id="sfx"></div></section>
+  <section><h2>Voices <select id="vsel"></select><input id="vtext" type="text" size="40" value="Hey! You're the new trainer, right? Let's rock!"><button id="vgo">Speak</button></h2><div class="grid" id="voices"></div><div id="typed"></div></section>
+  <section><h2>Ambience</h2><div class="grid" id="amb"></div></section>
+  <section><h2>Offline self-check <button id="rerun">Run again</button><span class="bar"><i id="prog"></i></span><span class="small" id="sum">pending…</span></h2>
+    <div class="small" id="warn"></div>
+    <table><thead><tr><th>kind</th><th>id</th><th>sec</th><th>RMS dBFS</th><th>max 50ms dBFS</th><th>peak</th><th>peak dBFS</th><th>min 1s dBFS</th><th>render ms</th><th>status</th></tr></thead><tbody id="rows"></tbody></table>
+  </section>
+</main>
+<script type="module">
+import { audio, AudioEngine, VOICES, SFX_NAMES, TRACK_IDS, STINGER_IDS, AMBIENCES, TRACKS, STINGERS } from '../src/audio/audio.js';
+import { compileTrack, stingerLength, validateAll } from '../src/audio/music.js';
+
+const q = new URLSearchParams(location.search);
+const $ = (id) => document.getElementById(id);
+const errors = [];
+addEventListener('error', (e) => errors.push(String(e.message || e)));
+addEventListener('unhandledrejection', (e) => errors.push('unhandled: ' + String(e.reason && e.reason.message || e.reason)));
+const btn = (parent, label, fn, title) => { const b = document.createElement('button'); b.textContent = label; if (title) b.title = title; b.onclick = () => { audio.unlock(); fn(b); }; parent.appendChild(b); return b; };
+const db = (x) => (x > 0 ? 20 * Math.log10(x) : -Infinity);
+const f1 = (x) => (isFinite(x) ? x.toFixed(1) : '-inf');
+
+// ---- manual preview --------------------------------------------------------
+$('unlock').onclick = () => { audio.unlock(); };
+$('mute').onclick = (e) => { audio.unlock(); audio.setMuted(!audio.muted); e.target.classList.toggle('on', audio.muted); };
+for (const k of ['master', 'music', 'sfx', 'voice', 'ambience']) {
+  const l = document.createElement('label'); l.textContent = k; const r = document.createElement('input');
+  Object.assign(r, { type: 'range', min: 0, max: 1, step: 0.01, value: audio.getVolumes()[k] }); r.oninput = () => audio.setVolumes({ [k]: +r.value });
+  l.appendChild(r); $('vols').appendChild(l);
+}
+setInterval(() => { $('state').textContent = 'ctx: ' + (audio.ctx ? audio.ctx.state + ' · ' + audio.ctx.sampleRate + ' Hz' : 'locked'); $('now').textContent = audio.trackId ? 'playing: ' + audio.trackId : ''; }, 300);
+const trackBtns = {};
+for (const id of TRACK_IDS) {
+  const c = compileTrack(TRACKS[id]);
+  trackBtns[id] = btn($('tracks'), `${id}`, () => { audio.music(id); for (const b of Object.values(trackBtns)) b.classList.remove('on'); trackBtns[id].classList.add('on'); }, `${TRACKS[id].name} — ${TRACKS[id].bpm} bpm, loop ${c.loopLen.toFixed(1)} s`);
+}
+$('mstop').onclick = () => { audio.music(null); for (const b of Object.values(trackBtns)) b.classList.remove('on'); };
+$('int').oninput = (e) => { audio.setIntensity(+e.target.value); $('intv').textContent = (+e.target.value).toFixed(2); };
+for (const id of STINGER_IDS) btn($('stingers'), id, () => audio.stinger(id));
+$('pitch').oninput = (e) => ($('pv').textContent = (+e.target.value).toFixed(2));
+for (const n of SFX_NAMES) btn($('sfx'), n, () => audio.sfx(n, { pitch: +$('pitch').value, pan: +$('pan').value }));
+const LINES = {
+  coach: 'Listen up, rookie. Your Elemon fights with its heart. Again!', friend: 'Omg omg! Did you see that? Your Kindoru is sooo cute!!',
+  rival: "Hmph. Not bad... for someone from the farm.", punk: 'Team Metallica rules Dotonbori! Hand over your Elemon, dude!',
+  kid: 'Mister! Mister! Can I pet it? Pleeease?', elder: 'The soul stones remember... every bond you forge.', professor: 'Fascinating! Its echo element resonates at a new frequency.', robot: 'GREETINGS. OSAKA TRANSIT SYSTEM ONLINE.',
+};
+for (const name of Object.keys(VOICES)) { const o = document.createElement('option'); o.value = o.textContent = name; $('vsel').appendChild(o); btn($('voices'), name, () => typeLine(name, LINES[name])); }
+$('vgo').onclick = () => { audio.unlock(); typeLine($('vsel').value, $('vtext').value); };
+let typing = null;
+function typeLine(profile, text) {
+  clearTimeout(typing); const p = VOICES[profile]; let i = 0; $('typed').textContent = '';
+  const step = () => { if (i >= text.length) return; const c = text[i++]; $('typed').textContent += c; audio.voice(p, c); typing = setTimeout(step, (/[.,!?]/.test(c) ? 160 : 38) / (p.speed || 1)); };
+  step();
+}
+const ambBtns = {};
+btn($('amb'), 'off', () => { audio.ambience(null); for (const b of Object.values(ambBtns)) b.classList.remove('on'); });
+for (const id of AMBIENCES) ambBtns[id] = btn($('amb'), id, () => { audio.ambience(id); for (const b of Object.values(ambBtns)) b.classList.remove('on'); ambBtns[id].classList.add('on'); });
+
+// ---- offline self-check ------------------------------------------------------------
+const SFX_DUR = { ult_start: 3.4, steam_explosion: 2.8, crowd_cheer: 2.8, charge: 2.2, evolve_burst: 2.2 };
+function buildItems() {
+  const items = [];
+  const full = !q.has('quick');
+  for (const id of TRACK_IDS) items.push({ kind: 'track', id, dur: full ? Math.min(95, compileTrack(TRACKS[id]).total + 1) : 16, setup: (e) => e.music(id, { fade: 0 }) });
+  for (const id of ['battle', 'battle_punk', 'boss', 'tension']) items.push({ kind: 'track', id: id + '@int1', dur: full ? Math.min(95, compileTrack(TRACKS[id]).total + 1) : 16, setup: (e) => e.music(id, { fade: 0, intensity: 1 }) });
+  for (const id of STINGER_IDS) items.push({ kind: 'stinger', id, dur: stingerLength(id) + 0.6, setup: (e) => e.stinger(id, { duck: 1 }) });
+  for (const n of SFX_NAMES) items.push({ kind: 'sfx', id: n, dur: SFX_DUR[n] || 1.8, setup: (e) => e.sfx(n) });
+  for (const name of Object.keys(VOICES)) items.push({ kind: 'voice', id: name, dur: 4.5, setup: (e) => e.say(name, LINES[name], { cps: 22 }) });
+  for (const id of AMBIENCES) items.push({ kind: 'ambience', id, dur: q.has('quick') ? 6 : 12, setup: (e) => e.ambience(id, { fade: 0.05 }) });
+  return q.get('only') ? items.filter((it) => it.kind === q.get('only') || it.id === q.get('only')) : items;
+}
+function analyse(buf, kind) {
+  const ch = [], n = buf.length, sr = buf.sampleRate; for (let c = 0; c < buf.numberOfChannels; c++) ch.push(buf.getChannelData(c));
+  let peak = 0, sum = 0, nan = 0;
+  const win = Math.floor(sr * 0.05), w1 = sr; let wsum = 0, maxW = 0; const sec = [];
+  let ssum = 0;
+  for (let i = 0; i < n; i++) {
+    let s2 = 0;
+    for (const d of ch) { const x = d[i]; if (x !== x) { nan++; continue; } const a = x < 0 ? -x : x; if (a > peak) peak = a; s2 += x * x; }
+    s2 /= ch.length; sum += s2; wsum += s2; ssum += s2;
+    if ((i + 1) % win === 0) { const r = Math.sqrt(wsum / win); if (r > maxW) maxW = r; wsum = 0; }
+    if ((i + 1) % w1 === 0) { sec.push(Math.sqrt(ssum / w1)); ssum = 0; }
+  }
+  const rms = Math.sqrt(sum / n);
+  let minSec = Infinity;
+  if (kind === 'track' || kind === 'ambience') for (let i = 1; i < sec.length - 1; i++) minSec = Math.min(minSec, sec[i]);
+  return { peak, rms, maxRms50: maxW, minRms1s: minSec, nan };
+}
+async function selfCheck() {
+  const t0 = performance.now(), items = buildItems(), sr = +(q.get('sr') || 44100), rows = $('rows'); rows.innerHTML = '';
+  const v = validateAll(), warnings = v.flatMap((x) => (x.error ? [x.id + ': ' + x.error] : x.warnings.map((w) => x.id + ': ' + w)));
+  $('warn').textContent = warnings.length ? 'Pattern warnings: ' + warnings.join(' · ') : 'All patterns compile without warnings (' + v.length + ' tracks/stingers).';
+  const results = [];
+  for (let i = 0; i < items.length; i++) {
+    const it = items[i], s = performance.now(); let r;
+    try {
+      const buf = await AudioEngine.renderOffline((e) => it.setup(e), { duration: it.dur, sampleRate: sr, limiter: false });
+      r = analyse(buf, it.kind);
+    } catch (e) { r = { error: String(e && e.message || e) }; errors.push(it.id + ': ' + r.error); }
+    const silent = !r.error && (r.peak < 0.001 || r.rms < 0.0003), clipping = !r.error && r.peak > 1.0, dropout = !r.error && isFinite(r.minRms1s) && r.minRms1s < 0.0003;
+    const res = { kind: it.kind, id: it.id, dur: it.dur, rms: r.rms, rmsDb: db(r.rms), maxRms50Db: db(r.maxRms50), peak: r.peak, peakDb: db(r.peak), minRms1sDb: db(r.minRms1s), nan: r.nan || 0, silent, clipping, dropout, error: r.error, ms: Math.round(performance.now() - s) };
+    res.ok = !res.error && !silent && !clipping && !dropout && !res.nan;
+    results.push(res);
+    const tr = document.createElement('tr');
+    const status = res.error ? 'ERROR ' + res.error : [silent && 'SILENT', clipping && 'CLIPPING', dropout && 'DROPOUT', res.nan && 'NaN'].filter(Boolean).join(' ') || 'ok';
+    tr.innerHTML = `<td>${it.kind}</td><td>${it.id}</td><td>${it.dur.toFixed(1)}</td><td>${f1(res.rmsDb)}</td><td>${f1(res.maxRms50Db)}</td><td>${res.peak != null ? res.peak.toFixed(3) : '-'}</td><td>${f1(res.peakDb)}</td><td>${f1(res.minRms1sDb)}</td><td>${res.ms}</td><td class="${res.ok ? 'ok' : 'bad'}">${status}</td>`;
+    rows.appendChild(tr);
+    $('prog').style.width = ((i + 1) / items.length * 100).toFixed(1) + '%';
+    $('sum').textContent = `${i + 1}/${items.length} rendered…`;
+    await new Promise((res2) => setTimeout(res2, 0));
+  }
+  const failures = results.filter((r) => !r.ok);
+  const report = { ok: failures.length === 0 && errors.length === 0, sampleRate: sr, count: results.length, failures: failures.map((f) => f.kind + ':' + f.id), errors: [...errors], warnings, items: results, ms: Math.round(performance.now() - t0) };
+  window.__report = report;
+  $('sum').textContent = `${results.length} items · ${failures.length} flagged · ${errors.length} errors · ${(report.ms / 1000).toFixed(1)} s`;
+  document.title = 'ready';
+  return report;
+}
+$('rerun').onclick = () => { document.title = 'Elemon Audio Lab'; selfCheck(); };
+if (q.get('check') !== '0') selfCheck();
+</script>
+</body></html>
