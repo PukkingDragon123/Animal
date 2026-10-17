@@ -4,6 +4,10 @@ import { advance } from './time.js';
 import { ITEMS } from '../data/items.js';
 import { SPECIES } from '../data/species.js';
 import { COSMETICS, cosmeticsToLook } from '../data/cosmetics.js';
+import { SKILLS } from '../data/skills.js';
+import { elemsOf } from '../data/species.js';
+import { FOODS } from '../data/foods.js';
+import { recordEat } from '../data/progress.js';
 
 export const SAVE_KEY = 'elemon.save.v1';
 export const PARTY_MAX = 6;
@@ -62,7 +66,20 @@ export function buy(s, id, n = 1) { const it = ITEMS[id]; if (!it || !spend(s, i
 export function useItemOn(s, id, mon) {
   const it = ITEMS[id];
   if (!it || !hasItem(s, id) || !mon) return { ok: false };
-  const res = { ok: true, msgs: [] };
+  const res = { ok: true, msgs: [], unlocked: [] };
+  if (it.kind === 'disc') {
+    // vinyl disc: the only way to share a skill; the disc is used up
+    const sk = SKILLS[it.skill];
+    if (!sk || !elemsOf(SPECIES[mon.species]).includes(it.elem)) return { ok: false, reason: 'element' };
+    if (mon.skills.known.includes(it.skill)) return { ok: false, reason: 'known' };
+    mon.skills.known.push(it.skill);
+    if (mon.skills.active.length < 4) mon.skills.active.push(it.skill);
+    addItem(s, id, -1);
+    res.msgs.push('Learned ' + sk.name);
+    res.unlocked.push({ kind: 'move', id: it.skill, name: sk.name });
+    return res;
+  }
+  if (it.kind === 'food' || FOODS[id]) res.unlocked.push(...recordEat(mon, id));
   if (it.heal) { mon.hp = Math.min(1, (mon.hp ?? 1) + it.heal); res.msgs.push('HP restored'); }
   if (it.friend) { addFriendship(mon, it.friend); res.msgs.push('Friendship +' + it.friend); }
   if (it.sp) { mon.sp += it.sp; res.msgs.push('+1 stat point'); }
