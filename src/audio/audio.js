@@ -28,8 +28,18 @@ export class AudioEngine {
     this.amb = null; this.ambId = null; this.ambFading = [];
     this._pending = { music: undefined, fade: 1.2, amb: undefined };
     this._active = []; this._sfxLast = new Map(); this._voiceLast = new Map();
-    this._timer = null; this._lookahead = 0.1; this._lastWall = 0; this._hidden = false;
+    this._timer = null; this._lookahead = 0.1; this._lastWall = 0; this._hidden = false; this._duckUntil = 0; this._duckLevel = 1;
+    this.quality = opts.quality || 'auto';
     if (opts.context) this._init(opts.context);
+  }
+  // 'high' | 'low' | 'auto'. Low thins oscillator stacks and skips ornamental
+  // music layers (~40% less audio-thread CPU); auto picks low on weak devices.
+  setQuality(q = 'auto') { this.quality = q; if (this.k) this.k.lite = this._isLite(); }
+  _isLite() {
+    if (this.quality === 'low') return true;
+    if (this.quality === 'high' || this.offline) return false;
+    const n = globalThis.navigator || {};
+    return (n.hardwareConcurrency && n.hardwareConcurrency <= 4) || (n.deviceMemory && n.deviceMemory <= 3) || false;
   }
 
   static get supported() { return !!(globalThis.AudioContext || globalThis.webkitAudioContext); }
@@ -69,9 +79,12 @@ export class AudioEngine {
   _init(ctx) {
     this.ctx = ctx; this.k = kitFor(ctx);
     this.offline = typeof OfflineAudioContext !== 'undefined' && ctx instanceof OfflineAudioContext;
+    this.k.lite = this._isLite();
     const g = (v) => { const n = ctx.createGain(); n.gain.value = v; return n; };
     this.master = g(this.muted ? 0 : this.vol.master);
-    let head = this.master;
+    const dcBlock = ctx.createBiquadFilter(); dcBlock.type = 'highpass'; dcBlock.frequency.value = 25; dcBlock.Q.value = 0.7; // DC + sub-rumble
+    this.master.connect(dcBlock);
+    let head = dcBlock;
     if (this.opts.limiter !== false) {
       const glue = ctx.createDynamicsCompressor();
       glue.threshold.value = -16; glue.knee.value = 10; glue.ratio.value = 2.5; glue.attack.value = 0.01; glue.release.value = 0.25;
@@ -85,7 +98,6 @@ export class AudioEngine {
     this.musicDuck = g(1); this.musicDuck.connect(this.musicBus);
     this.stingerBus = g(1); this.stingerBus.connect(this.musicBus);
     this.sfxBus = g(this.vol.sfx); this.sfxBus.connect(this.master);
-    this.sfxDuckable = this.sfxBus;
     this.ambBus = g(this.vol.ambience); this.ambBus.connect(this.sfxBus);
     this.voiceBus = g(this.vol.voice); this.voiceBus.connect(this.master);
     // reverbs: mono send → stereo convolution (cheaper than true-stereo)
@@ -117,9 +129,13 @@ export class AudioEngine {
   }
   getVolumes() { return { ...this.vol, muted: this.muted }; }
   _ramp(param, v, tc) { const t = this.ctx.currentTime; param.cancelScheduledValues(t); param.setTargetAtTime(v, t, tc); }
-  _duck(amount, t, dur, nodes = [this.musicDuck, this.musicRevDuck]) {
-    for (const n of nodes) {
-      const p = n.gain; p.cancelScheduledValues(t); p.setTargetAtTime(amount, t, 0.04); p.setTargetAtTime(1, t + Math.max(0.1, dur), 0.4);
+  // Overlapping ducks merge: deepest level wins, music returns after the latest one ends.
+  _duck(amount, t, dur) {
+    let end = t + Math.max(0.1, dur);
+    if (this._duckUntil > t) { amount = Math.min(amount, this._duckLevel); end = Math.max(end, this._duckUntil); }
+    this._duckLevel = amount; this._duckUntil = end;
+    for (const n of [this.musicDuck, this.musicRevDuck]) {
+      const p = n.gain; p.cancelScheduledValues(t); p.setTargetAtTime(amount, t, 0.04); p.setTargetAtTime(1, end, 0.4);
     }
   }
 
@@ -144,7 +160,7 @@ export class AudioEngine {
     for (const f of this.fading) f.tick(until);
     this.fading = this.fading.filter((f) => { if (now > f.stopAt + 3.5) { f.dispose(); return false; } return true; });
     for (const s of this.stingers) s.tick(until);
-    this.stingers = this.stingers.filter((s) => { if (s.ended && now > s.endTime + (s.tr.tail || 2) + 0.5) { s.dispose(); return false; } return true; });
+    this.stingers = this.stingers.filter((s) => { if ((s.ended && now > s.endTime + (s.tr.tail || 2) + 0.5) || now > s.stopAt + 3) { s.dispose(); return false; } return true; });
     if (this.amb) this.amb.tick(until);
     this.ambFading = this.ambFading.filter((a) => { if (now > a.stopAt + 0.2) { a.dispose(); return false; } return true; });
     this._active = this._active.filter((a) => { if (now > a.end) { a.out.disconnect(); if (a.pn) a.pn.disconnect(); return false; } return true; });
@@ -163,11 +179,11 @@ export class AudioEngine {
   }
   // Render anything into an AudioBuffer offline (used by tools/audio.html).
   // limiter:false bypasses the master dynamics so levels/clipping are honest.
-  static async renderOffline(setup, { duration = 2, sampleRate = 44100, channels = 2, limiter = false } = {}) {
+  static async renderOffline(setup, { duration = 2, sampleRate = 44100, channels = 2, limiter = false, quality = 'high' } = {}) {
     const OAC = globalThis.OfflineAudioContext || globalThis.webkitOfflineAudioContext;
-    if (!OAC) throw new Error('OfflineAudioContext unavailable');
+    if (!OAC) return null; // no Web Audio (e.g. Node): graceful no-op
     const ctx = new OAC(channels, Math.ceil(duration * sampleRate), sampleRate);
-    const eng = new AudioEngine({ context: ctx, limiter });
+    const eng = new AudioEngine({ context: ctx, limiter, quality });
     await setup(eng, ctx);
     eng._driveOffline(duration);
     return ctx.startRendering();
@@ -244,7 +260,7 @@ export class AudioEngine {
     if (!c || !/[0-9A-Za-zÀ-ɏ぀-ヿ一-鿿가-힯]/.test(c)) return false; // spaces & punctuation → silent
     const key = p._key, lastT = this._voiceLast.get(key);
     let t = at ?? this.ctx.currentTime + 0.005;
-    const gap = 0.034 / p.speed;
+    const gap = 0.028 / p.speed;
     if (lastT && t - lastT.t < gap) { if (at == null) return false; }
     if (lastT && lastT.g && t < lastT.end) { lastT.g.gain.cancelScheduledValues(t); lastT.g.gain.setTargetAtTime(0, t, 0.006); }
     const r = babble(this, p, c, t);
@@ -741,17 +757,25 @@ X.evolve_burst = (S, t) => {
   noise(v, t, { type: 'highpass', f: 3000, dur: 0.6, vol: 0.3 }); v.done(); return 1.4;
 };
 
+X.reward = (S, t) => { // short item-get chime (the game also has the longer 'reward' stinger)
+  const v = S.v(), P = S.p;
+  [783.99, 987.77, 1174.66, 1567.98].forEach((f, i) => { const r = fm(v, t + i * 0.055, { f: f * P, ratio: 3.5, index: 1.1, dur: i === 3 ? 0.6 : 0.25, vol: 0.13 }); S.wet(v, r.out, 0.35); });
+  tone(v, t, { type: 'triangle', f: 392 * P, dur: 0.35, vol: 0.12 }); fxShimmer(S.k, S.out, t + 0.16, 0.5, { vol: 0.08, base: 3136, count: 6 });
+  v.done(); return 0.8;
+};
+
 // Loudness trims (tuned with the offline self-check) and music ducking for big hits.
 const LEVEL = {
   ui_tap: 1.21, ui_confirm: 0.94, ui_back: 1.08, ui_open: 1.05, ui_error: 1.02, coin: 1.29, notification: 1.19, alert: 1.86,
-  heart: 0.74, door: 1.17, whoosh: 8.83, sneak_rustle: 3.64, beast_roar: 2.1, step_grass: 1.32, step_stone: 1.64, step_wood: 0.5,
-  step_asphalt: 1.38, hit_light: 1.42, hit_heavy: 0.91, crit: 0.97, parry: 1.7, perfect_parry: 1.34, dodge: 7.9, grab: 1.4,
-  throw: 1.72, slam: 0.83, charge: 1.06, charge_release: 1.02, switch: 1.26, ko: 0.87, capture_throw: 3.35, capture_shake: 1.93,
-  capture_success: 1.97, capture_fail: 1.48, qte_perfect: 1.16, qte_good: 1.46, qte_miss: 0.67, combo: 1.73, team_combo: 0.3, ult_start: 0.78,
-  pyro: 2.82, pyro_boom: 0.79, hydro: 4.01, hydro_splash: 1.48, bio: 1.22, bio_heal: 2.15, bio_poison: 1.11, sleep: 1.91,
-  geo: 0.91, geo_wall: 0.94, echo: 1.77, echo_boom: 1.35, volto: 1.73, cryo: 2.45, aero: 5.1, ecto: 1.11,
-  ferro: 1.51, astro: 1.38, nucleo: 1.07, steam_explosion: 0.69, reaction: 0.9, destroy_wood: 1.28, destroy_glass: 1.69, destroy_metal: 1.07,
-  crowd_cheer: 4.62, crowd_gasp: 4.37, evolve_burst: 0.43,
+  heart: 0.74, door: 1.17, whoosh: 8.83, sneak_rustle: 3.24, beast_roar: 1.95, step_grass: 1.24, step_stone: 1.64, step_wood: 0.5,
+  step_asphalt: 1.22, hit_light: 1.24, hit_heavy: 0.73, crit: 0.75, parry: 1.38, perfect_parry: 1.28, dodge: 7.49, grab: 1.4,
+  throw: 1.72, slam: 0.78, charge: 1.06, charge_release: 1.02, switch: 1.26, ko: 0.87, capture_throw: 3.35, capture_shake: 1.93,
+  capture_success: 1.97, capture_fail: 1.48, qte_perfect: 1.16, qte_good: 1.46, qte_miss: 0.67, combo: 1.73, team_combo: 0.27, ult_start: 0.72,
+  pyro: 2.63, pyro_boom: 0.69, hydro: 3.68, hydro_splash: 1.42, bio: 1.22, bio_heal: 2.15, bio_poison: 0.96, sleep: 1.91,
+  geo: 0.85, geo_wall: 0.71, echo: 1.77, echo_boom: 1.21, volto: 1.73, cryo: 2.45, aero: 5.1, ecto: 1.11,
+  ferro: 1.51, astro: 1.38, nucleo: 0.98, steam_explosion: 0.53, reaction: 0.84, destroy_wood: 1.28, destroy_glass: 1.63, destroy_metal: 0.89,
+  crowd_cheer: 4.03, crowd_gasp: 3.63, evolve_burst: 0.41,
+  reward: 1.97,
 };
 const DUCK = { ult_start: [0.5, 2.4], steam_explosion: [0.55, 1.6], evolve_burst: [0.55, 1.2], team_combo: [0.7, 0.8], pyro_boom: [0.75, 0.8], crowd_cheer: [0.8, 1.6] };
 

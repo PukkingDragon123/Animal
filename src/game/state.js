@@ -49,7 +49,7 @@ export function giveStarter(s, speciesId, level = 5) {
   return mon;
 }
 export const lead = (s) => s.party[0] || null;
-export function battleTeam(s, n = 3) { return s.party.filter((m) => m.hp > 0).slice(0, n); }
+export function battleTeam(s, n = 3) { return s.party.filter((m) => m.hp > 0 && !inDojo(s, m.uid)).slice(0, n); }
 export function healParty(s, frac = 1) { for (const m of s.party) m.hp = Math.min(1, (m.hp ?? 1) + frac); }
 export function monByUid(s, uid) { return s.party.find((m) => m.uid === uid) || s.box.find((m) => m.uid === uid) || null; }
 

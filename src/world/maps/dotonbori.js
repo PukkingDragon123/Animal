@@ -84,15 +84,19 @@ export default {
     ['neon_frame', 0.8, 11.6, 0], ['neon_frame', 13.5, 11.6, 0], ['neon_frame', 36.4, 11.6, 0], ['neon_frame', 43.6, 11.6, 0], ['neon_frame', 55.2, 11.6, 0],
     ['bicycle', 6.6, 16.6, 85], ['bicycle', 7.3, 16.8, 95], ['bicycle', 44.6, 16.6, 90], ['scooter', 52.4, 16.4, 80],
     ['streetlamp', 4.5, 17.5], ['streetlamp', 12.5, 17.5], ['streetlamp', 42.5, 17.5], ['streetlamp', 50.5, 17.5],
-    ['holo_billboard', 52.5, 12.4, 0], ['barrier', 34.6, 12.3, 0], ['cone', 33.3, 12.4],
+    ['holo_billboard', 52.5, 12.4, 0], ['bicycle', 33.4, 12.4, 90], ['bicycle', 34.1, 12.5, 95], ['trashbins', 35.6, 11.5, 0], ['neon_frame', 28.4, 11.6, 0],
+    ['lantern_string', 31, 11.95, 0], ['lantern_string', 9.4, 11.25, 0],
     ['ac_unit', 13.8, 1.2, 180, 1, 9], ['ac_unit', 0.6, 1.6, 180, 1, 6],
+    // wall-mounted AC units on the exposed east walls of the taller blocks
+    ['ac_unit', 19.25, 4.5, 90, 1, 13.5], ['ac_unit', 19.25, 7.5, 90, 1, 15.2], ['ac_unit', 6.25, 5.5, 90, 1, 10.5], ['ac_unit', 28.25, 5, 90, 1, 8.6],
+    ['ac_unit', 50.25, 3.5, 90, 1, 16.4], ['ac_unit', 50.25, 6.5, 90, 1, 18.2],
     ['drone', 12, 23.5, 70, 1, 7.5], ['drone', 44, 25, 250, 1, 8.5],
 
     // ---- north river walk
     ['bench', 7.6, 19.6, 0], ['bench', 10.6, 19.6, 0], ['flowerbed', 4.6, 19.7, 0], ['flowerbed', 13.6, 19.7, 0],
     ['lantern_string', 2.6, 18.5, 0], ['lantern_string', 7.6, 18.5, 0], ['lantern_string', 12.6, 18.5, 0],
     ['lantern_string', 40.6, 18.5, 0], ['lantern_string', 45.6, 18.5, 0], ['lantern_string', 50.6, 18.5, 0],
-    ['bench', 44, 19.6, 0], ['flowerbed', 39.6, 19.7, 0], ['streetlamp', 16.5, 20.5], ['streetlamp', 37.5, 20.5],
+    ['bench', 44, 19.6, 0], ['bench', 49, 19.6, 0], ['flowerbed', 52.6, 19.7, 0], ['streetlamp', 46.5, 20.5], ['bicycle', 54.8, 18.6, 80], ['flowerbed', 39.6, 19.7, 0], ['streetlamp', 16.5, 20.5], ['streetlamp', 37.5, 20.5],
 
     // ---- Ebisu bridge plaza: destructible dressing around the arena rim
     ['lantern_post', 19.5, 21.4], ['lantern_post', 19.5, 26.6], ['lantern_post', 34.5, 21.4], ['lantern_post', 34.5, 26.6],
@@ -130,14 +134,14 @@ export default {
   },
   arenas: { bridge: { x: BX, z: BZ, r: 7 } },
   npcs: [
-    { id: 'tourist_a', char: { random: 101, role: 'tourist' }, x: 14, z: 30, face: 180, wander: 5, idle: 'point' },
-    { id: 'tourist_b', char: { random: 102, role: 'tourist' }, x: 41.6, z: 30.6, face: 180, wander: 4, idle: 'cheer' },
+    { id: 'tourist_a', char: { random: 12, role: 'tourist' }, x: 14, z: 30, face: 180, wander: 5, idle: 'point' },
+    { id: 'tourist_b', char: { random: 24, role: 'tourist' }, x: 41.6, z: 30.6, face: 180, wander: 4, idle: 'cheer' },
     { id: 'salaryman', char: 'salaryman', x: 46, z: 15.5, face: 270, wander: 6, idle: 'think' },
-    { id: 'shopper', char: { random: 202, role: 'shopper' }, x: 35, z: 14.5, face: 0, wander: 5 },
-    { id: 'students', char: { random: 303, role: 'student_sailor' }, x: 8.4, z: 32.8, face: 90, wander: 3, idle: 'laugh' },
-    { id: 'chef', char: { random: 404, role: 'chef' }, x: 46.5, z: 34.4, face: 180, idle: 'wave' },
+    { id: 'shopper', char: { random: 41, role: 'shopper' }, x: 35, z: 14.5, face: 0, wander: 5 },
+    { id: 'students', char: { random: 15, role: 'student_sailor' }, x: 8.4, z: 32.8, face: 90, wander: 3, idle: 'laugh' },
+    { id: 'chef', char: { random: 4, role: 'chef' }, x: 46.5, z: 34.4, face: 180, idle: 'wave' },
   ],
-  spawns: { start: [2, 14.5], fromWorldmap: [2, 14.5] },
+  spawns: { start: [2.2, 14.5, 90], fromWorldmap: [2.2, 14.5, 90] },
   exits: [{ x: 0, z: 11, w: 1, d: 7, to: 'worldmap', spawn: 'dotonbori', label: 'Namba' }],
   lights: [
     { pos: [BX, 5, BZ], color: '#ff6ad8', intensity: 3, range: 12 },

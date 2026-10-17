@@ -187,10 +187,10 @@ export class UI {
     this.sfx('notification');
     return new Promise((res) => {
       this._tutRes = res;
-      if (o.tap) { box.onpointerup = () => this.tutDone(); this.onAdvanceKey = () => this.tutDone(); box.append(h('div', { style: { textAlign: 'right', fontSize: '12px', color: 'var(--violet)', marginTop: '4px' } }, 'Tap to continue ▶')); }
+      if (o.tap) { box.onpointerup = () => this.tutDone(); this._tutKey = () => this.tutDone(); this.onAdvanceKey = this._tutKey; box.append(h('div', { style: { textAlign: 'right', fontSize: '12px', color: 'var(--violet)', marginTop: '4px' } }, 'Tap to continue ▶')); }
     });
   }
-  tutDone() { clear(this.L.tut); this.onAdvanceKey = null; const r = this._tutRes; this._tutRes = null; if (r) r(); }
+  tutDone() { clear(this.L.tut); if (this._tutKey && this.onAdvanceKey === this._tutKey) this.onAdvanceKey = null; this._tutKey = null; const r = this._tutRes; this._tutRes = null; if (r) r(); }
 
   // ------------------------------------------------------------ modal sheets
   modal(content, opts = {}) {

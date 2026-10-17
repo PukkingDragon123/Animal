@@ -4,8 +4,10 @@
 // farmyard below it, corn (west) and cabbage (east) fields on the south side,
 // a shallow stream with a plank crossing and the windmill on the east.
 // Cinematic beat: the fire wolf bursts out of the treeline, leaps the
-// pasture's north fence, cuts through the herd and skids to a halt in the
-// farmyard in front of the farmer.
+// pasture's north fence, cuts through the herd, out through the open south
+// gate and skids to a halt in the farmyard in front of the farmer.
+// Facing convention for points: degrees, 0 = facing south (+z), 90 = east,
+// 180 = north, 270 = west (same as prop rotation / actor yaw).
 
 // --- small layout helpers (deterministic) -----------------------------------
 const jit = (i, k) => (((Math.sin(i * 12.9898 + k * 78.233) * 43758.5453) % 1) + 1) % 1; // 0..1
@@ -107,15 +109,15 @@ export default {
     ['flowerbed', 8.7, 17.2, 0], ['maple', 0.9, 16.6, 40, 0.9], ['bush', 0.9, 31, 0, 0.8],
   ],
   points: {
-    treeline: [25.2, 4.6, 180],     // fire wolf bursts out here (facing south)
-    fence_jump: [25, 9, 200],       // the north pasture fence it clears
+    treeline: [25.2, 4.6, 0],       // fire wolf bursts out here (facing south)
+    fence_jump: [25, 9, 343],       // the north pasture fence it clears (heading for the farmyard)
     pasture: [21, 13],              // centre of the pen — the herd grazes here
-    wolf_stop: [21.6, 20.4, 250],   // open farmyard spot where it skids to a halt
-    farmer: [15.8, 19.6, 70],       // farmer by the barn lane, facing the wolf
+    wolf_stop: [21.6, 20.4, 262],   // open farmyard spot where it skids to a halt, facing the farmer
+    farmer: [15.8, 19.6, 82],       // farmer in the farmyard, facing the wolf
     field: [28.6, 27.7],              // cabbage field centre
     cam_wide: [20, 16],             // frame the whole farm from here
   },
-  spawns: { start: [20.5, 29.5] },
+  spawns: { start: [20.5, 29.5, 180] },
   lights: [
     { pos: [7.5, 4.5, 16.2], color: '#ffc27a', intensity: 3, range: 7 },   // lamp over the barn door
     { pos: [8.6, 2.2, 21], color: '#ffb066', intensity: 2, range: 6 },     // farmhouse porch

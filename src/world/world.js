@@ -78,7 +78,7 @@ export class WorldScene {
     this.audio.ambience && this.audio.ambience(amb.sound || null);
     this.state.map = { id: mapId, x: sp[0], z: sp[1] };
     this.mapId = mapId;
-    this.ui.banner(def.name, def.area || '');
+    if (opts.banner !== false) this.ui.banner(def.name, def.area || '');
     return def;
   }
   unload() {
@@ -139,7 +139,7 @@ export class WorldScene {
   addNpc(n) {
     let design;
     if (typeof n.char === 'string') design = humanDesignFor(n.char);
-    else if (n.char && n.char.random != null) design = humanDesignFor(HUMANS.randomLook ? HUMANS.randomLook(n.char.random) : {});
+    else if (n.char && n.char.random != null) design = humanDesignFor(HUMANS.randomLook ? HUMANS.randomLook(n.char.random, n.char.role) : {});
     else if (n.species) design = creatureDesign(n.species);
     else design = humanDesignFor(n.char || {});
     if (!design) return null;
@@ -306,7 +306,7 @@ export class WorldScene {
       this.state.map.x = p.x; this.state.map.z = p.z;
     }
     if (this.safari) this.safari.update(dt);
-    updateEnvironment(this.env, dt, this.gfx.tod.night);
+    updateEnvironment(this.env, dt, this.gfx.tod.night, this.gfx.fx, this.gfx.rig.focus);
     this.ambient(dt);
     this.updateLabels();
   }

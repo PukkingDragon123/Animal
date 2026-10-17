@@ -10,6 +10,9 @@ import { tileAtlas, tileCell, tileUV, facadeAtlas, facadeCell, facadeUV, FACADE_
 import { toonMaterial, glowMaterial, shared } from './materials.js';
 import { getTemplate, instantiate } from './model.js';
 import { hash3 } from '../core/rng.js';
+import { EMITTERS } from './emitters.js';
+const _cc = new Map();
+function colorArr(hex) { let a = _cc.get(hex); if (!a) { const c = new THREE.Color(hex); a = [c.r * 1.6, c.g * 1.6, c.b * 1.6, 1]; _cc.set(hex, a); } return a; }
 import { blockRect, blockCircle } from '../world/map.js';
 
 const BASE_DEPTH = -2.6;
@@ -323,6 +326,34 @@ let PROP_LIB = null; // { DESIGNS, PROP_META }
 export function setPropLibrary(lib) { PROP_LIB = lib; }
 const FALLBACK = { vs: 0.1, arch: 'static', pal: { a: '#c8b8a0' }, parts: [{ n: 'body', p: [0, 0, 0], s: [['box', [0, 0.4, 0], [0.4, 0.4, 0.4], 'a']] }] };
 
+// Wind sway for instanced prop parts, done in the vertex shader (rotation about
+// the part pivot; per-instance phase from its world position).
+const SWAY_AXIS = { x: 0, z: 1, y: 2 };
+function withSway(m, sw, baseKey) {
+  const prev = m.onBeforeCompile;
+  const u = { uSwayAmp: { value: sw.amp ?? 0.1 }, uSwayFreq: { value: sw.freq ?? 1 }, uSwayPhase: { value: sw.phase ?? 0 }, uSwayAxis: { value: SWAY_AXIS[sw.axis || 'z'] ?? 1 }, uSwayTime: shared.uTime };
+  m.onBeforeCompile = (sh) => {
+    if (prev) prev(sh);
+    Object.assign(sh.uniforms, u);
+    sh.vertexShader = sh.vertexShader
+      .replace('#include <common>', '#include <common>\nuniform float uSwayAmp; uniform float uSwayFreq; uniform float uSwayPhase; uniform float uSwayAxis; uniform float uSwayTime;')
+      .replace('#include <begin_vertex>', `#include <begin_vertex>
+        float swPh = uSwayPhase;
+        #ifdef USE_INSTANCING
+          swPh += dot(instanceMatrix[3].xz, vec2(0.37, 0.53));
+        #endif
+        float swA = sin(uSwayTime * uSwayFreq * 3.14159 + swPh) * uSwayAmp;
+        float swC = cos(swA), swS = sin(swA);
+        if (uSwayAxis < 0.5) transformed.yz = vec2(transformed.y * swC - transformed.z * swS, transformed.y * swS + transformed.z * swC);
+        else if (uSwayAxis < 1.5) transformed.xy = vec2(transformed.x * swC - transformed.y * swS, transformed.x * swS + transformed.y * swC);
+        else transformed.xz = vec2(transformed.x * swC - transformed.z * swS, transformed.x * swS + transformed.z * swC);`);
+  };
+  const k = m.customProgramCacheKey ? m.customProgramCacheKey() : baseKey;
+  m.customProgramCacheKey = () => k + '|sway';
+  return m;
+}
+const _pm = new THREE.Matrix4(), _pv = new THREE.Vector3();
+
 function buildProps(def, g, extra, env) {
   const group = new THREE.Group();
   const lib = PROP_LIB || { DESIGNS: {}, PROP_META: {} };
@@ -337,24 +368,39 @@ function buildProps(def, g, extra, env) {
     const meta = Object.assign({ footprint: [0.8, 0.8], solid: true, destructible: false, hp: 0, debris: ['#8a7a6a'] }, lib.PROP_META[id] || {});
     let tpl;
     try { tpl = getTemplate(design, 'prop:' + (lib.DESIGNS[id] ? id : '_fallback')); } catch (err) { console.warn('prop build failed', id, err); tpl = getTemplate(FALLBACK, 'prop:_fallback'); }
-    const animated = tpl.parts.length > 1 || tpl.parts.some((p) => p.sway || p.spin);
+    // only props with spinning parts (windmills, rotors, wheels) need full rigs;
+    // everything else is instanced per part, with sway done on the GPU
+    const animated = tpl.parts.some((p) => p.spin);
+    // small, non-solid ground cover (grass, crops, reeds, flowers) skips the shadow pass
+    const castsShadow = meta.solid !== false || meta.footprint[0] * meta.footprint[1] > 1.6;
     let inst = null;
     if (!animated) {
-      const part = tpl.parts[0];
-      inst = {};
-      if (part.lit) { inst.lit = new THREE.InstancedMesh(part.lit, lit, items.length); inst.lit.castShadow = true; inst.lit.receiveShadow = true; group.add(inst.lit); }
-      if (part.glow) { inst.glow = new THREE.InstancedMesh(part.glow, glow, items.length); group.add(inst.glow); }
+      inst = { parts: [] };
+      for (const part of tpl.parts) {
+        if (part.hide) continue;
+        const off = new THREE.Matrix4().makeTranslation(part.pivot[0], part.pivot[1], part.pivot[2]);
+        const litM = part.sway ? withSway(toonMaterial({ rim: 0.05 }), part.sway, 'toon') : lit;
+        const glowM = part.sway ? withSway(glowMaterial(), part.sway, 'glow') : glow;
+        if (part.lit) { const im = new THREE.InstancedMesh(part.lit, litM, items.length); im.castShadow = castsShadow; im.receiveShadow = true; group.add(im); inst.parts.push({ m: im, off }); }
+        if (part.glow) { const im = new THREE.InstancedMesh(part.glow, glowM, items.length); group.add(im); inst.parts.push({ m: im, off }); }
+      }
     }
     items.forEach((it, n) => {
       const [, x, z, rotDeg = 0, scale = 1, yOver] = it;
       const y = yOver ?? (g.inb(Math.floor(x), Math.floor(z)) ? g.hgt[g.idx(Math.floor(x), Math.floor(z))] : 0);
       const rot = (rotDeg * Math.PI) / 180;
       const rec = { id, x, z, y, rot, scale, meta, alive: true, hp: meta.hp, key: id + '@' + x.toFixed(1) + ',' + z.toFixed(1) };
+      e.set(0, rot, 0); q.setFromEuler(e); s3.setScalar(scale); p3.set(x, y, z);
+      m4.compose(p3, q, s3);
+      rec.matrix = m4.clone();
+      // static particle emitters (petals, steam, campfire smoke…)
+      for (const f of tpl.fx || []) {
+        const part = tpl.parts.find((pp) => pp.name === f.part) || { pivot: [0, 0, 0] };
+        _pv.set(part.pivot[0] + f.local[0], part.pivot[1] + f.local[1], part.pivot[2] + f.local[2]).applyMatrix4(m4);
+        env.emitters.push({ rec, pos: [_pv.x, _pv.y, _pv.z], type: f.type, rate: f.rate ?? 1, scale: (f.scale ?? 1) * scale, color: f.color || null, acc: Math.random() });
+      }
       if (inst) {
-        e.set(0, rot, 0); q.setFromEuler(e); s3.setScalar(scale); p3.set(x, y, z);
-        m4.compose(p3, q, s3);
-        if (inst.lit) inst.lit.setMatrixAt(n, m4);
-        if (inst.glow) inst.glow.setMatrixAt(n, m4);
+        for (const ip of inst.parts) { _pm.multiplyMatrices(m4, ip.off); ip.m.setMatrixAt(n, _pm); }
         rec.inst = inst; rec.index = n;
       } else {
         const obj = instantiate(tpl, { rim: 0.05, shadow: true });
@@ -373,14 +419,14 @@ function buildProps(def, g, extra, env) {
       if (meta.light) env.lights.push({ pos: [x, y + (meta.light.y ?? 2) * scale, z], color: new THREE.Color(meta.light.color || '#ffd890'), intensity: meta.light.intensity ?? 4, range: meta.light.range ?? 6, night: meta.light.night !== false });
       env.props.push(rec);
     });
-    if (inst) { if (inst.lit) inst.lit.instanceMatrix.needsUpdate = true; if (inst.glow) inst.glow.instanceMatrix.needsUpdate = true; }
+    if (inst) for (const ip of inst.parts) { ip.m.instanceMatrix.needsUpdate = true; ip.m.computeBoundingSphere(); }
   }
   return group;
 }
 
 // ------------------------------------------------------------------ public
 export function buildEnvironment(def, g, opts = {}) {
-  const env = { group: new THREE.Group(), props: [], lights: [], footprints: [], signs: [], water: null, def, grid: g, emissiveMats: [], time: 0 };
+  const env = { group: new THREE.Group(), props: [], lights: [], footprints: [], signs: [], water: null, def, grid: g, emissiveMats: [], time: 0, emitters: [] };
   env.group.name = 'env:' + def.id;
   // buildings first (blocks nav + occluders for ground AO)
   const bres = buildBuildings(def, g, env);
@@ -421,8 +467,7 @@ export function destroyProp(env, rec, fx) {
   if (!rec || !rec.alive) return;
   rec.alive = false;
   if (rec.inst) {
-    if (rec.inst.lit) { rec.inst.lit.setMatrixAt(rec.index, _zero); rec.inst.lit.instanceMatrix.needsUpdate = true; }
-    if (rec.inst.glow) { rec.inst.glow.setMatrixAt(rec.index, _zero); rec.inst.glow.instanceMatrix.needsUpdate = true; }
+    for (const ip of rec.inst.parts) { ip.m.setMatrixAt(rec.index, _zero); ip.m.instanceMatrix.needsUpdate = true; }
   } else if (rec.obj) rec.obj.visible = false;
   if (fx) {
     const cols = (rec.meta.debris || ['#8a7a6a']).map((c) => new THREE.Color(c).getHex());
@@ -435,13 +480,25 @@ export function restoreProps(env) {
   for (const rec of env.props) {
     if (rec.alive) continue;
     rec.alive = true; rec.hp = rec.meta.hp;
-    if (rec.inst) { e.set(0, rec.rot, 0); q.setFromEuler(e); s.setScalar(rec.scale); p.set(rec.x, rec.y, rec.z); _m.compose(p, q, s); for (const k of ['lit', 'glow']) if (rec.inst[k]) { rec.inst[k].setMatrixAt(rec.index, _m); rec.inst[k].instanceMatrix.needsUpdate = true; } }
+    if (rec.inst) { for (const ip of rec.inst.parts) { _m.multiplyMatrices(rec.matrix, ip.off); ip.m.setMatrixAt(rec.index, _m); ip.m.instanceMatrix.needsUpdate = true; } }
     else if (rec.obj) rec.obj.visible = true;
   }
 }
 
-export function updateEnvironment(env, dt, night) {
+const EMIT_RANGE2 = 26 * 26;
+export function updateEnvironment(env, dt, night, fx = null, focus = null) {
   env.time += dt;
+  if (fx && env.emitters.length) {
+    for (const e of env.emitters) {
+      if (!e.rec.alive) continue;
+      if (focus) { const dx = e.pos[0] - focus.x, dz = e.pos[2] - focus.z; if (dx * dx + dz * dz > EMIT_RANGE2) continue; }
+      const d = EMITTERS[e.type]; if (!d) continue;
+      e.acc += dt * d.rate * e.rate;
+      if (e.acc < 1) continue;
+      const col = e.color ? colorArr(e.color) : null;
+      while (e.acc >= 1) { e.acc -= 1; d.f(fx, e.pos, e.scale, col); }
+    }
+  }
   if (env.water) env.water.material.uniforms.uNight.value = night;
   for (const s of env.signs) {
     let k = s.base * (0.25 + night * 0.95);

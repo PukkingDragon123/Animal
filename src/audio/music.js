@@ -143,6 +143,11 @@ export class Voice {
     const o = this.ctx.createOscillator(), g = this.gain(0); o.connect(g); g.connect(this.dest);
     o.start(t0); o.stop(t1); return this._src(o, t1);
   }
+  // re-strike damping: fade this voice's choke gain and stop its sources early (saves CPU)
+  choke(t, fade = 0.08) {
+    if (this.cg) { this.cg.gain.cancelScheduledValues(t); this.cg.gain.setTargetAtTime(0, t, fade / 3); }
+    for (const n of this.nodes) if (typeof n.stop === 'function') { try { n.stop(t + fade); } catch (e) { /* already ended */ } }
+  }
   // stop every source at t (persistent beds); nodes are disconnected by dispose()
   kill(t) { for (const n of this.nodes) if (typeof n.stop === 'function') { try { n.stop(t); } catch (e) { /* not started */ } } }
   dispose() {
@@ -208,7 +213,7 @@ const I = INST;
 // ---- drums -----------------------------------------------------------------
 I.kick = (k, dest, t, ev, o = {}) => {
   const v = k.v(dest), vel = ev.vel;
-  const P = { tight: [165, 50, 0.3, 0.45], rock: [190, 52, 0.36, 0.7], '808': [125, 43, 0.85, 0.15], soft: [105, 48, 0.26, 0.12], deep: [150, 41, 0.55, 0.3], metal: [210, 55, 0.22, 1.0] }[o.tone || 'tight'];
+  const P = { tight: [170, 54, 0.26, 0.5], rock: [195, 57, 0.3, 0.75], '808': [125, 45, 0.85, 0.15], soft: [110, 54, 0.22, 0.14], deep: [150, 48, 0.42, 0.3], metal: [215, 60, 0.2, 1.0] }[o.tone || 'tight'];
   const [f0, f1, dec, click] = P, end = t + dec + 0.05;
   const s = v.osc('sine', f0, t, end);
   s.frequency.exponentialRampToValueAtTime(f1, t + 0.065);
@@ -244,8 +249,8 @@ I.snare = (k, dest, t, ev, o = {}) => {
     lofi: { nf: 800, lp: 3600, nd: 0.15, nv: 0.55, bf: 175, bd: 0.08, bv: 0.45 },
     metal: { nf: 1500, lp: 10000, nd: 0.17, nv: 0.95, bf: 230, bd: 0.07, bv: 0.7 },
   }[tone];
-  const n = v.noise('white', t, t + S.nd + 0.05), hp = v.filter('highpass', S.nf, 0.8), lp = v.filter('lowpass', S.lp), pk = v.filter('peaking', 4500, 1, 3), g = v.gain(0);
-  v.perc(g.gain, t, vel * S.nv, 0.001, S.nd); v.chain(n, hp, lp, pk, g); v.out(g);
+  const n = v.noise('white', t, t + S.nd + 0.05), hp = v.filter('highpass', S.nf, 0.8), pk = v.filter(S.lp < 6000 ? 'lowpass' : 'peaking', S.lp < 6000 ? S.lp : 4500, 1, 3), g = v.gain(0);
+  v.perc(g.gain, t, vel * S.nv, 0.001, S.nd); v.chain(n, hp, pk, g); v.out(g);
   const b = v.osc('triangle', S.bf * 1.25, t, t + S.bd + 0.05), bg = v.gain(0);
   b.frequency.exponentialRampToValueAtTime(S.bf * 0.85, t + S.bd);
   v.perc(bg.gain, t, vel * S.bv, 0.001, S.bd); v.chain(b, bg); v.out(bg);
@@ -264,11 +269,11 @@ I.clap = (k, dest, t, ev) => {
 I.hat = (k, dest, t, ev, o = {}) => {
   const v = k.v(dest), st = ev.st || {}, open = o.open || ev.ch === 'O';
   const dec = open ? (o.decay || 0.3) : (o.decay || 0.042) * (ev.vel > 0.9 ? 1.5 : 1);
-  if (!open && st.openHat) { st.openHat.gain.setTargetAtTime(0, t, 0.008); st.openHat = null; }
+  if (!open && st.openHat) { st.openHat.choke(t, 0.03); st.openHat = null; }
   const n = v.noise('white', t, t + dec + 0.05), hp = v.filter('highpass', o.tone === 'dark' ? 5200 : 7200, 0.7), pk = v.filter('peaking', 10500, 1.2, 5), g = v.gain(0), cg = v.gain(1);
   v.perc(g.gain, t, ev.vel * (open ? 0.55 : 0.6), 0.0008, dec);
   v.chain(n, hp, pk, g, cg); v.out(cg);
-  if (open) st.openHat = cg;
+  if (open) { v.cg = cg; st.openHat = v; }
   v.done();
 };
 
@@ -281,8 +286,10 @@ I.ride = (k, dest, t, ev, o = {}) => {
 };
 
 I.crash = (k, dest, t, ev, o = {}) => {
-  const v = k.v(dest), vel = ev.vel, china = o.tone === 'china', dec = o.decay || (china ? 1.1 : 2.0);
-  for (const side of [-0.35, 0.35]) {
+  const v = k.v(dest), vel = ev.vel, china = o.tone === 'china', dec = o.decay || (china ? 1.1 : 2.0), st = ev.st || {};
+  if (st.cym && t - st.cymT < dec) st.cym.choke(t, 0.15);
+  const cg = v.cg = v.gain(1); cg.connect(dest); v.dest = cg; st.cym = v; st.cymT = t;
+  for (const side of (k.lite ? [0] : [-0.35, 0.35])) {
     const n = v.noise('white', t, t + dec + 0.05), hp = v.filter('highpass', china ? 2200 : 3800), pk = v.filter('peaking', china ? 3200 : 6200, 1.2, china ? 9 : 5), pn = v.pan(side), g = v.gain(0);
     v.perc(g.gain, t, vel * 0.42, 0.002, dec);
     if (china) { const sh = v.shaper('crunch'); v.chain(n, hp, pk, sh, g, pn); } else v.chain(n, hp, pk, g, pn);
@@ -307,8 +314,9 @@ I.tom = (k, dest, t, ev) => {
 };
 
 I.taiko = (k, dest, t, ev, o = {}) => {
-  const v = k.v(dest), vel = ev.vel, small = o.size === 'small';
+  const v = k.v(dest), vel = ev.vel, small = o.size === 'small', st = ev.st || {};
   const [f0, f1, dec] = small ? [420, 310, 0.17] : [125, 58, 1.05];
+  if (!small) { if (st.drum && t - st.drumT < dec) st.drum.choke(t, 0.18); const cg = v.cg = v.gain(1); cg.connect(dest); v.dest = cg; st.drum = v; st.drumT = t; }
   const s = v.osc('sine', f0, t, t + dec + 0.05), g = v.gain(0);
   s.frequency.exponentialRampToValueAtTime(f1, t + (small ? 0.03 : 0.12)); s.frequency.exponentialRampToValueAtTime(f1 * 0.92, t + dec);
   v.perc(g.gain, t, vel, 0.002, dec); v.chain(s, g); v.out(g);
@@ -391,11 +399,12 @@ I.slap = (k, dest, t, ev, o = {}) => {
 
 I.upright = (k, dest, t, ev) => {
   const m = ev.notes[0], f = mtof(m), v = k.v(dest), vel = ev.vel, rel = t + ev.dur, end = rel + 0.2;
-  const s = v.osc('sine', f * 1.01, t, end), tr = v.osc('triangle', f * 1.01, t, end);
-  for (const o of [s, tr]) o.frequency.exponentialRampToValueAtTime(f, t + 0.04);
-  const tg = v.gain(0.45), lp = v.filter('lowpass', 900, 0.7), g = v.gain(0);
-  v.adsr(g.gain, t, vel * 0.85, 0.008, 0.5, 0.35, ev.dur, 0.1);
-  s.connect(lp); v.chain(tr, tg, lp); v.chain(lp, g); v.out(g);
+  const tr = v.osc('triangle', f * 1.012, t, end), sw = v.osc('sawtooth', f * 1.012, t, end), si = v.osc('sine', f, t, end);
+  for (const o of [tr, sw]) o.frequency.exponentialRampToValueAtTime(f, t + 0.04);
+  const sg = v.gain(0.3), sig = v.gain(0.35), lp = v.filter('lowpass', 2400, 0.8), g = v.gain(0);
+  lp.frequency.setValueAtTime(2400, t); lp.frequency.exponentialRampToValueAtTime(760, t + 0.25);
+  v.adsr(g.gain, t, vel * 0.8, 0.006, 0.45, 0.32, ev.dur, 0.1);
+  tr.connect(lp); v.chain(sw, sg, lp); v.chain(lp, g); v.chain(si, sig, g); v.out(g);
   const n = v.noise('white', t, t + 0.05), np = v.filter('lowpass', 1400), ng = v.gain(0);
   v.perc(ng.gain, t, vel * 0.18, 0.001, 0.025); v.chain(n, np, ng); v.out(ng);
   v.done();
@@ -410,8 +419,7 @@ I.epiano = (k, dest, t, ev, o = {}) => {
     const car = v.osc('sine', f, ti, end), mod = v.osc('sine', f, ti, end), mg = v.gain(0);
     mg.gain.setValueAtTime(f * (0.9 + 1.7 * vel), ti); mg.gain.setTargetAtTime(f * 0.18, ti, 0.35);
     v.chain(mod, mg); mg.connect(car.frequency);
-    const tf = Math.min(f * 14, 16000), tine = v.osc('sine', tf, ti, ti + 0.08), tg = v.gain(0);
-    tg.gain.setValueAtTime(f * 1.1 * vel, ti); tg.gain.exponentialRampToValueAtTime(0.5, ti + 0.05); v.chain(tine, tg); tg.connect(car.frequency);
+    if (!k.lite) { const tf = Math.min(f * 14, 16000), tine = v.osc('sine', tf, ti, ti + 0.08), tg = v.gain(0); tg.gain.setValueAtTime(f * 1.1 * vel, ti); tg.gain.exponentialRampToValueAtTime(0.5, ti + 0.05); v.chain(tine, tg); tg.connect(car.frequency); }
     const g = v.gain(0); v.adsr(g.gain, ti, vel * lvl, 0.003, 1.3, 0.38, ev.dur, 0.3);
     v.chain(car, g); v.out(g); v.done();
   });
@@ -491,13 +499,13 @@ I.pizz = (k, dest, t, ev, o = {}) => {
 
 // Acoustic guitar strum / fingerpick (per-string offsets)
 I.acoustic = (k, dest, t, ev, o = {}) => {
-  const v = k.v(dest), body = v.filter('peaking', 210, 1.2, 5), air = v.filter('highshelf', 4000, 0.7, 3);
+  const v = k.v(dest), body = v.filter('peaking', 210, 1.2, 4), air = v.filter('highshelf', 3500, 0.7, 5);
   v.chain(body, air); v.out(air);
   const notes = ev.up ? [...ev.notes].reverse() : ev.notes, strum = o.strum ?? 0.016, lvl = (o.level || 0.3) / Math.sqrt(notes.length);
   notes.forEach((m, i) => {
     const f = mtof(m), ti = t + i * strum, dec = Math.min(o.decay || 1.6, ev.dur + 0.35), end = ti + dec + 0.05;
     const tr = v.osc('triangle', f, ti, end), sw = v.osc('sawtooth', f, ti, end), sg = v.gain(0.4);
-    const lp = v.filter('lowpass', Math.min(f * 12, 8000), 1.1), g = v.gain(0); lp.frequency.exponentialRampToValueAtTime(f * 2.8, ti + 0.4);
+    const lp = v.filter('lowpass', Math.min(f * 14, 9000), 1.1), g = v.gain(0); lp.frequency.exponentialRampToValueAtTime(Math.min(f * 4.5, 6000), ti + 0.6);
     v.perc(g.gain, ti, ev.vel * lvl, 0.002, dec);
     tr.connect(lp); v.chain(sw, sg, lp); v.chain(lp, g, body);
   });
@@ -519,16 +527,17 @@ I.pad = (k, dest, t, ev, o = {}) => {
   if (o.sweep) { lp.frequency.setValueAtTime(cut * 0.35, t); lp.frequency.linearRampToValueAtTime(cut, t + a + 0.4); }
   v.adsr(g.gain, t, ev.vel * (o.level || 0.2) / Math.sqrt(n * 2), a, 0.8, 0.85, ev.dur, r);
   const det = o.detune ?? 9, wave = o.wave || 'sawtooth';
-  for (const m of ev.notes) { const f = mtof(m); v.osc(wave, f, t, end, -det).connect(lp); v.osc(wave, f, t, end, det).connect(lp); }
+  for (const m of ev.notes) { const f = mtof(m); v.osc(wave, f, t, end, -det).connect(lp); if (!k.lite) v.osc(wave, f, t, end, det).connect(lp); }
   v.chain(lp, g); v.out(g); v.done();
 };
 
 I.strings = (k, dest, t, ev, o = {}) => {
   const v = k.v(dest), a = o.a ?? 0.45, r = o.r ?? 0.7, rel = t + Math.max(ev.dur, a), end = rel + r * 1.4;
   const lp = v.filter('lowpass', o.cut || 2600, 0.5), hp = v.filter('highpass', 180), g = v.gain(0), n = ev.notes.length, oscs = [];
-  v.adsr(g.gain, t, ev.vel * (o.level || 0.2) / Math.sqrt(n * 2), a, 0.6, 0.9, ev.dur, r);
-  for (const m of ev.notes) { const f = mtof(m); for (const d of [-11, 10]) { const s = v.osc('sawtooth', f, t, end, d); s.connect(lp); oscs.push(s.detune); } }
-  vibrato(v, t, end, 5.3, 9, 0.5, oscs);
+  v.adsr(g.gain, t, ev.vel * (o.level || 0.2) / Math.sqrt(n * 2) * (ev.dur < 0.3 || k.lite ? 1.35 : 1), a, 0.6, 0.9, ev.dur, r);
+  const short = ev.dur < 0.3, dets = short || k.lite ? [rr(-6, 6)] : [-11, 10];
+  for (const m of ev.notes) { const f = mtof(m); for (const d of dets) { const s = v.osc('sawtooth', f, t, end, d); s.connect(lp); oscs.push(s.detune); } }
+  if (!short) vibrato(v, t, end, 5.3, 9, 0.5, oscs);
   v.chain(lp, hp, g); v.out(g); v.done();
 };
 
@@ -538,7 +547,7 @@ I.choir = (k, dest, t, ev, o = {}) => {
   const src = v.gain(1), sum = v.gain(1), g = v.gain(0), lp = v.filter('lowpass', 3800), n = ev.notes.length, F = VOWELS[o.vowel || 'a'], oscs = [];
   F.forEach((fq, i) => { const bp = v.filter('bandpass', fq, [5, 7, 9][i]), bg = v.gain([3.2, 2.0, 1.1][i]); v.chain(src, bp, bg, sum); });
   v.adsr(g.gain, t, ev.vel * (o.level || 0.26) / Math.sqrt(n), a, 0.8, 0.9, ev.dur, r);
-  for (const m of ev.notes) { const f = mtof(m); for (const d of [-8, 9]) { const s = v.osc('sawtooth', f, t, end, d); s.connect(src); oscs.push(s.detune); } }
+  for (const m of ev.notes) { const f = mtof(m); for (const d of (k.lite ? [rr(-6, 6)] : [-8, 9])) { const s = v.osc('sawtooth', f, t, end, d); s.connect(src); oscs.push(s.detune); } }
   vibrato(v, t, end, 4.8, 12, 0.7, oscs);
   v.chain(sum, lp, g); v.out(g); v.done();
 };
@@ -559,15 +568,15 @@ I.brass = (k, dest, t, ev, o = {}) => {
 I.lead = (k, dest, t, ev, o = {}) => {
   const m = ev.notes[0], f = mtof(m), v = k.v(dest), st = ev.st || {}, r = o.r ?? 0.12, rel = t + Math.max(ev.dur, 0.02), end = rel + r * 1.5;
   const wave = o.wave || 'sawtooth';
-  const s1 = v.osc(wave, f, t, end), s2 = v.osc(o.wave2 || wave, f, t, end, o.det ?? 7), sg = v.gain(o.mix2 ?? 0.6);
+  const s1 = v.osc(wave, f, t, end), s2 = k.lite ? null : v.osc(o.wave2 || wave, f, t, end, o.det ?? 7), sg = v.gain(o.mix2 ?? 0.6);
   const from = ev.slide ? f * 0.8909 : (o.glide && st.lastF && t - st.lastT < 0.25 ? st.lastF : 0);
-  if (from) for (const s of [s1, s2]) { s.frequency.setValueAtTime(from, t); s.frequency.exponentialRampToValueAtTime(f, t + (ev.slide ? 0.09 : o.glide)); }
+  if (from) for (const s of [s1, s2]) if (s) { s.frequency.setValueAtTime(from, t); s.frequency.exponentialRampToValueAtTime(f, t + (ev.slide ? 0.09 : o.glide)); }
   st.lastF = f; st.lastT = rel;
-  vibrato(v, t, end, o.vibRate || 5.4, (o.vib ?? 14) * (ev.vib ? 2.2 : 1), ev.vib ? 0.15 : 0.32, [s1.detune, s2.detune]);
+  vibrato(v, t, end, o.vibRate || 5.4, (o.vib ?? 14) * (ev.vib ? 2.2 : 1), ev.vib ? 0.15 : 0.32, s2 ? [s1.detune, s2.detune] : [s1.detune]);
   const cut = o.cut || 3200, lp = v.filter('lowpass', cut * 1.7, o.q || 1), g = v.gain(0);
   lp.frequency.exponentialRampToValueAtTime(cut, t + 0.25);
   v.adsr(g.gain, t, ev.vel * (o.level || 0.22), o.a ?? 0.01, 0.25, o.s ?? 0.8, ev.dur, r);
-  s1.connect(lp); v.chain(s2, sg, lp); v.chain(lp, g);
+  s1.connect(lp); if (s2) v.chain(s2, sg, lp); v.chain(lp, g);
   if (o.sub) { const so = v.osc('sine', f / 2, t, end), sgg = v.gain(o.sub); v.chain(so, sgg, g); }
   v.out(g); v.done();
 };
@@ -576,7 +585,7 @@ I.lead = (k, dest, t, ev, o = {}) => {
 // Palm mute = short envelope + dark pre-filter; open = sustained ring.
 I.guitar = (k, dest, t, ev, o = {}) => {
   const root = ev.notes[0], v = k.v(dest), vel = ev.vel, mute = ev.mute;
-  const tones = o.single ? [root] : o.fifthOnly || mute ? [root, root + 7] : [root, root + 7, root + 12];
+  const tones = o.single || (k.lite && mute) ? [root] : o.fifthOnly || mute || k.lite ? [root, root + 7] : [root, root + 7, root + 12];
   const dur = mute ? Math.min(ev.dur, 0.16) : ev.dur, rel = t + dur, end = mute ? t + 0.2 : rel + 0.12;
   const lp = v.filter('lowpass', mute ? 650 : 3400, 0.8), g = v.gain(0);
   if (mute) v.perc(g.gain, t, vel * 0.85, 0.002, 0.14);
@@ -618,7 +627,7 @@ I.drone = (k, dest, t, ev, o = {}) => {
   const cut = o.cut || 700, lp = v.filter('lowpass', cut, 2.5), g = v.gain(0);
   const lfo = v.osc('sine', o.rate || 0.13, t, end), lg = v.gain(cut * 0.55); v.chain(lfo, lg); lg.connect(lp.frequency);
   v.adsr(g.gain, t, ev.vel * (o.level || 0.22) / Math.sqrt(n * 3), a, 1, 1, ev.dur, r);
-  for (const m of ev.notes) { const f = mtof(m); for (const d of [-13, 0, 12]) v.osc(o.wave || 'sawtooth', f, t, end, d).connect(lp); }
+  for (const m of ev.notes) { const f = mtof(m); for (const d of (k.lite ? [-8, 8] : [-13, 0, 12])) v.osc(o.wave || 'sawtooth', f, t, end, d).connect(lp); }
   v.chain(lp, g); v.out(g); v.done();
 };
 
@@ -648,10 +657,10 @@ export function buildAmp(k, o = {}) {
   const mk = (n) => { nodes.push(n); return n; };
   const bq = (type, f, q, g) => { const b = mk(c.createBiquadFilter()); b.type = type; b.frequency.value = f; b.Q.value = q; if (g) b.gain.value = g; return b; };
   const input = bq('highpass', 120, 0.7), pre = bq('peaking', 900, 0.9, 5), drive = mk(c.createGain()); drive.gain.value = o.drive || 4;
-  const sh = mk(c.createWaveShaper()); sh.curve = curve('amp'); sh.oversample = '4x';
-  const cab1 = bq('lowpass', o.cab || 4800, 0.9), scoop = bq('peaking', 430, 1.1, o.scoop ?? -5), pres = bq('peaking', 2300, 1, 3), cab2 = bq('lowpass', 8000, 0.7), hp = bq('highpass', 85, 0.7);
+  const sh = mk(c.createWaveShaper()); sh.curve = curve('amp'); sh.oversample = k.lite ? 'none' : '2x';
+  const cab = bq('lowpass', o.cab || 4800, 1.1), scoop = bq('peaking', 430, 1.1, o.scoop ?? -5); // cab sim: resonant LP + mid scoop
   const output = mk(c.createGain()); output.gain.value = o.post || 0.3;
-  input.connect(pre); pre.connect(drive); drive.connect(sh); sh.connect(cab1); cab1.connect(scoop); scoop.connect(pres); pres.connect(cab2); cab2.connect(hp); hp.connect(output);
+  input.connect(pre); pre.connect(drive); drive.connect(sh); sh.connect(cab); cab.connect(scoop); scoop.connect(output);
   return { input, output, nodes };
 }
 
@@ -708,7 +717,7 @@ export function voicing(ch, vc = {}) {
   return notes;
 }
 
-function chordGrid(str, len, spb) {
+export function chordGrid(str, len, spb) {
   const at = new Array(len).fill(null);
   if (!str) return at;
   const bars = str.split('|').map((b) => b.trim()).filter(Boolean);
@@ -850,9 +859,19 @@ export class TrackPlayer {
     const input = this._g(p.vol ?? 0.5); let head = input;
     if (p.amp) { const a = buildAmp(this.k, p.amp === true ? {} : p.amp); this.nodes.push(...a.nodes); input.connect(a.input); head = a.output; }
     const drive = p.drive ?? (p.inst === 'bass' && p.o ? p.o.drive : 0);
-    if (drive) { const pre = this._g(drive), sh = this.ctx.createWaveShaper(), post = this._g(0.55); sh.curve = curve('crunch'); sh.oversample = '2x'; this.nodes.push(sh); head.connect(pre); pre.connect(sh); sh.connect(post); head = post; }
+    if (drive) { const pre = this._g(drive), sh = this.ctx.createWaveShaper(), post = this._g(0.55); sh.curve = curve('crunch'); sh.oversample = '2x'; this.nodes.push(sh); head.connect(pre); pre.connect(sh); sh.connect(post); const dc = this._bq('highpass', 32, 0.7); post.connect(dc); head = dc; }
+    if (p.hp) { const hp = this._bq('highpass', p.hp, 0.7); head.connect(hp); head = hp; }
     if (p.lp) { const lp = this._bq('lowpass', p.lp, 0.6); head.connect(lp); head = lp; }
     const lt = this._layer(p), layer = this._g(lt); head.connect(layer);
+    if (p.chorus) { // stereo width: two LFO-modulated short delays → L / R
+      const c = this.ctx, mg = c.createChannelMerger(2), wet = this._g(p.chorus); this.nodes.push(mg);
+      [[0.011, 0.31, 0], [0.017, 0.23, 1]].forEach(([dt, rate, side]) => {
+        const d = c.createDelay(0.05), lfo = c.createOscillator(), lg = this._g(0.0022); d.delayTime.value = dt; lfo.frequency.value = rate;
+        lfo.connect(lg); lg.connect(d.delayTime); lfo.start(); this.srcs.push(lfo); this.nodes.push(d, lfo);
+        head.connect(d); d.connect(mg, 0, side);
+      });
+      mg.connect(wet); wet.connect(layer);
+    }
     const pan = this._pan(p.pan || 0); layer.connect(pan); pan.connect(this.bus);
     const rv = p.rev ?? this.tr.rev ?? 0;
     if (this.revBus && rv > 0) { const s = this._g(rv); pan.connect(s); s.connect(this.revBus); }
@@ -915,7 +934,7 @@ export class TrackPlayer {
     }
     for (const e of evs) {
       const ch = this.ch[e.part], p = ch.p;
-      if (ch.lt < 0.01) continue;
+      if (ch.lt < 0.01 || (p.orn && this.k.lite)) continue;
       let tt = t + sw + (p.nudge || 0);
       if (tr.human) tt += (this.rng() - 0.5) * 2 * tr.human;
       if (tt < now) { if (now - tt > 0.05) continue; tt = now; }
@@ -994,15 +1013,15 @@ export const TRACKS = {};
       kick: { inst: 'kick', vol: 0.8, o: { tone: 'tight' } },
       snare: { inst: 'snare', vol: 0.42, rev: 0.16 },
       clap: { inst: 'clap', vol: 0.26, rev: 0.2 },
-      hat: { inst: 'hat', vol: 0.2, pan: 0.25 },
+      hat: { inst: 'hat', vol: 0.2, pan: 0.4 },
       ohat: { inst: 'hat', vol: 0.15, pan: 0.25, o: { open: true } },
       crash: { inst: 'crash', vol: 0.2, pan: -0.2 },
-      bass: { inst: 'slap', mode: 'rel', base: 33, vol: 0.62, rev: 0 },
-      ep: { inst: 'epiano', mode: 'chord', voicing: { center: 63, n: 4, rootless: true }, vol: 0.5, pan: -0.22, rev: 0.2 },
-      strings: { inst: 'strings', mode: 'chord', voicing: { center: 70, n: 3 }, vol: 0.32, pan: 0.18, rev: 0.3, o: { a: 0.5 } },
-      bell: { inst: 'bell', mode: 'abs', vol: 0.62, pan: 0.05, dly: 0.2, rev: 0.22, o: { variant: 'city' } },
+      bass: { inst: 'slap', mode: 'rel', base: 33, vol: 0.44, rev: 0, hp: 38 },
+      ep: { inst: 'epiano', mode: 'chord', voicing: { center: 63, n: 4, rootless: true }, vol: 0.42, pan: -0.15, rev: 0.2, chorus: 0.6 },
+      strings: { inst: 'strings', mode: 'chord', voicing: { center: 70, n: 3 }, vol: 0.32, pan: 0.1, rev: 0.3, chorus: 0.7, o: { a: 0.5 } },
+      bell: { inst: 'bell', mode: 'abs', vol: 0.8, pan: 0.05, dly: 0.2, rev: 0.22, o: { variant: 'city' } },
       lead: { inst: 'lead', mode: 'abs', oct: -1, vol: 0.28, pan: -0.05, rev: 0.2, o: { wave: 'square', wave2: 'triangle', cut: 2400, vib: 10, glide: 0.03 } },
-      sparkle: { inst: 'glock', mode: 'rel', base: 72, vol: 0.13, pan: 0.35, dly: 0.35 },
+      sparkle: { inst: 'glock', orn: true, mode: 'rel', base: 72, vol: 0.13, pan: 0.35, dly: 0.35 },
     },
     sections: {
       intro: {
@@ -1051,13 +1070,13 @@ export const TRACKS = {};
   const melA = 'd5:6 b4:4 d5:2 | e5:4 d5:2 a4:6 | b4:4 c5:2 d5:4 e5:2 | g5:6 e5:6 | d5:6 b4:4 g4:2 | c5:4 e5:2 g5:4 e5:2 | d5:4 c5:2 b4:4 a4:2 | a4:10 r:2';
   const melB = 'e5:4 g5:2 c6:6 | b5:4 a5:2 g5:6 | e5:4 a5:2 g5:4 e5:2 | f#5:6 d5:6 | g5:4 f#5:2 e5:4 b4:2 | c5:4 e5:2 g5:4 a5:2 | g5:4 e5:2 d5:4 c5:2 | d5:6 f#5:4 a5:2';
   TRACKS.farm = {
-    id: 'farm', vol: 0.92, name: 'Morning on the Farm — pastoral', bpm: 90, beats: 3, human: 0.006, rev: 0.25,
+    id: 'farm', vol: 1.21, name: 'Morning on the Farm — pastoral', bpm: 90, beats: 3, human: 0.006, rev: 0.25,
     parts: {
       flute: { inst: 'flute', mode: 'abs', vol: 0.62, rev: 0.32, pan: 0.1, o: { style: 'flute', breath: 0.2 } },
-      guitar: { inst: 'acoustic', mode: 'rel', base: 50, vol: 0.62, pan: -0.25, rev: 0.18, o: { strum: 0, decay: 1.2 } },
-      strings: { inst: 'strings', mode: 'chord', voicing: { center: 62, n: 3 }, vol: 0.38, rev: 0.35, o: { a: 0.8, r: 1.2, cut: 2000 } },
-      bass: { inst: 'upright', mode: 'rel', base: 36, vol: 0.6 },
-      glock: { inst: 'glock', mode: 'abs', vol: 0.16, pan: 0.3, rev: 0.3 },
+      guitar: { inst: 'acoustic', mode: 'rel', base: 50, vol: 0.62, pan: -0.3, rev: 0.18, chorus: 0.4, o: { strum: 0, decay: 1.2 } },
+      strings: { inst: 'strings', mode: 'chord', voicing: { center: 62, n: 3 }, vol: 0.38, rev: 0.35, chorus: 0.7, o: { a: 0.8, r: 1.2, cut: 2000 } },
+      bass: { inst: 'upright', mode: 'rel', base: 36, vol: 0.34 },
+      glock: { inst: 'glock', orn: true, mode: 'abs', vol: 0.16, pan: 0.3, rev: 0.3 },
       shaker: { inst: 'shaker', vol: 0.2, pan: 0.4 },
       kick: { inst: 'kick', vol: 0.32, o: { tone: 'soft' } },
     },
@@ -1081,15 +1100,15 @@ export const TRACKS = {};
   const mel = 'r:2 d5:2 f5:2 a5:4 g5:2 f5:2 d5:2 | e5:6 d5:2 r:4 c5:2 d5:2 | e5:3 c5:3 a4:2 g4:8 | r:4 f4:2 a4:2 c5:2 e5:4 d5:2 | '
     + 'd5:6 c5:2 a4:2 f4:2 a4:4 | g4:4 c5:2 e5:4 g5:2 e5:2 c5:2 | d5:6 f5:2 a5:4 g5:2 f5:2 | e5:4 db5:4 bb4:4 g4:4';
   TRACKS.park = {
-    id: 'park', vol: 0.68, name: 'Sunday Bench — lo-fi', bpm: 82, swing: 0.2, human: 0.008, rev: 0.14,
+    id: 'park', vol: 0.88, name: 'Sunday Bench — lo-fi', bpm: 82, swing: 0.2, human: 0.008, rev: 0.14,
     fx: { lp: 5200, drive: 1.3 }, bed: 'vinyl', bedVol: 0.55,
     parts: {
       kick: { inst: 'kick', vol: 0.9, o: { tone: 'soft' } },
       snare: { inst: 'snare', vol: 0.55, rev: 0.12, o: { tone: 'lofi' } },
       hat: { inst: 'hat', vol: 0.17, pan: 0.2, o: { tone: 'dark' } },
       rim: { inst: 'snare', vol: 0.18, pan: -0.2, o: { tone: 'rim' } },
-      keys: { inst: 'epiano', mode: 'chord', voicing: { center: 62, n: 4, rootless: true }, vol: 0.62, pan: -0.12, rev: 0.22, o: { roll: 0.014 } },
-      bass: { inst: 'bass', mode: 'rel', base: 34, vol: 0.85, o: { wave: 'triangle', cut: 520, env: 0.8, q: 1, sub: 0.6 } },
+      keys: { inst: 'epiano', mode: 'chord', voicing: { center: 62, n: 4, rootless: true }, vol: 0.62, pan: -0.1, rev: 0.22, chorus: 0.6, o: { roll: 0.014 } },
+      bass: { inst: 'bass', mode: 'rel', base: 34, vol: 0.45, hp: 36, o: { wave: 'triangle', cut: 700, env: 0.8, q: 1, sub: 0.25 } },
       vibes: { inst: 'bell', mode: 'abs', vol: 0.5, pan: 0.18, rev: 0.25, dly: 0.18, o: { variant: 'vibes' } },
     },
     delay: { beats: 0.75, fb: 0.28, mix: 0.4 },
@@ -1120,7 +1139,7 @@ export const TRACKS = {};
   const hook = 'a5:3 g5:3 a5:2 c6:4 a5:4 | b5:4 a5:2 g5:2 d5:4 g5:4 | e5:2 g5:2 b5:4 a5:2 g5:2 e5:4 | a5:6 g5:2 e5:2 c5:2 d5:2 e5:2 | '
     + 'a5:3 g5:3 a5:2 c6:4 e6:4 | d6:4 c6:2 b5:2 g5:4 b5:4 | b5:4 g5:2 e5:2 a5:2 c#6:2 e6:4 | d6:4 c6:2 a5:2 b5:4 g5:4';
   TRACKS.dotonbori = {
-    id: 'dotonbori', vol: 1.2, name: 'Dotonbori Lights — Shibuya-kei', bpm: 128, transpose: 2, human: 0.003, rev: 0.1,
+    id: 'dotonbori', vol: 1.52, name: 'Dotonbori Lights — Shibuya-kei', bpm: 128, transpose: 2, human: 0.003, rev: 0.1,
     delay: { beats: 0.75, fb: 0.25, mix: 0.35 },
     parts: {
       kick: { inst: 'kick', vol: 0.8, o: { tone: 'tight' } },
@@ -1130,12 +1149,12 @@ export const TRACKS = {};
       ohat: { inst: 'hat', vol: 0.14, pan: 0.3, o: { open: true, decay: 0.2 } },
       tamb: { inst: 'tamb', vol: 0.22, pan: -0.4 },
       crash: { inst: 'crash', vol: 0.22 },
-      bass: { inst: 'bass', mode: 'rel', base: 33, vol: 0.62, o: { wave: 'sawtooth', cut: 800, env: 2.2, q: 2, sub: 0.4 } },
-      ep: { inst: 'epiano', mode: 'chord', voicing: { center: 64, n: 4, rootless: true }, vol: 0.42, pan: -0.25, rev: 0.12 },
+      bass: { inst: 'bass', mode: 'rel', base: 33, vol: 0.4, hp: 40, o: { wave: 'sawtooth', cut: 900, env: 2.2, q: 2, sub: 0.15 } },
+      ep: { inst: 'epiano', mode: 'chord', voicing: { center: 64, n: 4, rootless: true }, vol: 0.42, pan: -0.2, rev: 0.12, chorus: 0.5 },
       brass: { inst: 'brass', mode: 'chord', voicing: { center: 67, n: 4 }, vol: 0.38, pan: 0.2, rev: 0.18 },
-      strings: { inst: 'strings', mode: 'chord', voicing: { center: 72, n: 3 }, vol: 0.22, pan: 0.15, rev: 0.3 },
-      lead: { inst: 'lead', mode: 'abs', oct: -1, vol: 0.5, rev: 0.16, dly: 0.12, o: { wave: 'square', wave2: 'pulse', mix2: 0.5, cut: 3600, vib: 12, glide: 0.035, level: 0.2 } },
-      glock: { inst: 'glock', mode: 'abs', vol: 0.22, pan: 0.35, dly: 0.2 },
+      strings: { inst: 'strings', mode: 'chord', voicing: { center: 72, n: 3 }, vol: 0.22, pan: 0.1, rev: 0.3, chorus: 0.7 },
+      lead: { inst: 'lead', mode: 'abs', oct: -1, vol: 0.65, rev: 0.16, dly: 0.12, o: { wave: 'square', wave2: 'pulse', mix2: 0.5, cut: 3600, vib: 12, glide: 0.035, level: 0.2 } },
+      glock: { inst: 'glock', orn: true, mode: 'abs', vol: 0.22, pan: 0.35, dly: 0.2 },
     },
     sections: {
       A: {
@@ -1187,13 +1206,13 @@ export const TRACKS = {};
       ride: { inst: 'ride', vol: 0.15, pan: 0.35, int: [0.5, 0.65] },
       crash: { inst: 'crash', vol: 0.28, int: [0.18, 0.32] },
       tom: { inst: 'tom', vol: 0.45, pan: -0.15 },
-      bass: { inst: 'bass', mode: 'rel', base: 28, vol: 0.55, o: { wave: 'sawtooth', cut: 900, env: 2, q: 2, drive: 2.2 } },
-      gtrL: { inst: 'guitar', mode: 'chord', voicing: { type: 'root', base: 40 }, vol: 0.5, pan: -0.75, amp: { drive: 4 } },
-      gtrR: { inst: 'guitar', mode: 'chord', voicing: { type: 'root', base: 40 }, vol: 0.5, pan: 0.75, nudge: 0.007, amp: { drive: 4.5, cab: 4400 }, int: [0.18, 0.35] },
+      bass: { inst: 'bass', mode: 'rel', base: 28, vol: 0.36, hp: 45, o: { wave: 'sawtooth', cut: 1000, env: 2, q: 2, drive: 2.2 } },
+      gtrL: { inst: 'guitar', mode: 'chord', voicing: { type: 'root', base: 40 }, vol: 0.42, pan: -0.75, amp: { drive: 4 } },
+      gtrR: { inst: 'guitar', mode: 'chord', voicing: { type: 'root', base: 40 }, vol: 0.42, pan: 0.75, nudge: 0.007, amp: { drive: 4.5, cab: 4400 }, int: [0.18, 0.35] },
       strings: { inst: 'strings', mode: 'chord', voicing: { center: 67, n: 3 }, vol: 0.25, rev: 0.25, int: [0.3, 0.5] },
-      lead: { inst: 'lead', mode: 'abs', vol: 0.5, rev: 0.18, dly: 0.2, int: [0.42, 0.6], o: { wave: 'sawtooth', wave2: 'square', cut: 3600, vib: 18, glide: 0.04, level: 0.2 } },
-      lgtr: { inst: 'lead', mode: 'abs', oct: -1, vol: 0.42, pan: 0.2, rev: 0.1, int: [0.62, 0.78], amp: { drive: 6, post: 0.22, cab: 4200 }, o: { cut: 5000, vib: 22, det: 4, level: 0.3 } },
-      arp: { inst: 'pluck', mode: 'rel', base: 64, vol: 0.22, pan: -0.3, dly: 0.25, int: [0.75, 0.92], o: { decay: 0.18 } },
+      lead: { inst: 'lead', mode: 'abs', vol: 0.8, rev: 0.18, dly: 0.2, int: [0.42, 0.6], o: { wave: 'sawtooth', wave2: 'square', cut: 3600, vib: 18, glide: 0.04, level: 0.2 } },
+      lgtr: { inst: 'lead', orn: true, mode: 'abs', oct: -1, vol: 0.55, pan: 0.2, rev: 0.1, int: [0.62, 0.78], amp: { drive: 6, post: 0.22, cab: 4200 }, o: { cut: 5000, vib: 22, det: 4, level: 0.3 } },
+      arp: { inst: 'pluck', orn: true, mode: 'rel', base: 64, vol: 0.22, pan: -0.3, dly: 0.25, int: [0.75, 0.92], o: { decay: 0.18 } },
     },
     sections: {
       intro: {
@@ -1262,10 +1281,10 @@ export const TRACKS = {};
       tom: { inst: 'tom', vol: 0.45 },
       gtrL: { inst: 'guitar', mode: 'abs', vol: 0.5, pan: -0.8, amp },
       gtrR: { inst: 'guitar', mode: 'abs', vol: 0.5, pan: 0.8, nudge: 0.006, amp: { ...amp, drive: 6.5, cab: 4300 } },
-      bass: { inst: 'bass', mode: 'abs', oct: -1, vol: 0.5, o: { wave: 'sawtooth', cut: 800, env: 2.5, q: 2, drive: 3 } },
+      bass: { inst: 'bass', mode: 'abs', oct: -1, vol: 0.32, hp: 48, o: { wave: 'sawtooth', cut: 950, env: 2.5, q: 2, drive: 3 } },
       gang: { inst: 'gang', vol: 0.7, rev: 0.25 },
-      lead1: { inst: 'lead', mode: 'abs', vol: 0.36, pan: -0.3, rev: 0.12, int: [0.45, 0.62], amp: { drive: 7, post: 0.22, cab: 4200 }, o: { vib: 24, det: 3, cut: 5200, level: 0.3 } },
-      lead2: { inst: 'lead', mode: 'abs', vol: 0.32, pan: 0.3, rev: 0.12, nudge: 0.01, int: [0.6, 0.78], amp: { drive: 7, post: 0.22, cab: 4200 }, o: { vib: 24, det: 3, cut: 5200, level: 0.3 } },
+      lead1: { inst: 'lead', mode: 'abs', vol: 0.46, pan: -0.3, rev: 0.12, int: [0.45, 0.62], amp: { drive: 7, post: 0.22, cab: 4200 }, o: { vib: 24, det: 3, cut: 5200, level: 0.3 } },
+      lead2: { inst: 'lead', orn: true, mode: 'abs', vol: 0.4, pan: 0.3, rev: 0.12, nudge: 0.01, int: [0.6, 0.78], amp: { drive: 7, post: 0.22, cab: 4200 }, o: { vib: 24, det: 3, cut: 5200, level: 0.3 } },
     },
     sections: {
       intro: {
@@ -1310,20 +1329,20 @@ export const TRACKS = {};
   TRACKS.boss = {
     id: 'boss', vol: 0.78, name: 'Soulstone Titan — boss', bpm: 140, human: 0.003, rev: 0.16,
     parts: {
-      taiko: { inst: 'taiko', vol: 0.75, rev: 0.25 },
+      taiko: { inst: 'taiko', vol: 0.62, rev: 0.25 },
       shime: { inst: 'taiko', vol: 0.3, pan: 0.3, o: { size: 'small' } },
       ka: { inst: 'ka', vol: 0.3, pan: -0.35 },
       kick: { inst: 'kick', vol: 0.6, o: { tone: 'deep' } },
       kick2: { inst: 'kick', vol: 0.4, o: { tone: 'rock' }, int: [0.6, 0.8] },
       snare: { inst: 'snare', vol: 0.45, rev: 0.2, o: { tone: 'rock' } },
       crash: { inst: 'crash', vol: 0.26 },
-      choir: { inst: 'choir', mode: 'chord', voicing: { center: 62, n: 4 }, vol: 0.62, rev: 0.4, o: { a: 0.45, r: 1 } },
+      choir: { inst: 'choir', mode: 'chord', voicing: { center: 62, n: 4 }, vol: 0.62, rev: 0.4, chorus: 0.7, o: { a: 0.45, r: 1 } },
       strings: { inst: 'strings', mode: 'rel', base: 50, vol: 0.45, pan: -0.2, rev: 0.2, gate: 0.6, o: { a: 0.015, r: 0.08, cut: 3200, level: 0.4 } },
       gtrL: { inst: 'guitar', mode: 'chord', voicing: { type: 'root', base: 38 }, vol: 0.42, pan: -0.7, amp: { drive: 5 } },
       gtrR: { inst: 'guitar', mode: 'chord', voicing: { type: 'root', base: 38 }, vol: 0.42, pan: 0.7, nudge: 0.007, amp: { drive: 5.5, cab: 4300 } },
-      bass: { inst: 'bass', mode: 'rel', base: 26, vol: 0.5, o: { cut: 700, env: 1.5, q: 2, drive: 2, sub: 0.5 } },
-      brass: { inst: 'brass', mode: 'abs', vol: 0.55, rev: 0.3, dly: 0.1, o: { cut: 3000, level: 0.35 } },
-      hiStr: { inst: 'strings', mode: 'abs', vol: 0.3, pan: 0.2, rev: 0.35, int: [0.55, 0.75], o: { a: 0.08, cut: 4000 } },
+      bass: { inst: 'bass', mode: 'rel', base: 26, vol: 0.32, hp: 40, o: { cut: 800, env: 1.5, q: 2, drive: 2, sub: 0.2 } },
+      brass: { inst: 'brass', mode: 'abs', vol: 0.75, rev: 0.3, dly: 0.1, o: { cut: 3000, level: 0.35 } },
+      hiStr: { inst: 'strings', orn: true, mode: 'abs', vol: 0.3, pan: 0.2, rev: 0.35, int: [0.55, 0.75], o: { a: 0.08, cut: 4000 } },
       bell: { inst: 'bell', mode: 'chord', voicing: { center: 74, n: 3 }, vol: 0.3, rev: 0.4, o: { variant: 'tubular' } },
     },
     delay: { beats: 1, fb: 0.25, mix: 0.3 },
@@ -1371,12 +1390,12 @@ export const TRACKS = {};
   const kotoB = 'r:24 d5:2 e5:2 g5:4 | r:16 b4:8 a4:8 | r:24 g5:4 e5:4 | r:16 d5:16 | r:24 a4:4 b4:4 | r:32 | r:16 b4:4 d5:4 e5:8 | d5:1 e5:1 g5:1 a5:1 b5:4 a5:24';
   const fluteB = 'a4:16 b4:8 a4:8 | g4:24 r:8 | e4:8 g4:8 a4:16 | d5:24 r:8 | b4:16 a4:8 g4:8 | a4:16 r:16 | e4:12 g4:4 a4:8 b4:8 | a4:32';
   TRACKS.safari = {
-    id: 'safari', vol: 1.55, name: 'Grass Sea — safari koto', bpm: 72, res: 8, human: 0.01, rev: 0.35,
+    id: 'safari', vol: 1.35, name: 'Grass Sea — safari koto', bpm: 72, res: 8, human: 0.01, rev: 0.35,
     delay: { beats: 0.75, fb: 0.35, mix: 0.4 },
     parts: {
       koto: { inst: 'koto', mode: 'abs', vol: 0.62, pan: 0.15, dly: 0.25 },
       koto2: { inst: 'koto', mode: 'rel', base: 38, vol: 0.45, pan: -0.2, o: { decay: 2 } },
-      drone: { inst: 'pad', mode: 'chord', voicing: { center: 57, n: 3 }, vol: 0.5, rev: 0.5, o: { wave: 'triangle', a: 1.4, r: 2, cut: 1200, level: 0.3, detune: 6 } },
+      drone: { inst: 'pad', mode: 'chord', voicing: { center: 57, n: 3 }, vol: 0.5, rev: 0.5, chorus: 0.8, o: { wave: 'triangle', a: 1.4, r: 2, cut: 1200, level: 0.3, detune: 6 } },
       flute: { inst: 'flute', mode: 'abs', vol: 0.5, pan: -0.1, rev: 0.45, dly: 0.15, o: { style: 'shaku' } },
       chime: { inst: 'glock', mode: 'rel', base: 74, vol: 0.12, pan: 0.4, dly: 0.4 },
     },
@@ -1386,7 +1405,7 @@ export const TRACKS = {};
         p: { koto: kotoA, koto2: '1:16 5:16 r:32', drone: 'x' + '-'.repeat(31) },
       },
       B: {
-        bars: 8, chords: 'G | Dsus2 | Em7 | Dsus2 | Bm | G | Em7 | Asus4',
+        bars: 8, chords: 'G | Dsus2 | Em7 | Dsus2 | Em7 | G | Em7 | Asus4',
         p: { koto: kotoB, flute: fluteB, koto2: '1:32 r:32', drone: 'x' + '-'.repeat(31), chime: 'r:56 5:4 8:4' },
       },
     },
@@ -1399,15 +1418,15 @@ export const TRACKS = {};
   const vib = 'e5:4 g5:2 b5:4 a5:2 g5:4 | c5:6 b4:2 c5:2 e5:6 | f5:4 e5:2 d5:2 c5:4 a4:4 | b4:6 e5:2 d5:8 | '
     + 'g5:4 f#5:2 e5:2 d5:4 b4:4 | c#5:4 e5:2 g5:2 bb5:8 | a5:4 f5:4 e5:4 d5:4 | d5:6 bb4:2 a4:8';
   TRACKS.night = {
-    id: 'night', vol: 0.78, name: 'Neon Canal — late-night lo-fi jazz', bpm: 76, transpose: -2, swing8: 0.3, human: 0.008, rev: 0.2,
+    id: 'night', vol: 1.33, name: 'Neon Canal — late-night lo-fi jazz', bpm: 76, transpose: -2, swing8: 0.3, human: 0.008, rev: 0.2,
     fx: { lp: 6500 }, bed: 'vinyl', bedVol: 0.35,
     parts: {
       kick: { inst: 'kick', vol: 0.45, o: { tone: 'soft' } },
       brush: { inst: 'snare', vol: 0.5, pan: 0.1, rev: 0.15, o: { tone: 'brush' } },
       ride: { inst: 'ride', vol: 0.16, pan: 0.35, o: { decay: 0.7 } },
       foot: { inst: 'hat', vol: 0.12, pan: 0.3, o: { tone: 'dark', decay: 0.03 } },
-      rhodes: { inst: 'epiano', mode: 'chord', voicing: { center: 62, n: 4, rootless: true }, vol: 0.62, pan: -0.15, rev: 0.25, o: { roll: 0.01 } },
-      upright: { inst: 'upright', mode: 'rel', base: 31, vol: 0.85 },
+      rhodes: { inst: 'epiano', mode: 'chord', voicing: { center: 62, n: 4, rootless: true }, vol: 0.62, pan: -0.1, rev: 0.25, chorus: 0.6, o: { roll: 0.01 } },
+      upright: { inst: 'upright', mode: 'rel', base: 36, vol: 0.4 },
       vibes: { inst: 'bell', mode: 'abs', vol: 0.5, pan: 0.2, rev: 0.3, dly: 0.12, o: { variant: 'vibes' } },
     },
     delay: { beats: 1.5, fb: 0.25, mix: 0.3 },
@@ -1434,15 +1453,15 @@ export const TRACKS = {};
 // ---- tension: suspense pulses + drones (C phrygian), intensity adds ticks/drums ----
 {
   TRACKS.tension = {
-    id: 'tension', vol: 1.0, name: 'Something Is Watching — tension', bpm: 90, human: 0.002, rev: 0.3,
+    id: 'tension', vol: 1.24, name: 'Something Is Watching — tension', bpm: 90, human: 0.002, rev: 0.3,
     delay: { beats: 0.75, fb: 0.45, mix: 0.45 },
     parts: {
-      drone: { inst: 'drone', mode: 'chord', voicing: { center: 50, n: 3 }, vol: 0.6, rev: 0.3, o: { cut: 600, rate: 0.11 } },
-      pulse: { inst: 'bass', mode: 'rel', base: 36, vol: 0.5, o: { wave: 'square', cut: 260, env: 2.5, q: 6 } },
+      drone: { inst: 'drone', mode: 'chord', voicing: { center: 50, n: 3 }, vol: 0.6, rev: 0.3, chorus: 0.8, o: { cut: 600, rate: 0.11 } },
+      pulse: { inst: 'bass', mode: 'rel', base: 36, vol: 0.26, hp: 40, o: { wave: 'square', cut: 300, env: 2.5, q: 6 } },
       heart: { inst: 'kick', vol: 0.5, o: { tone: 'soft' } },
       tick: { inst: 'hat', vol: 0.13, pan: 0.4, int: [0.2, 0.4], o: { tone: 'dark', decay: 0.02 } },
       box: { inst: 'glock', mode: 'abs', vol: 0.12, pan: -0.35, dly: 0.5, rev: 0.4 },
-      swell: { inst: 'strings', mode: 'chord', voicing: { center: 74, n: 3 }, vol: 0.3, rev: 0.5, o: { a: 4, r: 1.5, cut: 3000 } },
+      swell: { inst: 'strings', mode: 'chord', voicing: { center: 74, n: 3 }, vol: 0.3, rev: 0.5, chorus: 0.8, o: { a: 4, r: 1.5, cut: 3000 } },
       boom: { inst: 'taiko', vol: 0.55, rev: 0.4 },
       tom: { inst: 'tom', vol: 0.32, int: [0.6, 0.8] },
       hat16: { inst: 'hat', vol: 0.1, pan: -0.3, int: [0.65, 0.85] },
@@ -1474,7 +1493,7 @@ export const TRACKS = {};
   const brassA = 'f#5:6 e5:2 d5:4 a4:4 | e5:6 f#5:2 e5:4 c#5:4 | d5:6 c#5:2 b4:4 f#5:4 | g5:8 f#5:4 e5:4 | f#5:6 e5:2 d5:4 f#5:4 | a5:6 g5:2 f#5:4 e5:4 | d5:4 e5:4 g5:4 b5:4 | a5:12 r:4';
   const chant = 'b4:6 b4:2 d5:4 b4:4 | a4:6 a4:2 c#5:4 e5:4 | f#5:6 e5:2 d5:8 | b4:6 c#5:2 d5:4 f#5:4 | g5:6 f#5:2 e5:4 d5:4 | e5:6 f#5:2 e5:4 c#5:4 | d5:16 | r:8 a4:4 a4:4';
   TRACKS.league = {
-    id: 'league', vol: 0.74, name: 'Champions of Kansai — league anthem', bpm: 120, human: 0.003, rev: 0.16,
+    id: 'league', vol: 0.64, name: 'Champions of Kansai — league anthem', bpm: 120, human: 0.003, rev: 0.16,
     parts: {
       stomp: { inst: 'stomp', vol: 0.75, rev: 0.35 },
       clap: { inst: 'clap', vol: 0.5, rev: 0.4 },
@@ -1485,12 +1504,12 @@ export const TRACKS = {};
       tom: { inst: 'tom', vol: 0.45 },
       gtrL: { inst: 'guitar', mode: 'chord', voicing: { type: 'root', base: 38 }, vol: 0.42, pan: -0.7, amp: { drive: 4 } },
       gtrR: { inst: 'guitar', mode: 'chord', voicing: { type: 'root', base: 38 }, vol: 0.42, pan: 0.7, nudge: 0.007, amp: { drive: 4.5, cab: 4300 } },
-      bass: { inst: 'bass', mode: 'rel', base: 33, vol: 0.55, o: { cut: 800, env: 2, q: 2, drive: 1.6 } },
-      brass: { inst: 'brass', mode: 'abs', vol: 0.55, rev: 0.25, o: { cut: 3200, level: 0.35 } },
+      bass: { inst: 'bass', mode: 'rel', base: 33, vol: 0.46, hp: 40, o: { cut: 900, env: 2, q: 2, drive: 1.6 } },
+      brass: { inst: 'brass', mode: 'abs', vol: 0.75, rev: 0.25, o: { cut: 3200, level: 0.35 } },
       stab: { inst: 'brass', mode: 'chord', voicing: { center: 66, n: 4 }, vol: 0.4, rev: 0.25 },
-      chant: { inst: 'choir', mode: 'abs', vol: 0.8, rev: 0.35, o: { vowel: 'o', a: 0.07, r: 0.25, level: 0.4 } },
-      chantLo: { inst: 'choir', mode: 'abs', oct: -1, vol: 0.6, rev: 0.35, o: { vowel: 'o', a: 0.07, r: 0.25, level: 0.4 } },
-      strings: { inst: 'strings', mode: 'chord', voicing: { center: 69, n: 3 }, vol: 0.25, rev: 0.3 },
+      chant: { inst: 'choir', mode: 'abs', vol: 0.8, rev: 0.35, chorus: 0.6, o: { vowel: 'o', a: 0.07, r: 0.25, level: 0.4 } },
+      chantLo: { inst: 'choir', orn: true, mode: 'abs', oct: -1, vol: 0.6, rev: 0.35, o: { vowel: 'o', a: 0.07, r: 0.25, level: 0.4 } },
+      strings: { inst: 'strings', mode: 'chord', voicing: { center: 69, n: 3 }, vol: 0.25, rev: 0.3, chorus: 0.7 },
       gang: { inst: 'gang', vol: 0.6, rev: 0.4, o: { voices: 6 } },
     },
     sections: {
@@ -1527,12 +1546,12 @@ export const TRACKS = {};
   TRACKS.dojo = {
     id: 'dojo', vol: 1.12, name: 'Iron Sole Dojo — taiko', bpm: 100, human: 0.004, rev: 0.25,
     parts: {
-      taiko: { inst: 'taiko', vol: 0.75, rev: 0.25 },
-      shime: { inst: 'taiko', vol: 0.32, pan: 0.3, o: { size: 'small' } },
-      ka: { inst: 'ka', vol: 0.32, pan: -0.35 },
-      flute: { inst: 'flute', mode: 'abs', vol: 0.62, rev: 0.4, pan: 0.05, o: { style: 'shaku' } },
+      taiko: { inst: 'taiko', vol: 0.62, rev: 0.25 },
+      shime: { inst: 'taiko', vol: 0.36, pan: 0.3, o: { size: 'small' } },
+      ka: { inst: 'ka', vol: 0.4, pan: -0.4 },
+      flute: { inst: 'flute', mode: 'abs', vol: 0.72, rev: 0.4, pan: 0.05, o: { style: 'shaku' } },
       koto: { inst: 'koto', mode: 'abs', vol: 0.62, pan: 0.2, rev: 0.2 },
-      drone: { inst: 'pad', mode: 'chord', voicing: { center: 50, n: 2 }, vol: 0.42, rev: 0.3, o: { wave: 'triangle', a: 0.9, r: 1.5, cut: 900, level: 0.3 } },
+      drone: { inst: 'pad', mode: 'chord', voicing: { center: 50, n: 2 }, vol: 0.42, rev: 0.3, chorus: 0.8, o: { wave: 'triangle', a: 0.9, r: 1.5, cut: 900, level: 0.3 } },
     },
     sections: {
       intro: {
@@ -1558,14 +1577,14 @@ export const TRACKS = {};
     + 'b4:3 c5:1 d5:4 e5:4 g5:4 | e5:6 c#5:2 a4:8 | d5:3 e5:1 f5:4 a5:4 g5:4 | f5:4 e5:4 d5:8';
   const melB = 'a5:6 g5:2 e5:4 c5:4 | g5:6 e5:2 d5:4 b4:4 | f5:6 e5:2 d5:4 a4:4 | e5:8 g5:4 e5:4 | a5:6 c6:2 b5:4 a5:4 | g5:4 e5:4 c#5:4 e5:4 | f5:4 a5:4 g5:4 f5:4 | e5:12 r:4';
   TRACKS.dinner = {
-    id: 'dinner', vol: 0.86, name: 'Kotatsu Supper — cozy acoustic', bpm: 96, transpose: -5, swing: 0.1, human: 0.007, rev: 0.18,
+    id: 'dinner', vol: 1.33, name: 'Kotatsu Supper — cozy acoustic', bpm: 96, transpose: -5, swing: 0.1, human: 0.007, rev: 0.18,
     parts: {
-      pick: { inst: 'acoustic', mode: 'rel', base: 48, vol: 0.62, pan: -0.25, o: { strum: 0, decay: 1.1 } },
+      pick: { inst: 'acoustic', mode: 'rel', base: 48, vol: 0.62, pan: -0.3, chorus: 0.4, o: { strum: 0, decay: 1.1 } },
       strum: { inst: 'acoustic', mode: 'chord', voicing: { center: 62, n: 4, bass: 48 }, vol: 0.5, pan: 0.25, o: { strum: 0.014 } },
-      bass: { inst: 'upright', mode: 'rel', base: 36, vol: 0.7 },
-      flute: { inst: 'flute', mode: 'abs', vol: 0.55, rev: 0.25, pan: 0.05, o: { style: 'flute', breath: 0.22 } },
-      glock: { inst: 'glock', mode: 'abs', vol: 0.14, pan: 0.35, rev: 0.25 },
-      shaker: { inst: 'shaker', vol: 0.22, pan: 0.4 },
+      bass: { inst: 'upright', mode: 'rel', base: 41, vol: 0.34 },
+      flute: { inst: 'flute', mode: 'abs', vol: 0.65, rev: 0.25, pan: 0.05, o: { style: 'flute', breath: 0.22 } },
+      glock: { inst: 'glock', orn: true, mode: 'abs', vol: 0.14, pan: 0.35, rev: 0.25 },
+      shaker: { inst: 'shaker', vol: 0.3, pan: 0.45 },
       kick: { inst: 'kick', vol: 0.4, o: { tone: 'soft' } },
       rim: { inst: 'snare', vol: 0.26, pan: -0.1, o: { tone: 'rim' } },
     },
@@ -1590,7 +1609,6 @@ export const TRACKS = {};
 // Stingers: non-looping cues (same sequencer, `once: true`, optional script)
 // ---------------------------------------------------------------------------
 export const STINGERS = {};
-const spb16 = (bpm) => 60 / bpm / 4; // seconds per 16th
 
 STINGERS.victory = {
   id: 'victory', vol: 1.8, bpm: 150, once: true, rev: 0.2, tail: 2.2, form: ['S'],
@@ -1742,7 +1760,7 @@ STINGERS.evolution = {
 };
 
 STINGERS.spectral = {
-  id: 'spectral', vol: 0.96, bpm: 100, once: true, rev: 0.35, tail: 3.2, form: ['S'],
+  id: 'spectral', vol: 0.84, bpm: 100, once: true, rev: 0.35, tail: 3.2, form: ['S'],
   parts: {
     choir: { inst: 'choir', mode: 'chord', voicing: { center: 62, n: 4 }, vol: 0.62, rev: 0.5, o: { a: 0.6, r: 2 } },
     choirLo: { inst: 'choir', mode: 'chord', voicing: { center: 50, n: 3 }, vol: 0.5, rev: 0.45, o: { vowel: 'o', a: 0.8, r: 2 } },

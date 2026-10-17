@@ -120,9 +120,12 @@ export class Screens {
       const box = h('div.panel', { style: { position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%,-50%)', padding: '18px 20px', width: 'min(88vw,380px)', textAlign: 'center', zIndex: 5, pointerEvents: 'auto' } }, h('div', { style: { fontWeight: 900, fontSize: '17px', marginBottom: '12px' } }, text));
       const y = h('button.btn.primary', {}, h('span', {}, yes)), n = h('button.btn', {}, h('span', {}, no));
       box.append(h('div.row', { style: { justifyContent: 'center' } }, y, n));
-      this.ui.L.modal.append(box);
-      tapBtn(y, () => { box.remove(); res(true); });
-      tapBtn(n, () => { box.remove(); res(false); });
+      const m = this.ui.L.modal, shown = m.classList.contains('show');
+      if (!shown) m.classList.add('show', 'clear');
+      m.append(box);
+      const done = (v) => { box.remove(); if (!shown) m.classList.remove('show', 'clear'); res(v); };
+      tapBtn(y, () => done(true));
+      tapBtn(n, () => done(false));
     });
   }
 

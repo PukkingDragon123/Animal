@@ -12,7 +12,7 @@ h2{font-size:13px;text-transform:uppercase;letter-spacing:1.2px;color:var(--dim)
 .grid{display:flex;flex-wrap:wrap;gap:6px}
 button{background:#232a36;color:var(--ink);border:1px solid #334055;border-radius:7px;padding:6px 10px;font:inherit;font-size:13px;cursor:pointer}
 button:hover{border-color:var(--acc2)}button.on{background:#3a1f33;border-color:var(--acc)}button.primary{background:var(--acc);border-color:var(--acc);color:#14070e;font-weight:600}
-label{display:inline-flex;gap:6px;align-items:center;color:var(--dim);font-size:12px}input[type=range]{width:110px}
+label{display:inline-flex;gap:6px;align-items:center;color:var(--dim);font-size:12px}input[type=range]{width:110px;accent-color:var(--acc2)}
 .small{font-size:11px;color:var(--dim)}#typed{min-height:24px;font-size:16px;margin-top:8px;color:var(--acc2)}
 table{width:100%;border-collapse:collapse;font-size:12px;font-variant-numeric:tabular-nums}th,td{padding:3px 6px;border-bottom:1px solid #222a35;text-align:left}th{color:var(--dim);font-weight:500}
 td.bad{color:var(--bad);font-weight:600}td.ok{color:var(--ok)}td.warn{color:var(--warn)}
@@ -37,7 +37,7 @@ input[type=text],select{background:#0f1319;color:var(--ink);border:1px solid #33
   <section><h2>Ambience</h2><div class="grid" id="amb"></div></section>
   <section><h2>Offline self-check <button id="rerun">Run again</button><span class="bar"><i id="prog"></i></span><span class="small" id="sum">pending…</span></h2>
     <div class="small" id="warn"></div>
-    <table><thead><tr><th>kind</th><th>id</th><th>sec</th><th>RMS dBFS</th><th>max 50ms dBFS</th><th>peak</th><th>peak dBFS</th><th>min 1s dBFS</th><th>render ms</th><th>status</th></tr></thead><tbody id="rows"></tbody></table>
+    <table><thead><tr><th>kind</th><th>id</th><th>sec</th><th>RMS dBFS</th><th>max 50ms dBFS</th><th>peak</th><th>peak dBFS</th><th>min 1s dBFS</th><th>render ms</th><th>status (sfx: worst of N renders)</th></tr></thead><tbody id="rows"></tbody></table>
   </section>
 </main>
 <script type="module">
@@ -125,10 +125,15 @@ async function selfCheck() {
   $('warn').textContent = warnings.length ? 'Pattern warnings: ' + warnings.join(' · ') : 'All patterns compile without warnings (' + v.length + ' tracks/stingers).';
   const results = [];
   for (let i = 0; i < items.length; i++) {
-    const it = items[i], s = performance.now(); let r;
+    const it = items[i], s = performance.now(); let r = null;
+    // randomised items (sfx variations, shimmer, ambience events) are rendered several times; worst peak wins
+    const runs = it.kind === 'sfx' ? +(q.get('runs') || 3) : it.kind === 'stinger' ? 2 : 1;
     try {
-      const buf = await AudioEngine.renderOffline((e) => it.setup(e), { duration: it.dur, sampleRate: sr, limiter: false });
-      r = analyse(buf, it.kind);
+      for (let k = 0; k < runs; k++) {
+        const buf = await AudioEngine.renderOffline((e) => it.setup(e), { duration: it.dur, sampleRate: sr, limiter: false });
+        const a = analyse(buf, it.kind);
+        if (!r) r = a; else { r.peak = Math.max(r.peak, a.peak); r.rms = (r.rms * k + a.rms) / (k + 1); r.maxRms50 = Math.max(r.maxRms50, a.maxRms50); r.nan += a.nan; r.minRms1s = Math.min(r.minRms1s, a.minRms1s); }
+      }
     } catch (e) { r = { error: String(e && e.message || e) }; errors.push(it.id + ': ' + r.error); }
     const silent = !r.error && (r.peak < 0.001 || r.rms < 0.0003), clipping = !r.error && r.peak > 1.0, dropout = !r.error && isFinite(r.minRms1s) && r.minRms1s < 0.0003;
     const res = { kind: it.kind, id: it.id, dur: it.dur, rms: r.rms, rmsDb: db(r.rms), maxRms50Db: db(r.maxRms50), peak: r.peak, peakDb: db(r.peak), minRms1sDb: db(r.minRms1s), nan: r.nan || 0, silent, clipping, dropout, error: r.error, ms: Math.round(performance.now() - s) };

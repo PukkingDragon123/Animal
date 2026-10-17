@@ -186,7 +186,7 @@ export class Animator {
 
   // ------------------------------------------------ idle
   _idle(t, w) {
-    if (w <= 0) return;
+    if (w <= 0 || this.arch === 'static') return;
     const h = this.h, a = this.arch;
     const br = S(t * 2.2);
     this._root(0, 0, 0, 0, 0, 0, br * 0.018 * this.p.bounce, w);

@@ -52,6 +52,7 @@ export class Game {
     });
     w.restore();
     await this.afterBattle(res, Object.assign({ trainer: true }, o));
+    if (!this.app.director.cutscene) { this.app.hud.show(true); if (!this.app.busy) w.enableControl(true); }
     return res;
   }
   async wildBattle(species, level, opts = {}) {

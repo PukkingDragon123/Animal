@@ -81,16 +81,16 @@ export default {
     // --- sakura promenade (trees + benches facing the castle on the lawn strip)
     ['sakura', 1.5, 20.6], ['sakura2', 5.5, 20.7], ['sakura', 9.6, 20.6, 90], ['sakura3', 13.6, 20.6], ['sakura2', 29.4, 20.7, 180],
     ['sakura', 33.5, 20.6, 40], ['sakura3', 37.5, 20.6], ['sakura2', 41.5, 20.7, 270], ['sakura', 45.5, 20.6, 120],
-    ['bench', 3.5, 21.3, 180], ['bench', 7, 21.3, 180], ['bench', 11.6, 21.3, 180], ['bench', 31.5, 21.3, 180], ['bench', 39.5, 21.3, 180], ['bench', 43.5, 21.3, 180],
-    ['vending', 15.6, 20.8, 0], ['vending', 16.8, 20.8, 0], ['trashbins', 48.4, 21, 0],
+    ['bench', 3.5, 21.3, 180], ['bench', 7.5, 21.3, 180], ['bench', 11.6, 21.3, 180], ['bench', 15.6, 21.3, 158], ['bench', 31.5, 21.3, 180], ['bench', 39.5, 21.3, 180], ['bench', 43.5, 21.3, 180],
+    ['sakura3', 17.4, 20.5, 210], ['vending', 24.8, 25.8, 270], ['vending', 24.8, 27, 270], ['trashbins', 48.4, 21, 0],
     ['streetlamp', 4.5, 24.6], ['streetlamp', 12.5, 24.6], ['streetlamp', 28.5, 24.6], ['streetlamp', 43.5, 24.6],
-    ['stone_lantern', 17.5, 20.6], ['stone_lantern', 26.5, 20.6], ['signpost', 26.4, 24.4, 200],
+    ['stone_lantern', 18.4, 21.5], ['stone_lantern', 26.5, 20.6], ['signpost', 26.4, 24.4, 200],
     ['lilypad', 7.5, 17.8, 0, 1, -0.5], ['lilypad', 36.4, 12, 40, 1, -0.5],
 
     // --- main path + gate
     ['torii', 22, 42.3, 0],
     ['stone_lantern', 18.4, 39.6], ['stone_lantern', 25.6, 39.6],
-    ['streetlamp', 19.4, 28.5], ['streetlamp', 19.4, 35.6], ['streetlamp', 24.6, 26.6], ['streetlamp', 24.6, 38.4],
+    ['streetlamp', 19.4, 28.5], ['streetlamp', 19.4, 35.6], ['streetlamp', 24.6, 28.4], ['streetlamp', 24.6, 38.4],
     ['flowerbed', 17.6, 41.4, 90], ['flowerbed', 26.4, 41.4, 90], ['noticeboard', 18.6, 38.3, 0], ['bicycle', 27.6, 40.8, 80], ['bicycle', 28.4, 41, 100],
     ...[1, 3, 5, 7, 9, 11, 13, 15, 29, 31, 33, 35, 37, 39, 41].map((x) => ['fence_wood', x, 43.5, 0]),
 
@@ -98,7 +98,10 @@ export default {
     rim('training_dummy', 225), rim('sandbags', 245), rim('target_post', 296), rim('sandbags', 316), rim('tires', 338),
     rim('tires', 24), rim('sandbags', 44), rim('training_dummy', 64), rim('target_post', 90), rim('sandbags', 112),
     rim('training_dummy', 132), rim('tires', 150), rim('punching_bag', 210, 8.6),
+    rim('sandbags', 34, 9.3), rim('barrel', 78, 9.2), rim('crate', 100, 9.4), rim('sandbags', 122, 9.3), rim('tires', 140, 9.4),
+    rim('sandbags', 236, 9.3), rim('crate', 306, 9.4), rim('barrel', 327, 9.2), rim('target_post', 350, 8.6),
     ['crate', 38.6, 24.2], ['barrel', 39.6, 24.4], ['wooden_dummy', 31, 24.4, 0],
+    rim('streetlamp', 62, 10), rim('streetlamp', 118, 10), rim('streetlamp', 172, 10.2),
     ['holo_billboard', 43.6, 27.4, 330], ['drone', 31.5, 29.5, 30, 1, 4.6], ['drone', 39.2, 37, 210, 1, 5.2],
     ['noticeboard', 27, 27.8, 45],
 
@@ -123,18 +126,18 @@ export default {
     coach: [AX, 25.4, 0],             // north rim of the arena, facing in
     kaito_enter: [47, 33, 270],       // east path, walking in from the east edge
     pedestals: [25, 33, 90],          // centre of the clear 2×6 apron (x 24–26, z 30–36) on the west rim; pods in a N–S row
-    bench_night: [7, 21.3, 180],    // bench under the sakura, facing the castle across the moat
+    bench_night: [15.6, 21.3, 158],   // bench under the sakura, angled at the castle across the moat
     castle_view: [22, 21.5, 180],     // causeway plaza, framing the castle
   },
   arenas: { main: { x: AX, z: AZ, r: 7 } },
   npcs: [
     { id: 'jogger', char: { random: 31, role: 'jogger' }, x: 9, z: 23, face: 90, wander: 12, idle: 'stretch' },
-    { id: 'pigeon_man', char: { random: 77, role: 'grandpa' }, x: 14.3, z: 35.4, face: 270, idle: 'point', talk: 'park_pigeons' },
-    { id: 'kid_a', char: { random: 5, role: 'kid' }, x: 13.6, z: 39.6, face: 90, wander: 3, idle: 'cheer' },
-    { id: 'kid_b', char: { random: 12, role: 'kid' }, x: 16.4, z: 40.4, face: 270, wander: 3, idle: 'hop' },
+    { id: 'pigeon_man', char: { random: 14, role: 'grandpa' }, x: 14.3, z: 35.4, face: 270, idle: 'point', talk: 'park_pigeons' },
+    { id: 'kid_a', char: { random: 6, role: 'kid' }, x: 13.6, z: 39.6, face: 90, wander: 3, idle: 'cheer' },
+    { id: 'kid_b', char: { random: 10, role: 'kid' }, x: 16.4, z: 40.4, face: 270, wander: 3, idle: 'hop' },
     { id: 'tea_granny', char: 'granny', x: 8.2, z: 26.6, face: 90, idle: 'bow', talk: 'park_tea' },
   ],
-  spawns: { start: [22, 41.2], fromWorldmap: [22, 41.2] },
+  spawns: { start: [22, 41.2, 180], fromWorldmap: [22, 41.2, 180] },
   exits: [{ x: 20, z: 43, w: 4, d: 1, to: 'worldmap', spawn: 'castle_park', label: 'Osaka' }],
   lights: [
     { pos: [22, 10, 17], color: '#ffe2b0', intensity: 6, range: 16 },   // castle floodlights
