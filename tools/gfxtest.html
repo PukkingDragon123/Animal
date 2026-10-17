@@ -1,0 +1,41 @@
+<!doctype html><html><head><meta charset="utf-8"><title>gfx</title>
+<style>html,body{margin:0;height:100%;background:#000;overflow:hidden}canvas{display:block;width:100%;height:100%}</style></head>
+<body><canvas id="c"></canvas>
+<script type="module">
+import * as THREE from '../vendor/three.module.js';
+import { Gfx } from '../src/gfx/renderer.js';
+import { buildModel } from '../src/gfx/model.js';
+import { Animator } from '../src/gfx/anim.js';
+import { toonMaterial } from '../src/gfx/materials.js';
+import { SPR } from '../src/gfx/particles.js';
+const q = new URLSearchParams(location.search);
+const { kindoru } = await import('../src/data/species/_test.js');
+const g = new Gfx(document.getElementById('c'), { quality: q.get('q') || 'high' });
+g.resize(innerWidth, innerHeight);
+g.setTime(parseFloat(q.get('h') || '15'));
+const ground = new THREE.Mesh(new THREE.BoxGeometry(24, 1, 24), toonMaterial({ vertexColors: false, color: 0x6fbf5a }));
+ground.position.y = -0.5; ground.receiveShadow = true; g.world.add(ground);
+for (let i = 0; i < 8; i++) { const b = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1 + i * 0.4, 1.5), toonMaterial({ vertexColors: false, color: 0xd8c8b0 })); b.position.set(-6 + i * 1.8, (1 + i * 0.4) / 2, -5); b.castShadow = b.receiveShadow = true; g.world.add(b); }
+const m = buildModel(kindoru); g.actors.add(m); m.rotation.y = 0.5;
+const a = new Animator(m);
+const m2 = buildModel(kindoru); g.actors.add(m2); m2.position.set(2.5, 0, 0.5); m2.rotation.y = -0.6;
+const a2 = new Animator(m2); a2.setSpeed(3);
+g.rig.target.set(0.8, 0.4, 0); g.rig.distT = parseFloat(q.get('dist') || '9'); g.rig.snap();
+// particles
+const T = parseFloat(q.get('t') || '1.2');
+let t = 0;
+function sim(dt) {
+  t += dt;
+  a.update(dt); a2.update(dt);
+  for (let i = 0; i < 6; i++) g.fx.particle({ pos: [-2 + Math.random() * 0.3, 0.3, 1.5], vel: [(Math.random() - 0.5) * 0.6, 2 + Math.random(), (Math.random() - 0.5) * 0.6], life: 0.7, size: 0.35, size1: 0.05, color: [4, 1.6, 0.3, 1], color1: [2, 0.2, 0.05, 0], sprite: SPR.flame, drag: 1 });
+  if (Math.random() < 0.3) g.fx.particle({ pos: [-2, 1.2, 1.5], vel: [0, 0.8, 0], life: 1.6, size: 0.3, size1: 0.8, color: [0.35, 0.3, 0.3, 0.7], color1: [0.5, 0.5, 0.5, 0], sprite: SPR.smoke, additive: false, spin: 1 });
+  if (Math.random() < 0.15) g.fx.particle({ pos: [1, 1.2, 1.5], vel: [(Math.random() - 0.5), 1.2, 0], life: 1.5, size: 0.3, color: [1, 0.9, 0.4, 1], sprite: SPR.note, additive: false });
+}
+g.fx.shatter([3.5, 0.5, -2], { count: 40, colors: [0xd8c8b0, 0xa89880, 0x6a5a4a], force: 4 });
+g.fx.shape({ kind: 'ring', pos: [-2, 0.05, -1], r0: 0.2, r1: 2.5, life: 2.0, color: 0x66ccff, intensity: 3 });
+g.fx.shape({ kind: 'pillar', pos: [4, 0, 2], r0: 0.5, r1: 0.6, h0: 3, life: 3, color: 0xff7a2a, intensity: 2.5, hold: 0.8 });
+g.lights.flash([-2, 0.8, 1.5], 0xff8a3a, 6, 6, 99);
+const N = Math.round(T * 60); const realFrame = g.frame.bind(g); const post = g.post; g.post = null; const rr = g.renderer.render.bind(g.renderer); g.renderer.render = () => {}; for (let i = 0; i < N - 1; i++) { sim(1 / 60); g.frame(1 / 60); } g.renderer.render = rr; g.post = post; sim(1 / 60); g.frame(1 / 60);
+document.title = 'ready';
+if (q.has('live')) { let last = performance.now(); const loop = (now) => { const dt = Math.min(0.05, (now - last) / 1000); last = now; sim(dt); g.frame(dt); requestAnimationFrame(loop); }; requestAnimationFrame(loop); }
+</script></body></html>
