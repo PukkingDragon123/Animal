@@ -54,6 +54,21 @@ export class WorldScene {
     this.gfx.fx.debris.groundAt = (x, z) => this.grid.heightAt(x, z);
     const [W, H] = def.size;
     this.gfx.rig.bounds = { minX: 2, maxX: W - 2, minZ: 2, maxZ: H - 2 };
+    // HD-2D side-scroll stage set vs. classic overhead diorama
+    this.side = def.view === 'side';
+    const rig0 = this.gfx.rig;
+    if (this.side) {
+      const c = this.camCfg = Object.assign({ pitch: 0.3, fov: 24, dist: 24, minDist: 12, maxDist: 36, lookY: 1.3, yaw: 0, z: null, lead: 0 }, def.cam || {});
+      rig0.yawT = rig0.yaw = c.yaw; rig0.pitch = c.pitch; rig0.fovT = rig0.fov = c.fov;
+      this.pan = { x: 0, y: 0 }; this.yawBase = c.yaw;
+      this.gfx.frontSun = true;
+      this.gfx.interior = !!def.interior;
+    } else {
+      this.camCfg = null;
+      rig0.yawT = rig0.yaw = Math.PI / 4; rig0.pitch = 0.72; rig0.fovT = rig0.fov = 30;
+      this.gfx.frontSun = false; this.gfx.interior = false;
+    }
+    this.gfx.setTime(this.gfx.hour);
     const sp = this.resolvePoint(spawn) || this.resolvePoint('start') || [W / 2, H / 2];
     // player + buddy
     this.ensurePlayer();
@@ -69,8 +84,10 @@ export class WorldScene {
     }
     this.trail = [];
     this.gfx.rig.target.set(sp[0], this.grid.heightAt(sp[0], sp[1]), sp[1]);
+    this.gfx.rig.distT = opts.dist || (this.side ? this.camCfg.dist : 20); this.gfx.rig.dist = this.gfx.rig.distT;
+    if (this.side) { this.gfx.rig.bounds = null; this.followSide(this.actors.get('player').actor.pos, 1); }
     this.gfx.rig.snap();
-    this.gfx.rig.distT = opts.dist || 20; this.gfx.rig.dist = this.gfx.rig.distT;
+    this.hotspots = (def.hotspots || []).map((h) => Object.assign({ y: 1, r: 0.9, kind: 'look' }, h));
     this.safari = def.safari ? new Safari(this, def.safari) : null;
     if (this.safari) this.safari.populate();
     const amb = def.ambience || {};
@@ -180,11 +197,67 @@ export class WorldScene {
     if (on && !this._h) {
       this._h = [
         I.on('tap', (e) => this.onTap(e)),
-        I.on('wheel', (e) => { this.gfx.rig.distT = clamp(this.gfx.rig.distT * (1 + e.dy * 0.001), 11, 32); }),
-        I.on('pinch', (e) => { this.gfx.rig.distT = clamp(this.gfx.rig.distT / e.scale, 11, 32); if (Math.abs(e.rot) > 0.002) this.gfx.rig.yawT -= e.rot; }),
+        I.on('wheel', (e) => { const [a, b] = this.zoomLimits(); this.gfx.rig.distT = clamp(this.gfx.rig.distT * (1 + e.dy * 0.001), a, b); }),
+        I.on('pinch', (e) => {
+          const [a, b] = this.zoomLimits();
+          this.gfx.rig.distT = clamp(this.gfx.rig.distT / e.scale, a, b);
+          if (Math.abs(e.rot) > 0.002) this.gfx.rig.yawT = this.side ? clamp(this.gfx.rig.yawT - e.rot, this.yawBase - 0.32, this.yawBase + 0.32) : this.gfx.rig.yawT - e.rot;
+        }),
+        I.on('dragstart', () => { if (this.side) this.pan0 = { x: this.pan.x, y: this.pan.y }; }),
+        I.on('drag', (e) => {
+          if (!this.side || !this.pan0 || this.app.busy) return;
+          const rig = this.gfx.rig, wpp = (2 * rig.dist * Math.tan((rig.fov * Math.PI) / 360)) / innerHeight;
+          this.pan.x = clamp(this.pan0.x - e.dx * wpp, -14, 14); this.pan.y = clamp(this.pan0.y + e.dy * wpp * 0.6, -2, 4);
+        }),
+        I.on('dragend', () => { this.pan0 = null; }),
         I.on('key', (e) => { if (e.down && e.code === 'KeyE') this.interactNearest(); if (e.down && e.code === 'KeyQ') this.gfx.rig.rotateBy(Math.PI / 2); if (e.down && e.code === 'KeyR') this.gfx.rig.rotateBy(-Math.PI / 2); }),
       ];
     } else if (!on && this._h) { for (const off of this._h) off(); this._h = null; const p = this.actors.get('player'); if (p) p.path = null; }
+  }
+  zoomLimits() { return this.side ? [this.camCfg.minDist, this.camCfg.maxDist] : [11, 32]; }
+  // side-scroll camera: follow the player along the strip, clamp to the set
+  followSide(p, k = 1) {
+    const rig = this.gfx.rig, c = this.camCfg, W = this.def.size[0];
+    const halfW = rig.dist * Math.tan((rig.fov * Math.PI) / 360) * (innerWidth / Math.max(1, innerHeight));
+    let lo = c.minX ?? Math.min(W / 2, halfW * 0.9), hi = c.maxX ?? Math.max(W / 2, W - halfW * 0.9);
+    if (lo > hi) lo = hi = (lo + hi) / 2;
+    const tx = clamp(p.x + this.pan.x, lo, hi);
+    const tz = c.z != null ? c.z + (p.z - c.z) * 0.35 : p.z;
+    const ty = (this.grid ? this.grid.heightAt(p.x, p.z) : 0) + c.lookY + this.pan.y;
+    if (k >= 1) rig.target.set(tx, ty, tz); else rig.target.lerp({ x: tx, y: ty, z: tz }, k);
+  }
+  // zoom-in scenes (eat at a table, order in first person): camera shot presets
+  zoom(name, dur = 1.1) {
+    const z = typeof name === 'string' ? (this.def.zooms || {})[name] : name;
+    if (!z) return Promise.resolve();
+    this.zoomed = z;
+    const rig = this.gfx.rig;
+    return rig.play({ from: this.gfx.camera.position.toArray(), to: z.from, look: rig.focus.toArray(), lookTo: z.look, dur, fov: rig.fov, fov1: z.fov || rig.fov, ease: 'inOut' })
+      .then(() => rig.play({ from: z.from, look: z.look, dur: 9999, fov: z.fov || rig.fov }) && null);
+  }
+  unzoom() { this.zoomed = null; const p = this.actors.get('player'); this.gfx.rig.release(); if (p && this.side) this.followSide(p.actor.pos, 1); }
+  // tappable stage hotspots (doors, seats, counters, menu boards…)
+  pickHotspot(x, y) {
+    let best = null, bd = 1e9;
+    for (const h of this.hotspots || []) {
+      if (h.hidden) continue;
+      const gy = this.grid ? this.grid.heightAt(h.x, h.z) : 0;
+      const p = this.gfx.project(this._v.set(h.x, gy + h.y, h.z));
+      if (!p.visible) continue;
+      const rpx = Math.max(34, (h.r * innerHeight) / (2 * this.gfx.rig.dist * Math.tan((this.gfx.rig.fov * Math.PI) / 360)));
+      const d = Math.hypot(p.x - x, p.y - y);
+      if (d < rpx && d < bd) { bd = d; best = h; }
+    }
+    return best;
+  }
+  async useHotspot(h) {
+    const pl = this.actors.get('player');
+    const ap = h.approach || [h.x, h.z + 0.9];
+    await this.walkTo('player', ap[0], ap[1], { stop: 0.15 });
+    if (h.face != null) pl.actor.face((h.face * Math.PI) / 180); else pl.actor.faceTo(h.x, h.z);
+    if (h.kind === 'door' && h.to) { if (this.app.enterScene) this.app.enterScene(h.to, h.spawn); return; }
+    const fn = this.handlers.get('hs:' + h.id) || (this.app.story && this.app.story.hotspot && ((x) => this.app.story.hotspot(x)));
+    if (fn) { this.app.busy = true; this.enableControl(false); try { await fn(h); } finally { this.app.busy = false; if (!this.app.director || !this.app.director.cutscene) this.enableControl(true); } }
   }
   screenToGround(x, y) {
     const ndc = new THREE.Vector2((x / innerWidth) * 2 - 1, -(y / innerHeight) * 2 + 1);
@@ -219,7 +292,9 @@ export class WorldScene {
   }
   onTap(e) {
     if (!this.control || this.app.busy) return;
+    const hs = this.pickHotspot(e.x, e.y);
     const hit = this.pickActor(e.x, e.y);
+    if (hs && !hit) { this.marker(hs.x, hs.z, 0xffd23a); this.pan.x *= 0.3; this.useHotspot(hs); return; }
     const pl = this.actors.get('player');
     if (hit) {
       const a = hit.actor;
@@ -293,12 +368,17 @@ export class WorldScene {
         if (d > 9) { a.setPos(tgt[0], this.grid.heightAt(tgt[0], tgt[1]), tgt[1]); }
       });
       // camera follow
-      if (this.gfx.rig.mode === 'follow' && !this.camLocked) this.gfx.rig.target.set(p.x, p.y + 0.6, p.z);
+      if (this.gfx.rig.mode === 'follow' && !this.camLocked) {
+        if (this.side) {
+          if (pl.path || pl.kbd) { this.pan.x *= 1 - Math.min(1, dt * 2.5); this.pan.y *= 1 - Math.min(1, dt * 2.5); }
+          this.followSide(p, 1);
+        } else this.gfx.rig.target.set(p.x, p.y + 0.6, p.z);
+      }
       // occlusion fade around the player
       const sp = this.gfx.project(this._v.set(p.x, p.y + 1, p.z));
-      const dpr = this.gfx.dpr || 1;
-      shared.uFadeCenter.value.set(sp.x * dpr, (innerHeight - sp.y) * dpr);
-      shared.uFadeRadius.value = 85 * dpr;
+      const fs = this.gfx.fragScale || 1;
+      shared.uFadeCenter.value.set(sp.x * fs, (innerHeight - sp.y) * fs);
+      shared.uFadeRadius.value = 85 * fs;
       this._v.set(p.x, p.y + 1, p.z).applyMatrix4(this.gfx.camera.matrixWorldInverse);
       shared.uFadeDepth.value = -this._v.z;
       // triggers

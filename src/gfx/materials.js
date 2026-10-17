@@ -9,9 +9,9 @@ import * as THREE from '../../vendor/three.module.js';
 let _gradient = null;
 export function toonGradient() {
   if (_gradient) return _gradient;
-  // 20 steps over (dotNL*0.5+0.5): deep shade, core shadow, half-tone, lit, key-lit.
-  const data = new Uint8Array(20);
-  for (let i = 0; i < 20; i++) data[i] = i < 7 ? 30 : i < 10 ? 105 : i < 13 ? 196 : i < 16 ? 228 : 255;
+  // 2D-anime cel ramp over (dotNL*0.5+0.5): hard shadow band, one mid-tone, lit.
+  const data = new Uint8Array(16);
+  for (let i = 0; i < 16; i++) data[i] = i < 7 ? 0 : i < 9 ? 150 : 255;
   const t = new THREE.DataTexture(data, data.length, 1, THREE.RedFormat, THREE.UnsignedByteType);
   t.minFilter = t.magFilter = THREE.NearestFilter;
   t.generateMipmaps = false; t.needsUpdate = true;
@@ -90,7 +90,7 @@ function patch(shader, mat) {
     .replace('#include <dithering_fragment>', `#include <dithering_fragment>
       {
         vec3 vdir = normalize(vViewPosition);
-        float fres = pow(1.0 - clamp(abs(dot(normal, vdir)), 0.0, 1.0), 2.5);
+        float fres = smoothstep(0.6, 0.66, 1.0 - clamp(abs(dot(normal, vdir)), 0.0, 1.0)) * 0.5;
         gl_FragColor.rgb += uRimColor * fres * uRim;
         if (uTintAmt > 0.0) gl_FragColor.rgb = mix(gl_FragColor.rgb, gl_FragColor.rgb * uTint * 1.6 + uTint * 0.12, uTintAmt);
         if (uSpectral > 0.0) {

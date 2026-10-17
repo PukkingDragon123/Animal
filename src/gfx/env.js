@@ -11,6 +11,7 @@ import { toonMaterial, glowMaterial, shared } from './materials.js';
 import { getTemplate, instantiate } from './model.js';
 import { hash3 } from '../core/rng.js';
 import { EMITTERS } from './emitters.js';
+import { buildStage } from './stage.js';
 const _cc = new Map();
 function colorArr(hex) { let a = _cc.get(hex); if (!a) { const c = new THREE.Color(hex); a = [c.r * 1.6, c.g * 1.6, c.b * 1.6, 1]; _cc.set(hex, a); } return a; }
 import { blockRect, blockCircle } from '../world/map.js';
@@ -459,6 +460,8 @@ export function buildEnvironment(def, g, opts = {}) {
   env.signs = buildSigns(bres.signs, signGroup, env.lights);
   env.group.add(signGroup);
   env.propGroup = buildProps(def, g, bres.rooftop, env, opts.propShadows !== false);
+  // side-scroll stage-set pieces: interiors, backdrop layers, in-world panels
+  if (def.rooms || def.backdrop || def.panels) env.group.add(buildStage(def, env));
   env.group.add(env.propGroup);
   for (const l of def.lights || []) env.lights.push({ pos: l.pos, color: new THREE.Color(l.color || '#ffd890'), intensity: l.intensity ?? 4, range: l.range ?? 7, night: l.night !== false });
   return env;

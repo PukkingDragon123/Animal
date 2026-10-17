@@ -7,7 +7,7 @@ import { Gfx } from '../src/gfx/renderer.js';
 import { buildGrid } from '../src/world/map.js';
 import { buildEnvironment, updateEnvironment, setPropLibrary } from '../src/gfx/env.js';
 const q = new URLSearchParams(location.search);
-try { const lib = await import('../src/data/designs/props.js'); setPropLibrary(lib); } catch (e) { console.warn('no props lib', e.message); }
+try { const { PROPS } = await import('../src/data/designs/index.js'); setPropLibrary(PROPS); } catch (e) { console.warn('no props lib', e.message); }
 const def = (await import(q.get('map') || '../src/world/maps/_test.js')).default;
 const g = new Gfx(document.getElementById('c'), { quality: q.get('q') || 'high' });
 g.resize(innerWidth, innerHeight);

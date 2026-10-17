@@ -247,7 +247,8 @@ function paintColor(sh, x, y, z, i, j, k, vs) {
 }
 
 // Voxelize shapes on the lattice (centres at integer multiples of vs).
-export function voxelize(shapeTuples, { vs, pal, pad = 1 }) {
+export function voxelize(shapeTuples, { vs, pal, pad = 1, field = false }) {
+  if (field) pad = Math.max(pad, 3);
   const compiled = shapeTuples.map((t) => compileShape(t, pal));
   const list = expandMirror(compiled);
   if (!list.length) return new VoxelGrid(0, 0, 0, 1, 1, 1, vs);
@@ -264,22 +265,33 @@ export function voxelize(shapeTuples, { vs, pal, pad = 1 }) {
   const lo = mn.map((v) => Math.floor(v / vs) - pad), hi = mx.map((v) => Math.ceil(v / vs) + pad);
   const g = new VoxelGrid(lo[0], lo[1], lo[2], hi[0] - lo[0] + 1, hi[1] - lo[1] + 1, hi[2] - lo[2] + 1, vs);
   const half = vs * 0.5;
+  const F = field ? new Float32Array(g.nx * g.ny * g.nz).fill(vs * 8) : null;
+  const fpad = field ? vs * 2.5 : 0;
   for (const { s, mx: m } of list) {
     const o = s.opts;
     const b = s.aabb;
     const bx0 = m ? -b[3] : b[0], bx1 = m ? -b[0] : b[3];
-    const i0 = Math.max(0, Math.floor((bx0 - half) / vs) - g.ox), i1 = Math.min(g.nx - 1, Math.ceil((bx1 + half) / vs) - g.ox);
-    const j0 = Math.max(0, Math.floor((b[1] - half) / vs) - g.oy), j1 = Math.min(g.ny - 1, Math.ceil((b[4] + half) / vs) - g.oy);
-    const k0 = Math.max(0, Math.floor((b[2] - half) / vs) - g.oz), k1 = Math.min(g.nz - 1, Math.ceil((b[5] + half) / vs) - g.oz);
+    const ext = half + fpad + (o.blend || 0);
+    const i0 = Math.max(0, Math.floor((bx0 - ext) / vs) - g.ox), i1 = Math.min(g.nx - 1, Math.ceil((bx1 + ext) / vs) - g.ox);
+    const j0 = Math.max(0, Math.floor((b[1] - ext) / vs) - g.oy), j1 = Math.min(g.ny - 1, Math.ceil((b[4] + ext) / vs) - g.oy);
+    const k0 = Math.max(0, Math.floor((b[2] - ext) / vs) - g.oz), k1 = Math.min(g.nz - 1, Math.ceil((b[5] + ext) / vs) - g.oz);
     const thr = o.thr ?? 0;
     const glow = o.glow ? Math.min(3, o.glow | 0 || 1) : 0;
+    const geom = F && !o.paint;
+    const bk = o.blend || 0;
     for (let i = i0; i <= i1; i++) {
       const wx = (i + g.ox) * vs, ex = m ? -wx : wx;
       for (let j = j0; j <= j1; j++) {
         const wy = (j + g.oy) * vs;
         for (let k = k0; k <= k1; k++) {
           const wz = (k + g.oz) * vs;
-          if (s.sdf(ex, wy, wz) > thr) continue;
+          const sd = s.sdf(ex, wy, wz) - thr;
+          if (geom) {
+            const id = g.idx(i, j, k), f = F[id];
+            if (o.sub) F[id] = bk > 0 ? -smin(-f, sd, bk) : Math.max(f, -sd);
+            else F[id] = bk > 0 ? smin(f, sd, bk) : Math.min(f, sd);
+          }
+          if (sd > 0 && !(bk > 0 && F && !o.sub && !o.paint && F[g.idx(i, j, k)] <= 0)) continue;
           const id = g.idx(i, j, k);
           if (o.sub) { g.data[id] = 0; continue; }
           if (o.paint && !g.data[id]) continue;
@@ -291,7 +303,151 @@ export function voxelize(shapeTuples, { vs, pal, pad = 1 }) {
       }
     }
   }
+  if (F) g.field = F;
   return g;
+}
+
+// polynomial smooth minimum (k = blend radius in metres)
+export function smin(a, b, k) { const h = Math.max(k - Math.abs(a - b), 0) / k; return Math.min(a, b) - h * h * k * 0.25; }
+
+// ---------------------------------------------------------------- smooth surface (anime look)
+// Trilinear sample of a grid's distance field at a model-space point.
+export function fieldAt(g, x, y, z) {
+  const F = g.field; if (!F) return 1;
+  const fx = x / g.vs - g.ox, fy = y / g.vs - g.oy, fz = z / g.vs - g.oz;
+  const i = Math.floor(fx), j = Math.floor(fy), k = Math.floor(fz);
+  if (i < 0 || j < 0 || k < 0 || i >= g.nx - 1 || j >= g.ny - 1 || k >= g.nz - 1) return g.vs * 8;
+  const tx = fx - i, ty = fy - j, tz = fz - k;
+  const ny = g.ny, nz = g.nz;
+  const b = (i * ny + j) * nz + k;
+  const c000 = F[b], c001 = F[b + 1], c010 = F[b + nz], c011 = F[b + nz + 1];
+  const b1 = b + ny * nz;
+  const c100 = F[b1], c101 = F[b1 + 1], c110 = F[b1 + nz], c111 = F[b1 + nz + 1];
+  const x00 = c000 + (c100 - c000) * tx, x01 = c001 + (c101 - c001) * tx, x10 = c010 + (c110 - c010) * tx, x11 = c011 + (c111 - c011) * tx;
+  const y0 = x00 + (x10 - x00) * ty, y1 = x01 + (x11 - x01) * ty;
+  return y0 + (y1 - y0) * tz;
+}
+// March a ray against the smooth surface; returns {x,y,z,t} or null.
+export function rayHitField(g, from, dir, maxDist = 2) {
+  const l = Math.hypot(dir[0], dir[1], dir[2]) || 1;
+  const d = [dir[0] / l, dir[1] / l, dir[2] / l];
+  let t = 0, prev = fieldAt(g, from[0], from[1], from[2]);
+  const step = g.vs * 0.25;
+  while (t < maxDist) {
+    t += step;
+    const x = from[0] + d[0] * t, y = from[1] + d[1] * t, z = from[2] + d[2] * t;
+    const f = fieldAt(g, x, y, z);
+    if (f <= 0) { const u = prev / ((prev - f) || 1e-6); const tt = t - step + step * u; return { x: from[0] + d[0] * tt, y: from[1] + d[1] * tt, z: from[2] + d[2] * tt, t: tt }; }
+    prev = f;
+  }
+  return null;
+}
+
+// Surface nets over the distance field. Each quad takes the flat colour of
+// its inside voxel (crisp colour regions, like pixel art), vertices are
+// shared positions with smooth gradient normals (clean cel bands).
+// occ(li,lj,lk): optional union occupancy in lattice coords (crevice AO).
+export function meshSmooth(g, { offset = [0, 0, 0], glowBoost = [1, 1.6, 2.6, 4.0], occ = null, colors = null, ao = true } = {}) {
+  const F = g.field;
+  if (!F) return meshGrid(g, { offset, occ });
+  const { nx, ny, nz, vs } = g;
+  const data = colors || g.data;
+  const cellIdx = new Int32Array((nx - 1) * (ny - 1) * (nz - 1)).fill(-1);
+  const cid = (i, j, k) => (i * (ny - 1) + j) * (nz - 1) + k;
+  const vid = (i, j, k) => (i * ny + j) * nz + k;
+  const VX = [], VN = [], VA = [];
+  const EDGES = [[0, 1], [2, 3], [4, 5], [6, 7], [0, 2], [1, 3], [4, 6], [5, 7], [0, 4], [1, 5], [2, 6], [3, 7]];
+  const CO = [[0, 0, 0], [0, 0, 1], [0, 1, 0], [0, 1, 1], [1, 0, 0], [1, 0, 1], [1, 1, 0], [1, 1, 1]];
+  const cv = new Float32Array(8);
+  for (let i = 0; i < nx - 1; i++) for (let j = 0; j < ny - 1; j++) for (let k = 0; k < nz - 1; k++) {
+    let mask = 0;
+    for (let c = 0; c < 8; c++) { const v = F[vid(i + CO[c][0], j + CO[c][1], k + CO[c][2])]; cv[c] = v; if (v < 0) mask |= 1 << c; }
+    if (mask === 0 || mask === 255) continue;
+    let sx = 0, sy = 0, sz = 0, n = 0;
+    for (const [a, b] of EDGES) {
+      const va = cv[a], vb = cv[b];
+      if ((va < 0) === (vb < 0)) continue;
+      const t = va / (va - vb);
+      sx += CO[a][0] + (CO[b][0] - CO[a][0]) * t; sy += CO[a][1] + (CO[b][1] - CO[a][1]) * t; sz += CO[a][2] + (CO[b][2] - CO[a][2]) * t;
+      n++;
+    }
+    const lx = sx / n, ly = sy / n, lz = sz / n;
+    const px = (i + g.ox + lx) * vs, py = (j + g.oy + ly) * vs, pz = (k + g.oz + lz) * vs;
+    // gradient of the trilinear field inside this cell
+    const gx = ((cv[4] - cv[0]) * (1 - ly) * (1 - lz) + (cv[6] - cv[2]) * ly * (1 - lz) + (cv[5] - cv[1]) * (1 - ly) * lz + (cv[7] - cv[3]) * ly * lz);
+    const gy = ((cv[2] - cv[0]) * (1 - lx) * (1 - lz) + (cv[6] - cv[4]) * lx * (1 - lz) + (cv[3] - cv[1]) * (1 - lx) * lz + (cv[7] - cv[5]) * lx * lz);
+    const gz = ((cv[1] - cv[0]) * (1 - lx) * (1 - ly) + (cv[5] - cv[4]) * lx * (1 - ly) + (cv[3] - cv[2]) * (1 - lx) * ly + (cv[7] - cv[6]) * lx * ly);
+    const gl = Math.hypot(gx, gy, gz) || 1;
+    const nxv = gx / gl, nyv = gy / gl, nzv = gz / gl;
+    let a = 1;
+    if (ao && occ) {
+      // count solid lattice cells just outside the surface (crevices, contact)
+      let hits = 0;
+      for (const s of [1.1, 2.0]) {
+        const qx = Math.round((px + nxv * vs * s) / vs), qy = Math.round((py + nyv * vs * s) / vs), qz = Math.round((pz + nzv * vs * s) / vs);
+        if (occ(qx, qy, qz)) hits++;
+        if (occ(qx + 1, qy, qz) && occ(qx - 1, qy, qz)) hits += 0.5;
+      }
+      a = Math.max(0.55, 1 - hits * 0.17);
+    }
+    cellIdx[cid(i, j, k)] = VX.length / 3;
+    VX.push(px - offset[0], py - offset[1], pz - offset[2]); VN.push(nxv, nyv, nzv); VA.push(a);
+  }
+  const lit = { pos: [], nrm: [], col: [], n: 0 }, glw = { pos: [], nrm: [], col: [], n: 0 };
+  let faces = 0;
+  const colorOf = (i, j, k) => {
+    let v = data[vid(i, j, k)];
+    if (!v) { // inside the field but voxel claimed elsewhere: borrow a neighbour
+      for (const [a, b, c] of [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]]) { const ii = i + a, jj = j + b, kk = k + c; if (ii >= 0 && jj >= 0 && kk >= 0 && ii < nx && jj < ny && kk < nz && data[vid(ii, jj, kk)]) { v = data[vid(ii, jj, kk)]; break; } }
+    }
+    return v || 0xff808080;
+  };
+  const emit = (q, inside, flip) => {
+    const v = colorOf(inside[0], inside[1], inside[2]);
+    const glow = (v >>> 29) & 3, rgb = v & 0xffffff;
+    const lr = S2L[(rgb >> 16) & 255], lg = S2L[(rgb >> 8) & 255], lb = S2L[rgb & 255];
+    const B = glow ? glw : lit;
+    const order = flip ? [3, 2, 1, 0] : [0, 1, 2, 3];
+    for (const o of order) {
+      const vi = q[o];
+      B.pos.push(VX[vi * 3], VX[vi * 3 + 1], VX[vi * 3 + 2]); B.nrm.push(VN[vi * 3], VN[vi * 3 + 1], VN[vi * 3 + 2]);
+      const m = glow ? glowBoost[glow] : VA[vi];
+      B.col.push(lr * m, lg * m, lb * m);
+    }
+    B.n++; faces++;
+  };
+  for (let i = 1; i < nx - 1; i++) for (let j = 1; j < ny - 1; j++) for (let k = 1; k < nz - 1; k++) {
+    const a = F[vid(i, j, k)];
+    const ina = a < 0;
+    // +x edge: cells (i, j-1..j, k-1..k)
+    if (i < nx - 2) { const b = F[vid(i + 1, j, k)]; if (ina !== (b < 0)) {
+      const q = [cellIdx[cid(i, j - 1, k - 1)], cellIdx[cid(i, j, k - 1)], cellIdx[cid(i, j, k)], cellIdx[cid(i, j - 1, k)]];
+      if (q.every((x) => x >= 0)) emit(q, ina ? [i, j, k] : [i + 1, j, k], !ina);
+    } }
+    // +y edge: cells (i-1..i, j, k-1..k) in (z, x) order
+    if (j < ny - 2) { const b = F[vid(i, j + 1, k)]; if (ina !== (b < 0)) {
+      const q = [cellIdx[cid(i - 1, j, k - 1)], cellIdx[cid(i - 1, j, k)], cellIdx[cid(i, j, k)], cellIdx[cid(i, j, k - 1)]];
+      if (q.every((x) => x >= 0)) emit(q, ina ? [i, j, k] : [i, j + 1, k], !ina);
+    } }
+    // +z edge: cells (i-1..i, j-1..j, k) in (x, y) order
+    if (k < nz - 2) { const b = F[vid(i, j, k + 1)]; if (ina !== (b < 0)) {
+      const q = [cellIdx[cid(i - 1, j - 1, k)], cellIdx[cid(i, j - 1, k)], cellIdx[cid(i, j, k)], cellIdx[cid(i - 1, j, k)]];
+      if (q.every((x) => x >= 0)) emit(q, ina ? [i, j, k] : [i, j, k + 1], !ina);
+    } }
+  }
+  const build = (B) => {
+    if (!B.n) return null;
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(B.pos, 3));
+    geo.setAttribute('normal', new THREE.Float32BufferAttribute(B.nrm, 3));
+    geo.setAttribute('color', new THREE.Float32BufferAttribute(B.col, 3));
+    const idx = [];
+    for (let q = 0; q < B.n; q++) { const b = q * 4; idx.push(b, b + 1, b + 2, b, b + 2, b + 3); }
+    geo.setIndex(B.n * 4 > 65535 ? new THREE.Uint32BufferAttribute(idx, 1) : new THREE.Uint16BufferAttribute(idx, 1));
+    geo.computeBoundingSphere(); geo.computeBoundingBox();
+    return geo;
+  };
+  return { lit: build(lit), glow: build(glw), faces };
 }
 
 // ---------------------------------------------------------------- mesher

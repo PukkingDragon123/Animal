@@ -1,10 +1,32 @@
-# Elemon voxel modeling guide
+# Tokonmon modeling guide
 
-Every creature, character and prop in Elemon is **3D pixel art generated from code**:
-a design is a list of SDF primitives that `src/gfx/voxel.js` voxelizes on a shared
-lattice and meshes with baked ambient occlusion + per-voxel colour jitter.
-`src/gfx/model.js` turns a design into a rigged `THREE.Group` (one bone per part),
-and `src/gfx/anim.js` animates it procedurally.
+Every Tokonmon, character and prop is **generated from code** as a list of SDF
+primitives (`src/gfx/voxel.js`), turned into a rigged `THREE.Group` by
+`src/gfx/model.js` and animated procedurally by `src/gfx/anim.js`.
+
+## The 2D pixel-art anime look (read first)
+
+The whole game renders through a **pixel-art pipeline** (`src/gfx/pixel.js`):
+- **Resolution:** the 3D scene is drawn at ~320–360 "art pixels" tall, then upscaled crisply.
+- **Shading:** **hard cel shading** with 2–3 bands and hue-shifted purple shadows, plus a crisp rim.
+- **Outlines:** **1-pixel selective outlines** wherever depth jumps, a darkened version of the surface colour.
+- **Depth:** HD-2D depth of field.
+- **Animation:** poses update in steps at 12 fps ("on twos"), so 3D models move like 2D animation.
+
+What that means for designs:
+- **Tokonmon and characters use the smooth surface** (`mesh: 'smooth'` is the default for every design whose `arch` isn't `'static'`):
+  - the SDF is meshed with surface nets, so you get clean anime silhouettes instead of blocks;
+  - every quad still takes the **flat colour of its voxel**, so colour regions stay crisp like pixel art.
+  - Props/buildings (`arch: 'static'`) stay voxel unless you set `mesh: 'smooth'`.
+- **Design for readability at pixel scale.** In the overworld a 1 m Tokonmon is ~32 art pixels tall; in battle close-ups ~90–140 px.
+  - **Silhouette** is king: big shapes, 2–4 main colours, one strong accent.
+  - **Eyes** are pixel decals, so make them big and expressive.
+- **Gaps:** shapes thinner than ~0.7 `vs` vanish. Keep the shapes that matter ≥ 1 voxel apart.
+- `blend: k` (metres) on a shape **smooth-unions** it with everything before it in the part (soft organic joins: cheeks into head, tail into body). It works with `sub` too, giving soft carving.
+- **2D models:**
+  - Every design is also baked into **2D pixel sprites** by `src/gfx/bake.js`: an orthographic, cel-lit render with inner selective outlines, an outer ink outline and a transparent background.
+  - These are used on the phone (scan, team, dex), in portraits and cut-ins, and for all human characters in the world (`src/gfx/sprite.js`).
+  - Check them with `tools/sprites.html`.
 
 ## Units & conventions
 
@@ -13,13 +35,36 @@ and `src/gfx/anim.js` animates it procedurally.
 * Model space coordinates are **absolute** (like modeling in MagicaVoxel): every
   shape of every part is written in the same space at rest pose. A part's `p` is
   its **pivot / joint** in that same space (shoulder, hip, neck, tail root…).
-* Pick `vs` (voxel size) so the model is ~26–40 voxels tall:
-  base forms `0.022–0.03`, mid forms `0.03–0.04`, finals `0.04–0.06`,
-  humans `0.045–0.05`, legendaries `0.1–0.2`, props whatever reads well (~0.05–0.12).
+* Pick `vs` (voxel size) so the model is ~30–48 voxels tall (smooth surfaces look
+  better with a bit more resolution): base forms `0.018–0.026`, mid forms `0.026–0.035`,
+  finals `0.035–0.05`, chibi humans `0.03–0.036`, legendaries `0.08–0.16`, props
+  whatever reads well (~0.05–0.12).
 * Sizes: starters base 0.55–0.9 m tall, mid 1.0–1.5 m, final 1.6–2.6 m; humans
   ~1.55–1.8 m (chibi: head ≈ 1/3 of height); legendaries 5–12 m.
 * Budgets (`tpl.faces`, printed by the viewer): base ≤ 9k, mid ≤ 14k, final ≤ 20k,
   human ≤ 8k, legendary ≤ 45k, small props ≤ 2.5k.
+
+## Bonding overlay, trainer accessories, Elemental Form
+
+```js
+bond: {                                   // shown while the Tokonmon is BONDED with its trainer
+  parts: [ { n: 'bubbleShell', parent: 'body', p: [...], s: [...] } ],   // extra parts, hidden until bonded
+  grow: { hornL: 1.7, hornR: 1.7 },       // part → scale while bonded (expanding horns, puffed fur, bigger crest…)
+  hat: { part: 'head', at: [x, y, z], scale: 1, tilt: 0, roll: 0 },      // where the trainer's hat/accessory sits
+  aura: 'flame'|'bubbles'|'petals'|'sparks'|'notes'|'leaves', auraColor: [r,g,b,1],
+},
+forms: {
+  elemental: {                            // final evolutions: full Elemental Form (special form)
+    pal: { b: '#…' },                     // palette overrides (glowing/elemental recolour)
+    parts: [ … ],                         // extra parts (flame wings, water crown, flower mantle…)
+    eyes: { iris: '#…', style: 'fierce' },
+    fx: [ … ], anim: { hover: 0.2 },
+  },
+},
+```
+- **Bonding** (`Actor.setBond(true)`) reveals `bond.parts`, grows `bond.grow` parts and emits the aura. The trainer's hat is attached at `bond.hat` with `Actor.wearHat(design)`.
+- **Elemental Form** (`Actor.setForm('elemental')`) swaps to the derived design: palette overrides plus extra parts, with the bond overlay kept on.
+- Design both so that each is unmistakable at small size.
 
 ## Design object
 
@@ -124,7 +169,12 @@ scale, color?, mirror?}`.
 
 ## Review workflow
 
+All tools render through the same pixel pipeline as the game.
+
 ```bash
+# 2D sprites: animation sheets (idle/walk/run/talk/emotes) at 4× zoom, plus a UI still
+node tools/shot.mjs "tools/sprites.html?mod=../src/data/designs/starters.js&id=chilichick&anims=idle,walk,wave&still=1" out.png 1400 900 ready 150000
+# Bonding / Elemental Form previews in the design sheet: &bond=1  &form=elemental  &hat=cap
 # multi-angle render of one design (front ¾, side, back) → PNG
 node tools/shot.mjs "tools/design.html?mod=../src/data/designs/starters.js&id=kindoru" out.png 1200 500 ready 120000
 # all designs in a module side by side

@@ -11,7 +11,7 @@
 //   fx:    [{ part, at, type, rate?, scale? }]   particle emitter anchors
 // }
 import * as THREE from '../../vendor/three.module.js';
-import { voxelize, meshGrid, decalGeometry, rayHit } from './voxel.js';
+import { voxelize, meshGrid, meshSmooth, decalGeometry, rayHit, rayHitField } from './voxel.js';
 import { toonMaterial, glowMaterial } from './materials.js';
 
 // ----------------------------------------------------------- eye patterns
@@ -36,8 +36,8 @@ function blank(w, h) { return Array.from({ length: h }, () => Array(w).fill('.')
 const toRows = (g) => g.map((r) => r.join(''));
 
 // Expression variants derived procedurally from the base pattern's size.
-export function eyeVariants(style) {
-  const base = EYE_BASE[style] || EYE_BASE.anime;
+export function eyeVariants(style, rows = null, custom = null) {
+  const base = rows || EYE_BASE[style] || EYE_BASE.anime;
   const w = patW(base), h = base.length;
   const out = { normal: base };
   if (w <= 2 && h <= 2) {
@@ -83,6 +83,8 @@ export function eyeVariants(style) {
     }
     out.sad = toRows(g);
   }
+  // hand-drawn expression overrides (e.g. eyes.variants: { happy: [...], angry: [...] })
+  if (custom) for (const [k, v] of Object.entries(custom)) if (Array.isArray(v)) out[k] = v;
   return out;
 }
 
@@ -142,17 +144,25 @@ function expandParts(parts) {
 // does for {m:1}; so translate _mo into a wrapper part grid flip.
 function voxelizePart(shapes, design) {
   const normal = [], mirrored = [];
+  const field = isSmooth(design);
   for (const t of shapes) {
     const o = t[t.length - 1];
     if (o && typeof o === 'object' && !Array.isArray(o) && o._mo) mirrored.push(t); else normal.push(t);
   }
-  if (!mirrored.length) return voxelize(normal, { vs: design.vs, pal: design.pal });
+  if (!mirrored.length) return voxelize(normal, { vs: design.vs, pal: design.pal, field });
   // Mirrored-only shapes: voxelize un-mirrored, then flip the grid along x.
-  const g = voxelize(mirrored.map((t) => { const c = t.slice(); const o = Object.assign({}, c[c.length - 1]); delete o._mo; c[c.length - 1] = o; return c; }), { vs: design.vs, pal: design.pal });
+  const g = voxelize(mirrored.map((t) => { const c = t.slice(); const o = Object.assign({}, c[c.length - 1]); delete o._mo; c[c.length - 1] = o; return c; }), { vs: design.vs, pal: design.pal, field });
   const f = new g.constructor(-(g.ox + g.nx - 1), g.oy, g.oz, g.nx, g.ny, g.nz, g.vs);
-  for (let i = 0; i < g.nx; i++) for (let j = 0; j < g.ny; j++) for (let k = 0; k < g.nz; k++) f.data[f.idx(g.nx - 1 - i, j, k)] = g.data[g.idx(i, j, k)];
+  if (g.field) f.field = new Float32Array(g.field.length);
+  for (let i = 0; i < g.nx; i++) for (let j = 0; j < g.ny; j++) for (let k = 0; k < g.nz; k++) {
+    f.data[f.idx(g.nx - 1 - i, j, k)] = g.data[g.idx(i, j, k)];
+    if (g.field) f.field[f.idx(g.nx - 1 - i, j, k)] = g.field[g.idx(i, j, k)];
+  }
   return f;
 }
+// Creatures and characters use the smooth "3D that looks 2D" surface; props,
+// buildings and anything with mesh:'voxel' keep crisp voxels.
+export function isSmooth(design) { return design.mesh ? design.mesh === 'smooth' : design.arch !== 'static'; }
 
 function placeDecal(spec, partGrid, partPivot, rows, cmap, px, pal, mirror, depth) {
   const geo = decalGeometry(rows, cmap, px, pal, { mirror, depth });
@@ -165,10 +175,10 @@ function placeDecal(spec, partGrid, partPivot, rows, cmap, px, pal, mirror, dept
   if (partGrid && spec.snap !== false) {
     const vs = partGrid.vs;
     const from = [at[0] + dir[0] * vs * 6, at[1] + dir[1] * vs * 6, at[2] + dir[2] * vs * 6];
-    const hit = rayHit(partGrid, from, [-dir[0], -dir[1], -dir[2]], vs * 16);
+    const hit = partGrid.field ? rayHitField(partGrid, from, [-dir[0], -dir[1], -dir[2]], vs * 16) : rayHit(partGrid, from, [-dir[0], -dir[1], -dir[2]], vs * 16);
     if (hit) pos = [hit.x, hit.y, hit.z];
   }
-  const lift = spec.lift ?? px * 0.5;
+  const lift = spec.lift ?? (partGrid && partGrid.field ? px * 0.35 : px * 0.5);
   pos = [pos[0] + dir[0] * lift - partPivot[0], pos[1] + dir[1] * lift - partPivot[1], pos[2] + dir[2] * lift - partPivot[2]];
   const yaw = Math.atan2(dir[0], dir[2]);
   const pitch = -Math.asin(Math.max(-1, Math.min(1, dir[1])));
@@ -184,8 +194,23 @@ export function getTemplate(design, key) {
 }
 export function clearTemplates() { templates.clear(); }
 
+// Elemental Form (and other named forms): a derived design — palette
+// overrides + extra parts + the bond overlay always on.
+export function formDesign(design, form) {
+  const f = design.forms && design.forms[form];
+  if (!f) return design;
+  const d = Object.assign({}, design, { id: (design.id || 'd') + ':' + form, pal: Object.assign({}, design.pal, f.pal || {}), parts: [...design.parts, ...(f.parts || [])] });
+  if (f.eyes) d.eyes = Object.assign({}, design.eyes, f.eyes);
+  if (f.fx) d.fx = [...(design.fx || []), ...f.fx];
+  d.anim = Object.assign({}, design.anim || {}, f.anim || {});
+  d.formOf = design.id; d.form = form;
+  return d;
+}
+
 export function buildTemplate(design) {
-  const parts = expandParts(design.parts);
+  // Bonding overlay parts are built in but hidden until the Tokonmon is bonded
+  const bondParts = ((design.bond && design.bond.parts) || []).map((p) => Object.assign({}, p, { hide: true, tag: 'bond' }));
+  const parts = expandParts([...design.parts, ...bondParts]);
   const byName = new Map();
   const out = { design, parts: [], decals: [], fx: [], bounds: new THREE.Box3(), faces: 0 };
   // 1) voxelize every part on the shared lattice
@@ -194,6 +219,7 @@ export function buildTemplate(design) {
   //    → no coplanar duplicate faces where parts overlap; 3) union occupancy
   //    drives AO so junctions get proper crevice shadows.
   const KEY = (i, j, k) => ((i + 1024) * 2048 + (j + 1024)) * 2048 + (k + 1024);
+  for (const g of grids) if (g.field) g.colors = g.data.slice();
   const owner = new Map();
   parts.forEach((p, pi) => {
     const g = grids[pi];
@@ -211,9 +237,9 @@ export function buildTemplate(design) {
   const occ = (i, j, k) => owner.has(KEY(i, j, k));
   for (let pi = 0; pi < parts.length; pi++) {
     const p = parts[pi], grid = grids[pi];
-    const m = meshGrid(grid, { offset: p.p, occ: p.solo ? null : occ });
+    const m = grid.field ? meshSmooth(grid, { offset: p.p, occ: p.solo ? null : occ, colors: grid.colors }) : meshGrid(grid, { offset: p.p, occ: p.solo ? null : occ });
     out.faces += m.faces;
-    const rec = { name: p.n, parent: p.parent || null, pivot: p.p, grid, lit: m.lit, glow: m.glow, sway: p.sway || null, spin: p.spin || null, hide: !!p.hide };
+    const rec = { name: p.n, parent: p.parent || null, pivot: p.p, grid, lit: m.lit, glow: m.glow, sway: p.sway || null, spin: p.spin || null, hide: !!p.hide, tag: p.tag || null };
     out.parts.push(rec); byName.set(p.n, rec);
     if (grid.count()) {
       const vs = grid.vs;
@@ -238,7 +264,7 @@ export function buildTemplate(design) {
   if (design.eyes) {
     const e = design.eyes;
     const part = byName.get(e.part || 'head');
-    const variants = eyeVariants(e.style || 'anime');
+    const variants = eyeVariants(e.style || 'anime', e.rows || null, e.variants || null);
     const px = vs * (e.px || 1);
     const cmap = DECAL_CMAP(e.iris, e.cmap);
     const sides = e.mirror === false ? [false] : [false, true];
@@ -254,7 +280,7 @@ export function buildTemplate(design) {
   if (design.mouth && design.mouth.style !== 'none') {
     const mo = design.mouth;
     const part = byName.get(mo.part || 'head');
-    const pats = MOUTHS[mo.style || 'cat'] || MOUTHS.cat;
+    const pats = mo.rows || MOUTHS[mo.style || 'cat'] || MOUTHS.cat;
     const px = vs * (mo.px || 0.8);
     const cmap = DECAL_CMAP('#000', mo.cmap);
     const set = {};
@@ -344,6 +370,9 @@ export function instantiate(tpl, opts = {}) {
     height: b.isEmpty() ? 1 : b.max.y, radius: b.isEmpty() ? 0.5 : Math.max(b.max.x, -b.min.x, b.max.z, -b.min.z),
     bounds: b.clone(),
     sway: tpl.parts.filter((p) => p.sway || p.spin).map((p) => ({ name: p.name, sway: p.sway, spin: p.spin })),
+    tagged: tpl.parts.reduce((m, p) => { if (p.tag) (m[p.tag] = m[p.tag] || []).push(p.name); return m; }, {}),
+    bond: tpl.design.bond || null,
+    hat: (tpl.design.bond && tpl.design.bond.hat) || tpl.design.hat || null,
   };
   return root;
 }

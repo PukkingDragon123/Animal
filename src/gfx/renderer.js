@@ -3,16 +3,18 @@
 // directly — it moves Object3Ds under `actors`/`world` and calls helpers here.
 import * as THREE from '../../vendor/three.module.js';
 import { Post } from './post.js';
+import { PixelPost } from './pixel.js';
 import { Sky, timeOfDay } from './sky.js';
 import { FX } from './particles.js';
 import { shared, shadowTint } from './materials.js';
 import { clamp, damp, lerp, ease, clamp01 } from '../core/mathx.js';
 import { vnoise3 } from '../core/rng.js';
 
+// pixelH: vertical resolution of the pixel-art render ("art pixels")
 const QUALITY = {
-  high: { dpr: 2, msaa: 4, levels: 5, shadow: 2048, post: true, tilt: 0.55, outline: 1, propShadows: true },
-  medium: { dpr: 1.5, msaa: 4, levels: 4, shadow: 1024, post: true, tilt: 0, outline: 1, propShadows: false },
-  low: { dpr: 1, msaa: 0, levels: 3, shadow: 512, post: false, tilt: 0, outline: 0, propShadows: false },
+  high: { dpr: 2, msaa: 0, levels: 4, shadow: 2048, post: true, tilt: 0, outline: 1, propShadows: true, pixelH: 360, dof: 0.42 },
+  medium: { dpr: 1.5, msaa: 0, levels: 4, shadow: 1024, post: true, tilt: 0, outline: 1, propShadows: false, pixelH: 320, dof: 0.42 },
+  low: { dpr: 1, msaa: 0, levels: 3, shadow: 512, post: true, tilt: 0, outline: 1, propShadows: false, pixelH: 270, dof: 0 },
 };
 
 export function detectQuality() {
@@ -204,7 +206,7 @@ export class Gfx {
   constructor(canvas, opts = {}) {
     this.qName = opts.quality || detectQuality();
     this.Q = QUALITY[this.qName];
-    this.renderer = new THREE.WebGLRenderer({ canvas, antialias: !this.Q.post, powerPreference: 'high-performance', stencil: false, alpha: false });
+    this.renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance', stencil: false, alpha: false });
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -229,8 +231,11 @@ export class Gfx {
     this.fx = new FX();
     this.scene.add(this.fx.group);
     this.lights = new LightPool(this.scene, this.qName === 'low' ? 3 : 6);
-    this.post = this.Q.post ? new Post(this.renderer, { msaa: this.Q.msaa, levels: this.Q.levels }) : null;
-    if (this.post) { this.post.u.uOutline.value = this.Q.outline; this.post.u.uTilt.value = this.Q.tilt; }
+    this.post = new PixelPost(this.renderer, { pixelH: opts.pixelH || this.Q.pixelH, bloomLevels: this.Q.levels });
+    this.post.u.uOutline.value = this.Q.outline ? 0.82 : 0;
+    this.dof = this.Q.dof;       // HD-2D depth of field strength (fraction of focus distance)
+    this.snap = true;            // snap the camera to the art-pixel grid (no shimmering)
+    this._r = new THREE.Vector3(); this._u = new THREE.Vector3();
     this.portraits = new PortraitView(this);
     this.hour = 12; this.tod = timeOfDay(12);
     this.time = 0;
@@ -251,6 +256,8 @@ export class Gfx {
     if (this.post) this.post.setSize(Math.round(w * dpr), Math.round(h * dpr));
     shared.uRes.value.set(w * dpr, h * dpr);
     this.w = w; this.h = h; this.dpr = dpr;
+    // CSS px → fragment px of the scene render (low-res pixel target)
+    this.fragScale = this.post ? this.post.lh / h : dpr;
   }
 
   setTime(hour) {
@@ -259,6 +266,9 @@ export class Gfx {
     this.sky.apply(t, this.time);
     this.sun.color.copy(t.sun); this.sun.intensity = t.sunI;
     this.hemi.color.copy(t.hemiSky); this.hemi.groundColor.copy(t.hemiGround); this.hemi.intensity = t.hemiI;
+    // interiors: no sky (dark stage surround); daylight only leaks in, warm ambient carries the room
+    this.sky.group.visible = !this.interior;
+    if (this.interior) { this.sun.intensity *= 0.3; this.hemi.intensity *= 1.5; this.hemi.groundColor.lerp(new THREE.Color(0xffd8a8), 0.35); }
     this.scene.fog.color.copy(t.fog);
     shadowTint.value.set(0.42, 0.36, 0.62).lerp(new THREE.Color(0.28, 0.3, 0.6), t.night);
     if (this.post) this.post.u.uExposure.value = t.exposure;
@@ -286,7 +296,9 @@ export class Gfx {
     this.rig.update(realDt, this.time);
     // sun follows focus for crisp shadows (snapped to shadow texels)
     const f = this.rig.mode === 'cinema' && this.rig.shot ? this.rig._l : this.rig.focus;
-    const sd = this.tod.sunDir;
+    let sd = this.tod.sunDir;
+    // side-scroll sets are lit from the camera side (sprites + facades read well)
+    if (this.frontSun) { this._sd = this._sd || new THREE.Vector3(); this._sd.set(sd.x * 0.6, Math.max(0.35, sd.y), Math.max(0.55, Math.abs(sd.z))).normalize(); sd = this._sd; }
     const texel = 44 / this.Q.shadow;
     const fx = Math.round(f.x / texel) * texel, fz = Math.round(f.z / texel) * texel;
     this.sun.target.position.set(fx, 0, fz);
@@ -305,6 +317,20 @@ export class Gfx {
       u.uFlash.value = this.flashV; u.uFlashColor.value.set(this.flashColor.r, this.flashColor.g, this.flashColor.b);
       u.uChroma.value = this.chroma; u.uSpeed.value = this.speedLines; u.uLetter.value = this.letterbox; u.uDesat.value = this.desat;
       u.uBloom.value = 0.55 + this.tod.night * 0.45;
+      // focus distance for the HD-2D depth of field
+      const fd = this.camera.position.distanceTo(f);
+      u.uDofFocus.value = fd; u.uDofRange.value = this.dof ? Math.max(2, fd * this.dof) : 0;
+      // snap to the art-pixel grid; feed the remainder back as a sub-pixel offset
+      if (this.snap) {
+        const wpp = this.post.worldPerPixel(this.camera, fd);
+        this.camera.updateMatrixWorld();
+        this._r.setFromMatrixColumn(this.camera.matrixWorld, 0); this._u.setFromMatrixColumn(this.camera.matrixWorld, 1);
+        const pr = this.camera.position.dot(this._r), pu = this.camera.position.dot(this._u);
+        const sr = Math.round(pr / wpp) * wpp, su = Math.round(pu / wpp) * wpp;
+        this.camera.position.addScaledVector(this._r, sr - pr).addScaledVector(this._u, su - pu);
+        this.camera.updateMatrixWorld();
+        this.post.p.uOffset.value.set((pr - sr) / wpp, (pu - su) / wpp);
+      } else this.post.p.uOffset.value.set(0, 0);
       this.post.render(this.scene, this.camera, this.time);
     } else {
       this.renderer.setRenderTarget(null);

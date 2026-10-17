@@ -3,14 +3,24 @@
 import * as starters from './starters.js';
 import * as roster from './roster.js';
 import * as wild from './wild.js';
-import * as humans from './humans.js';
+import * as music from './music.js';
+import * as humans from './chibi.js';
 import * as props from './props.js';
+import * as propsChuo from './props_chuo.js';
+import * as propsUmeda from './props_umeda.js';
+import * as propsShinsekai from './props_shinsekai.js';
 import { ELEMENTS } from '../elements.js';
 import { SPECIES, elemsOf } from '../species.js';
 
-export const CREATURE_DESIGNS = Object.assign({}, wild.DESIGNS || {}, roster.DESIGNS || {}, starters.DESIGNS || {});
-export const LORE = Object.assign({}, wild.LORE || {}, roster.LORE || {}, starters.LORE || {});
-export const PROPS = props;
+// later modules override earlier ones (wild ← roster ← music ← starters)
+export const CREATURE_DESIGNS = Object.assign({}, wild.DESIGNS || {}, roster.DESIGNS || {}, music.DESIGNS || {}, starters.DESIGNS || {});
+export const LORE = Object.assign({}, wild.LORE || {}, roster.LORE || {}, music.LORE || {}, starters.LORE || {});
+const propMods = [props, propsChuo, propsUmeda, propsShinsekai];
+export const PROPS = {
+  DESIGNS: Object.assign({}, ...propMods.map((m) => m.DESIGNS || {})),
+  PROP_META: Object.assign({}, ...propMods.map((m) => m.PROP_META || {})),
+  PROP_PAL: props.PROP_PAL,
+};
 export const HUMANS = humans;
 
 const fallbackCache = new Map();
@@ -38,14 +48,15 @@ export function humanDesignFor(look) {
   if (typeof look === 'string') {
     if (humanCache.has(look)) return humanCache.get(look);
     const L = humans.CHARACTERS && humans.CHARACTERS[look];
-    const d = humans.humanDesign ? humans.humanDesign(L || {}) : null;
+    const fn = humans.chibiDesign || humans.humanDesign;
+    const d = fn ? fn(L || {}) : null;
     if (d) d.id = d.id || 'char:' + look;
     humanCache.set(look, d);
     return d;
   }
   const key = 'look:' + JSON.stringify(look);
   if (humanCache.has(key)) return humanCache.get(key);
-  const d = humans.humanDesign(look);
+  const d = (humans.chibiDesign || humans.humanDesign)(look);
   d.id = key;
   humanCache.set(key, d);
   return d;

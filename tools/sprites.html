@@ -1,0 +1,72 @@
+<!doctype html><html><head><meta charset="utf-8"><title>sprites</title>
+<style>
+html,body{margin:0;background:#1b1426;color:#fff;font:12px monospace}
+#c{position:fixed;left:0;top:0;width:100%;height:100%;display:block}
+#sheet{position:relative;z-index:2;padding:8px;display:flex;flex-wrap:wrap;gap:10px}
+.box{background:repeating-conic-gradient(#2a2238 0 25%,#231c30 0 50%) 0 0/16px 16px;border:1px solid #4a3a66;padding:4px}
+.box canvas{image-rendering:pixelated;display:block}
+.lab{color:#ffd36b;margin-bottom:3px}
+</style></head>
+<body><canvas id="c"></canvas><div id="sheet"></div>
+<script type="module">
+// Sprite review tool.
+//  mod=<designs module>  id=<character key | design id> (comma list ok)  fn=<factory export, default humanDesign/chibiDesign>
+//  anims=idle,walk,run,talk,wave,...  zoom=4  ppm=32  w=48 h=64
+//  world=1 → render the sprites standing/walking in a tiny diorama through the pixel renderer (h=<hour>)
+//  still=1 → also bake a display-mode still (UI icon) per id
+import * as THREE from '../vendor/three.module.js';
+import { Gfx } from '../src/gfx/renderer.js';
+import { baker } from '../src/gfx/bake.js';
+import { SpriteSet, SpriteActor, CHAR_ANIMS } from '../src/gfx/sprite.js';
+import { toonMaterial } from '../src/gfx/materials.js';
+const q = new URLSearchParams(location.search);
+const mod = await import(q.get('mod') || '../src/data/designs/humans.js');
+const ids = (q.get('id') || 'player_a').split(',');
+const zoom = +(q.get('zoom') || 4);
+const W = +(q.get('w') || 48), H = +(q.get('h') || 64), PPM = +(q.get('ppm') || 32);
+const designOf = (id) => {
+  if (mod.DESIGNS && mod.DESIGNS[id]) return mod.DESIGNS[id];
+  const fn = mod[q.get('fn') || ''] || mod.chibiDesign || mod.humanDesign;
+  const look = (mod.CHARACTERS && mod.CHARACTERS[id]) || {};
+  const d = fn(look); d.id = d.id || 'sprite_' + id; return d;
+};
+const g = new Gfx(document.getElementById('c'), { quality: q.get('q') || 'high' });
+g.resize(innerWidth, innerHeight);
+g.setTime(parseFloat(q.get('h') || '14'));
+const B = baker(g.renderer);
+const anims = (q.get('anims') || 'idle,walk,run,talk,wave,cheer').split(',');
+const sheetEl = document.getElementById('sheet');
+const sets = [];
+for (const id of ids) {
+  const d = designOf(id);
+  const set = new SpriteSet(g.renderer, d, { w: W, h: H, ppm: PPM, preload: [] });
+  sets.push(set);
+  if (q.get('world') === '1') continue;
+  for (const a of anims) {
+    const A = set.ensure(a); if (!A) continue;
+    const box = document.createElement('div'); box.className = 'box';
+    box.innerHTML = `<div class="lab">${id} · ${a} (${A.n}f @${A.fps.toFixed(1)}fps)</div>`;
+    const c = A.canvas; c.style.width = c.width * zoom + 'px'; c.style.height = c.height * zoom + 'px';
+    box.append(c); sheetEl.append(box);
+  }
+  if (q.has('still')) {
+    const box = document.createElement('div'); box.className = 'box';
+    box.innerHTML = `<div class="lab">${id} · still (UI)</div>`;
+    const c = B.still(d, { w: 96, h: 96 }); c.style.width = 96 * zoom / 2 + 'px'; c.style.height = 96 * zoom / 2 + 'px';
+    box.append(c); sheetEl.append(box);
+  }
+}
+if (q.get('world') === '1') {
+  sheetEl.style.display = 'none';
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(40, 12).rotateX(-Math.PI / 2), toonMaterial({ vertexColors: false, color: 0x9ab06a }));
+  ground.receiveShadow = true; g.world.add(ground);
+  const back = new THREE.Mesh(new THREE.BoxGeometry(40, 6, 0.4), toonMaterial({ vertexColors: false, color: 0xd8b48a }));
+  back.position.set(0, 3, -4); back.receiveShadow = true; back.castShadow = true; g.world.add(back);
+  const actors = sets.map((s, i) => { const a = new SpriteActor(g, s); a.setPos((i - (sets.length - 1) / 2) * 1.3, 0, 0); a.face(i % 3 === 0 ? 0 : i % 3 === 1 ? Math.PI / 2 : -Math.PI / 2, true); return a; });
+  if (q.has('walk')) actors.forEach((a) => a.anim.setSpeed(2.4));
+  g.rig.yawT = g.rig.yaw = 0; g.rig.pitch = parseFloat(q.get('pitch') || '0.3');
+  g.rig.target.set(0, 0.9, 0); g.rig.distT = parseFloat(q.get('dist') || '9'); g.rig.fovT = 24; g.rig.snap();
+  for (let i = 0; i < 30; i++) { for (const a of actors) a.update(1 / 60); g.frame(1 / 60); }
+}
+document.title = 'ready';
+</script></body></html>

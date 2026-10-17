@@ -9,7 +9,7 @@
 //  h=<hour>  dist=<camera distance mult>  q=high|medium|low
 import * as THREE from '../vendor/three.module.js';
 import { Gfx } from '../src/gfx/renderer.js';
-import { buildModel, getTemplate } from '../src/gfx/model.js';
+import { buildModel, getTemplate, formDesign } from '../src/gfx/model.js';
 import { Animator } from '../src/gfx/anim.js';
 import { toonMaterial } from '../src/gfx/materials.js';
 import { tickEmitters } from '../src/gfx/emitters.js';
@@ -27,15 +27,21 @@ const items = [];
 let cursor = 0, maxH = 0, info = [];
 const rots = views === 3 ? [0.55, Math.PI / 2, Math.PI + 0.4] : [0.5];
 for (const id of ids) {
-  const d = typeof pool[id] === 'function' ? pool[id]() : pool[id];
+  let d = typeof pool[id] === 'function' ? pool[id]() : pool[id];
   if (!d) continue;
+  if (q.get('form')) d = formDesign(d, q.get('form'));
   const t0 = performance.now();
-  const tpl = getTemplate(d, id + '_view');
+  const tpl = getTemplate(d, id + (q.get('form') || '') + '_view');
   const ms = (performance.now() - t0).toFixed(0);
   const b = tpl.bounds;
   const w = Math.max(b.max.x - b.min.x, b.max.z - b.min.z, 0.4);
   for (const r of rots) {
-    const m = buildModel(d, id + '_view');
+    const m = buildModel(d, id + (q.get('form') || '') + '_view');
+    if (q.has('bond') || q.get('form')) {
+      const rig = m.userData.rig;
+      for (const n of (rig.tagged && rig.tagged.bond) || []) rig.bones[n].visible = true;
+      for (const [n, k] of Object.entries((rig.bond && rig.bond.grow) || {})) if (rig.bones[n]) rig.bones[n].scale.setScalar(k);
+    }
     const x = cursor + w * 0.6;
     m.position.set(x, 0, 0); m.rotation.y = r;
     g.actors.add(m);

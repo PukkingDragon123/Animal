@@ -1,0 +1,75 @@
+<!doctype html><html><head><meta charset="utf-8"><title>scene</title>
+<style>html,body{margin:0;height:100%;background:#000;overflow:hidden}canvas{display:block;width:100%;height:100%}
+#lab{position:fixed;left:6px;top:6px;color:#fff;font:bold 12px monospace;text-shadow:0 1px 2px #000;white-space:pre}
+.hs{position:fixed;transform:translate(-50%,-50%);color:#ffd23a;font:bold 11px monospace;text-shadow:0 1px 2px #000;white-space:nowrap}</style></head>
+<body><canvas id="c"></canvas><div id="lab"></div>
+<script type="module">
+// Side-scroll stage-set viewer.
+//   map=<module path>  h=<hour>  x=<camera focus x> (default spawn)  z=<focus z>  dist=<override>
+//   chars=id@point,id@point (CHARACTERS keys from chars module placed at map points; default: player at spawn)
+//   charmod=<module with chibiDesign/humanDesign + CHARACTERS>  mons=species@point,…  zoom=<zoom name>  hs=1 (label hotspots)
+//   q=high|medium|low  live=1
+import * as THREE from '../vendor/three.module.js';
+import { Gfx } from '../src/gfx/renderer.js';
+import { buildGrid } from '../src/world/map.js';
+import { buildEnvironment, updateEnvironment, setPropLibrary } from '../src/gfx/env.js';
+import { SpriteSet, SpriteActor } from '../src/gfx/sprite.js';
+import { Actor } from '../src/gfx/actor.js';
+const q = new URLSearchParams(location.search);
+try { const { PROPS } = await import('../src/data/designs/index.js'); setPropLibrary(PROPS); } catch (e) { console.warn('no props lib', e.message); }
+const def = (await import(q.get('map') || '../src/world/maps/_stage_test.js')).default;
+const g = new Gfx(document.getElementById('c'), { quality: q.get('q') || 'high' });
+g.resize(innerWidth, innerHeight);
+g.frontSun = def.view === 'side'; g.interior = !!def.interior;
+g.setTime(parseFloat(q.get('h') || '15'));
+const grid = buildGrid(def);
+const t0 = performance.now();
+const env = buildEnvironment(def, grid);
+const ms = performance.now() - t0;
+g.world.add(env.group);
+for (const m of env.emissiveMats) g.registerEmissive(m, 1);
+g.lights.setStatic(env.lights);
+const pt = (n) => (def.points && def.points[n]) || (def.spawns && def.spawns[n]) || null;
+const sp = (def.spawns && def.spawns.start) || [def.size[0] / 2, def.size[1] / 2];
+const actors = [];
+// characters (2D sprites)
+let charMod = null;
+try { charMod = await import(q.get('charmod') || '../src/data/designs/chibi.js'); } catch (e) { charMod = await import('../src/data/designs/humans.js'); }
+const fn = charMod.chibiDesign || charMod.humanDesign;
+const chars = (q.get('chars') || 'player_a@start').split(',').filter(Boolean);
+for (const c of chars) {
+  const [id, at] = c.split('@');
+  const p = pt(at || 'start') || sp;
+  const look = (charMod.CHARACTERS && charMod.CHARACTERS[id]) || {};
+  const d = (charMod.DESIGNS && charMod.DESIGNS[id]) || Object.assign(fn(look), { id: 'scene_' + id });
+  const a = new SpriteActor(g, new SpriteSet(g.renderer, d, { preload: ['idle'] }));
+  a.setPos(p[0], grid.heightAt(p[0], p[1]), p[1]); a.face(((p[2] ?? 0) * Math.PI) / 180, true);
+  actors.push(a);
+}
+// Tokonmon (3D)
+if (q.get('mons')) {
+  const { creatureDesign } = await import('../src/data/designs/index.js');
+  for (const c of q.get('mons').split(',')) {
+    const [id, at] = c.split('@'); const p = pt(at) || sp;
+    const a = new Actor(g, creatureDesign(id), id, {});
+    a.setPos(p[0] + 0.8, grid.heightAt(p[0], p[1]), p[1]); a.face(((p[2] ?? 0) * Math.PI) / 180, true);
+    actors.push(a);
+  }
+}
+const cam = Object.assign({ pitch: 0.3, fov: 24, dist: 24, lookY: 1.3, yaw: 0, z: null }, def.cam || {});
+const fx = parseFloat(q.get('x') || sp[0]), fz = parseFloat(q.get('z') || (cam.z ?? sp[1]));
+g.rig.yawT = g.rig.yaw = cam.yaw; g.rig.pitch = cam.pitch; g.rig.fovT = g.rig.fov = cam.fov;
+g.rig.target.set(fx, grid.heightAt(fx, fz) + cam.lookY, fz); g.rig.distT = parseFloat(q.get('dist') || cam.dist); g.rig.snap();
+if (q.get('zoom') && def.zooms && def.zooms[q.get('zoom')]) { const z = def.zooms[q.get('zoom')]; g.rig.play({ from: z.from, look: z.look, dur: 999, fov: z.fov || cam.fov }); }
+updateEnvironment(env, 0.016, g.tod.night, g.fx, g.rig.focus);
+const rr = g.renderer.render.bind(g.renderer); const post = g.post; g.post = null; g.renderer.render = () => {};
+for (let i = 0; i < 20; i++) { for (const a of actors) a.update(1 / 60); g.frame(1 / 60); }
+g.renderer.render = rr; g.post = post; g.frame(1 / 60);
+if (q.has('hs')) for (const h of def.hotspots || []) {
+  const p = g.project(new THREE.Vector3(h.x, grid.heightAt(h.x, h.z) + (h.y ?? 1), h.z));
+  const el = document.createElement('div'); el.className = 'hs'; el.style.left = p.x + 'px'; el.style.top = p.y + 'px'; el.textContent = '◎ ' + (h.label || h.id); document.body.append(el);
+}
+document.getElementById('lab').textContent = `${def.id} · env ${ms.toFixed(0)}ms · props ${env.props.length} · ${g.renderer.info.render.calls} calls · ${(g.renderer.info.render.triangles / 1000).toFixed(0)}k tris`;
+document.title = 'ready';
+if (q.has('live')) { let last = performance.now(); const loop = (now) => { const dt = Math.min(0.05, (now - last) / 1000); last = now; updateEnvironment(env, dt, g.tod.night, g.fx, g.rig.focus); for (const a of actors) a.update(dt); g.frame(dt); requestAnimationFrame(loop); }; requestAnimationFrame(loop); }
+</script></body></html>

@@ -48,6 +48,7 @@ export const ACTIONS = {
 const MODE_FACE = { stun: 'ko', sleep: 'closed', faint: 'ko', charge: 'angry', grabbed: 'hurt', frozen: 'hurt', guard: 'angry', sit: null, float: 'closed', sad: 'sad', angry: 'angry', happy: 'happy' };
 
 export class Animator {
+  static STEP_FPS = 12;
   constructor(model, params = {}) {
     this.model = model;
     this.rig = model.userData.rig;
@@ -75,6 +76,9 @@ export class Animator {
     this.tents = Object.keys(this.bones).filter((n) => /^tent/.test(n));
     this.legs6 = ['legFL', 'legML', 'legBL', 'legFR', 'legMR', 'legBR'].filter((n) => this.bones[n]);
     this.h = this.rig.height || 1;
+    // 2D look: poses update in steps ("on twos", 12 fps) while motion stays smooth
+    this.stepFps = this.p.stepFps ?? (this.arch === 'static' ? 0 : Animator.STEP_FPS);
+    this.stepAcc = 0;
   }
 
   // ------------------------------------------------ public API
@@ -103,6 +107,13 @@ export class Animator {
 
   // ------------------------------------------------ update
   update(dt) {
+    if (!this.stepFps) return this._update(dt);
+    this.stepAcc += dt;
+    if (this.stepAcc < 1 / this.stepFps) return;
+    const d = this.stepAcc; this.stepAcc = 0;
+    this._update(d);
+  }
+  _update(dt) {
     dt = Math.min(dt, 0.1);
     this.t += dt;
     this.speedS += (this.speed - this.speedS) * damp(10, dt);
