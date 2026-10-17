@@ -20,9 +20,9 @@ const s = S.newGame({ name: 'Test' });
 ok('starts in castle park unlocked', s.unlocks.locations.includes('castle_park'));
 ok('two active slots at start', s.unlocks.slots.active === 2 && s.unlocks.slots.ult === 0);
 for (const id of STARTERS) ok(`starter ${id} has two start skills`, SPECIES[id].start.length === 2);
-const mon = S.giveStarter(s, 'kindoru', 5);
+const mon = S.giveStarter(s, 'chilichick', 5);
 ok('starter joins party', s.party.length === 1 && s.party[0] === mon);
-ok('dex marks caught', s.dex.caught.kindoru && s.dex.seen.kindoru);
+ok('dex marks caught', s.dex.caught.chilichick && s.dex.seen.chilichick);
 
 section('levels, EXP and stat points');
 const before = statsOf(mon).dmg;
@@ -30,7 +30,7 @@ const ups = gainExp(mon, expToNext(5) + expToNext(6) + 1);
 ok('two level-ups', ups.length === 2 && mon.level === 7, ups.length);
 ok('3 SP + 1 AP per level', mon.sp === 6 && mon.ap === 2);
 ok('stats grow with level', statsOf(mon).dmg > before);
-ok('learnset offered at Lv6', ups[0].learnable.includes('lantern_burst'));
+ok('level unlock granted one by one (Flare Dash at Lv7)', ups[1].unlocked.some((u) => u.id === 'flare_dash') && mon.skills.known.includes('flare_dash'));
 ok('allocate spends SP', allocate(mon, 'dmg', 2) && mon.sp === 4 && mon.alloc.dmg === 2);
 ok('cannot overspend', !allocate(mon, 'hp', 99));
 
@@ -62,7 +62,7 @@ ok('evolve changes species + learns start skills', b.species === 'lenshorn' && S
 for (const [id, sp] of Object.entries(SPECIES)) for (const e of sp.evolve || []) ok(`${id}→${e.to} has a hint`, typeof e.hint === 'string' && e.hint.length > 5);
 
 section('friendship & spectral');
-const f = createElemon('takopo', { level: 5 });
+const f = createElemon('bubblion', { level: 5 });
 addFriendship(f, 999);
 ok('friendship clamps to 255', f.friendship === 255);
 ok('spectral at max bond', battleSnapshot(f).spectral && f.friendship >= SPECTRAL_FRIENDSHIP);
@@ -84,7 +84,7 @@ ok('day rolls over', t.day === 2 && Math.abs(t.hour - 1) < 1e-9 && adv.rolled);
 ok('slots', slotOf(7).id === 'morning' && slotOf(12).id === 'lunch' && slotOf(15).id === 'afternoon' && slotOf(19).id === 'evening' && slotOf(23).id === 'night' && slotOf(2).id === 'night');
 ok('clock text', clockText({ day: 2, hour: 13.5 }) === 'Day 2 · Tue 13:30');
 const s2 = S.newGame();
-const a1 = S.giveStarter(s2, 'clayki', 5), a2 = S.giveStarter(s2, 'komoriff', 5);
+const a1 = S.giveStarter(s2, 'kanizumo', 5), a2 = S.giveStarter(s2, 'beatlet', 5);
 S.startDojo(s2, a2.uid);
 ok('dojo mon excluded from battle team', !S.battleTeam(s2, 3).includes(a2) && S.battleTeam(s2, 3).includes(a1));
 const lv0 = a2.level;
@@ -124,8 +124,29 @@ section('save / load round-trip');
 S.save(s);
 ok('has save', S.hasSave());
 const loaded = S.load();
-ok('loads party & money', loaded.party.length === s.party.length && loaded.money === s.money && loaded.party[0].species === 'kindoru');
+ok('loads party & money', loaded.party.length === s.party.length && loaded.money === s.money && loaded.party[0].species === 'chilichick');
 S.wipe();
 ok('wipe clears', !S.hasSave());
+
+section('Tokonmon progression: eating, battle unlocks, skill levels, stat marks, renaming');
+{
+  const P = await import('../src/data/progress.js');
+  const E = await import('../src/game/elemon.js');
+  const c = E.createElemon('chilichick', { level: 5 });
+  for (let i = 0; i < 4; i++) P.recordEat(c, 'red_hot_ramen');
+  ok('4 spicy dishes: not yet', !c.skills.known.includes('fire_breath'));
+  ok('5th spicy dish teaches Fire Breath', P.recordEat(c, 'mapo_tofu').some((u) => u.id === 'fire_breath'));
+  ok('Super Spicy Curry → Heat Tolerance', P.recordEat(c, 'super_spicy_curry').some((u) => u.id === 'heat_tolerance') && c.skills.passives.includes('heat_tolerance'));
+  P.bump(c, 'burned', 3);
+  ok('burned 3× → Scorch Spin', P.checkUnlocks(c).some((u) => u.id === 'scorch_spin'));
+  ok('one by one: moves only learned when earned', !c.skills.known.includes('hiccup_fireball'));
+  ok('skill XP levels up by use', P.addSkillXp(c, { pepper_peck: 7 }).some((u) => u.id === 'pepper_peck' && u.to === 2) && P.skillLevelOf(c, 'pepper_peck') === 2);
+  ok('snapshot carries skill levels', E.battleSnapshot(c).skillLv.pepper_peck === 2);
+  c.sp = 10;
+  E.allocate(c, 'spd', 5);
+  ok('stat-chart mark grants a passive', c.lastUnlocks.some((u) => u.id === 'light_feet'));
+  ok('rename a skill', E.renameSkill(c, 'fire_breath', 'Inferno Hiccup') === 'Inferno Hiccup' && E.battleSnapshot(c).names.fire_breath === 'Inferno Hiccup');
+  ok('ult unlocks from bonded time', (P.bump(c, 'bond_secs', 60), P.checkUnlocks(c).some((u) => u.kind === 'ult') && c.skills.ult === 'ghost_pepper_meltdown'));
+}
 
 done('game');

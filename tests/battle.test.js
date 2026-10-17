@@ -1,12 +1,14 @@
 import { ok, section, done } from './_h.js';
-import { createBattle, step, command, trainerCommand, resolveQte, unitById, activeOf, DT } from '../src/battle/sim.js';
+import { createBattle, step, command, order, trainerCommand, resolveQte, resumeMatch, unitById, activeOf, DT } from '../src/battle/sim.js';
 import { createElemon, battleSnapshot } from '../src/game/elemon.js';
 import { SPECIES, STARTERS } from '../src/data/species.js';
 import { SKILLS } from '../src/data/skills.js';
 
 const snap = (sp, lv = 5, extra = {}) => { const m = createElemon(sp, { level: lv }); Object.assign(m.skills, extra); return battleSnapshot(m); };
 function duel(a, b, opts = {}) {
-  return createBattle({ seed: opts.seed ?? 7, arena: opts.arena, rules: opts.rules,
+  // mechanic tests drive units directly: classic rules (no auto-control, instant switch, no bonding) unless asked
+  const rules = Object.assign({ orders: false, switchTime: 0, bond: false }, opts.rules || {});
+  return createBattle({ seed: opts.seed ?? 7, arena: opts.arena, rules, clock: opts.clock,
     sides: [{ trainers: [{ id: 'p', name: 'P', ai: 'pai' in opts ? opts.pai : 'normal', isPlayer: opts.player ?? false, team: Array.isArray(a) ? a : [a] }] },
             { trainers: [{ id: 'e', name: 'E', ai: opts.eai ?? 'normal', team: Array.isArray(b) ? b : [b] }] }] });
 }
@@ -26,7 +28,7 @@ for (const a of STARTERS) for (const b of STARTERS) {
   const evs = run(st);
   ok(`${a} vs ${b} ends`, st.over, st.t);
   durs.push(st.t);
-  if (a === 'kindoru' && b === 'takopo') ok('hits happen', evs.some((e) => e.type === 'hit'));
+  if (a === 'chilichick' && b === 'bubblion') ok('hits happen', evs.some((e) => e.type === 'hit'));
 }
 const avg = durs.reduce((x, y) => x + y, 0) / durs.length;
 console.log('   avg duel length', avg.toFixed(1) + 's', 'min', Math.min(...durs).toFixed(1), 'max', Math.max(...durs).toFixed(1));
@@ -34,14 +36,14 @@ ok('duels last a sensible time', avg > 15 && avg < 120, avg);
 
 section('determinism');
 {
-  const s1 = duel(snap('kindoru', 10), snap('mochika', 10), { seed: 99 }); run(s1);
-  const s2 = duel(snap('kindoru', 10), snap('mochika', 10), { seed: 99 }); run(s2);
+  const s1 = duel(snap('chilichick', 10), snap('strawbaa', 10), { seed: 99 }); run(s1);
+  const s2 = duel(snap('chilichick', 10), snap('strawbaa', 10), { seed: 99 }); run(s2);
   ok('same seed → same result', s1.t === s2.t && s1.result.winner === s2.result.winner, [s1.t, s2.t]);
 }
 
 section('reactions: hydro aura + pyro hit → steam explosion');
 {
-  const st = duel(snap('kindoru', 10), snap('lemmo', 10), { pai: null, eai: 'tutorial', player: true });
+  const st = duel(snap('chilichick', 10), snap('lemmo', 10), { pai: null, eai: 'tutorial', player: true });
   const me = activeOf(st, 'p'), foe = activeOf(st, 'e');
   foe.brain = { paused: true }; foe.x = 0; foe.z = -2; me.x = 0; me.z = 2;
   foe.aura = { e: 'hydro', amt: 1, t: 6 };
@@ -53,7 +55,7 @@ section('reactions: hydro aura + pyro hit → steam explosion');
 
 section('parry reflects/staggers and records parry! for combos');
 {
-  const st = duel(snap('clayki', 10), snap('kindoru', 10), { pai: null, player: true, eai: 'tutorial' });
+  const st = duel(snap('kanizumo', 10), snap('chilichick', 10), { pai: null, player: true, eai: 'tutorial' });
   const me = activeOf(st, 'p'), foe = activeOf(st, 'e');
   foe.brain = { paused: true };
   me.x = 0; me.z = 0.6; foe.x = 0; foe.z = -0.6; foe.face = 0; me.face = Math.PI;
@@ -71,7 +73,7 @@ section('parry reflects/staggers and records parry! for combos');
 
 section('grab → parry struggle → attack = reversal suplex');
 {
-  const st = duel(snap('clayki', 12), snap('studrat', 10), { pai: null, player: true, eai: 'tutorial' });
+  const st = duel(snap('kanizumo', 12), snap('studrat', 10), { pai: null, player: true, eai: 'tutorial' });
   const me = activeOf(st, 'p'), foe = activeOf(st, 'e');
   foe.brain = { paused: true };
   me.x = 0; me.z = 0.5; foe.x = 0; foe.z = -0.6; me.face = Math.PI;
@@ -92,7 +94,7 @@ section('grab → parry struggle → attack = reversal suplex');
 
 section('charge + attack = elemental strike; dodge i-frames');
 {
-  const st = duel(snap('kindoru', 10), snap('takopo', 10), { pai: null, player: true, eai: 'tutorial' });
+  const st = duel(snap('chilichick', 10), snap('bubblion', 10), { pai: null, player: true, eai: 'tutorial' });
   const me = activeOf(st, 'p'), foe = activeOf(st, 'e'); foe.brain = { paused: true };
   me.x = 0; me.z = 0.4; foe.x = 0; foe.z = -0.8;
   command(st, me.id, { type: 'charge', on: true });
@@ -107,7 +109,7 @@ section('charge + attack = elemental strike; dodge i-frames');
 
 section('switching, tag strike and team combo');
 {
-  const st = duel([snap('kindoru', 10), snap('beatlet', 8)], snap('moshbull', 10), { pai: null, player: true, eai: 'tutorial' });
+  const st = duel([snap('chilichick', 10), snap('beatlet', 8)], snap('moshbull', 10), { pai: null, player: true, eai: 'tutorial' });
   const foe = activeOf(st, 'e'); foe.brain = { paused: true };
   const first = activeOf(st, 'p');
   ok('switch works', trainerCommand(st, 'p', { type: 'switch' }));
@@ -128,7 +130,7 @@ section('switching, tag strike and team combo');
 section('3v3 battle with allies resolves');
 {
   const st = createBattle({ seed: 3, sides: [
-    { trainers: [{ id: 'p', isPlayer: false, ai: 'ally', team: [snap('kindoru', 8), snap('beatlet', 7)] }, { id: 'mika', ai: 'ally', team: [snap('zapanda', 8)] }, { id: 'coach', ai: 'ally', team: [snap('kanizumo', 9)] }] },
+    { trainers: [{ id: 'p', isPlayer: false, ai: 'ally', team: [snap('chilichick', 8), snap('beatlet', 7)] }, { id: 'mika', ai: 'ally', team: [snap('zapanda', 8)] }, { id: 'coach', ai: 'ally', team: [snap('kanizumo', 9)] }] },
     { trainers: [{ id: 'thrash', ai: 'punk', team: [snap('thrashark', 9)] }, { id: 'riff', ai: 'punk', team: [snap('studrat', 8)] }, { id: 'moshi', ai: 'punk', team: [snap('moshbull', 8)] }] }] });
   const evs = run(st, 240);
   ok('3v3 ends', st.over, st.t);
@@ -137,11 +139,84 @@ section('3v3 battle with allies resolves');
 
 section('capture flow');
 {
-  const st = duel(snap('kindoru', 10), snap('lemmo', 4), { pai: null, player: true, eai: 'wild', rules: { capture: true, wild: true } });
+  const st = duel(snap('chilichick', 10), snap('lemmo', 4), { pai: null, player: true, eai: 'wild', rules: { capture: true, wild: true } });
   const foe = activeOf(st, 'e'); foe.hp = 1;
   ok('capture command accepted', trainerCommand(st, 'p', { type: 'capture', gem: 'quartz', gemMul: 3 }));
   resolveQte(st, st.qte.id, 1);
   run(st, st.t + 4);
   ok('battle ends by capture or break free', st.over ? st.result.reason === 'capture' : foe.state !== 'captured');
 }
+section('Tokonmon rules: orders with delay, auto-control, bonding, ultimates');
+{
+  const st = duel(snap('chilichick', 10, { ult: 'ghost_pepper_meltdown' }), snap('bubblion', 10), { pai: null, player: true, eai: 'tutorial', rules: { orders: true, bond: true, switchTime: 7, switchCd: 15 } });
+  const me = activeOf(st, 'p'), foe = activeOf(st, 'e');
+  ok('player unit is auto-controlled', me.auto === true);
+  ok('order accepted', order(st, me.id, { type: 'dodge', dx: 1, dz: 0 }));
+  ok('order is delayed', !!me.order && me.order.t > 0.1 && me.order.t < 0.3, me.order && me.order.t);
+  let fired = false;
+  for (let i = 0; i < 20 && !fired; i++) { step(st, DT); if (st.events.some((e) => e.type === 'orderGo')) fired = true; }
+  ok('order executes after the delay', fired && st.t > 0.15, st.t);
+  me.ult = 100;
+  ok('ultimate refused while not bonded', command(st, me.id, { type: 'ult', id: foe.id }) && (step(st, DT), st.stats.ults === 0));
+  ok('bond', trainerCommand(st, 'p', { type: 'bond' }));
+  ok('bonded = direct control', me.bonded && !me.auto);
+  ok('orders are instant when bonded', order(st, me.id, { type: 'move', x: 1, z: 1 }) && !me.order);
+  me.ult = 100; me.act = null; me.state = 'idle';
+  command(st, me.id, { type: 'ult', id: foe.id });
+  const evs = run(st, st.t + 4);
+  ok('ultimate fires when bonded', st.stats.ults === 1);
+  ok('ultimate ends the bond', !me.bonded && evs.some((e) => e.type === 'unbond' && e.reason === 'ult'));
+  ok('bond cooldown after ultimate', st.trainers[0].bondCd > 10);
+  ok('ult meter does not fill while unbonded', (me.ult = 0, run(st, st.t + 2), me.ult === 0));
+}
+
+section('Tokonmon rules: 7 s switch, 15 s cooldown, comeback punch, emotes');
+{
+  const a = snap('chilichick', 10), b = snap('beatlet', 10);
+  a.passives = ['comeback_punch'];
+  const st = duel([a, b], snap('moshbull', 10), { pai: null, player: true, eai: 'normal', rules: { orders: true, bond: true, switchTime: 7, switchCd: 15 } });
+  const first = activeOf(st, 'p');
+  ok('switch starts', trainerCommand(st, 'p', { type: 'switch' }));
+  ok('field empty while switching', !first.onField && !activeOf(st, 'p').onField);
+  run(st, st.t + 3.5);
+  ok('still switching at 3.5 s', !!st.trainers[0].switching);
+  run(st, st.t + 3.6);
+  const second = activeOf(st, 'p');
+  ok('incoming arrives after 7 s', second.onField && second.species === 'beatlet' && !st.trainers[0].switching);
+  ok('15 s cooldown', st.trainers[0].switchCd > 14);
+  ok('cannot switch during cooldown', !trainerCommand(st, 'p', { type: 'switch' }));
+  run(st, st.t + 15.2);
+  if (!st.over) {
+    ok('switch back after cooldown', trainerCommand(st, 'p', { type: 'switch', to: first.id }));
+    run(st, st.t + 7.2);
+    ok('comeback punch ready on return', first.comeback > 0 || st.units.some((u) => u.id === first.id && u.k.dealt > 0));
+  }
+  const s2 = duel(snap('chilichick', 10), snap('bubblion', 10), { pai: null, player: true, eai: 'tutorial', rules: { orders: false, bond: true } });
+  const u = activeOf(s2, 'p'); activeOf(s2, 'e').brain = { paused: true };
+  u.st.push({ s: 'burn', t: 5, k: 3, tick: 1 });
+  command(s2, u.id, { type: 'emote', id: 'shake' });
+  const ev = run(s2, s2.t + 0.3);
+  ok('shake emote cleanses burn', ev.some((e) => e.type === 'emote' && e.id === 'shake') && !u.st.some((x) => x.s === 'burn'));
+  run(s2, s2.t + 4);
+  command(s2, u.id, { type: 'emote', id: 'taunt' });
+  run(s2, s2.t + 0.2);
+  ok('taunt riles the foe', activeOf(s2, 'e').buffs.some((x) => x.s === 'riled'));
+}
+
+section('Tokonmon rules: match clock, halftime, arenas');
+{
+  const st = duel(snap('chilichick', 30), snap('bubblion', 30), { pai: 'normal', eai: 'normal', clock: { len: 40 }, arena: { type: 'rocky' }, rules: { bond: true } });
+  ok('arena type set', st.arena.type === 'rocky' && st.arena.boost === 'geo');
+  let ht = false;
+  for (let i = 0; i < 30 * 25 && !ht && !st.over; i++) { step(st, DT); if (st.paused === 'halftime') ht = true; }
+  ok('halftime pauses the match', ht || st.over);
+  if (ht) {
+    const t = st.t; step(st, DT);
+    ok('paused match does not advance', st.t === t);
+    ok('resume with a new arena', resumeMatch(st, { arena: 'water' }) && st.arena.type === 'water');
+    run(st, 60);
+    ok('match ends by KO or time', st.over && ['ko', 'time'].includes(st.result.reason), st.result && st.result.reason);
+  }
+}
+
 done('battle');

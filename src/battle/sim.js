@@ -9,6 +9,19 @@
 //  · basic-action combos (grab+parry+attack, charge+attack, dodge+attack …)
 //  · elemental auras & reactions · switching & tag strikes · team combos ·
 //  ultimates with QTEs · Echo beat bonus · Pyro heat · Spectral form · capture.
+//
+// Tokonmon rules (docs/TOKONMON.md §5–6):
+//  · auto-control: the player's Tokonmon fights on its own (buddy AI); player
+//    ORDERS (order()) execute after a short delay (dodge 0.25 s … charge 0.5 s)
+//  · BONDING (trainerCommand bond): full direct control (no delay, no AI), the
+//    species' bond gimmick (mods/shield), the ultimate meter only fills while
+//    bonded, ultimates are bonded-only and end the bond; bonded finals with a
+//    Spectral stone can enter their Elemental Form
+//  · switching takes rules.switchTime (7 s) with the field empty meanwhile and a
+//    rules.switchCd (15 s) cooldown; comeback passives on re-entry
+//  · emotes (taunt/dance/shake/flex/bow) · skill levels scale power/cooldown ·
+//    conditional passives (when: bonded/bondT/switchedIn/lowHp/arena…)
+//  · match clock with halftime pause + arena types (rocky/grassy/water)
 import { Rng } from '../core/rng.js';
 import { clamp, clamp01, TAU, angleDiff, segCircle } from '../core/mathx.js';
 import { SKILLS, COMBOS } from '../data/skills.js';
@@ -42,15 +55,18 @@ export function createBattle(spec) {
   const st = {
     t: 0, tick: 0, rng: new Rng(spec.seed ?? 1),
     arena: { r: spec.arena?.r ?? 8.5, props: [], boost: spec.arena?.boost || null, name: spec.arena?.name || 'Arena' },
-    rules: Object.assign({ wild: false, capture: false, canSwitch: true, beast: false, items: true, flee: false, tutorial: null, noFaint: false }, spec.rules || {}),
+    rules: Object.assign({ wild: false, capture: false, canSwitch: true, beast: false, items: true, flee: false, tutorial: null, noFaint: false,
+      bond: true, orders: true, switchTime: 7, switchCd: 15, sendOut: 2.5 }, spec.rules || {}),
+    clock: spec.clock ? { len: spec.clock.len || 180, t: 0, half: 1, halftime: spec.clock.halftime !== false } : null, paused: null,
     units: [], trainers: [], proj: [], zones: [], walls: [], traps: [], seeds: [], tele: [], pending: [], clones: [],
     sides: [{ meter: 0 }, { meter: 0 }],
     events: [], over: false, result: null, qte: null, slowmo: 0, nextId: 1,
     beat: { bpm: spec.bpm || 120, t: 0, n: 0 },
-    stats: { reactions: 0, reactionIds: {}, combos: {}, teamCombos: 0, perfectParries: 0, perfectDodges: 0, precise: 0, beats: 0, destroyed: 0, ults: 0, switches: 0 },
+    stats: { reactions: 0, reactionIds: {}, combos: {}, teamCombos: 0, perfectParries: 0, perfectDodges: 0, precise: 0, beats: 0, destroyed: 0, ults: 0, switches: 0, bonds: 0, emotes: 0, crits: 0 },
     defeats: [], captured: null, used: { gems: [], items: [] }, flags: {},
   };
   for (const p of spec.arena?.props || []) st.arena.props.push(Object.assign({ id: 'p' + st.nextId++, hp: 40, maxHp: p.hp ?? 40, r: 0.5, destructible: true, alive: true }, p, { maxHp: p.hp ?? 40 }));
+  if (spec.arena?.type) setArenaType(st, spec.arena.type);
   spec.sides.forEach((side, si) => {
     side.trainers.forEach((tr, ti) => addTrainer(st, si, ti, side.trainers.length, tr));
   });
@@ -60,10 +76,12 @@ export function createBattle(spec) {
 
 function addTrainer(st, side, idx, count, tr) {
   const T = { id: tr.id, name: tr.name || tr.id, side, isPlayer: !!tr.isPlayer, ai: tr.ai || (tr.isPlayer ? null : 'normal'), team: [], active: null,
-    switchCd: 0, itemCd: 0, items: Object.assign({}, tr.items || {}), out: false, look: tr.look || null, autoSwitch: tr.autoSwitch ?? !tr.isPlayer, pendingSwitch: 0 };
+    switchCd: 0, itemCd: 0, items: Object.assign({}, tr.items || {}), out: false, look: tr.look || null, autoSwitch: tr.autoSwitch ?? !tr.isPlayer, pendingSwitch: 0,
+    bondCd: 0, bonded: null, switching: null, canBond: tr.canBond ?? true, gate: null };
   st.trainers.push(T);
   const spread = (idx - (count - 1) / 2) * 3.2;
   const z = side === 0 ? 3.6 : -3.6;
+  T.gate = { x: spread, z: side === 0 ? z + 1.4 : z - 1.4 };
   tr.team.forEach((snap, k) => {
     const u = makeUnit(st, snap, T, side);
     u.x = spread; u.z = z; u.face = side === 0 ? Math.PI : 0;
@@ -74,14 +92,19 @@ function addTrainer(st, side, idx, count, tr) {
 
 function makeUnit(st, snap, T, side) {
   const sp = SPECIES[snap.species];
-  const mods = {};
+  // passives: static mods, plus conditional ones (`when`) evaluated every tick
+  const mods = {}, cpass = [];
   for (const pid of snap.passives || []) {
     const p = SKILLS[pid];
-    if (p && p.mods) for (const [k, v] of Object.entries(p.mods)) mods[k] = v;
+    if (!p || !p.mods) continue;
+    if (p.when) cpass.push({ id: pid, when: p.when, mods: p.mods, on: false });
+    else addMods(mods, p.mods);
   }
   const u = {
     id: 'u' + st.nextId++, uid: snap.uid, side, trainer: T.id, species: snap.species, name: snap.name || sp.name, level: snap.level,
-    elems: elemsOf(sp), elem: elemsOf(sp)[0], snap, mods, basic: sp.basic, boss: !!sp.boss, beast: !!sp.beast,
+    elems: elemsOf(sp), elem: elemsOf(sp)[0], snap, mods, modsBase: mods, cpass, basic: sp.basic, boss: !!sp.boss, beast: !!sp.beast,
+    gimmick: sp.gimmick || null, final: snap.final ?? !(sp.evolve && sp.evolve.length), skillLv: Object.assign({}, snap.skillLv || {}), names: Object.assign({}, snap.names || {}),
+    bonded: false, bondT: 0, form: null, wasOut: false, comeback: 0, inAt: 0, order: null, obey: 0, emoteCd: 0, cracks: snap.cracks || 0,
     stats: Object.assign({}, snap.stats), maxHp: snap.maxHp, hp: snap.hp ?? snap.maxHp, energy: 60, shield: 0,
     r: sp.radius || 0.5, mass: Math.max(0.4, (sp.radius || 0.5) * 2), x: 0, z: 0, vx: 0, vz: 0, face: 0, y: 0,
     onField: false, state: 'out', stateT: 0, act: null, cmd: null, cmdQ: null, cmdQT: 0, target: null,
@@ -89,14 +112,51 @@ function makeUnit(st, snap, T, side) {
     dash: null, grab: null, grabbedBy: null, charge: null,
     st: [], buffs: [], aura: null, heat: 0, rhythm: 0, ult: 0, soul: 0, spectral: 0,
     hist: [], hpHist: [], relay: null, lastHitBy: null,
-    k: { dealt: 0, taken: 0, precise: 0, healed: 0, blocked: 0, beats: 0, charged: 0, teamCombos: 0, reactions: 0, kos: 0 },
+    k: { dealt: 0, taken: 0, precise: 0, healed: 0, blocked: 0, beats: 0, charged: 0, teamCombos: 0, reactions: 0, kos: 0, crits: 0, bondT: 0, bondKos: 0, emotes: 0, uses: {}, hits: {} },
     disobey: (snap.friendship ?? 100) < 40 && T.isPlayer ? 0.14 : 0,
-    brain: null, drowsy: 0, moveSpeedMul: 1, auto: !T.isPlayer,
+    brain: null, drowsy: 0, moveSpeedMul: 1, auto: !T.isPlayer || st.rules.orders,
   };
   u.skills = (snap.skills || []).filter((id) => SKILLS[id]);
   u.ultSkill = snap.ult && SKILLS[snap.ult] ? snap.ult : null;
   st.units.push(u);
   return u;
+}
+
+// ------------------------------------------------------------------ passives & conditional mods
+const MUL_KEYS = new Set(['defMul', 'healMul', 'chargeSpeed', 'costMul', 'dodgeCd', 'heatGain', 'shieldMul', 'wallHp', 'teamGain', 'beatMul', 'stagger',
+  'dmgMul', 'physMul', 'elmMul', 'spdMul', 'takenMul', 'ultGain', 'cdMul', 'projSpeed', 'rangeMul']);
+function addMods(m, src) {
+  for (const [k, v] of Object.entries(src)) {
+    if (typeof v === 'number' && typeof m[k] === 'number') m[k] = MUL_KEYS.has(k) ? m[k] * v : m[k] + v;
+    else if (Array.isArray(v) && Array.isArray(m[k])) m[k] = [...m[k], ...v];
+    else m[k] = v;
+  }
+  return m;
+}
+// `when` conditions for passives: { bonded, unbonded, bondT: s, switchedIn: s, lowHp: f, highHp: f, arena, wet, burning, form }
+function whenOk(st, u, w) {
+  if (w.bonded && !u.bonded) return false;
+  if (w.unbonded && u.bonded) return false;
+  if (w.bondT != null && !(u.bonded && u.bondT >= w.bondT)) return false;
+  if (w.switchedIn != null && !(u.wasOut && st.t - u.inAt <= w.switchedIn)) return false;
+  if (w.lowHp != null && u.hp >= u.maxHp * w.lowHp) return false;
+  if (w.highHp != null && u.hp < u.maxHp * w.highHp) return false;
+  if (w.arena && st.arena.type !== w.arena) return false;
+  if (w.wet && !(u.aura && u.aura.e === 'hydro')) return false;
+  if (w.burning && !has(u, 'burn')) return false;
+  if (w.form && u.form !== w.form) return false;
+  return true;
+}
+function refreshMods(st, u) {
+  let changed = false;
+  for (const p of u.cpass) { const on = whenOk(st, u, p.when); if (on !== p.on) { p.on = on; changed = true; if (on) ev(st, 'passiveOn', { u: u.id, id: p.id }); } }
+  const g = u.bonded && u.gimmick && u.gimmick.mods;
+  if (!changed && !!g === !!u._gOn && !u._dirty) return;
+  u._gOn = !!g; u._dirty = false;
+  const m = Object.assign({}, u.modsBase);
+  for (const p of u.cpass) if (p.on) addMods(m, p.mods);
+  if (g) addMods(m, g);
+  u.mods = m;
 }
 
 // ------------------------------------------------------------------ stat helpers
@@ -115,31 +175,72 @@ function defStat(u) {
 }
 export function moveSpeed(u) {
   let s = 2.8 + u.stats.spd * 0.14;
-  s *= statMul(u, 'spd');
+  s *= statMul(u, 'spd') * (u.mods.spdMul || 1);
   const sl = stOf(u, 'slow'); if (sl) s *= 1 - sl.k;
   const mosh = u.buffs.filter((b) => b.s === 'mosh').length; s *= 1 + mosh * (u.mods.mosh || 0);
   if (u.charge) s *= 0.45;
   if (u.boss) s *= 0.85;
   return Math.min(8, s);
 }
-const cdMul = (u) => 1 - Math.min(0.3, u.stats.spd * 0.01);
+const cdMul = (u) => (1 - Math.min(0.3, u.stats.spd * 0.01)) * (u.mods.cdMul || 1);
+// skill level (levels up by use, see src/data/progress.js): +12% power and −5% cooldown per level
+export const skillLevel = (u, id) => Math.max(1, Math.min(5, (u.skillLv && u.skillLv[id]) || 1));
+export const skillName = (u, id) => (u.names && u.names[id]) || (SKILLS[id] ? SKILLS[id].name : id);
 export const canAct = (u) => alive(u) && !['stun', 'sleep', 'frozen'].some((s) => has(u, s)) && !['stagger', 'grabbed', 'knock', 'faint', 'out'].includes(u.state) && !(u.act && u.act.lock);
 const canMove = (u) => canAct(u) && !has(u, 'root') && !u.grab;
 
 // ------------------------------------------------------------------ commands
-// Unit-level commands (from the player UI or AI).
+// Unit-level commands, executed now (AI, bonded player, internal).
 export function command(st, unitId, cmd) {
   const u = unitById(st, unitId);
-  if (!u || !alive(u)) return false;
+  if (!u || !alive(u) || st.paused) return false;
   if (u.disobey && cmd.type !== 'qte' && st.rng.chance(u.disobey)) { ev(st, 'disobey', { u: u.id }); return false; }
   u.cmdQ = cmd; u.cmdQT = 0.4;
   return true;
 }
+// Player ORDERS: an auto-controlled Tokonmon hears the order and executes it
+// after a short delay (shown as the move's anticipation). Bonded → instant.
+export const ORDER_DELAY = { dodge: 0.25, parry: 0.3, move: 0.12, stop: 0.1, target: 0.35, attack: 0.4, grab: 0.4, skill: 0.45, charge: 0.5, emote: 0.3 };
+const OBEY = { move: 2.2, target: 4, attack: 1.2, grab: 1.2, skill: 1.2, charge: 6, dodge: 0.7, parry: 0.7, emote: 1.5, stop: 2 };
+export function orderDelay(u, type) {
+  if (u.bonded) return 0;
+  let d = ORDER_DELAY[type] ?? 0.35;
+  d *= 1 - Math.min(0.3, u.stats.spd * 0.008);
+  d *= 1 - Math.min(0.25, ((u.snap.friendship ?? 70) / 255) * 0.25);
+  return d;
+}
+export function order(st, unitId, cmd) {
+  const u = unitById(st, unitId);
+  if (!u || !alive(u) || st.paused) return false;
+  if (!st.rules.orders || u.bonded || cmd.type === 'release' || cmd.type === 'aim' || cmd.type === 'qte' || (cmd.type === 'charge' && !cmd.on)) {
+    if (cmd.type === 'charge' && !cmd.on) u.obey = 0.6;
+    return command(st, unitId, cmd);
+  }
+  const d = orderDelay(u, cmd.type);
+  const repl = !!u.order;
+  u.order = { cmd, t: d, dur: d };
+  ev(st, 'order', { u: u.id, kind: cmd.type, delay: d, replaced: repl, skill: cmd.type === 'skill' ? (cmd.id || u.skills[cmd.slot]) : null });
+  return true;
+}
+function stepOrder(st, u, dt) {
+  u.obey = Math.max(0, u.obey - dt);
+  if (!u.order) return;
+  u.order.t -= dt;
+  if (u.order.t > 0) return;
+  const c = u.order.cmd;
+  u.order = null;
+  u.obey = OBEY[c.type] ?? 1;
+  ev(st, 'orderGo', { u: u.id, kind: c.type });
+  command(st, u.id, c);
+}
 
-// Trainer-level commands: switch, item, team combo, capture, flee.
+// Trainer-level commands: switch, item, team combo, capture, flee, bond, unbond, elemental form.
 export function trainerCommand(st, trainerId, cmd) {
   const T = st.trainers.find((t) => t.id === trainerId);
-  if (!T || T.out || st.over) return false;
+  if (!T || T.out || st.over || st.paused) return false;
+  if (cmd.type === 'bond') return doBond(st, T);
+  if (cmd.type === 'unbond') { const u = unitById(st, T.bonded); if (!u) return false; endBond(st, u, 'manual'); return true; }
+  if (cmd.type === 'elemental') { const u = unitById(st, T.active); return !!u && beginElemental(st, u); }
   if (cmd.type === 'switch') return doSwitch(st, T, cmd.to);
   if (cmd.type === 'item') return useItem(st, T, cmd.id);
   if (cmd.type === 'team') return teamComboStart(st, T);
@@ -162,11 +263,90 @@ function processCommand(st, u, c) {
     case 'release': if (c.x != null) aimUpdate(st, u, c); return releaseCharge(st, u);
     case 'aim': return aimUpdate(st, u, c);
     case 'ult': return beginUlt(st, u, c);
-    case 'spectral': return beginSpectral(st, u);
+    case 'spectral': return beginElemental(st, u);
+    case 'emote': return doEmote(st, u, c.id);
     default: return true;
   }
 }
 const instantCmd = (c) => c.type === 'dodge' || c.type === 'parry' || c.type === 'move' || c.type === 'stop' || c.type === 'release' || c.type === 'charge' || c.type === 'aim';
+
+// ------------------------------------------------------------------ bonding & elemental form
+const trainerOf = (st, u) => st.trainers.find((t) => t.id === u.trainer) || null;
+function doBond(st, T) {
+  if (!st.rules.bond || !T.canBond || T.bondCd > 0 || T.bonded || T.switching || st.qte) return false;
+  const u = unitById(st, T.active);
+  if (!alive(u) || u.bonded || u.beast || u.state === 'captured') return false;
+  u.bonded = true; u.bondT = 0; u.order = null; u.obey = 0;
+  if (T.isPlayer) { u.auto = false; u.cmd = null; }
+  T.bonded = u.id;
+  st.stats.bonds++;
+  const g = u.gimmick;
+  if (g && g.shield) { u.shield = Math.max(u.shield, u.maxHp * g.shield * (u.mods.shieldMul || 1)); u.shieldT = null; }
+  if (g && g.heal) heal(st, u, u, u.maxHp * g.heal);
+  st.slowmo = Math.max(st.slowmo, 0.5);
+  ev(st, 'bond', { u: u.id, trainer: T.id, gimmick: g ? g.id : null, name: g ? g.name : null });
+  ev(st, 'anim', { u: u.id, anim: 'roar' });
+  refreshMods(st, u);
+  return true;
+}
+function endBond(st, u, reason) {
+  if (!u.bonded) return;
+  u.bonded = false; u.k.bondT += u.bondT;
+  const T = trainerOf(st, u);
+  if (T) {
+    T.bonded = null;
+    T.bondCd = reason === 'ult' ? 20 : reason === 'manual' ? 6 : 12;
+    if (T.isPlayer && st.rules.orders) { u.auto = true; u.brain = null; }
+  }
+  if (u.form) { u.form = null; u.spectral = 0; ev(st, 'form', { u: u.id, form: null }); ev(st, 'spectralEnd', { u: u.id }); }
+  if (u.gimmick && u.gimmick.shield && u.shieldT == null) u.shield = 0;
+  ev(st, 'unbond', { u: u.id, reason, bondT: u.bondT });
+  u.bondT = 0;
+  u._dirty = true; refreshMods(st, u);
+}
+function beginElemental(st, u) {
+  if (!alive(u) || !u.bonded || !u.final || !u.snap.spectral || u.soul < 100 || u.form) return false;
+  u.soul = 0; u.form = 'elemental'; u.spectral = 1e6; u.ult = Math.min(100, u.ult + 40);
+  heal(st, u, u, u.maxHp * 0.3);
+  ev(st, 'form', { u: u.id, form: 'elemental' });
+  ev(st, 'spectral', { u: u.id });
+  st.slowmo = Math.max(st.slowmo, 1.2);
+  u._dirty = true;
+  return true;
+}
+
+// ------------------------------------------------------------------ emotes
+export const EMOTES = {
+  taunt: { name: 'Taunt', dur: 1.1, anim: 'taunt', desc: 'Nearby foes lock onto you, riled (+15% damage dealt AND taken). +Energy.' },
+  dance: { name: 'Dance', dur: 1.5, anim: 'dance', desc: 'On the beat: +25 energy, heal 5%, hype the crowd. Off-beat: +10 energy.' },
+  shake: { name: 'Shake', dur: 0.8, anim: 'shake', desc: 'Shake off burn, poison, slow, drowsiness and elemental auras.' },
+  flex: { name: 'Flex', dur: 1.1, anim: 'flex', desc: '+25% defense for 6 s.' },
+  bow: { name: 'Bow', dur: 1.0, anim: 'bow', desc: 'Respect: heal 6% and +15 team-combo meter.' },
+};
+function doEmote(st, u, id) {
+  const e = EMOTES[id];
+  if (!e || !canAct(u) || u.act || u.emoteCd > 0) return false;
+  u.act = { kind: 'emote', id, phase: 'active', t: 0, w: 0, a: e.dur, r: 0.1 };
+  u.emoteCd = 3.5; u.k.emotes++; st.stats.emotes++;
+  u.cmd = null;
+  let beat = false;
+  if (id === 'taunt') {
+    for (const o of enemiesOf(st, u)) if (len(o.x - u.x, o.z - u.z) < 10) { o.target = u.id; o.cmd = { type: 'chase' }; addBuff(o, 'riled', 0.15, 5); }
+    u.energy = Math.min(100, u.energy + 12);
+    if (u.bonded) u.ult = Math.min(100, u.ult + 8);
+  } else if (id === 'dance') {
+    beat = onBeat(st, u) || (u.mods.beatWindow || 0) > 0.15;
+    u.energy = Math.min(100, u.energy + (beat ? 25 : 10));
+    if (beat) { heal(st, u, u, u.maxHp * 0.05); u.rhythm = Math.min(100, u.rhythm + 25); if (u.bonded) u.ult = Math.min(100, u.ult + 10); }
+  } else if (id === 'shake') {
+    u.st = u.st.filter((s) => !['burn', 'poison', 'slow', 'confuse', 'blind', 'weaken', 'defdown'].includes(s.s));
+    u.drowsy = 0; u.aura = null;
+  } else if (id === 'flex') addBuff(u, 'def', 0.25, 6);
+  else if (id === 'bow') { heal(st, u, u, u.maxHp * 0.06); st.sides[u.side].meter = Math.min(100, st.sides[u.side].meter + 15); }
+  ev(st, 'emote', { u: u.id, id, beat });
+  ev(st, 'anim', { u: u.id, anim: e.anim });
+  return true;
+}
 
 // ------------------------------------------------------------------ action history (combos)
 function pushHist(st, u, a) { u.hist.push({ a, t: st.t }); if (u.hist.length > 6) u.hist.shift(); }
@@ -387,7 +567,9 @@ function beginSkill(st, u, skillId, c) {
   const cost = Math.round(sk.cost * (u.mods.costMul || 1) * (u.spectral > 0 ? 0.5 : 1));
   if (u.energy < cost) { ev(st, 'noEnergy', { u: u.id, skill: sk.id }); return false; }
   u.energy -= cost;
-  u.cds[sk.id] = sk.cd * cdMul(u);
+  u.cds[sk.id] = sk.cd * cdMul(u) * (1 - 0.05 * (skillLevel(u, sk.id) - 1));
+  u.k.uses[sk.id] = (u.k.uses[sk.id] || 0) + 1;
+  if (u.bonded) u.ult = Math.min(100, u.ult + 4 * (u.mods.ultGain || 1));
   const aim = resolveAim(st, u, sk, c);
   if (aim.face != null) u.face = aim.face;
   u.charge = null;
@@ -454,6 +636,7 @@ function removeTele(st, id) { const i = st.tele.findIndex((t) => t.id === id); i
 
 // Run a skill's effect list. mult multiplies power (charge, QTE, overheat…).
 function runEffects(st, u, sk, aim, mult = 1, grow = 1) {
+  if (sk.kind === 'active') mult *= 1 + 0.12 * (skillLevel(u, sk.id) - 1);
   const beatOk = sk.beat && onBeat(st, u);
   if (beatOk) { mult *= u.mods.beatMul || 1.3; u.k.beats++; st.stats.beats++; u.rhythm = Math.min(100, u.rhythm + 20); ev(st, 'onBeat', { u: u.id }); }
   if (u.heat >= 100 && sk.charge) { mult *= 1.5; u.heat = 0; ev(st, 'overheat', { u: u.id }); if (u.mods.overheatDmg) addBuff(u, 'dmg', u.mods.overheatDmg, 6); }
@@ -631,26 +814,20 @@ function aoeHit(st, u, x, z, r, hit) {
 
 // ------------------------------------------------------------------ ultimate / spectral / team
 function beginUlt(st, u, c) {
-  if (!canAct(u) || !u.ultSkill || u.ult < 100 || u.act) return false;
+  // ultimates are bonded-only; using one ends the bond (when the move finishes)
+  if (!canAct(u) || !u.ultSkill || u.ult < 100 || u.act || (st.rules.bond && !u.bonded)) return false;
   const sk = SKILLS[u.ultSkill];
   const aim = resolveAim(st, u, sk, c);
   if (aim.face != null) u.face = aim.face;
   u.ult = 0;
   st.stats.ults++;
+  u.k.uses[sk.id] = (u.k.uses[sk.id] || 0) + 1;
   u.act = { kind: 'ult', sk, phase: 'qte', t: 0, w: 0.35, a: 0, r: 0.5, aim, lock: true };
   const T = st.trainers.find((t) => t.id === u.trainer);
-  ev(st, 'ult', { u: u.id, skill: sk.id, name: sk.name });
+  ev(st, 'ult', { u: u.id, skill: sk.id, name: skillName(u, sk.id), form: u.form });
   ev(st, 'anim', { u: u.id, anim: sk.anim || 'roar' });
   if (T && T.isPlayer && sk.qte) st.qte = { id: 'q' + st.nextId++, type: sk.qte.type, n: sk.qte.beats || sk.qte.n || 1, owner: u.id, kind: 'ult', t: 0, dur: 6 };
   else { u.act.phase = 'windup'; u.act.mult = 1; u.act.w = 0.9; u.act.tele = addTele(st, u, Object.assign({}, sk, { telegraph: 'circle', windup: 0.9 }), aim); }
-  return true;
-}
-function beginSpectral(st, u) {
-  if (!alive(u) || !u.snap.spectral || u.soul < 100 || u.spectral > 0) return false;
-  u.soul = 0; u.spectral = 25; u.ult = Math.min(100, u.ult + 50);
-  heal(st, u, u, u.maxHp * 0.3);
-  ev(st, 'spectral', { u: u.id });
-  st.slowmo = Math.max(st.slowmo, 1.2);
   return true;
 }
 function teamComboStart(st, T) {
@@ -691,27 +868,57 @@ function teamComboExec(st, q, score) {
 }
 
 // ------------------------------------------------------------------ switching & items & capture
+// A switch recalls the active Tokonmon at once and leaves the trainer's spot
+// on the field EMPTY for rules.switchTime (7 s) while the incoming one comes
+// through the gate — the other team can charge, buff and set up meanwhile.
+// After a faint, sending the next one out takes rules.sendOut and no cooldown.
 function doSwitch(st, T, toId) {
-  if (!st.rules.canSwitch || T.switchCd > 0) return false;
+  if (!st.rules.canSwitch || T.switching || st.qte) return false;
   const out = unitById(st, T.active);
+  const forced = !out || out.state === 'faint' || out.hp <= 0;
+  if (!forced && T.switchCd > 0) return false;
   const inn = unitById(st, toId) || T.team.map((id) => unitById(st, id)).find((x) => x && !x.onField && x.hp > 0 && x.state !== 'faint');
-  if (!inn || inn.onField || inn.hp <= 0 || inn.state === 'faint') return false;
+  if (!inn || inn.onField || inn.hp <= 0 || inn.state === 'faint' || inn.trainer !== T.id) return false;
   if (out && out.state === 'grabbed') return false;
+  let relay = null, at = null;
   if (out && alive(out)) {
-    inn.x = out.x; inn.z = out.z; inn.face = out.face;
+    if (out.bonded) endBond(st, out, 'switch');
     if (out.grab) releaseGrab(st, out);
-    out.onField = false; out.state = 'out'; out.act = null; out.cmd = null; out.dash = null; out.charge = null; out.target = null;
-    inn.relay = out.aura || out.elem ? { elem: out.elem, t: st.t, from: out.id } : null;
-    inn.target = out.target;
-  } else if (out) { inn.x = out.x; inn.z = out.z; inn.face = out.face; }
-  inn.onField = true; inn.state = 'idle'; inn.iframes = 0.35; inn.act = null; inn.energy = Math.max(inn.energy, 40);
-  T.active = inn.id; T.switchCd = 4.5;
+    for (const t of st.tele.filter((x) => x.owner === out.id)) removeTele(st, t.id);
+    at = { x: out.x, z: out.z };
+    relay = out.aura || out.elem ? { elem: out.elem, from: out.id } : null;
+    out.onField = false; out.state = 'out'; out.act = null; out.cmd = null; out.dash = null; out.charge = null; out.target = null; out.order = null;
+    out.wasOut = true;
+    ev(st, 'recall', { u: out.id, trainer: T.id, x: at.x, z: at.z });
+  }
+  T.pendingSwitch = 0;
+  const dur = forced ? st.rules.sendOut : st.rules.switchTime;
+  T.switching = { to: inn.id, t: 0, dur, forced, relay, from: out ? out.id : null };
+  if (dur <= 0) { completeSwitch(st, T); return true; }
+  ev(st, 'switchStart', { trainer: T.id, out: out && !forced ? out.id : null, in: inn.id, dur, forced });
+  return true;
+}
+function completeSwitch(st, T) {
+  const sw = T.switching;
+  T.switching = null;
+  const inn = sw && unitById(st, sw.to);
+  if (!inn || inn.hp <= 0 || inn.state === 'faint') return false;
+  inn.x = T.gate.x; inn.z = T.gate.z; inn.face = T.side === 0 ? Math.PI : 0;
+  inn.onField = true; inn.state = 'idle'; inn.iframes = 0.6; inn.act = null; inn.cmd = null; inn.energy = Math.max(inn.energy, 40);
+  inn.inAt = st.t; inn.order = null; inn.obey = 0;
+  inn.relay = sw.relay ? Object.assign({ t: st.t }, sw.relay) : null;
+  if (T.isPlayer && st.rules.orders) inn.auto = true;
+  if (inn.wasOut && inn.modsBase.comeback) { inn.comeback = inn.modsBase.comeback; ev(st, 'comebackReady', { u: inn.id }); }
+  T.active = inn.id;
+  if (!sw.forced) T.switchCd = st.rules.switchCd;
   pushHist(st, inn, 'switch');
   st.stats.switches++;
-  ev(st, 'switch', { trainer: T.id, out: out ? out.id : null, in: inn.id });
+  ev(st, 'switch', { trainer: T.id, out: sw.from, in: inn.id, forced: sw.forced });
   ev(st, 'anim', { u: inn.id, anim: 'spawn' });
   return true;
 }
+// remaining switch time for the UI (0 when not switching)
+export const switchLeft = (T) => (T && T.switching ? Math.max(0, T.switching.dur - T.switching.t) : 0);
 export const ITEMS_BATTLE = { takoyaki: { heal: 0.3 }, okonomiyaki: { heal: 0.6 }, ramune: { energy: 60 }, matcha: { ult: 35 }, revive_onigiri: { revive: 0.4 } };
 function useItem(st, T, id) {
   if (!st.rules.items || T.itemCd > 0 || !(T.items[id] > 0)) return false;
@@ -825,6 +1032,11 @@ export function applyHit(st, src, tgt, h) {
   if (focus && h.crit === 'center') { crit = true; focus.n--; if (focus.n <= 0) focus.t = 0; }
   if (h.precise) crit = true;
   const quick = src && buffOf(src, 'quicken'); if (quick && !isDot) crit = true;
+  // natural critical hits (Speed and passives raise the chance)
+  if (!crit && src && !isDot && h.kind !== 'reaction' && h.kind !== 'team' && h.flat == null && st.rng.chance(0.04 + src.stats.spd * 0.002 + (src.mods.critChance || 0))) crit = true;
+  // comeback punch: the first hit after returning from a switch
+  let comeback = false;
+  if (src && src.comeback > 0 && !isDot && h.kind !== 'reaction' && h.kind !== 'clone') { mult *= 1 + src.comeback; src.comeback = 0; comeback = true; h = Object.assign({}, h, { knock: (h.knock || 0) + 3 }); }
   let dmg;
   if (h.flat != null) dmg = h.flat;
   else {
@@ -834,8 +1046,13 @@ export function applyHit(st, src, tgt, h) {
   }
   const eff = h.elem ? effectiveness(h.elem, tgt.elems) : 1;
   dmg *= eff * mult;
+  dmg *= tgt.mods.takenMul || 1;
+  const rt = buffOf(tgt, 'riled'); if (rt && !isDot) dmg *= 1 + rt.k;
   if (src) {
     if (st.arena.boost && h.elem === st.arena.boost) dmg *= 1.2;
+    if (st.arena.type === 'water' && h.elem === 'pyro') dmg *= 0.85;
+    dmg *= (src.mods.dmgMul || 1) * (h.scale === 'phys' ? (src.mods.physMul || 1) : (src.mods.elmMul || 1));
+    const rs = buffOf(src, 'riled'); if (rs && !isDot) dmg *= 1 + rs.k;
     const kin = buffOf(src, 'kindle');
     if (kin && !isDot && h.kind !== 'reaction') { dmg *= 1 + kin.k; h.elem = h.elem || 'pyro'; h.aura = Math.max(h.aura || 0, 0.6); kin.n--; if (kin.n <= 0) kin.t = 0; }
     if (src.mods.lowHpDmg && src.hp < src.maxHp * 0.4) dmg *= 1 + src.mods.lowHpDmg;
@@ -858,24 +1075,38 @@ export function applyHit(st, src, tgt, h) {
   if (tgt.shield > 0) { absorbed = Math.min(tgt.shield, dmg); tgt.shield -= absorbed; dmg -= absorbed; }
   tgt.hp -= dmg;
   const total = dmg + absorbed;
-  if (src) { src.k.dealt += total; if (h.crit === 'center' || h.precise) { if (crit) { src.k.precise++; st.stats.precise++; } } }
+  if (src) {
+    src.k.dealt += total;
+    if (h.crit === 'center' || h.precise) { if (crit) { src.k.precise++; st.stats.precise++; } }
+    if (crit && !isDot) { src.k.crits++; st.stats.crits++; }
+    if (h.skill) src.k.hits[h.skill] = (src.k.hits[h.skill] || 0) + 1;
+    if (src.mods.lifesteal && !isDot) heal(st, src, src, total * src.mods.lifesteal);
+  }
   tgt.k.taken += total;
-  // meters
+  // meters (the ultimate gauge only fills while BONDED)
+  const ultOn = (u) => !st.rules.bond || u.bonded;
   if (src && !isDot) {
     if (h.kind === 'basic') src.energy = Math.min(100, src.energy + 5);
-    src.ult = Math.min(100, src.ult + (total / tgt.maxHp) * 75);
+    if (ultOn(src)) src.ult = Math.min(100, src.ult + (total / tgt.maxHp) * 75 * (src.mods.ultGain || 1));
     st.sides[src.side].meter = Math.min(100, st.sides[src.side].meter + 2.5 * (src.mods.teamGain || 1) + (h.kind === 'skill' ? 1.5 : 0));
     if (src.elems.includes('pyro') && h.elem === 'pyro') src.heat = Math.min(100, src.heat + total * 0.6 * (src.mods.heatGain || 1));
     // sync hits: allied hit on the same target within 0.6s
     if (tgt.lastHitBy && tgt.lastHitBy.side === src.side && tgt.lastHitBy.id !== src.id && st.t - tgt.lastHitBy.t < 0.6) { st.sides[src.side].meter = Math.min(100, st.sides[src.side].meter + 6); ev(st, 'sync', { a: src.id, b: tgt.lastHitBy.id, tgt: tgt.id }); }
     tgt.lastHitBy = { id: src.id, side: src.side, t: st.t };
-    if (src.snap.spectral) src.soul = Math.min(100, src.soul + (total / tgt.maxHp) * 30);
+    if (src.snap.spectral && src.bonded && src.final) src.soul = Math.min(100, src.soul + (total / tgt.maxHp) * 30);
+    if (src.mods.burnOnHit && st.rng.chance(src.mods.burnOnHit) && alive(tgt)) addStatus(st, tgt, { s: 'burn', dur: 3, k: 0.25, src: src.id, srcElm: src.stats.elm });
   }
-  tgt.ult = Math.min(100, tgt.ult + (total / tgt.maxHp) * 45);
+  if (ultOn(tgt)) tgt.ult = Math.min(100, tgt.ult + (total / tgt.maxHp) * 45 * (tgt.mods.ultGain || 1));
   if (!isDot) tgt.energy = Math.min(100, tgt.energy + 3);
-  if (tgt.snap.spectral) tgt.soul = Math.min(100, tgt.soul + (total / tgt.maxHp) * 55);
+  if (tgt.snap.spectral && tgt.bonded && tgt.final) tgt.soul = Math.min(100, tgt.soul + (total / tgt.maxHp) * 55);
   if (tgt.mods.mosh && !isDot) addBuff(tgt, 'mosh', tgt.mods.mosh, 3);
-  ev(st, 'hit', { src: src ? src.id : null, tgt: tgt.id, dmg: total, crit, eff, elem: h.elem || null, kind: h.kind, precise: crit && (h.crit === 'center' || h.precise), absorbed, x: tgt.x, z: tgt.z, combo: h.combo || null, skill: h.skill || null });
+  ev(st, 'hit', { src: src ? src.id : null, tgt: tgt.id, dmg: total, crit, eff, elem: h.elem || null, kind: h.kind, precise: crit && (h.crit === 'center' || h.precise), absorbed, x: tgt.x, z: tgt.z, combo: h.combo || null, skill: h.skill || null, comeback, bonded: !!(src && src.bonded) });
+  if (comeback) ev(st, 'comebackPunch', { u: src.id, tgt: tgt.id });
+  // drowning: a soaked Tokonmon hit by more water
+  if (h.elem === 'hydro' && !isDot && tgt.aura && tgt.aura.e === 'hydro' && tgt.aura.amt >= 1.5 && !tgt.elems.includes('hydro')) {
+    ev(st, 'drowned', { u: tgt.id, src: src ? src.id : null });
+    addStatus(st, tgt, { s: 'slow', dur: 1.5, k: 0.35, src: src ? src.id : null });
+  }
   // reflect / ember skin
   if (src && !isDot && h.kind !== 'reaction' && len(src.x - tgt.x, src.z - tgt.z) < 3) {
     if (tgt.mods.reflect) applyHit(st, tgt, src, { flat: Math.max(1, Math.round(total * tgt.mods.reflect)), kind: 'dot' });
@@ -973,7 +1204,7 @@ function heal(st, src, u, amt) {
   if (a <= 0) return 0;
   u.hp += a;
   if (src) src.k.healed += a;
-  ev(st, 'heal', { u: u.id, amt: a, x: u.x, z: u.z });
+  ev(st, 'heal', { u: u.id, amt: a, x: u.x, z: u.z, src: src ? src.id : null });
   return a;
 }
 
@@ -995,7 +1226,7 @@ export function addStatus(st, u, s) {
     const per = 3 + (s.srcElm ?? 10) * 0.35;
     if (cur) { cur.stacks = Math.min(6, cur.stacks + (s.stacks || 1) + extra); cur.t = Math.max(cur.t, dur); }
     else u.st.push({ s: 'poison', t: dur, stacks: Math.min(6, (s.stacks || 1) + extra), k: per, src: s.src, tick: 1 });
-    ev(st, 'status', { u: u.id, s: 'poison' });
+    ev(st, 'status', { u: u.id, s: 'poison', src: s.src || null });
     return;
   }
   const cur = stOf(u, s.s);
@@ -1005,7 +1236,7 @@ export function addStatus(st, u, s) {
   if (s.s === 'regen') rec.k = s.k;
   u.st.push(rec);
   if (['stun', 'sleep', 'frozen'].includes(s.s)) { interrupt(st, u); if (u.grab) releaseGrab(st, u); ev(st, 'anim', { u: u.id, mode: s.s === 'frozen' ? 'frozen' : s.s }); }
-  ev(st, 'status', { u: u.id, s: s.s });
+  ev(st, 'status', { u: u.id, s: s.s, src: s.src || null });
 }
 function addBuff(u, s, k, dur, extra = {}) {
   const cur = u.buffs.find((b) => b.s === s && s !== 'mosh');
@@ -1207,13 +1438,44 @@ function faint(st, u, src) {
   if (u.grab) releaseGrab(st, u);
   if (u.grabbedBy) { const g = unitById(st, u.grabbedBy); if (g) g.grab = null; u.grabbedBy = null; }
   for (const t of st.tele.filter((x) => x.owner === u.id)) removeTele(st, t.id);
-  if (src) { src.k.kos++; if (src.side === 0) st.defeats.push({ species: u.species, by: src.uid, level: u.level }); }
+  if (u.bonded) endBond(st, u, 'faint');
+  if (src) {
+    src.k.kos++;
+    if (src.side === 0) st.defeats.push({ species: u.species, by: src.uid, level: u.level });
+    if (src.bonded) {
+      src.k.bondKos++;
+      ev(st, 'bondKo', { u: src.id, n: src.k.bondKos });
+      // gimmick: a box that cracks with every bonded KO and finally breaks open (Heartbox → Inbloom)
+      const g = src.gimmick;
+      if (g && g.breakAt && g.into && SPECIES[g.into]) {
+        src.cracks++;
+        ev(st, 'crack', { u: src.id, n: src.cracks, of: g.breakAt });
+        if (src.cracks >= g.breakAt) transformUnit(st, src, g.into);
+      }
+    }
+  }
   ev(st, 'faint', { u: u.id, src: src ? src.id : null });
   ev(st, 'anim', { u: u.id, mode: 'faint' });
   const T = st.trainers.find((t) => t.id === u.trainer);
   const next = T.team.map((id) => unitById(st, id)).find((x) => x && x !== u && x.hp > 0 && x.state !== 'faint');
   if (next) { T.pendingSwitch = 1.3; T.pendingTo = T.autoSwitch ? next.id : null; ev(st, 'needSwitch', { trainer: T.id }); }
   else { T.out = true; checkEnd(st); }
+}
+// Mid-battle transformation into another species (stats rescaled by base ratio).
+function transformUnit(st, u, to) {
+  const from = SPECIES[u.species], sp = SPECIES[to];
+  if (!from || !sp) return;
+  const hpF = u.hp / u.maxHp;
+  for (const k of Object.keys(u.stats)) if (from.base[k]) u.stats[k] *= sp.base[k] / from.base[k];
+  u.maxHp = Math.round(u.maxHp * (sp.base.hp / from.base.hp));
+  u.hp = Math.max(1, Math.round(u.maxHp * Math.max(hpF, 0.6)));
+  const prev = u.species;
+  u.species = to; u.basic = sp.basic; u.r = sp.radius || u.r; u.mass = Math.max(0.4, u.r * 2);
+  u.elems = elemsOf(sp); u.elem = u.elems[0]; u.gimmick = sp.gimmick || null; u.final = !(sp.evolve && sp.evolve.length);
+  u.transformed = prev;
+  u._dirty = true;
+  st.slowmo = Math.max(st.slowmo, 1.6);
+  ev(st, 'transform', { u: u.id, from: prev, to });
 }
 function checkEnd(st) {
   for (let s = 0; s < 2; s++) {
@@ -1226,15 +1488,52 @@ function endBattle(st, winner, reason) {
   st.over = true;
   st.result = {
     winner, reason, duration: st.t, stats: st.stats, defeats: st.defeats, captured: st.captured, used: st.used,
-    units: st.units.map((u) => ({ id: u.id, uid: u.uid, side: u.side, trainer: u.trainer, species: u.species, hp: Math.max(0, u.hp), maxHp: u.maxHp, fainted: u.state === 'faint', took: u.onField || u.k.dealt > 0 || u.k.taken > 0, k: u.k })),
+    units: st.units.map((u) => ({ id: u.id, uid: u.uid, side: u.side, trainer: u.trainer, species: u.species, hp: Math.max(0, u.hp), maxHp: u.maxHp, fainted: u.state === 'faint', took: u.onField || u.k.dealt > 0 || u.k.taken > 0, k: u.k, cracks: u.cracks, transformed: u.transformed || null, bondT: u.k.bondT + (u.bonded ? u.bondT : 0) })),
   };
   ev(st, 'end', { winner, reason });
 }
 
 // ------------------------------------------------------------------ main step
+// ------------------------------------------------------------------ arenas & match clock
+// Stadium arena types (picked at kickoff and again at halftime).
+export const ARENA_TYPES = {
+  rocky: { name: 'Rocky', boost: 'geo', desc: 'Geo moves +20%. Rock pillars give cover.' },
+  grassy: { name: 'Grassy', boost: 'bio', desc: 'Bio moves +20%. Bio Tokonmon regenerate.' },
+  water: { name: 'Water', boost: 'hydro', desc: 'Hydro moves +20%, Pyro −15%. Everyone gets soaked — beware steam!' },
+};
+export function setArenaType(st, type, props) {
+  const A = ARENA_TYPES[type] || null;
+  st.arena.type = A ? type : null;
+  st.arena.boost = A ? A.boost : null;
+  if (props) {
+    st.arena.props = st.arena.props.filter((p) => !p.floor);
+    for (const p of props) st.arena.props.push(Object.assign({ id: 'p' + st.nextId++, hp: 60, r: 0.6, destructible: true, alive: true, floor: true }, p, { maxHp: p.hp ?? 60 }));
+  }
+  ev(st, 'arena', { type: st.arena.type });
+}
+// Resume after a halftime pause (optionally with a new arena type + floor props).
+export function resumeMatch(st, opts = {}) {
+  if (!st.paused) return false;
+  st.paused = null;
+  if (opts.arena) setArenaType(st, opts.arena, opts.props);
+  ev(st, 'resume', {});
+  return true;
+}
+function stepClock(st, dt) {
+  const c = st.clock;
+  c.t += dt;
+  if (c.half === 1 && c.halftime && c.t >= c.len / 2) { c.half = 2; st.paused = 'halftime'; ev(st, 'halftime', {}); return; }
+  if (c.t >= c.len) {
+    // time up: the side with more remaining team HP wins
+    const score = [0, 1].map((s) => st.units.filter((u) => u.side === s).reduce((a, u) => a + Math.max(0, u.hp) / u.maxHp, 0));
+    endBattle(st, score[0] >= score[1] ? 0 : 1, 'time');
+  }
+}
+
 export function step(st, dt = DT) {
   st.events.length = 0;
-  if (st.over) return;
+  if (st.over || st.paused) return;
+  if (st.clock && !st.qte) { stepClock(st, dt); if (st.paused || st.over) return; }
   // QTE pauses combat almost entirely (cinematic slow motion)
   if (st.qte) { st.qte.t += dt; dt *= 0.04; if (st.qte.t > st.qte.dur + 0.5) resolveQte(st, st.qte.id, st.qte.kind === 'escape' ? 0 : 0.4); }
   st.t += dt; st.tick++;
@@ -1245,18 +1544,26 @@ export function step(st, dt = DT) {
   if (n !== st.beat.n) { st.beat.n = n; ev(st, 'beat', { n }); }
   // trainers
   for (const T of st.trainers) {
-    T.switchCd = Math.max(0, T.switchCd - dt); T.itemCd = Math.max(0, T.itemCd - dt);
+    T.switchCd = Math.max(0, T.switchCd - dt); T.itemCd = Math.max(0, T.itemCd - dt); T.bondCd = Math.max(0, T.bondCd - dt);
+    if (T.switching) {
+      const before = Math.floor(T.switching.t);
+      T.switching.t += dt;
+      if (Math.floor(T.switching.t) !== before && T.switching.t < T.switching.dur) ev(st, 'switchTick', { trainer: T.id, left: Math.ceil(T.switching.dur - T.switching.t) });
+      if (T.switching.t >= T.switching.dur) completeSwitch(st, T);
+    }
     if (T.pendingSwitch > 0) {
       T.pendingSwitch -= dt;
       if (T.pendingSwitch <= 0) {
         const cur = unitById(st, T.active);
-        if (!cur || cur.state === 'faint') {
-          const to = T.pendingTo || T.team.map((id) => unitById(st, id)).find((x) => x && x.hp > 0 && x.state !== 'faint')?.id;
-          if (to) { T.switchCd = 0; doSwitch(st, T, to); }
+        if ((!cur || cur.state === 'faint') && !T.switching) {
+          const to = T.pendingTo || (T.autoSwitch ? T.team.map((id) => unitById(st, id)).find((x) => x && x.hp > 0 && x.state !== 'faint')?.id : null);
+          if (to) doSwitch(st, T, to);
         }
       }
     }
   }
+  // water arena: the floor keeps everyone soaked
+  if (st.arena.type === 'water' && st.tick % 120 === 0) for (const u of st.units) if (alive(u) && !u.elems.includes('hydro') && (!u.aura || u.aura.e !== 'hydro')) { if (!u.aura || u.aura.t <= 0) { u.aura = { e: 'hydro', amt: 0.5, t: 4, src: null }; ev(st, 'aura', { u: u.id, e: 'hydro' }); } }
   // pending scheduled effects
   for (let i = 0; i < st.pending.length; i++) {
     const p = st.pending[i];
@@ -1293,13 +1600,23 @@ function stepUnit(st, u, dt) {
     }
     return;
   }
+  refreshMods(st, u);
+  stepOrder(st, u, dt);
+  u.emoteCd = Math.max(0, u.emoteCd - dt);
+  if (u.bonded) {
+    u.bondT += dt;
+    u.ult = Math.min(100, u.ult + dt * 1.4 * (u.mods.ultGain || 1));
+    if (u.mods.shieldRegen) u.shield = Math.min(u.maxHp * 0.35, u.shield + u.maxHp * u.mods.shieldRegen * dt);
+    if (Math.floor(u.bondT / 10) !== Math.floor((u.bondT - dt) / 10)) ev(st, 'bondTime', { u: u.id, s: Math.floor(u.bondT) });
+  }
+  if (st.arena.type === 'grassy' && u.elems.includes('bio')) heal(st, u, u, u.maxHp * 0.006 * dt);
   // timers
   u.iframes = Math.max(0, u.iframes - dt); u.dodgeCd = Math.max(0, u.dodgeCd - dt); u.parryCd = Math.max(0, u.parryCd - dt); u.grabCd = Math.max(0, u.grabCd - dt);
   u.parryT = Math.max(0, u.parryT - dt); u.parryAge += dt; u.dodgeAge += dt; if (u.dodgeAge > 0.5) u.perfectDodged = false;
   u.basicT = Math.max(0, u.basicT - dt); u.chainT = Math.max(0, u.chainT - dt);
   for (const k in u.cds) u.cds[k] = Math.max(0, u.cds[k] - dt);
   u.energy = Math.min(100, u.energy + dt * (3.6 + u.stats.spd * 0.06));
-  u.ult = Math.min(100, u.ult + dt * 0.8);
+  if (!st.rules.bond) u.ult = Math.min(100, u.ult + dt * 0.8);
   if (u.spectral > 0) { u.spectral -= dt; if (u.spectral <= 0) ev(st, 'spectralEnd', { u: u.id }); }
   if (u.shield > 0 && u.shieldT != null) { u.shieldT -= dt; if (u.shieldT <= 0) u.shield = 0; }
   u.heat = Math.max(0, u.heat - dt * 2);
@@ -1404,7 +1721,7 @@ function progressAct(st, u, dt) {
     if (a.tele) { const tl = st.tele.find((x) => x.id === a.tele); if (tl) tl.dur = Math.min(tl.dur, tl.t + 0.15 + (a.sk ? (a.sk.eff.find((e) => e.delay)?.delay || 0) : 0)); }
   }
   if (a.phase === 'active' && a.t >= a.a && !u.dash) { a.phase = 'recover'; a.t = 0; }
-  if (a.phase === 'recover' && a.t >= a.r) u.act = null;
+  if (a.phase === 'recover' && a.t >= a.r) { u.act = null; if (a.kind === 'ult' && u.bonded) endBond(st, u, 'ult'); }
 }
 
 function moveUnit(st, u, dt) {

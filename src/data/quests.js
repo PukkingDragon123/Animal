@@ -50,8 +50,8 @@ export const QUESTS = {
     reward: { money: 4000, items: { takoyaki: 10 }, cosmetics: ['badge_metal'] },
   },
   satisfaction: {
-    name: "(I Can't Get No) Satisfaction", giver: 'pebblips', desc: 'Pebblips is never satisfied. Feed it 8 different foods.',
-    steps: [{ text: 'Feed Pebblips 8 different foods', done: monCounter('foods', 8, ['pebblips']) }],
+    name: "(I Can't Get No) Satisfaction", giver: 'rollingstone', desc: 'Rollingstone is never satisfied. Feed it 8 different foods.',
+    steps: [{ text: 'Feed Rollingstone 8 different foods', done: monCounter('foods', 8, ['rollingstone']) }],
     reward: { items: { ramune: 3 } },
   },
   dojo_discipline: {

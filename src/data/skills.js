@@ -6,6 +6,10 @@
 // power numbers are scaled by the user's DMG (physical) or ELM (elemental)
 // stat; `scale` picks which (default: elemental unless the skill is 'phys').
 
+import { COMMON_PASSIVES } from './moves/common.js';
+import { MOVES as STARTER_MOVES } from './moves/starters.js';
+import { EXTRA_MOVES } from './moves/index.js';
+
 const S = (o) => o;
 export const SKILLS = {};
 function def(list) { for (const s of list) { s.kind = s.kind || 'active'; s.cost = s.cost ?? 15; s.cd = s.cd ?? 6; s.windup = s.windup ?? 0.25; s.recover = s.recover ?? 0.3; s.range = s.range ?? 6; s.aim = s.aim || 'dir'; SKILLS[s.id] = s; } }
@@ -211,6 +215,14 @@ def([
   S({ id: 'rolling_moss', kind: 'passive', name: 'Gathers No Moss', elem: 'geo', desc: 'Immune to poison and root.', mods: { immune: ['poison', 'root'] } }),
   S({ id: 'with_a_little_help', kind: 'passive', name: 'Little Help From Friends', elem: 'geo', desc: 'Team combos charge 30% faster.', mods: { teamGain: 1.3 } }),
 ]);
+
+// ---- Tokonmon: unique per-line moves (not shared) + common passives
+def(COMMON_PASSIVES);
+def(STARTER_MOVES);
+for (const m of EXTRA_MOVES) def(m);
+// shared skills = the classic library above (taught by vinyl discs); unique ones carry `line`
+export const isUnique = (id) => !!(SKILLS[id] && SKILLS[id].line);
+export const DISC_SKILLS = Object.values(SKILLS).filter((s) => !s.line && s.kind === 'active').map((s) => s.id);
 
 export const skillOf = (id) => SKILLS[id];
 export const isPassive = (id) => SKILLS[id] && SKILLS[id].kind === 'passive';

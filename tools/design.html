@@ -42,6 +42,18 @@ for (const id of ids) {
       for (const n of (rig.tagged && rig.tagged.bond) || []) rig.bones[n].visible = true;
       for (const [n, k] of Object.entries((rig.bond && rig.bond.grow) || {})) if (rig.bones[n]) rig.bones[n].scale.setScalar(k);
     }
+    if (q.get('hat') && m.userData.rig.hat) {
+      // trainer accessory on the bond anchor (bond.hat), e.g. &hat=cap|beanie|straw_hat|headset|sunglasses|crown
+      const { hatDesign } = await import('../src/data/designs/hats.js');
+      const rig = m.userData.rig, a = rig.hat, hd = hatDesign(q.get('hat'));
+      const hm = buildModel(hd, hd.id);
+      const bone = rig.bones[a.part || 'head'] || m;
+      const piv = (getTemplate(d, id + (q.get('form') || '') + '_view').parts.find((p) => p.name === (a.part || 'head')) || { pivot: [0, 0, 0] }).pivot;
+      hm.position.set(a.at[0] - piv[0], a.at[1] - piv[1], a.at[2] - piv[2]);
+      hm.rotation.set((a.tilt || 0) * Math.PI / 180, 0, (a.roll || 0) * Math.PI / 180);
+      hm.scale.setScalar(a.scale || 1);
+      bone.add(hm);
+    }
     const x = cursor + w * 0.6;
     m.position.set(x, 0, 0); m.rotation.y = r;
     g.actors.add(m);

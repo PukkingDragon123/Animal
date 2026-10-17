@@ -8,24 +8,31 @@ import { command, trainerCommand, enemiesOf, alliesOf, unitById, alive, canAct }
 
 export const PROFILES = {
   tutorial: { aggr: 0.4, skill: 0.25, dodge: 0, parry: 0, think: 0.55, heavy: 0.35 },
-  easy: { aggr: 0.55, skill: 0.35, dodge: 0.12, parry: 0.04, think: 0.42, heavy: 0.2 },
-  normal: { aggr: 0.75, skill: 0.55, dodge: 0.3, parry: 0.12, think: 0.32, heavy: 0.25 },
-  hard: { aggr: 0.85, skill: 0.75, dodge: 0.5, parry: 0.25, think: 0.24, heavy: 0.3, switchy: 0.5 },
-  boss: { aggr: 0.9, skill: 0.8, dodge: 0.35, parry: 0.2, think: 0.26, heavy: 0.35 },
-  ally: { aggr: 0.7, skill: 0.6, dodge: 0.4, parry: 0.15, think: 0.3, support: true, heavy: 0.2 },
+  easy: { aggr: 0.55, skill: 0.35, dodge: 0.12, parry: 0.04, think: 0.42, heavy: 0.2, bond: 0.04, emote: 0.03 },
+  normal: { aggr: 0.75, skill: 0.55, dodge: 0.3, parry: 0.12, think: 0.32, heavy: 0.25, bond: 0.1, emote: 0.03 },
+  hard: { aggr: 0.85, skill: 0.75, dodge: 0.5, parry: 0.25, think: 0.24, heavy: 0.3, switchy: 0.5, bond: 0.22, emote: 0.02 },
+  elite: { aggr: 0.85, skill: 0.8, dodge: 0.55, parry: 0.3, think: 0.22, heavy: 0.3, switchy: 0.55, bond: 0.3, emote: 0.04, beat: true },
+  champion: { aggr: 0.9, skill: 0.85, dodge: 0.6, parry: 0.35, think: 0.2, heavy: 0.35, switchy: 0.6, bond: 0.35, emote: 0.05, beat: true },
+  boss: { aggr: 0.9, skill: 0.8, dodge: 0.35, parry: 0.2, think: 0.26, heavy: 0.35, bond: 0.3 },
+  ally: { aggr: 0.7, skill: 0.6, dodge: 0.4, parry: 0.15, think: 0.3, support: true, heavy: 0.2, bond: 0.1 },
+  // the player's own Tokonmon on auto-control: fights by itself, saves its skills for your orders
+  buddy: { aggr: 0.7, skill: 0.16, dodge: 0.22, parry: 0.06, think: 0.34, heavy: 0.2, buddy: true },
   wild: { aggr: 0.6, skill: 0.45, dodge: 0.2, parry: 0.05, think: 0.36, heavy: 0.25, flee: true },
   beast: { aggr: 1, skill: 0.6, dodge: 0, parry: 0, think: 0.3, heavy: 0.5 },
-  punk: { aggr: 0.9, skill: 0.55, dodge: 0.25, parry: 0.1, think: 0.28, grab: 0.3, heavy: 0.3 },
+  punk: { aggr: 0.9, skill: 0.55, dodge: 0.25, parry: 0.1, think: 0.28, grab: 0.3, heavy: 0.3, bond: 0.12, emote: 0.08, taunt: true },
 };
 
 const len = (x, z) => Math.hypot(x, z);
 
 export function think(st, u, dt, T) {
-  const prof = PROFILES[(T && T.ai) || (u.auto ? 'ally' : 'normal')] || PROFILES.normal;
+  const prof = PROFILES[(T && T.ai) || (u.auto ? 'buddy' : 'normal')] || PROFILES.normal;
   const b = u.brain || (u.brain = { t: st.rng.next() * prof.think, seen: new Set(), paused: false, kiteDir: st.rng.chance(0.5) ? 1 : -1 });
   if (b.paused || st.qte) return;
   if (!alive(u)) return;
-  react(st, u, prof, b);
+  // a pending player order owns the next move; after it fires, obey for a moment
+  if (u.order) return;
+  if (!u.charge) react(st, u, prof, b);
+  if (u.obey > 0) return;
   b.t -= dt;
   if (b.t > 0) return;
   b.t = prof.think * (0.75 + st.rng.next() * 0.5);
@@ -90,7 +97,16 @@ function escapeDir(tl, u) {
 function decide(st, u, prof, b, T) {
   if (!canAct(u) || u.act || u.grab) return;
   const foes = enemiesOf(st, u);
-  if (!foes.length) return;
+  if (!foes.length) {
+    // the other side is mid-switch: set up — self-buffs, else charge a big attack
+    const buff = u.skills.find((id) => SKILLS[id] && SKILLS[id].aim === 'self' && ready(u, id) && (SKILLS[id].eff[0] || {}).t !== 'aoe');
+    if (buff && st.rng.chance(0.5)) { command(st, u.id, { type: 'skill', id: buff }); return; }
+    if (!u.charge && !prof.buddy) command(st, u.id, { type: 'charge', on: true });
+    return;
+  }
+  // trainer AI: bond, elemental form, emotes
+  if (T && T.ai && st.rules.bond && T.canBond && !u.bonded && !T.bonded && T.bondCd <= 0 && (prof.bond || 0) > 0 && st.t > 6 && st.rng.chance(prof.bond)) { trainerCommand(st, T.id, { type: 'bond' }); return; }
+  if (T && T.ai && u.bonded && u.final && u.snap.spectral && u.soul >= 100 && !u.form) { trainerCommand(st, T.id, { type: 'elemental' }); return; }
   // pick target: player-controlled first for aggressive AI, else nearest / weakest
   let tgt = null, best = -1e9;
   for (const o of foes) {
@@ -116,8 +132,13 @@ function decide(st, u, prof, b, T) {
     const bench = T.team.map((id) => unitById(st, id)).filter((x) => x && !x.onField && x.hp > x.maxHp * 0.5 && x.state !== 'faint');
     if (bench.length) { trainerCommand(st, T.id, { type: 'switch', to: bench[0].id }); return; }
   }
-  // ultimate
-  if (u.ultSkill && u.ult >= 100 && d < 6 && st.rng.chance(0.6)) { command(st, u.id, { type: 'ult', id: tgt.id }); return; }
+  // ultimate (bonded only)
+  if (u.ultSkill && u.ult >= 100 && (u.bonded || !st.rules.bond) && d < 6 && st.rng.chance(0.6)) { command(st, u.id, { type: 'ult', id: tgt.id }); return; }
+  // emotes: punks taunt from range, showmen dance on the beat
+  if ((prof.emote || 0) > 0 && u.emoteCd <= 0 && d > 2.5 && st.rng.chance(prof.emote)) {
+    const id = prof.taunt ? 'taunt' : prof.beat ? 'dance' : st.rng.pick(['dance', 'flex', 'taunt']);
+    command(st, u.id, { type: 'emote', id }); return;
+  }
   // support heal
   if (prof.support || u.elems.includes('bio')) {
     const heals = u.skills.filter((id) => SKILLS[id] && SKILLS[id].eff.some((e) => e.t === 'heal') && ready(u, id));

@@ -151,7 +151,7 @@ export class Game {
       mon.skills.active = mon.skills.known.filter((id) => SKILLS[id].kind === 'active').slice(0, 4);
       const where = S.addElemon(s, mon);
       s.stats.captures++;
-      if (c.species === 'pebblips') this.startQuest('satisfaction');
+      if (c.species === 'rollingstone') this.startQuest('satisfaction');
       this.app.ui.toast(`${SPECIES[c.species].name} joined your ${where === 'party' ? 'team' : 'Elemon Box'}!`, 'gold', 3200);
       if (SPECIES[c.species].bond < 40) this.app.ui.toast(`${SPECIES[c.species].name} doesn't trust you yet… (low friendship: it may ignore commands)`, '', 4200);
     }

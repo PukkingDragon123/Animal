@@ -1,4 +1,4 @@
-// Elemon species: gameplay data. Visual designs live in src/data/designs/*.js
+// Tokonmon species: gameplay data. Visual designs live in src/data/designs/*.js
 // (same ids). Stats are the five core stats at level 1: DMG (physical power),
 // ELM (elemental power + status potency), DEF, SPD, HP.
 //
@@ -7,6 +7,8 @@
 // passives: candidates for passive slots. evolve: [{ to, cond, hint }].
 // temper: wild behaviour (skittish | curious | territorial | aggressive | beast).
 // catch: base capture chance; bond: starting friendship when caught.
+import { SPECIES as STARTER_SPECIES, STARTERS } from './species/starters.js';
+import { EXTRA_SPECIES } from './species/index.js';
 const B = (dmg, elm, def, spd, hp) => ({ dmg, elm, def, spd, hp });
 
 export const SPECIES = {
@@ -150,7 +152,30 @@ export const SPECIES = {
     start: ['iron_bash', 'shiko_stomp', 'rift_shard'], learn: [], ult: null, passives: [], evolve: [], temper: 'beast', catch: 0, bond: 0, exp: 200 },
 };
 
+// ---- Tokonmon remake: the three new starter lines replace the old five; retired lines are removed.
+for (const id of ['kindoru', 'chochidra', 'infernobori', 'takopo', 'takommando', 'admiraken', 'mochika', 'hanashika', 'shinrinoh', 'clayki', 'tanukiln', 'dogugaia', 'komoriff', 'reverbat', 'amplifury', 'pebblips', 'jaggeode']) delete SPECIES[id];
+Object.assign(SPECIES, STARTER_SPECIES);
+for (const mod of EXTRA_SPECIES) Object.assign(SPECIES, mod);
+
+// Normalise every species to the unlock model (docs/GAMEPLAY.md):
+//   sp.unlocks = [{ kind: 'move'|'passive'|'ult', id, how, hint }]  (evaluated by src/data/progress.js)
+//   sp.passives = passive ids (legacy shape), sp.learn = [[level, id]] (level-based moves, legacy shape)
+for (const [id, sp] of Object.entries(SPECIES)) {
+  sp.id = id;
+  sp.moves = sp.moves || (sp.learn || []).map(([lv, mid]) => ({ id: mid, how: { level: lv }, hint: `Reach Lv.${lv}.` }));
+  const pu = (sp.passives || []).map((p, i) => (typeof p === 'string' ? { id: p, how: { level: 8 + i * 7 }, hint: `Reach Lv.${8 + i * 7}.` } : p));
+  sp.passives = pu.map((p) => p.id);
+  sp.learn = sp.moves.filter((m) => m.how && m.how.level).map((m) => [m.how.level, m.id]);
+  sp.unlocks = [
+    ...sp.moves.map((m) => Object.assign({ kind: 'move' }, m)),
+    ...pu.map((p) => Object.assign({ kind: 'passive' }, p)),
+    ...(sp.ult ? [{ kind: 'ult', id: sp.ult, how: sp.ultHow || { battle: { ev: 'bond_secs', n: 60 } }, hint: sp.ultHint || 'Stay bonded for 60 s in total.' }] : []),
+  ];
+  sp.evolve = sp.evolve || [];
+  sp.start = sp.start || [];
+}
+
 export const speciesOf = (id) => SPECIES[id];
 export const elemsOf = (sp) => (Array.isArray(sp.elem) ? sp.elem : [sp.elem]);
 export const primaryElem = (sp) => elemsOf(sp)[0];
-export const STARTERS = ['kindoru', 'takopo', 'mochika', 'clayki', 'komoriff'];
+export { STARTERS };

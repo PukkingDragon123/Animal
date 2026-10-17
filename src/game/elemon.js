@@ -1,7 +1,9 @@
-// Elemon instances (party members): stats, levels, EXP, skill loadout,
-// friendship, progress counters for evolution conditions.
+// Tokonmon instances (party members): stats, levels, EXP, skill loadout,
+// friendship, progress counters for evolution conditions, unlock progress
+// (mon.prog, src/data/progress.js), skill XP/levels, renamed skills.
 import { SPECIES } from '../data/species.js';
 import { SKILLS } from '../data/skills.js';
+import { ensureProg, checkUnlocks, skillLevels } from '../data/progress.js';
 
 export const STAT_KEYS = ['dmg', 'elm', 'def', 'spd', 'hp'];
 export const STAT_NAMES = { dmg: 'Damage', elm: 'Element', def: 'Defense', spd: 'Speed', hp: 'Health' };
@@ -29,7 +31,11 @@ export function createElemon(speciesId, opts = {}) {
     astral: [], hp: 1, friendship: opts.friendship ?? sp.bond ?? 70,
     counters: { wins: 0, battles: 0, precise: 0, healed: 0, blocked: 0, beats: 0, charged: 0, teamCombos: 0, dojo: 0, reactions: 0, foods: [], defeat: {} },
     cosmetic: { eye: null }, ot: opts.ot || null, caught: opts.caught || null, gift: opts.gift || null,
+    names: {}, skillXp: {}, prog: null, cracks: 0,
   };
+  ensureProg(mon);
+  // wild / NPC Tokonmon arrive with what their level would have taught them
+  if (opts.wild || opts.npc) checkUnlocksQuiet(mon, level);
   if (opts.wild) {
     // wild Elemon spread a few points
     const r = opts.rng || Math.random;
@@ -38,7 +44,25 @@ export function createElemon(speciesId, opts = {}) {
   return mon;
 }
 
+function checkUnlocksQuiet(mon, level) {
+  const sp = SPECIES[mon.species];
+  for (const u of sp.unlocks || []) {
+    if (u.kind === 'move' && u.how && u.how.level && u.how.level <= level && !mon.skills.known.includes(u.id)) { mon.skills.known.push(u.id); if (mon.skills.active.length < 4) mon.skills.active.push(u.id); }
+  }
+  if (level >= 18 && sp.ult && !mon.skills.ult) { mon.skills.ult = sp.ult; mon.skills.known.push(sp.ult); }
+  const ps = (sp.passives || []).slice(0, level >= 12 ? 2 : level >= 6 ? 1 : 0);
+  for (const id of ps) if (SKILLS[id] && !mon.skills.known.includes(id)) { mon.skills.known.push(id); mon.skills.passives.push(id); }
+}
+
 export function nameOf(mon) { return mon.nick || SPECIES[mon.species].name; }
+// the player can rename skills and ultimates
+export const skillNameOf = (mon, id) => (mon.names && mon.names[id]) || (SKILLS[id] ? SKILLS[id].name : id);
+export function renameSkill(mon, id, name) {
+  mon.names = mon.names || {};
+  const n = String(name || '').trim().slice(0, 24);
+  if (!n || n === (SKILLS[id] && SKILLS[id].name)) delete mon.names[id]; else mon.names[id] = n;
+  return skillNameOf(mon, id);
+}
 
 // Stats with level growth, allocation and Astral stat nodes.
 export function statsOf(mon, extra = null) {
@@ -64,6 +88,7 @@ export function battleSnapshot(mon, slots = { active: 4, ult: 1, passive: 2 }) {
     uid: mon.uid, species: mon.species, name: nameOf(mon), level: mon.level, stats, maxHp: mh,
     hp: Math.max(1, Math.round(mh * (mon.hp ?? 1))), skills: act, ult, passives, friendship: mon.friendship,
     spectral: mon.friendship >= SPECTRAL_FRIENDSHIP, elem: sp.elem, cosmetic: mon.cosmetic,
+    skillLv: skillLevels(mon), names: Object.assign({}, mon.names || {}), final: !(sp.evolve && sp.evolve.length), cracks: mon.cracks || 0,
   };
 }
 
@@ -76,16 +101,17 @@ export function gainExp(mon, amount) {
     mon.exp -= expToNext(mon.level);
     mon.level++;
     mon.sp += SP_PER_LEVEL; mon.ap += AP_PER_LEVEL;
-    const sp = SPECIES[mon.species];
-    const learnable = sp.learn.filter(([lv, id]) => lv <= mon.level && !mon.skills.known.includes(id)).map(([, id]) => id);
-    ups.push({ level: mon.level, sp: SP_PER_LEVEL, ap: AP_PER_LEVEL, learnable });
+    // level-based unlocks are granted one by one by the progress system
+    ups.push({ level: mon.level, sp: SP_PER_LEVEL, ap: AP_PER_LEVEL, learnable: [], unlocked: checkUnlocks(mon) });
   }
   return ups;
 }
 
+// Spend stat points on the radar stat chart; crossing a mark grants a passive.
 export function allocate(mon, stat, n = 1) {
   if (!STAT_KEYS.includes(stat) || mon.sp < n) return false;
   mon.sp -= n; mon.alloc[stat] += n;
+  mon.lastUnlocks = checkUnlocks(mon);
   return true;
 }
 
@@ -170,7 +196,10 @@ export function evolve(mon, to) {
   const from = mon.species;
   mon.species = to;
   const sp = SPECIES[to];
+  // the new form's signature moves go straight into the loadout; old moves are kept
   for (const id of sp.start) if (!mon.skills.known.includes(id)) mon.skills.known.push(id);
+  mon.skills.active = [...sp.start.filter((id) => SKILLS[id]), ...mon.skills.active.filter((id) => !sp.start.includes(id))].slice(0, 4);
   mon.hp = 1;
+  checkUnlocks(mon);
   return { from, to };
 }

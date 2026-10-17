@@ -4,18 +4,21 @@ import * as starters from './starters.js';
 import * as roster from './roster.js';
 import * as wild from './wild.js';
 import * as music from './music.js';
+import * as musicQueen from './music_queen.js';
 import * as humans from './chibi.js';
 import * as props from './props.js';
 import * as propsChuo from './props_chuo.js';
 import * as propsUmeda from './props_umeda.js';
 import * as propsShinsekai from './props_shinsekai.js';
+import * as propsMinoh from './props_minoh.js';
 import { ELEMENTS } from '../elements.js';
 import { SPECIES, elemsOf } from '../species.js';
 
-// later modules override earlier ones (wild ← roster ← music ← starters)
-export const CREATURE_DESIGNS = Object.assign({}, wild.DESIGNS || {}, roster.DESIGNS || {}, music.DESIGNS || {}, starters.DESIGNS || {});
-export const LORE = Object.assign({}, wild.LORE || {}, roster.LORE || {}, music.LORE || {}, starters.LORE || {});
-const propMods = [props, propsChuo, propsUmeda, propsShinsekai];
+// later modules override earlier ones (wild ← roster ← music ← music_queen ← starters)
+const creatureMods = [wild, roster, music, musicQueen, starters];
+export const CREATURE_DESIGNS = Object.assign({}, ...creatureMods.map((m) => m.DESIGNS || {}));
+export const LORE = Object.assign({}, ...creatureMods.map((m) => m.LORE || {}));
+const propMods = [props, propsChuo, propsUmeda, propsShinsekai, propsMinoh];
 export const PROPS = {
   DESIGNS: Object.assign({}, ...propMods.map((m) => m.DESIGNS || {})),
   PROP_META: Object.assign({}, ...propMods.map((m) => m.PROP_META || {})),

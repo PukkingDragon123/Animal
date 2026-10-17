@@ -23,7 +23,7 @@ import { hashStr } from '../core/rng.js';
 import { wait } from '../ui/dom.js';
 
 // rival takes the starter with type advantage (Hydro > Pyro > Bio > Geo > Echo > Hydro)
-const COUNTER = { kindoru: 'takopo', takopo: 'komoriff', mochika: 'kindoru', clayki: 'mochika', komoriff: 'clayki' };
+const COUNTER = { chilichick: 'bubblion', bubblion: 'strawbaa', strawbaa: 'chilichick' };
 const ELEM_TALK = {
   pyro: 'Pyro hits like a truck. Hold the charge button, then let it rip — just don\'t overheat.',
   hydro: 'Hydro is all about aim. Land a shot dead-centre and it crits. Bank shots off walls, too.',
@@ -31,7 +31,7 @@ const ELEM_TALK = {
   geo: 'Geo is a fortress. Walls, armour and the best parries in Osaka. Let them come to you.',
   echo: 'Echo rides the beat. Attack in rhythm with the music for bonus damage. Feel the groove!',
 };
-const BUDDY_CRY = { kindoru: 'Kin-kin! Doruuu!', takopo: 'Po! Takopo-po!', mochika: 'Mochi~! Mochii!', clayki: 'Kiki! Clay-kii!', komoriff: 'Riff-riff! ♪', beatlet: 'Beat-beat-let!' };
+const BUDDY_CRY = { chilichick: 'Chi-chi! *sniff* Chiliii!', bubblion: 'Blub! Bubbli-on~!', strawbaa: 'Baa~! Straw-baaa!', beatlet: 'Beat-beat-let!' };
 const TOWNSFOLK = [
   'Did you see the hover-tram this morning? Packed. Even the Elemon were standing.',
   'My grandma says Elemon showed up the year the bay glowed. Nobody really knows why.',
@@ -67,7 +67,7 @@ const LEAGUE_FOES = [
   { id: 'lg_tanaka', name: 'Mr. Tanaka', char: 'salaryman', team: [['mechanyan', 0], ['kappachi', -1]] },
   { id: 'lg_daichi', name: 'Sumo Kid Daichi', look: 23, team: [['kanizumo', 0]] },
   { id: 'lg_rei', name: 'Ghost Girl Rei', look: 41, team: [['chochobake', 1]] },
-  { id: 'lg_ken', name: 'Hiker Ken', look: 57, team: [['moglow', 0], ['pebblips', 0]] },
+  { id: 'lg_ken', name: 'Hiker Ken', look: 57, team: [['moglow', 0], ['rollingstone', 0]] },
   { id: 'lg_aya', name: 'Florist Aya', look: 63, team: [['cabbunny', 1], ['hotarumi', -1]] },
   { id: 'lg_jet', name: 'Skater Jet', look: 79, team: [['tengale', 0]] },
 ];
@@ -506,7 +506,7 @@ export class Story {
   }
   async rivalScene() {
     const d = this.d, s = this.s, w = this.w;
-    const cp = COUNTER[this.s.flags.starter] || 'takopo';
+    const cp = COUNTER[this.s.flags.starter] || 'bubblion';
     const ke = w.resolvePoint('kaito_enter');
     await d.scene(async () => {
       this.ensure('kaito', 'kaito', ke, 270);
@@ -1100,7 +1100,7 @@ export class Story {
       d.closeUp('kaito', { dist: 3, angle: 0.5, push: true });
       await d.say('kaito', 'Rookie C, huh. Fine. Let\'s settle it — the Rookie Cup spot goes to the winner.', { play: 'command' });
     }, { control: false });
-    const cp = COUNTER[this.s.flags.starter] || 'takopo';
+    const cp = COUNTER[this.s.flags.starter] || 'bubblion';
     const lv = this.game.avgLevel() + 1;
     const res = await this.game.trainerBattle({ arena: 'stage', foes: [{ id: 'kaito', name: 'Kaito', ai: 'hard', team: [[cp, lv + 1], ['tengale', lv]] }], partySize: 3, league: 60, money: 3000, canLose: true, title: 'RIVAL BATTLE!', subtitle: 'Rookie Cup qualifier final', music: 'boss', colors: ['#e8233a', '#ffd23a'] });
     const won = res && res.winner === 0;

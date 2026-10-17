@@ -17,7 +17,7 @@ function base(day, hour, map, x, z) {
   const s = S.newGame({ name: 'Rin' });
   s.player.look = null; s.player.preset = 'player_a';
   for (const f of [...STORY, ...DRIVER_DONE]) s.flags[f] = true;
-  s.flags.starter = 'kindoru';
+  s.flags.starter = 'chilichick';
   s.time = { day, hour };
   s.map = { id: map, x, z };
   s.story.beat = 'free';
@@ -31,8 +31,8 @@ function base(day, hour, map, x, z) {
   return s;
 }
 const scen = {
-  polaris() { const s = base(3, 20.2, 'minoh_waterfall', 31, 40); s.flags.fragments_given = true; s.bag.star_gem = 1; s.party = [mon('kindoru', 18), mon('beatlet', 15), mon('pebblips', 14)]; return s; },
-  rookiecup() { const s = base(5, 9, 'castle_park', 22, 40); s.league.points = 110; s.league.rank = 'C'; s.party = [mon('kindoru', 14), mon('beatlet', 12)]; return s; },
-  lemmo() { const s = base(3, 9, 'minoh_maple', 23, 40); s.party = [mon('beatlet', 12), mon('kindoru', 14)]; s.party[0].counters.defeat = { lemmo: 19, alpha_lemmo: 1 }; return s; },
+  polaris() { const s = base(3, 20.2, 'minoh_waterfall', 31, 40); s.flags.fragments_given = true; s.bag.star_gem = 1; s.party = [mon('chilichick', 18), mon('beatlet', 15), mon('pebblips', 14)]; return s; },
+  rookiecup() { const s = base(5, 9, 'castle_park', 22, 40); s.league.points = 110; s.league.rank = 'C'; s.party = [mon('chilichick', 14), mon('beatlet', 12)]; return s; },
+  lemmo() { const s = base(3, 9, 'minoh_maple', 23, 40); s.party = [mon('beatlet', 12), mon('chilichick', 14)]; s.party[0].counters.defeat = { lemmo: 19, alpha_lemmo: 1 }; return s; },
 };
 process.stdout.write(JSON.stringify(scen[process.argv[2]]()));
