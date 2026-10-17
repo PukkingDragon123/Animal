@@ -1,259 +1,136 @@
-# Why It Sucks To Be A…
+# ELEMON — Osaka 2050
 
-A **mobile-first, low-poly 3D top-down roguelike survival** game. You are born
-as a random animal and live its entire life — survive childhood, find food,
-dodge predators, grow up, reproduce, and (inevitably) die. Each run is a short,
-unique survival story; banking **DNA** unlocks new species with their own
-miserable struggles. Inspired by funny nature documentaries, Animal Crossing,
-and Alba.
+*Elemon is a creature-battle RPG in **3D pixel art**, set in a neon-soaked, futuristic Osaka.*
+Bond with an elemental partner through your soul-stone bracelet, fight real-time tactical battles,
+explore three districts and a safari reserve, stand up to the punks of Team Metallica, and climb the
+Kansai League.
 
-> *"Wow, life really sucks for this animal."*
-
-Built with **Three.js**, all art is **procedural geometry** (no textures, no
-image assets) and all audio is a **procedural Web Audio engine** — so the whole
-game is self-contained, tiny, and runs offline.
+Everything is generated in code: the voxel creatures, characters, props and city dioramas, the
+anime-style lighting and post-processing, the particles, and all music and sound effects. There are
+no image or audio assets and no build step.
 
 ## Play it
 
-It's a static site — no build step.
+It's a static site:
 
 ```bash
-npm start          # serves the repo root at http://localhost:8080
-# or:
-python3 -m http.server 8080
+npm start            # serves the repo at http://localhost:8080
+# or: python3 -m http.server 8080
 ```
 
-Or play it instantly from the branch (served via raw.githack.com, which sends
-the correct MIME types for ES modules):
+Or play it straight from the branch:
 
-**https://raw.githack.com/PukkingDragon123/Animal/claude/inspiring-wright-5xmrsu/index.html?v=11**
+**https://raw.githack.com/PukkingDragon123/Animal/claude/bold-bardeen-ojasju/index.html**
 
-Open the URL on a phone or desktop. (ES modules need a real server — opening
-`index.html` from `file://` won't work.)
+URL options:
 
-Add `?dev=1` to the URL for an FPS / entity-count overlay.
+| Option | Effect |
+|---|---|
+| `?q=high` / `medium` / `low` | Graphics quality. The default is `high` on desktop and `medium` on mobile; `low` turns off post-processing. |
+| `?dev` | FPS, draw-call and triangle overlay. |
+| `?auto=new` / `?auto=continue` | Skip the title screen. |
+| `?skipintro` | Skip the farm prologue. |
 
-## Controls
+### Controls
 
-| | Move | Sprint |
+| | Touch | Keyboard / mouse |
 |---|---|---|
-| **Touch** | drag the **left half** of the screen (virtual joystick) | hold **RUN** (right) · tap **⚔** to attack |
-| **Keyboard** | WASD / arrow keys | Shift to run · Space / J to attack |
-| **Gamepad** | left stick / d-pad | bumpers to run · A / X to attack |
+| Move | Tap the ground | WASD / arrows, or click |
+| Talk / interact | Tap a person or Elemon | Click, or **E** when close |
+| Camera | Pinch to zoom, two-finger twist, ⟲ button | Mouse wheel, **Q** / **R** to rotate |
+| Battle: move / target | Tap ground / tap enemy | Click |
+| Battle: attack | ATTACK button | **Space** |
+| Battle: skills | **Drag** a skill button to aim, tap to auto-aim, hold a charge skill | **1–4** (aims at the mouse) |
+| Battle: dodge | Swipe | **Shift** |
+| Battle: parry / grab / charge | Buttons | **E** / **Q** / hold CHG |
+| Ultimate · team combo · switch · spectral | Buttons | **F** · **T** · **Tab** · **X** |
 
-Keyboard is bound to **physical key codes**, so it works on any layout.
-**Attack** lets you bonk-and-stun predators (fight back!), lunge-kill prey as a
-hunter, or shake fruit from trees.
+## The opening chapter — *Episode 1: Soul Link*
 
-## Evolution: the mutation skill tree (Spore-style)
+1. **Prologue: Kishiwada farm at dawn.** Cows, pigs and chickens share the farm with farm Elemon (Cabbunny, Moglow). A fire wolf, **Kagarou**, bursts out of the treeline and the sky whale **Polaris** crosses the sunrise.
+2. **Character creator.** Choose your look; the soul-stone bracelet is always on your wrist.
+3. **Osaka Castle Park.** Your best friend Mika, Coach Gonda and the bracelet ceremony. Five starters wait on their pedestals: **Kindoru** (Pyro), **Takopo** (Hydro), **Mochika** (Bio), **Clayki** (Geo) and **Komoriff** (Echo).
+4. **Coach's tutorial battle**, then your rival **Kaito**, who takes the starter that beats yours. After each win you level up: allocate stat points, pick a reward card and learn new skills. Skill slots unlock as your bond grows.
+5. **Dotonbori ice cream** at Yellow Submarine Soft-Serve: an animated choice scene where each flavour gives a stat boost.
+6. **Team Metallica** shakes down the takoyaki stand. You borrow the kid Taro's **Beatlet** for a **3 v 3** with Mika and the coach. The tutorial covers switching, tag strikes, elemental reactions and team combos. Taro then gives you Beatlet.
+7. **Dinner** at Abbey Road Okonomiyaki (pick two moments), where you meet the archaeologist **Dr. Hoshino**, who tells the legends of Polaris and Solaris.
+8. **Night under the sakura**, bonding with your partner.
+9. **Day 2, Umeda.** Register for the Kansai League and receive your **Tamer License** and the **keychain capture device**. Then two rank matches, lunch at the Food Hall with the rival, and the afternoon is yours.
+10. **Free days.** League matches (three a day, with themed stages), the Minoh Safari, the dojo, the onsen, shops, the arcade, side quests and random street events. The deadline: reach **Rookie C** before the **Rookie Cup qualifier on Day 5**.
 
-Every run earns **genes** and **EXP**. EXP levels up your gene pool; genes are
-spent in the **Evolution Lab** — a **mutation skill tree** with prerequisites.
-Many nodes don't just buff stats, they **physically mutate your 3D model**:
-Big Ears, Spikes, Horns, Fangs, Bioglow and Giant all change how the creature
-looks (visible live in the lab's 3D preview, on the character card, and in the
-run). Upgrades stack on each run's random mutation, so a species gets stronger
-and weirder the more you play it. Reach the lab from the menu, the character
-card, or the death screen.
+## Systems
 
-The world is also full of **ambient critters** — squirrels, ravens, butterflies
-and frogs that wander and scatter as you pass — and predators are deliberately
-forgiving (small aggro range, give up quickly, mostly ignore babies).
+- **Real-time tactical battles** on a deterministic 30 Hz simulation:
+  - **Inputs:** tap-to-move, targeting, skillshots you aim by dragging (with bullet-time), dodges with perfect-dodge windows, and parries with perfect-parry reflects.
+  - **Combo chains:** grab → parry → attack is a *Reversal Suplex*; charge → attack is an *Elemental Strike*; switch → attack is a *Tag Strike*.
+  - **Big moves:** ultimates with QTEs, team combos with your allies, and **Spectral form** at max friendship.
+  - **Elements:** auras and **elemental reactions** (Hydro + Pyro = **Steam Explosion**, Bio + Hydro = Bloom, Hydro + Volto = Electro-Charged, and more).
+  - **Arenas:** battles happen right on the map, and props around the arena can be destroyed.
+  - **Element roles:**
 
-## The loop
+    | Element | Role |
+    |---|---|
+    | Pyro | Raw power, charging and heat |
+    | Hydro | Precision: centre-hit crits, ricochets, traps |
+    | Bio | Healing, poison, sleep |
+    | Geo | Walls, armour, the best parries |
+    | Echo | Rhythm: on-beat bonus, knockback |
+    | Volto, Cryo, Aero, Ecto, Ferro, Astro, Nucleo | Further elements |
 
-Each run is **one complete animal life**, structured by a list of **life goals**
-— the quest you must complete before your time runs out (shown as a live
-checklist on the HUD).
+- **Growth:**
+  - **Stats:** five upgradeable stats (Damage, Element, Defense, Speed, Health), with 3 stat points and 1 Astral point per level.
+  - **Astral tree:** a constellation skill tree that unlocks moves, passives and ultimates.
+  - **Loadout:** up to **4 active skills, 1 ultimate and 2 passives**, with slots unlocked through the story.
+  - **Rewards:** level-up reward cards, mixtapes that teach skills, and **dojo auto-training**, which is slow but works overnight.
+- **Evolutions with conditions.** The Beatles-inspired **Beatlet** branches four ways:
+  - **Lenshorn:** defeat 20 Lemmo and the Alpha Lemmo.
+  - **McCarapace:** deep friendship by the Dotonbori canal.
+  - **Harrisun:** meditate at the dojo, then wait for sunrise.
+  - **Starrab:** 25 team combos.
 
-1. Spawn as a chosen species with random **mutations** (a fresh build every run).
-2. Work through your **life goals** — hatch, take flight, forage, swim upstream,
-   find a mate… every goal completed pays out **live EXP** right then and there.
-3. **Reproduce** — and live a real **family moment**: lay your eggs in the sand,
-   mate in the dusk swarm, feed the colony, spawn over the gravel, or fuse to the
-   female forever. Then **see your newborns** trail behind you.
-4. **Die** (of old age, or — for a mayfly or salmon — *spent*, right after
-   breeding). Bank **DNA + EXP**, and complete **quests** to unlock the next life.
+  The starters evolve twice each. **Pebblips** (a Rolling Stone) is never satisfied until it has eaten 8 foods.
+- **Minoh Safari Reserve:** three linked trails (Waterfall, Bamboo, Maple Ridge).
+  - **Stealth:** sneak through tall grass and ambush from behind for easier captures.
+  - **Spawns:** some species only appear at certain hours; some are aggressive or hard to bond with.
+  - **Capture:** a keychain device powered by **gems** (Quartz up to Diamond, plus elemental gems).
+  - **Hazards:** untameable Rift Boars and Oni Bears that charge you.
+  - **Extras:** hidden star fragments and the Alpha Lemmo boss.
+- **Legends:** bring three star fragments to Dr. Hoshino for a **Star Gem**, then visit the Minoh falls on a clear night to meet **Polaris**. Solaris and the rift-born **Atomic** are foreshadowed.
+- **Time:**
+  - **Days:** morning, lunch, afternoon, evening and night slots; activities cost time, the clock runs during free roam, and you sleep to start a new day.
+  - **Planning:** deadlines, branching dialogue and random events with choice scenes.
+- **World:** five unlockable areas across three towns (Chuo, Namba, Umeda) plus Shinsekai and Minoh. Travel with the world map.
+- **Style:**
+  - **Bracelet & soul stone:** watches, earrings, hair clips, badges, grillz and soul-stone shapes.
+  - **Ecto Elemon:** special eyeballs.
+  - **Where to get them:** the Grillz & Thrillz shop and the arcade crane game.
+- **Team Metallica** (Thrash, Riff and Moshi) and lots of band references: Abbey Road Okonomiyaki, Smells Like Teen Spirit Arcade, the Ride the Lightning pachinko parlour…
 
-Doing things — eating, killing a predator, hitting a life goal, delivering
-nectar, mating — all feed **EXP** into your gene pool, so an active life levels
-you up faster than a passive one. Leave young behind and you can **continue as
-your offspring** (a growing dynasty across generations).
+## Tech
 
-## Mini-games & quick-time events
+| Layer | Files |
+|---|---|
+| Voxel modelling: SDF shape DSL → shared lattice, AO, colour jitter, glow voxels, pixel-art eye/mouth decals with expressions | `src/gfx/voxel.js`, `src/gfx/model.js` |
+| Procedural animation: archetypes (biped/quad/serpent/bird/…), actions, modes, blinking, lip flap, quirks | `src/gfx/anim.js` |
+| Anime toon shading (rim, flash, dissolve, spectral holo, occlusion fade) and HDR post (bloom, depth outlines, tilt-shift, ACES, grading, speed lines, letterbox) | `src/gfx/materials.js`, `src/gfx/post.js` |
+| Sky & time of day, pooled point lights, particles, VFX, cinematic camera | `src/gfx/sky.js`, `renderer.js`, `particles.js`, `vfx.js` |
+| Diorama environments from map data: tiles, buildings with facades and neon signs, instanced props with GPU wind sway, water | `src/gfx/env.js`, `textures.js`, `src/world/maps/*.js` |
+| Overworld: A* tap-to-move, followers, NPCs, triggers, safari stealth & capture | `src/world/*.js` |
+| Battle simulation + AI + presentation/HUD | `src/battle/sim.js`, `ai.js`, `scene.js`, `src/ui/battlehud.js`, `qte.js` |
+| Game state, progression, saves (`localStorage`) | `src/game/*.js` |
+| Story & cutscene director | `src/story/chapter1.js`, `src/game/director.js` |
+| Content: species, skills, elements, items, cosmetics, quests, events, designs | `src/data/**` |
+| Procedural audio: SFX, voice babble, 13 music tracks, stingers, ambiences | `src/audio/*.js` |
 
-Key moments become little skill tests instead of passive waiting:
+Design guides: [`docs/MODELING.md`](docs/MODELING.md) (voxel creature/prop DSL) and [`docs/MAPS.md`](docs/MAPS.md) (map format).
 
-- **Dig out** (Sea Turtle): the life opens with a **mash** QTE — tap to claw out
-  of the buried nest before you can scramble for the sea.
-- **Leap the rapid** (Salmon): the upstream run is a string of **timing** QTEs —
-  tap when the marker sweeps through the green zone to clear a rapid (and gain
-  ground + EXP); mistime it and the current sweeps you back down.
-
-The QTE engine lives in the deterministic sim (so it's testable) and the
-overlay doubles as a big tap target on mobile.
-
-## Presentation
-
-- **Rotating low-poly Earth** spins on the main menu, and each species' **real
-  habitat** is shown on its select card and birth screen (researched: the
-  turtle's tropical nesting beaches, the salmon's North-Pacific rivers, the
-  anglerfish's bathypelagic "midnight zone", …).
-- **Filmic shading** — ACES tone mapping + exposure and soft **contact shadows**
-  under animals ground the scene and lift it out of the flat-shaded look.
-- **Translucent rippling water** — aquatic levels (turtle, salmon, anglerfish)
-  get an animated water surface (overhead light when you're deep, a flowing
-  river skin when you're shallow).
-- **More true-to-life low-poly models** — the leatherback turtle (flat ridged
-  carapace + wing-like front flippers), the sockeye salmon (hooked spawning
-  "kype", dorsal + adipose fins), a fuzzier pollen-laden honey bee, and a proper
-  herring-gull predator (grey mantle, black wingtips, red-spot bill).
-- A more **serious, natural-history UI**: cinematic deep-teal screen backdrop,
-  refined accents, and habitat/region framing.
-
-## Character select & unlocks
-
-A Slay-the-Spire-style carousel with a live spinning 3D preview of each animal,
-its diet and stat bars (Speed / Size / Longevity), habitat, and signature ability.
-The five lives unlock in a chain (shown on each locked card):
-
-*Reach the sea as a hatchling Turtle* → **Mayfly** · *Mate as a Mayfly* →
-**Honey Bee** · *Save the colony as a Bee* → **Salmon** · *Spawn upstream as a
-Salmon* → **Anglerfish**.
-
-## Five real species — five completely different lives
-
-Every animal is a **specific, real species** (scientific name, IUCN status, and
-true biology shown on its card and birth screen), and each plays nothing like the
-others:
-
-| # | Species | Latin | The life | Why it sucks |
-|---|---|---|---|---|
-| 1 | **Sea Turtle Hatchling** (start) | *Dermochelys coriacea* | Dig out, then **sprint down a predator-lined beach to the surf**, grow in the open ocean | ~1 in 1,000 hatchlings survives the crawl |
-| 2 | **Mayfly** | *Ephemera danica* | **No mouth, a life of minutes** — take flight, mature, find the swarm and mate before the clock empties | adults can’t eat; they die within hours of breeding |
-| 3 | **Worker Honey Bee** | *Apis mellifera* | A **working life**: sip nectar, carry it home, **feed the hive**, repeat until you drop | a summer worker lives 4–8 weeks, then works itself to death |
-| 4 | **Pacific Salmon** | *Oncorhynchus nerka* | The **great migration** — fight the current **upstream**, dodge the bears, spawn once | semelparous: you spawn, then die |
-| 5 | **Male Anglerfish** | *Ceratias holboelli* | **Alone in the black**, navigate by your glowing lure to find the giant female — and **fuse to her forever** | the male loses his eyes and organs, becoming a lifelong attachment |
-
-## Handcrafted, bounded maps (no more procedural wandering)
-
-Each species now plays in a **designed, bounded arena** — not an endless
-procedurally-streamed field. Every map hand-places the things that make the run:
-your **start**, your life's **goal**, **predator posts**, **hazard zones** to
-weave through (ghost-crab pits on the turtle's beach, a snapping fish in the
-mayfly's river, wasps in the bee's meadow, rapids rocks on the salmon's climb),
-and signature **landmark scenery**. A soft wall keeps you inside the space, so
-the run is a designed *course* with a real finish rather than aimless roaming.
-
-**Bite** (the ⚔ button / Space) is a chunky **AoE chomp**: a faint **circular
-bite-area ring** sits under you, and a tap fires a forward **lunge + shockwave**
-that eats *everything edible in the circle* at once, knocks back predators, and
-feeds the **score + combo** meter (★ popups on the HUD).
-
-## A living ecosystem
-
-- **Day/night cycle** — the sun arcs overhead, light/fog shift to dusk and a
-  moonlit night, and the world calms down after dark (a 🌙/☀️ clock shows the
-  time). Penguins lose warmth faster at night.
-- **Freeze to hide** — predators detect you by movement: sprint and you're easy
-  to spot; **hold still and they lose you**. (They also mostly ignore tiny babies.)
-- **Emergent food web** — ambient critters flee not just you but nearby
-  predators, who actually catch them — so the world hunts itself, not only you.
-
-## Dynasty: keep the bloodline going
-
-Death isn't the end of the run — it's a hand-off. Once you've left **offspring**
-behind, the death screen offers **"Continue as your young"**: you respawn as one
-of your newborns (**Generation N+1**), inheriting your evolved look with a fresh
-roll of mutations and a small **bloodline bonus** that toughens the line each
-generation. Your **dynasty score** accumulates across the whole lineage — *see
-how long you can keep it going.* Newborns also **trail you in a little conga
-line** so you can watch your young grow.
-
-## Interactions, gimmicks & survival tricks
-
-- **Win a mate** — wild mates behave like you and have to be impressed. Get close
-  while well-fed to woo them, or tap **⚔ near a mate to offer a gift** and fill
-  their heart faster. Reproduction is **gated on courtship**, then plays a brief
-  **mating animation** (bouncing pair + floating hearts) before the birth.
-- **Burrow home** — tap **⚔ at a burrow to dive underground** into a safe den
-  that **heals you** while predators lose your trail; any movement pops you back
-  out.
-- **Mud wallows** — roll through a **mud puddle to mask your scent**, so
-  predators can barely smell you for a few seconds (scent feeds their detection
-  alongside movement and daylight).
-- **Killable predators** — the AoE bite now **damages enemies and can kill them**
-  outright (with a gory finish and a kill score), so you can finally fight back
-  and *become* the apex.
-- **Unexpected ambushes** — every so often a predator **streams in already
-  hunting**, so the endless world keeps you honest.
-- **Attack is contextual** — the same **⚔** dives into burrows, offers mating
-  gifts, shakes fruit trees, lunges at prey, and bites predators depending on
-  what's in range.
-
-## HUD: Minecraft-style vitals
-
-The in-play overlay reads at a glance, console-game style: a row of **❤️ hearts**
-for health and a row of **🍗 drumsticks** for food (each ticking off as you take
-damage or get hungry), plus a **stamina** bar for sprinting and a **warmth** bar
-for cold biomes. **Enemies show their own health bars** above their heads
-(camera-facing, color-shifting green→red) once they're wounded or hunting, and a
-**⚭ Gen** chip shows your current dynasty generation.
-
-## Project layout
-
-```
-index.html            # entry: canvas + mobile-first HUD/menus + CSS
-logic.js              # platform rules-module stub (solo game)
-favicon.svg
-vendor/three.module.js
-src/
-    config.js         # frozen agency metrics + balance (data only)
-    rng.js            # seeded deterministic RNG (mulberry32)
-    sim.js            # PURE simulation core — no Three.js, Node-testable
-    species.js mutations.js biomes.js   # content
-    meshes.js         # procedural low-poly creatures (animated parts)
-    props.js          # instanced food + biome props (one draw call/type)
-    world.js          # static biome environment (ground/sky/props)
-    animator.js       # per-gait procedural animation (hop/waddle/swim…)
-    fx.js             # pooled particle FX (one InstancedMesh)
-    render.js         # Three.js scene/camera/lights + state→mesh sync
-    input.js          # touch joystick + keyboard + gamepad
-    audio.js          # procedural Web Audio SFX + cozy music loop
-    hud.js            # HUD + menus
-    game.js           # orchestrator / state machine (entry)
-design/               # GDD, asset manifest, frozen thresholds
-tests/                # headless tests (no WebGL needed)
-```
-
-Logic is fully separated from rendering: `sim.js` is deterministic
-(fixed-timestep + seeded RNG) and has zero rendering dependencies.
-
-## Tests
+## Development
 
 ```bash
-npm test
+npm test             # battle sim + progression + content integrity (~2000 checks)
+node tools/play.mjs out 600 "auto=new&q=low&renderEvery=1500"   # headless auto-play with screenshots
 ```
 
-- `tests/sim.test.js` — simulation: stages, eating, reproduction, death,
-  determinism, every species boots.
-- `tests/features.test.js` — systems: interactables, nest building, quests,
-  combat/killable predators, courtship-gated mating, dynasty lineage, mud
-  scent-masking, burrow denning, AoE bite, infinite-world streaming.
-- `tests/build.test.js` — every creature/food/prop/biome builds and animates
-  without NaNs (runs Three.js geometry in Node — no GL context needed).
-- `tests/dom.test.js` — menus, screens, button wiring, the Minecraft-style
-  vitals HUD and input command object (jsdom).
-
-## Performance
-
-Targets low-end mobile: instanced ground props and particles (one draw call
-each), capped device-pixel-ratio, low-poly meshes (~700 tris/creature), no
-per-frame allocations in the sim loop, shadows scaled down / off on mobile.
-
-## Credits / assets note
-
-The art is procedural geometry and the audio is synthesized at runtime, so the
-game needs no external asset pipeline. Optional AI-generated marketplace cover
-art and a one-click shareable play URL (via the Higgsfield deploy pipeline)
-require workspace credits, which were unavailable at build time.
+Dev pages: `tools/viewer.html` (models), `tools/design.html` (creature design sheets), `tools/maptest.html?map=...`
+(map dioramas), `tools/gfxtest.html`, `tools/audio.html` (music & SFX browser).
+`tools/scenarios/make.mjs` builds save files for jumping to specific points (`SAVE=file node tools/play.mjs …`).

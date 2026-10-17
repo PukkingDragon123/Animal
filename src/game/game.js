@@ -45,6 +45,10 @@ export class Game {
     for (const t of [...(o.allies || []), ...(o.foes || [])]) { const a = t.actor ? (typeof t.actor === 'string' ? w.actor(t.actor) : t.actor) : w.actor(t.id); if (a) trainerActors[t.id] = a; }
     const hide = [w.actor('buddy')].filter(Boolean);
     for (const t of [...(o.allies || []), ...(o.foes || [])]) if (t.hideActor) { const a = w.actor(t.hideActor); if (a) hide.push(a); }
+    // other wild Elemon / beasts near the arena step out of the way
+    for (const [, r] of w.actors) if ((r.kind === 'wild' || r.kind === 'beast') && r.actor.visible && !hide.includes(r.actor) && Math.hypot(r.actor.pos.x - A.x, r.actor.pos.z - A.z) < A.r + 5) hide.push(r.actor);
+    // companion Elemon wandering with the player step aside during battles
+    for (const id of w.followers) { const r = w.rec(id); if (r && r.npc && r.npc.species && !hide.includes(r.actor)) hide.push(r.actor); }
     this.app.hud.show(false);
     w.enableControl(false);
     const res = await this.app.battle.start({
@@ -92,6 +96,27 @@ export class Game {
     if (opts.actor) opts.actor.setVisible(true);
     return res;
   }
+  // Legendary encounter: boss-scaled HP; only a Star Gem resonates strongly
+  // enough to capture it (and it is only spent on a successful capture).
+  async legendBattle(species, level, opts = {}) {
+    const w = this.app.world;
+    const pl = w.actor('player');
+    const A = opts.arena || { x: pl.pos.x, z: pl.pos.z, r: 8 };
+    if (opts.actor) opts.actor.setVisible(false);
+    const snap = this.npcSnap(species, level);
+    snap.maxHp = Math.round(snap.maxHp * 2.2); snap.hp = snap.maxHp;
+    const hasStar = S.hasItem(this.s, 'star_gem');
+    const gems = { get id() { return hasStar ? 'star_gem' : null; }, mul: () => gemMultiplier('star_gem', elemsOf(SPECIES[species])), consume: () => {} };
+    const res = await this.trainerBattle({
+      arena: A, foes: [{ id: 'legend', name: SPECIES[species].name, ai: 'boss', snaps: [snap] }],
+      rules: { wild: true, capture: hasStar, flee: true }, title: `${SPECIES[species].name}!`,
+      subtitle: hasStar ? 'The Star Gem resonates… weaken it, then throw!' : 'A living legend. Without a Star Gem you can only hold your ground.',
+      music: 'boss', colors: ['#ffd98a', '#3a2a8a'], gems, wild: true, expMul: 1.5,
+    });
+    if (res && res.reason === 'capture') S.addItem(this.s, 'star_gem', -1);
+    else if (opts.actor) opts.actor.setVisible(true);
+    return res;
+  }
   pickGem() { const order = ['diamond', 'amethyst', 'ruby', 'sapphire', 'emerald', 'topaz', 'opal', 'quartz']; return order.find((g) => this.s.bag[g] > 0) || null; }
   avgLevel() { const p = this.s.party; return p.length ? Math.round(p.reduce((a, m) => a + m.level, 0) / p.length) : 5; }
 
@@ -126,6 +151,7 @@ export class Game {
       mon.skills.active = mon.skills.known.filter((id) => SKILLS[id].kind === 'active').slice(0, 4);
       const where = S.addElemon(s, mon);
       s.stats.captures++;
+      if (c.species === 'pebblips') this.startQuest('satisfaction');
       this.app.ui.toast(`${SPECIES[c.species].name} joined your ${where === 'party' ? 'team' : 'Elemon Box'}!`, 'gold', 3200);
       if (SPECIES[c.species].bond < 40) this.app.ui.toast(`${SPECIES[c.species].name} doesn't trust you yet… (low friendship: it may ignore commands)`, '', 4200);
     }

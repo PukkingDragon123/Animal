@@ -354,7 +354,7 @@ function withSway(m, sw, baseKey) {
 }
 const _pm = new THREE.Matrix4(), _pv = new THREE.Vector3();
 
-function buildProps(def, g, extra, env) {
+function buildProps(def, g, extra, env, propShadows = true) {
   const group = new THREE.Group();
   const lib = PROP_LIB || { DESIGNS: {}, PROP_META: {} };
   const list = [...(def.props || []), ...extra];
@@ -372,7 +372,9 @@ function buildProps(def, g, extra, env) {
     // everything else is instanced per part, with sway done on the GPU
     const animated = tpl.parts.some((p) => p.spin);
     // small, non-solid ground cover (grass, crops, reeds, flowers) skips the shadow pass
-    const castsShadow = meta.solid !== false || meta.footprint[0] * meta.footprint[1] > 1.6;
+    // (lower quality: only tall props like trees and lamps cast)
+    const tall = (tpl.bounds && !tpl.bounds.isEmpty() ? tpl.bounds.max.y : 1) > 2.4;
+    const castsShadow = (meta.solid !== false || meta.footprint[0] * meta.footprint[1] > 1.6) && (propShadows || tall);
     let inst = null;
     if (!animated) {
       inst = { parts: [] };
@@ -456,7 +458,7 @@ export function buildEnvironment(def, g, opts = {}) {
   const signGroup = new THREE.Group();
   env.signs = buildSigns(bres.signs, signGroup, env.lights);
   env.group.add(signGroup);
-  env.propGroup = buildProps(def, g, bres.rooftop, env);
+  env.propGroup = buildProps(def, g, bres.rooftop, env, opts.propShadows !== false);
   env.group.add(env.propGroup);
   for (const l of def.lights || []) env.lights.push({ pos: l.pos, color: new THREE.Color(l.color || '#ffd890'), intensity: l.intensity ?? 4, range: l.range ?? 7, night: l.night !== false });
   return env;

@@ -22,6 +22,9 @@ const page = await browser.newPage({ viewport: { width: +W, height: +H } });
 const logs = [];
 page.on('console', (m) => { if (m.type() === 'error' || m.type() === 'warning') logs.push(`[${m.type()}] ${m.text()}`); });
 page.on('pageerror', (e) => logs.push(`[pageerror] ${e.message}\n${e.stack}`));
+// scenario: inject a save file and continue from it (see tools/scenarios/make.mjs)
+if (process.env.SAVE) { const save = fs.readFileSync(process.env.SAVE, 'utf8'); await page.addInitScript((sv) => { try { localStorage.setItem('elemon.save.v1', sv); } catch (e) { /* ignore */ } }, save); }
+if (process.env.NOENGAGE) await page.addInitScript(() => { window.__noEngage = true; });
 await page.goto(`http://localhost:${server.address().port}/index.html?${query}`);
 
 let n = 0;
@@ -81,6 +84,9 @@ while ((Date.now() - t0) / 1000 < +secs) {
       const keys = ['Space', 'Space', 'Digit1', 'Space', 'Digit2', 'KeyE', 'Space', 'KeyT', 'Digit3', 'KeyF'];
       await page.keyboard.press(keys[Math.floor(Math.random() * keys.length)]);
     }
+    // capturable and weak → throw the keychain
+    const cap = await page.evaluate(() => { const st = window.__app.battle.st; if (!st || !st.rules.capture || st.qte) return false; const f = st.units.find((u) => u.side === 1 && u.onField && u.state !== 'faint'); return !!f && f.hp / f.maxHp < 0.35; }).catch(() => false);
+    if (cap) { await page.keyboard.press('KeyC'); console.log('   driver: capture throw'); }
     // QTE: tap the centre a few times
     const qte = await page.$('#qte *');
     if (qte) { await page.mouse.click(+W / 2, +H / 2); await page.keyboard.press('Space'); }
@@ -111,7 +117,7 @@ while ((Date.now() - t0) / 1000 < +secs) {
     const sig = JSON.stringify([st.pos, st.flags, st.map]);
     stuck = sig === lastSig ? stuck + 1 : 0; lastSig = sig;
     const goal = await page.evaluate(() => {
-      const app = window.__app, F = (k) => !!app.state.flags[k], w = app.world, m = w.mapId;
+      const app = window.__app, F = (k) => !!app.state.flags[k], w = app.world, m = w.mapId, s = app.state;
       const go = (pt, r = 1) => { const p = w.resolvePoint(pt); if (p) w.walkTo('player', p[0] + (Math.random() - 0.5) * r, p[1] + (Math.random() - 0.5) * r); return 'walk ' + pt; };
       if (m === 'castle_park' && !F('met_coach')) return go('coach');
       if (m === 'castle_park' && F('fought_kaito') && !F('icecream')) { app.travel('dotonbori'); return 'travel dotonbori'; }
@@ -122,7 +128,9 @@ while ((Date.now() - t0) / 1000 < +secs) {
       if (F('free_time') && m === 'shinsekai' && !F('pt_onsen')) { app.state.flags.pt_onsen = 1; const r = w.rec('onsen_staff'); if (r) { w.interact(r); return 'onsen'; } }
       if (F('free_time') && !F('pt_minoh')) { app.state.flags.pt_minoh = 1; app.travel('minoh_maple'); return 'travel minoh'; }
       if (F('free_time') && m === 'minoh_maple' && !F('pt_ranger')) { app.state.flags.pt_ranger = 1; const r = w.rec('ranger'); if (r) { w.interact(r); return 'ranger'; } }
-      if (F('free_time') && m && m.startsWith('minoh') && w.safari) {
+      if (F('free_time') && s.league.points >= 100 && !F('rookie_cup') && s.time.day >= 5 && m !== 'umeda') { app.travel('umeda'); return 'travel umeda (cup)'; }
+      if (F('free_time') && !F('pt_menu')) { app.state.flags.pt_menu = 1; return 'menu'; }
+      if (F('free_time') && m && m.startsWith('minoh') && w.safari && !window.__noEngage) {
         const wild = w.safari.wild.find((x) => !x.wild.boss);
         if (wild) { app.state.flags.pt_wild = (app.state.flags.pt_wild || 0) + 1; w.safari.engage(wild); return 'engage ' + wild.wild.species; }
       }
@@ -131,6 +139,16 @@ while ((Date.now() - t0) / 1000 < +secs) {
       return 'idle';
     });
     if (goal !== 'idle' && !goal.startsWith('walk')) console.log('   driver:', goal);
+    if (goal === 'menu') {
+      // tour the pause menu tabs
+      await page.evaluate(() => { window.__app.openMenu('team'); }); await page.waitForTimeout(800); await shot('menu_team');
+      await page.evaluate(() => { const a = window.__app; a.screens.menu('mon', a.state.party[0].uid); }); await page.waitForTimeout(900); await shot('menu_mon');
+      for (const sub of ['Skills', 'Astral']) { const b = page.locator('#modal button', { hasText: sub }).first(); if (await b.count()) { await b.click({ force: true }).catch(() => {}); await page.waitForTimeout(700); await shot('menu_mon_' + sub.toLowerCase()); } }
+      for (const tab of ['bag', 'quests', 'style', 'dex']) { await page.evaluate((t) => { window.__app.screens.menu(t); }, tab); await page.waitForTimeout(700); await shot('menu_' + tab); }
+      await page.evaluate(() => { window.__app.screens.worldMap(); }); await page.waitForTimeout(700); await shot('worldmap');
+      await click('#modal .sheet-head .iconbtn'); await page.waitForTimeout(300);
+      await page.evaluate(() => { const a = window.__app; a.screens.close(); a.onMenuClosed(); });
+    }
     if (stuck > 30) { console.log('   driver: stuck at', st.pos, st.obj); await shot('stuck'); stuck = 0; }
     await page.waitForTimeout(goal.startsWith('walk') ? 1500 : 800);
     continue;

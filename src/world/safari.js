@@ -17,6 +17,7 @@ export class Safari {
     this.detect = 0;
     this.hud = null;
     this.engaging = false;
+    this.grace = 10;   // seconds after arriving before beasts hunt the player
   }
   inGrass(x, z) { for (const [gx, gz, gw, gh] of this.cfg.grass || []) if (x >= gx && x <= gx + gw && z >= gz && z <= gz + gh) return true; return false; }
   populate() {
@@ -29,8 +30,12 @@ export class Safari {
     }
     for (const b of this.cfg.beasts || []) {
       if (this.app.state.flags['repelled_' + this.w.mapId + '_' + b.species]) continue;
-      const p = b.path[0];
-      const rec = this.w.addActor('beast' + this.n++, creatureDesign(b.species), p[0], p[1], 0, { kind: 'beast', key: b.species, speed: b.speed || 2.2, rec: { beast: { def: b, i: 0, state: 'patrol', cool: 0, species: b.species } } });
+      // start on the path node farthest from where the player arrives
+      const pl = this.w.actor('player');
+      let i0 = 0, best = -1;
+      b.path.forEach((q, i) => { const d = pl ? Math.hypot(q[0] - pl.pos.x, q[1] - pl.pos.z) : 0; if (d > best) { best = d; i0 = i; } });
+      const p = b.path[i0];
+      const rec = this.w.addActor('beast' + this.n++, creatureDesign(b.species), p[0], p[1], 0, { kind: 'beast', key: b.species, speed: b.speed || 2.2, rec: { beast: { def: b, i: i0, state: 'patrol', cool: 0, species: b.species } } });
       this.beasts.push(rec);
     }
     if (this.cfg.boss && !this.app.state.flags['boss_' + this.w.mapId]) {
@@ -70,6 +75,7 @@ export class Safari {
   }
   update(dt) {
     const w = this.w, pl = w.rec('player');
+    this.grace = Math.max(0, this.grace - dt);
     if (!pl || this.engaging) return;
     const p = pl.actor.pos;
     const moving = !!pl.path || pl.kbd;
@@ -122,7 +128,7 @@ export class Safari {
       const B = r.beast, a = r.actor;
       const dx = p.x - a.pos.x, dz = p.z - a.pos.z, d = Math.hypot(dx, dz);
       B.cool = Math.max(0, B.cool - dt);
-      const sees = d < (sneaking ? 4.5 : 8.5) * (grass ? 0.6 : 1) && B.cool <= 0;
+      const sees = d < (sneaking ? 4.5 : 8.5) * (grass ? 0.6 : 1) && B.cool <= 0 && this.grace <= 0;
       if (B.state === 'patrol') {
         if (sees) { B.state = 'chase'; a.play('roar'); a.emote('anger'); this.app.audio.sfx('beast_roar'); this.app.ui.toast(`⚠️ A wild ${SPECIES[B.species].name} is charging!`, 'gold'); this.app.gfx.rig.shake(0.3); }
         else if (!r.path) { B.i = (B.i + 1) % B.def.path.length; const [tx, tz] = B.def.path[B.i]; const path = findPath(w.grid, a.pos.x, a.pos.z, tx, tz); r.path = path || null; r.speed = B.def.speed || 2.2; }

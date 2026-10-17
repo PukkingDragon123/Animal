@@ -282,8 +282,8 @@ export class BattleScene {
   }
   capture() {
     if (!this.st.rules.capture) return;
-    const gems = this.spec.gems ? this.spec.gems() : null;
-    if (!gems) { this.ui.toast('No gems for the keychain!'); return; }
+    const gems = typeof this.spec.gems === 'function' ? this.spec.gems() : this.spec.gems;
+    if (!gems || !gems.id) { this.ui.toast('No gems for the keychain! Buy some at a goods shop.'); this.audio.sfx('ui_error'); return; }
     const foe = this.st.units.find((u) => u.side === 1 && u.onField && u.state !== 'faint');
     if (!foe) return;
     const mul = gems.mul(foe);

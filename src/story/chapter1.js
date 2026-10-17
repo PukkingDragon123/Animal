@@ -72,6 +72,12 @@ const LEAGUE_FOES = [
   { id: 'lg_jet', name: 'Skater Jet', look: 79, team: [['tengale', 0]] },
 ];
 
+// League stage themes: the arena changes daily and boosts one element
+const STAGES = [
+  { name: 'Classic Stage', boost: null }, { name: 'Volcano Grid', boost: 'pyro' }, { name: 'Rain Stage', boost: 'hydro' },
+  { name: 'Greenhouse Dome', boost: 'bio' }, { name: 'Canyon Court', boost: 'geo' }, { name: 'Neon Arena', boost: 'echo' }, { name: 'Thunder Dome', boost: 'volto' },
+];
+
 export class Story {
   constructor(app) { this.app = app; this.locked = false; }
   get s() { return this.app.state; }
@@ -250,15 +256,15 @@ export class Story {
     await wait(600);
     d.play('kagarou', 'sniff');
     await wait(900);
-    const sky = d.spawn('polaris', { species: 'polaris' }, [WS[0] - 40, WS[1] - 30], 60, { label: false, kind: 'cine', scale: 3.2 });
-    sky.actor.pos.y = 22; sky.actor.mode('float');
-    d.shot({ from: [WS[0] + 6, 1.4, WS[1] + 6], look: [WS[0], 3, WS[1]], lookTo: [WS[0] - 4, 16, WS[1] - 10], dur: 3.5, fov: 40, fov1: 46, wait: false });
+    const sky = d.spawn('polaris', { species: 'polaris' }, [WS[0] - 46, WS[1] - 40], 60, { label: false, kind: 'cine', scale: 3.2 });
+    sky.actor.pos.y = 15; sky.actor.mode('float');
+    d.shot({ from: [WS[0] + 6, 1.4, WS[1] + 6], look: [WS[0], 3, WS[1]], lookTo: [WS[0] - 6, 13, WS[1] - 18], dur: 3.5, fov: 40, fov1: 50, wait: false });
     this.audio.sfx('whoosh', { pitch: 0.4, vol: 0.9 });
-    d.shootingStar(WS, { dur: 2200 });
+    d.shootingStar([WS[0], WS[1] - 10], { dur: 2200 });
     this.audio.music('night', { fade: 1.2 });
-    await d.glide('polaris', [WS[0] + 10, WS[1] - 6], { alt: 22, speed: 7, animSpeed: 2 });
+    await d.glide('polaris', [WS[0] + 4, WS[1] - 22], { alt: 15, speed: 7, animSpeed: 2 });
     d.play('kagarou', 'roar'); this.audio.sfx('beast_roar', { pitch: 1.25, vol: 0.7 });
-    d.glide('polaris', [WS[0] + 60, WS[1] + 10], { alt: 26, speed: 8, animSpeed: 2 });
+    d.glide('polaris', [WS[0] + 60, WS[1] - 10], { alt: 22, speed: 8, animSpeed: 2 });
     await d.say('farmer', 'The sky whale… *Polaris*? Grandpa\'s old stories were true…', { expr: 'ko' });
     d.shot({ from: [WS[0] + 5, 2, WS[1] + 6], look: [WS[0], 0.8, WS[1]], dur: 1.6, wait: false });
     d.face('kagarou', 'treeline');
@@ -578,6 +584,12 @@ export class Story {
     if (map === 'shinsekai' && !F('seen_shinsekai')) { this.set('seen_shinsekai'); await this.d.scene(async () => { const t = this.w.resolvePoint('tower_view'); if (t) await this.d.shot({ from: [t[0] + 10, 6, t[1] + 12], look: [t[0], 8, t[1] - 6], dur: 4, fov: 38 }); await this.ui.caption('Shinsekai — the "New World" of 1912… and Team Metallica\'s turf.', 3000); }); }
     if (map.startsWith('minoh') && !F('seen_minoh')) { this.set('seen_minoh'); await this.ui.caption('Minoh Safari Reserve — move carefully. Tall grass hides you.', 3200); }
     this.spawnServiceNpcs(map);
+    if (map === 'minoh_waterfall') await this.maybePolaris();
+    // the city is full of surprises
+    if (F('free_time') && !map.startsWith('minoh') && Math.random() < 0.22) {
+      const k = `d${this.s.time.day}_events`;
+      if ((this.s.flags[k] || 0) < 2) { this.s.flags[k] = (this.s.flags[k] || 0) + 1; await this.randomEvent(); }
+    }
   }
   async day1Dotonbori() {
     const d = this.d, s = this.s, w = this.w;
@@ -611,9 +623,9 @@ export class Story {
     const d = this.d, s = this.s, w = this.w;
     await d.scene(async () => {
       const ic = w.resolvePoint('icecream');
-      this.ensure('clerk', 'clerk', [ic[0], ic[1] - 2.2], 0);
-      d.face('player', 'clerk');
-      d.closeUp('clerk', { dist: 3.2, angle: 0.3 });
+      this.ensure('clerk', 'clerk', [ic[0] + 1.5, ic[1] - 0.3], 270);
+      d.faceEach('player', 'clerk');
+      d.twoShot('player', 'clerk', { dist: 4.5 });
       await d.say('clerk', 'Welcome to Yellow Submarine Soft-Serve! We all live on… ice cream! What\'ll it be?', { play: 'wave' });
       await this.meal(MEALS.icecream);
       this.set('icecream');
@@ -874,8 +886,54 @@ export class Story {
       }
     }
   }
+  // Legendary: once Dr. Hoshino forges the Star Gem, Polaris comes down to
+  // drink starlight at the Minoh falls on clear nights.
+  async maybePolaris() {
+    const s = this.s, h = s.time.hour;
+    if (!this.F('fragments_given') || this.F('caught_polaris') || this.w.mapId !== 'minoh_waterfall' || !(h >= 19 || h < 4) || this.polarisBusy) return;
+    if (!this.daily('polaris')) return;
+    this.polarisBusy = true;
+    const d = this.d, w = this.w;
+    const fv = w.resolvePoint('falls_view') || w.resolvePoint('trail_end') || w.resolvePoint('entrance');
+    let res = null;
+    // the forest falls quiet: beasts and wild Elemon near the falls slip away
+    if (w.safari) w.safari.grace = 40;
+    const hidden = [];
+    for (const [, r] of w.actors) if ((r.kind === 'beast' || r.kind === 'wild') && r.actor.visible && Math.hypot(r.actor.pos.x - fv[0], r.actor.pos.z - fv[1]) < 14) { r.actor.setVisible(false); hidden.push(r.actor); }
+    await d.scene(async () => {
+      d.place('player', [fv[0], fv[1] + 2.5], 180);
+      w.place('buddy', fv[0] + 1, fv[1] + 3);
+      d.shot({ from: [fv[0] + 5, 3, fv[1] + 8], look: [fv[0], 3, fv[1] - 4], lookTo: [fv[0], 9, fv[1] - 8], dur: 5, fov: 44, wait: false });
+      this.audio.music('tension', { fade: 1 });
+      await this.ui.caption('The falls go silent. Starlight pools on the water…', 2600);
+      const P = d.spawn('polaris_l', { species: 'polaris' }, [fv[0] - 30, fv[1] - 30], 45, { label: false, kind: 'cine', scale: 1.6 });
+      P.actor.pos.y = 20; P.actor.mode('float');
+      d.shootingStar([fv[0], fv[1] - 8], { dur: 1800 });
+      await d.glide('polaris_l', [fv[0], fv[1] - 3], { alt: 3.2, speed: 9, animSpeed: 2 });
+      d.face('polaris_l', 'player');
+      this.gfx.flash(0xfff2c0, 0.6); this.audio.sfx('evolve_burst');
+      d.closeUp('polaris_l', { dist: 7, angle: 0.3, y: 0.5, h: 0.5, fov: 40 });
+      await d.say('buddy', this.buddyCry(), { play: 'shocked', emote: '!' });
+      await d.say('player', 'The sky whale… Polaris. The Star Gem is glowing!', { name: s.player.name });
+    }, { control: false });
+    res = await this.game.legendBattle('polaris', Math.max(16, this.game.avgLevel() + 4), { actor: w.actor('polaris_l'), arena: { x: fv[0], z: fv[1], r: 8 } });
+    await d.scene(async () => {
+      if (res && res.reason === 'capture') {
+        this.set('caught_polaris');
+        await d.titleCard('LEGEND CAPTURED!', 'Polaris joined your team', 3200);
+        await d.say('hoshino', '(Holo-call) You… caught POLARIS?! The murals said only a heart like starlight could… I need to sit down.', { actor: false });
+      } else {
+        await d.glide('polaris_l', [fv[0] + 30, fv[1] - 40], { alt: 24, speed: 10, animSpeed: 2 });
+        await this.ui.caption('Polaris rose back into the stars. It may return another clear night.', 3000);
+      }
+      w.removeActor('polaris_l');
+    });
+    for (const a of hidden) a.setVisible(true);
+    this.polarisBusy = false;
+  }
   onClock() {
     const s = this.s, h = s.time.hour;
+    if (this.w.mapId === 'minoh_waterfall' && this.F('fragments_given') && (h >= 19 || h < 4) && !this.app.busy) this.maybePolaris();
     if (h >= 18 && h < 18.3 && this.daily('dinner_ping')) this.ui.toast('📱 Mika: dinner at Abbey Road?? 🥞 (Dotonbori)', '', 3600);
     if (h >= 22 && this.daily('late_ping')) this.askSleep();
     if (h < 7 && s.time.day > 0 && this.daily('very_late')) this.askSleep(true);
@@ -973,10 +1031,12 @@ export class Story {
       d.faceEach(f.id, 'player');
       d.shot({ from: [stage.x + 9, 5, stage.z + 9], look: [stage.x, 1, stage.z], dur: 3, fov: 38, wait: false });
       this.audio.sfx('crowd_cheer', { vol: 0.8 });
-      await d.say('announcer', `Rank match! ${s.player.name} versus ${f.name}! Trainers, link your stones!`, { actor: false, name: 'League Announcer' });
+      const th = STAGES[(s.time.day + s.league.matchesToday) % STAGES.length];
+      await d.say('announcer', `Rank match on the *${th.name}*! ${th.boost ? `${ELEMENTS[th.boost].name} attacks hit 20% harder here. ` : ''}${s.player.name} versus ${f.name}! Trainers, link your stones!`, { actor: false, name: 'League Announcer' });
     }, { control: false });
     const pts = 30 + ['D', 'C', 'B', 'A', 'S', 'X'].indexOf(S.rankOf(s).id) * 10;
-    const res = await this.game.trainerBattle({ arena: 'stage', foes: [{ id: f.id, name: f.name, ai: 'normal', team: f.team }], partySize: f.team.length > 1 ? 2 : 3, league: pts, money: 600 + pts * 10, canLose: true, title: 'RANK MATCH', subtitle: `${f.name} — ${S.rankOf(s).name} division`, music: 'league', colors: ['#5ae0ff', '#ff4fa8'] });
+    const th = STAGES[(s.time.day + s.league.matchesToday) % STAGES.length];
+    const res = await this.game.trainerBattle({ arena: Object.assign({}, w.arena('stage'), { boost: th.boost, name: th.name }), boost: th.boost, foes: [{ id: f.id, name: f.name, ai: 'normal', team: f.team }], partySize: f.team.length > 1 ? 2 : 3, league: pts, money: 600 + pts * 10, canLose: true, title: 'RANK MATCH', subtitle: `${th.name}${th.boost ? ` — ${ELEMENTS[th.boost].name} moves +20%` : ''}`, music: 'league', colors: ['#5ae0ff', '#ff4fa8'] });
     s.league.matchesToday++;
     await d.scene(async () => {
       d.faceEach(f.id, 'player');
@@ -1065,8 +1125,8 @@ export class Story {
     const sp = (id, char, at, face, name) => { if (!this.w.rec(id) && this.w.resolvePoint(at)) this.d.spawn(id, char, at, face, { name, scripted: true }); };
     if (map === 'umeda') { sp('receptionist', 'receptionist', 'receptionist', 0); sp('foodhall_staff', { random: 515, role: 'chef' }, 'foodhall', 180, 'Food Hall Chef'); }
     if (map === 'dotonbori') {
-      sp('vendor', 'vendor', 'vendor', 0); const ic = this.w.resolvePoint('icecream'); if (ic) sp('clerk', 'clerk', [ic[0], ic[1] - 2.2], 0);
-      if (this.F('day1_done')) { sp('hoshino', 'hoshino', 'hoshino', 225); sp('taro', 'taro', 'taro'); }
+      sp('vendor', 'vendor', 'vendor', 0); const ic = this.w.resolvePoint('icecream'); if (ic) sp('clerk', 'clerk', [ic[0] + 1.5, ic[1] - 0.3], 270);
+      if (this.F('day1_done')) { sp('hoshino', 'hoshino', 'hoshino', 225); sp('taro', 'taro', 'taro'); const rs = this.w.resolvePoint('restaurant'); if (rs) sp('waiter', { random: 909, role: 'chef' }, [rs[0] - 1.6, rs[1] - 0.2], 180, 'Abbey Road Waiter'); }
     }
     if (map === 'shinsekai') {
       sp('dojo_master', 'dojo_master', 'dojo_master', 0); sp('onsen_staff', { random: 616, role: 'worker' }, 'onsen', 0, 'Onsen Attendant');
@@ -1092,6 +1152,7 @@ export class Story {
       case 'bling': case 'goods': case 'shopkeeper': case 'grillz_clerk': return '🛒';
       case 'arcade_staff': return '🕹️';
       case 'foodhall_staff': return '🍜';
+      case 'waiter': return this.slot() === 'evening' || this.slot() === 'night' ? '🥞' : null;
       case 'clerk': return F('icecream') ? '🍦' : null;
       case 'coach': return F('day1_done') && !F(`d${s.time.day}_spar`) ? '⚔' : null;
       case 'riff': case 'moshi': return s.quests.protection_racket && !F('beat_alley') ? '!' : null;
@@ -1100,9 +1161,10 @@ export class Story {
   }
   objective() {
     const s = this.s, F = (k) => this.F(k);
+    const map = this.w.mapId;
     if (!F('met_coach')) return 'Meet Coach Gonda at the training ground';
-    if (F('fought_kaito') && !F('icecream')) return 'Travel to Dotonbori (🗺️ Map) for ice cream';
-    if (F('day1_done') && !F('license')) return 'Register for the Kansai League in Umeda (🗺️ Map)';
+    if (F('fought_kaito') && !F('icecream')) return map === 'dotonbori' ? 'Get ice cream at Yellow Submarine Soft-Serve' : 'Travel to Dotonbori (🗺️ Map) for ice cream';
+    if (F('day1_done') && !F('license')) return map === 'umeda' ? 'Register at the League HQ reception' : 'Register for the Kansai League in Umeda (🗺️ Map)';
     if (F('free_time')) {
       const dl = s.deadlines.find((x) => !x.done);
       const rank = S.rankOf(s);
@@ -1114,7 +1176,8 @@ export class Story {
   onStarterFocus(id) {
     const r = this.w.rec('pod_' + id); if (!r) return;
     r.actor.play('happy'); r.actor.emote('heart');
-    this.d.closeUp('pod_' + id, { dist: 2.6, angle: 0.35, dur: 1.2, y: 0.6 });
+    // frame the creature in the upper half of the screen, above the info card
+    this.d.closeUp('pod_' + id, { dist: 3.4, angle: 0.3, dur: 1.2, y: -1.2, h: 1.3, fov: 34 });
   }
 
   // ================================================================== interactions
@@ -1155,7 +1218,9 @@ export class Story {
   async talk_coach(rec) {
     const d = this.d;
     if (!this.F('day1_done')) return d.say('coach', 'Focus, rookie!');
-    const r = await d.ask('coach', 'Back for more? I\'m always up for a spar — once a day. Or need advice?', ['Spar with Coach! ⚔', 'Any advice?', 'Just saying hi']);
+    const late = this.s.time.hour >= 17 || this.s.time.hour < 5;
+    const r = await d.ask('coach', 'Back for more? I\'m always up for a spar — once a day. Or need advice?', ['Spar with Coach! ⚔', 'Any advice?', late ? 'Call it a day (sleep) 🌙' : 'Just saying hi']);
+    if (r === 2 && late) { await d.say('coach', 'Good call. Rest is training too! See you bright and early.', { play: 'wave' }); return this.sleep(); }
     if (r === 0) {
       if (!this.daily('spar')) return d.say('coach', 'Kanizumo\'s napping. Come back tomorrow!');
       const lv = this.game.avgLevel() + 1;
@@ -1192,6 +1257,19 @@ export class Story {
     await this.meal(MEALS.lunch);
     await this.app.passTime(1);
   }
+  async talk_waiter(rec) {
+    const d = this.d, s = this.s, who = d.speakerFrom(rec, 'Abbey Road Waiter');
+    if (this.slot() !== 'evening' && this.slot() !== 'night') return d.say(who, 'Dinner service starts at half past five! Come back hungry.');
+    if (!this.daily('dinner')) return d.say(who, 'Back again? Even the Beatles only played one show a night.');
+    const r = await d.ask(who, 'Table for you and your partner? Dinner set is ¥1,200 — and it comes with two great moments.', ['Dinner! (¥1,200, 1h)', 'Not tonight']);
+    if (r !== 0) return;
+    if (!S.spend(s, 1200)) return d.say(who, 'Hmm… maybe takoyaki from the stall tonight?');
+    this.audio.music('dinner', { fade: 1 });
+    await this.meal(MEALS.dinner);
+    S.healParty(s, 0.5);
+    await this.app.passTime(1);
+    this.audio.music(this.w.def.ambience?.music || 'dotonbori', { fade: 1 });
+  }
   async talk_vendor(rec) {
     const d = this.d, s = this.s;
     if (this.F('day1_done') && !s.quests.protection_racket) {
@@ -1227,6 +1305,7 @@ export class Story {
       S.addItem(s, 'star_fragment', -3);
       this.set('fragments_given'); this.game.checkQuests();
       await d.say('hoshino', 'I fused them into a *Star Gem*. Legends say only starlight can calm the sky whale. Keep it safe — your journey with Polaris has begun.');
+      await d.say('hoshino', 'One more thing: the old records say Polaris drinks starlight from the *Minoh waterfall* on clear nights. Between dusk and the small hours…', { play: 'think' });
       return;
     }
     await d.say('hoshino', this.F('fragments_given') ? 'The stars are restless. I\'m deciphering the Solaris murals next. Have you heard of a "Rift"…?' : `Any luck with the star fragments? You have ${n} of 3. They glow faintly in the Minoh forests — at night they\'re easier to spot.`);

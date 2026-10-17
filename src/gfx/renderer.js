@@ -10,9 +10,9 @@ import { clamp, damp, lerp, ease, clamp01 } from '../core/mathx.js';
 import { vnoise3 } from '../core/rng.js';
 
 const QUALITY = {
-  high: { dpr: 2, msaa: 4, levels: 5, shadow: 2048, post: true, tilt: 0.55, outline: 1 },
-  medium: { dpr: 1.5, msaa: 4, levels: 4, shadow: 1024, post: true, tilt: 0, outline: 1 },
-  low: { dpr: 1, msaa: 0, levels: 3, shadow: 512, post: false, tilt: 0, outline: 0 },
+  high: { dpr: 2, msaa: 4, levels: 5, shadow: 2048, post: true, tilt: 0.55, outline: 1, propShadows: true },
+  medium: { dpr: 1.5, msaa: 4, levels: 4, shadow: 1024, post: true, tilt: 0, outline: 1, propShadows: false },
+  low: { dpr: 1, msaa: 0, levels: 3, shadow: 512, post: false, tilt: 0, outline: 0, propShadows: false },
 };
 
 export function detectQuality() {

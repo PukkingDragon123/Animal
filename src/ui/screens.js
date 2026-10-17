@@ -83,17 +83,18 @@ export class Screens {
   starterSelect() {
     return new Promise((res) => {
       let i = 0;
-      const prev = h('div', { style: { position: 'absolute', left: '50%', top: '12%', transform: 'translateX(-50%)', width: 'min(70vw,440px)', height: 'min(42vh,380px)' } });
       const info = h('div.starter-info.panel');
       const dots = h('div.dots');
       const left = h('button.iconbtn', { style: { position: 'absolute', left: '4vw', top: '32%' } }, '◀'), right = h('button.iconbtn', { style: { position: 'absolute', right: '4vw', top: '32%' } }, '▶');
       const choose = h('button.btn.primary', {}, h('span', {}, 'Choose this partner!'));
-      const wrap = h('div.cscene', {}, h('div.head', {}, h('h2', {}, 'Choose your partner'), h('p', {}, 'Your soul stone will link with them forever.')), prev, left, right, dots, info, choose);
+      const wrap = h('div.cscene', {}, h('div.head', {}, h('h2', {}, 'Choose your partner'), h('p', {}, 'Your soul stone will link with them forever.')), left, right, dots, info, choose);
       this.ui.modal(wrap, { clear: true });
-      const pv = new Preview(prev, { spin: 0.35, floor: true });
+      // without a world scene to frame the starters, fall back to a 3D preview widget
+      let pv = null;
+      if (!this.app.onStarterFocus) { const prev = h('div', { style: { position: 'absolute', left: '50%', top: '12%', transform: 'translateX(-50%)', width: 'min(70vw,440px)', height: 'min(36vh,340px)' } }); wrap.append(prev); pv = new Preview(prev, { spin: 0.35, floor: true }); }
       const render = () => {
         const id = STARTERS[i], sp = SPECIES[id], e = primaryElem(sp), L = LORE[id] || {};
-        pv.show(creatureDesign(id), id, { play: 'happy' });
+        if (pv) pv.show(creatureDesign(id), id, { play: 'happy' });
         clear(info).append(
           h('div.row', {}, h('div.title-font', { style: { fontSize: '26px' } }, sp.name), elChip(e), h('span.chip', { style: { background: 'var(--ink)', color: '#fff' } }, ELEMENTS[e].role)),
           h('div', { style: { fontSize: '13px', margin: '6px 0', lineHeight: 1.45 } }, L.desc || ''),
@@ -184,13 +185,7 @@ export class Screens {
       const draw = () => {
         clear(right);
         const st = statsOf(mon);
-        right.append(h('div', { style: { fontWeight: 900 } }, `Stat points: ${mon.sp}  ·  Astral points: ${mon.ap}`));
-        for (const k of STAT_KEYS) {
-          const plus = h('button.plus', { disabled: mon.sp <= 0 }, '+');
-          tapBtn(plus, () => { if (allocate(mon, k)) { this.audio.sfx('ui_tap', { pitch: 1.3 }); draw(); } });
-          right.append(h('div.statrow', {}, h('b', {}, STAT_NAMES[k]), h('div.statbar', {}, h('i', { style: { width: Math.min(100, st[k] * 2.5) + '%' } })), h('span', {}, st[k].toFixed(0)), plus));
-        }
-        right.append(h('div', { style: { fontWeight: 900, marginTop: '6px' } }, rewardTaken ? 'Reward claimed!' : 'Choose a level-up reward:'));
+        right.append(h('div', { style: { fontWeight: 900 } }, rewardTaken ? 'Reward claimed!' : 'Choose a level-up reward:'));
         const row = h('div.copts', { style: { justifyContent: 'flex-start' } });
         if (!rewardTaken) for (const rw of rewards.slice(0, 3)) {
           const c = h('button.copt', { style: { width: '150px', minHeight: '120px' } }, h('div.ic', {}, rw.icon), h('div.ttl', {}, rw.label), h('div.desc', {}, rw.desc));
@@ -205,6 +200,12 @@ export class Screens {
           row.append(c);
         }
         right.append(row);
+        right.append(h('div', { style: { fontWeight: 900, marginTop: '8px' } }, `Stat points: ${mon.sp}  ·  Astral points: ${mon.ap}`));
+        for (const k of STAT_KEYS) {
+          const plus = h('button.plus', { disabled: mon.sp <= 0 }, '+');
+          tapBtn(plus, () => { if (allocate(mon, k)) { this.audio.sfx('ui_tap', { pitch: 1.3 }); draw(); } });
+          right.append(h('div.statrow', {}, h('b', {}, STAT_NAMES[k]), h('div.statbar', {}, h('i', { style: { width: Math.min(100, st[k] * 2.5) + '%' } })), h('span', {}, st[k].toFixed(0)), plus));
+        }
         // other learnable skills just get learned (no reward cost) except the one offered
         const done = h('button.btn.primary', { style: { marginTop: '8px' } }, h('span', {}, mon.sp > 0 ? 'Continue (keep points for later)' : 'Continue ▶'));
         tapBtn(done, () => {

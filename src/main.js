@@ -74,10 +74,14 @@ class App {
     this.audio.music('title', { fade: 1.5 });
     if (this.params.has('dev')) { $('dev').style.display = 'block'; this.dev = true; }
     window.__app = this;  // handy for debugging & automated play tests
-    const pick = this.params.get('auto') || await this.screens.title(S.hasSave());
+    let pick = this.params.get('auto');
+    while (!pick) {
+      pick = await this.screens.title(S.hasSave());
+      if (pick === 'new' && S.hasSave() && !(await this.screens.confirm('Start a new game? Your current save will be overwritten.', 'Start over', 'Back'))) pick = null;
+    }
     this.gfx.rig.release();
-    if (pick === 'continue' && saved) { this.state = saved; await this.story.resume(); }
-    else { S.wipe(); this.state = S.newGame(); await this.story.start(); }
+    if (pick === 'continue' && saved) { this.state = saved; this.applySettings(); await this.story.resume(); }
+    else { S.wipe(); this.state = S.newGame(); this.applySettings(); await this.story.start(); }
   }
   titleOrbit() {
     const c = this.world.resolvePoint('castle_view') || [22, 21];

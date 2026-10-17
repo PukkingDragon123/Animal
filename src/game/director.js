@@ -9,6 +9,7 @@ import { SPECIES, elemsOf } from '../data/species.js';
 import { ELEMENTS } from '../data/elements.js';
 import { wait } from '../ui/dom.js';
 import { nameOf } from './elemon.js';
+import { tileDef } from '../world/tiles.js';
 
 const CHAR_STYLE = {
   coach: { color: '#ff7a2f', bg: ['#ffd36b', '#ff7a2f'], voice: 'coach' },
@@ -233,11 +234,42 @@ export class Director {
     return [p[0], (this.w.grid ? this.w.grid.heightAt(p[0], p[1]) : 0) + (yOff ?? 1), p[1]];
   }
   // close-up on a character from in front (side: -1/1 shifts over the shoulder)
+  // fraction of the line of sight (target → camera) free of terrain, solid
+  // tiles (props/buildings) and other actors
+  clearance(from, to, ignore = []) {
+    const g = this.w.grid; if (!g) return 1;
+    let clear = 0; const N = 14;
+    for (let k = 1; k <= N; k++) {
+      const u = 0.12 + (k / N) * 0.88;
+      const x = to[0] + (from[0] - to[0]) * u, y = to[1] + (from[1] - to[1]) * u, z = to[2] + (from[2] - to[2]) * u;
+      let blocked = false;
+      const kk = g.at(x, z);
+      if (kk >= 0) {
+        const gy = g.hgt[kk];
+        if (y < gy + 0.25) blocked = true;
+        else if (g.block[kk] && !tileDef(g.t[kk]).water && y < gy + 3.2) blocked = true;
+      }
+      if (!blocked) for (const [rid, r] of this.w.actors) {
+        const a = r.actor; if (!a.visible || ignore.includes(a)) continue;
+        if (Math.hypot(a.pos.x - x, a.pos.z - z) < 0.45 + (r.kind === 'player' || r.kind === 'npc' ? 0.1 : 0.2) && y < a.pos.y + a.height + 0.1) { blocked = true; break; }
+      }
+      if (!blocked) clear++;
+    }
+    return clear / N;
+  }
   closeUp(id, o = {}) {
     const a = this.actorOf(id); if (!a) return Promise.resolve();
-    const yaw = a.yawT + (o.angle ?? 0.5) * (o.side || 1);
     const d = o.dist ?? Math.max(2.4, a.height * 2.4);
     const ly = a.pos.y + a.height * (o.y ?? 0.8);
+    const pref = (o.angle ?? 0.5) * (o.side || 1);
+    let yaw = a.yawT + pref, bestScore = -1;
+    for (const off of [pref, -pref, 0, pref * 1.9, -pref * 1.9, 1.3, -1.3]) {
+      const yw = a.yawT + off;
+      const c = [a.pos.x + Math.sin(yw) * d, ly + (o.h ?? 0.35), a.pos.z + Math.cos(yw) * d];
+      const sc = this.clearance(c, [a.pos.x, a.pos.y + a.height * 0.6, a.pos.z], [a]);
+      if (sc > bestScore + 0.01) { bestScore = sc; yaw = yw; }
+      if (sc >= 0.999) break;
+    }
     const from = [a.pos.x + Math.sin(yaw) * d, ly + (o.h ?? 0.35), a.pos.z + Math.cos(yaw) * d];
     const to = o.push ? [a.pos.x + Math.sin(yaw) * d * 0.85, ly + (o.h ?? 0.35), a.pos.z + Math.cos(yaw) * d * 0.85] : from;
     return this.shot({ from, to, look: [a.pos.x, ly, a.pos.z], dur: o.dur ?? 2.5, fov: o.fov ?? 30, ease: 'out', wait: o.wait ?? false });
@@ -251,7 +283,14 @@ export class Director {
     if (nz < 0) { nx = -nx; nz = -nz; }   // keep the camera on the south (front) side
     const d = o.dist ?? Math.max(5, L * 1.6 + 2.5);
     const y = (this.w.grid ? this.w.grid.heightAt(cx, cz) : 0) + 1.1;
-    const from = [cx + nx * d + (o.side ?? 0.3) * d, y + (o.h ?? 1.6), cz + nz * d];
+    const ign = [this.actorOf(typeof a === 'string' ? a : null), this.actorOf(typeof b === 'string' ? b : null)].filter(Boolean);
+    let from = null, bestScore = -1;
+    for (const [sx, sd] of [[o.side ?? 0.3, 1], [-(o.side ?? 0.3), 1], [0, 1], [o.side ?? 0.3, -1], [-(o.side ?? 0.3), -1]]) {
+      const c = [cx + nx * d * sd + sx * d, y + (o.h ?? 1.6), cz + nz * d * sd];
+      const sc = this.clearance(c, [cx, y, cz], ign);
+      if (sc > bestScore + 0.01) { bestScore = sc; from = c; }
+      if (sc >= 0.999) break;
+    }
     return this.shot({ from, to: o.push ? [from[0] * 0.92 + cx * 0.08, from[1], from[2] * 0.92 + cz * 0.08] : from, look: [cx, y, cz], dur: o.dur ?? 3, fov: o.fov ?? 32, wait: o.wait ?? false });
   }
   orbit(at, o = {}) {

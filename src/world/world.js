@@ -47,7 +47,7 @@ export class WorldScene {
     this.unload();
     this.def = def;
     this.grid = buildGrid(def);
-    this.env = buildEnvironment(def, this.grid);
+    this.env = buildEnvironment(def, this.grid, { propShadows: this.gfx.Q.propShadows !== false });
     this.gfx.world.add(this.env.group);
     for (const m of this.env.emissiveMats) this.gfx.registerEmissive(m, 1);
     this.gfx.lights.setStatic(this.env.lights);
