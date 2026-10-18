@@ -16,6 +16,7 @@ function mirror(p) {
         if (o.rot) o.rot = [o.rot[0], -o.rot[1], -o.rot[2]];
         if (o.grad) o.grad = Object.assign({}, o.grad, { a: fx(o.grad.a), b: fx(o.grad.b) });
         if (o.minus) o.minus = shape(o.minus);
+        if (o.on) o.on = o.on.map((n) => n.replace(/L$/, 'R'));
         return o;
       }
       return v;
@@ -167,5 +168,90 @@ const paintOn = (on, extra = {}) => Object.assign({ paint: true, on }, extra);
         ['sph', [x, y, z], 3.4, 'steam'], ['sph', [x + 2.6 * Math.sign(x), y + 2.6, z], 2.3, 'steam', { k: 1.5 }], ['sph', [x - 1.2 * Math.sign(x), y + 3.4, z], 2, 'steam', { k: 1.5 }]] })),
     ],
     bond: { grow: { flameTip: 1.7, tail: 1.15 } },
+  };
+}
+
+// ---------------------------------------------------------------- Bubblion (Aqua)
+// A little lionfish prince that swims through the air in its own "soft & wet"
+// bubbles. Its striped ribbon fins flow like a lion's mane, it wears a tiny gold
+// crown with a sea-glass gem, and it pouts like royalty when it doesn't get its way.
+{
+  const E = 7.2, EY = 33.5, EZ = 11.6;
+  const eye = (x) => [
+    ['ell', [x, EY, EZ], [3.4, 4.3, 5], 'eye', paintOn(['body'])],
+    ['ell', [x, EY - 1.4, EZ + 0.4], [2.6, 2.6, 5], 'iris', paintOn(['body'])],
+    ['ell', [x - 1.1, EY + 1.6, EZ + 1], [1.4, 1.5, 4], 'shine', paintOn(['body'])],
+    ['ell', [x + 1.2, EY - 2, EZ + 1], [0.7, 0.7, 4], 'shine', paintOn(['body'])],
+  ];
+  const line = (x, y, rz, len = 3) => ['ell', [x, y, EZ + 0.4], [len, 0.7, 5], 'eye', paintOn(['body'], { rot: [0, 0, rz] })];
+  const ribbon = (a, b, w, i) => ['cone', a, b, w, 0.6, 'finA', { k: 0.8, grad: { a, b, stops: [[0, 'finA'], [0.22, 'finB'], [0.42, 'finA'], [0.62, 'finC'], [0.82, 'finA']] } }];
+  SPRITES.bubblion = {
+    id: 'bubblion', size: [96, 96], anchor: [48, 91], unit: 1, yaw: -24, pitch: 16, ink: '#2a1830',
+    pal: {
+      body: '#ff8a76', body2: '#e8605e', belly: '#ffe6cc', stripe: '#a8334a',
+      finA: '#fff2e8', finB: '#ff7a68', finC: '#b8364e',
+      crown: { c: '#ffc83a', gloss: true, ramp: ['#5a2a18', '#9a5a1e', '#d08a26', '#ffc83a', '#ffe680', '#fffbe0'] }, gem: { c: '#3ad0d8', gloss: true },
+      eye: '#1e1430', iris: '#2a5a9a', shine: { c: '#ffffff', flat: true }, lips: '#ff5a7a', blush: '#ff9aa8',
+      bub: { c: '#bff4ff', gloss: true, ramp: ['#3a6a9a', '#5aa0c8', '#8ad4ec', '#bff4ff', '#e4fcff', '#ffffff'] },
+      heart: { c: '#ff4f7e', gloss: true }, zz: { c: '#cfe6ff', flat: true }, steam: '#fff4ec',
+      fCore: { c: '#f4ffff', emit: true, heat: 1, fire: ['#1a3a7a', '#2a6ab8', '#3aa0e0', '#6ad8f8', '#b8f4ff', '#ffffff'] },
+      fY: { c: '#8ae8ff', emit: true, heat: 0.75, fire: ['#1a3a7a', '#2a6ab8', '#3aa0e0', '#6ad8f8', '#b8f4ff', '#ffffff'] },
+    },
+    anim: { bob: 1.6, sway: 1.3, lag: 1.5, flap: 1.4 },
+    pad: { breath: [72, 8, 0, 0], throw: [56, 0, 0, 0], dash: [0, 0, 24, 0] },
+    parts: [
+      // floating body (no legs): round, a little fuller at the front like a pufferfish
+      { n: 'body', p: [0, 30, 0], noShadow: true, s: [
+        ['ell', [0, 30, 0], [13.5, 13, 15.5], 'body', { grad: { a: [0, 42, 0], b: [0, 18, 0], stops: [[0, 'body'], [0.7, 'body2']] } }],
+        ['ell', [0, 25, 7], [9.5, 7.5, 9], 'belly', paintOn(['body'])],
+        ...[2, -5, -11].map((z) => ['ell', [0, 31, z], [14.5, 14, 1.5], 'stripe', paintOn(['body'])]),
+        ...eye(E), ...eye(-E),
+        ['ell', [0, 26.4, 14.6], [2.6, 1.6, 3], 'lips', paintOn(['body'])],
+        ...[E + 3, -E - 3].map((x) => ['ell', [x, 28.6, 11], [2.6, 1.6, 4], 'blush', paintOn(['body'])]),
+      ] },
+      { n: 'lids', parent: 'body', p: [0, EY, EZ], show: 'fierce', s: [E, -E].map((x) => ['ell', [x, EY + 3.6, EZ], [4.2, 2.3, 5], 'body', paintOn(['body'], { rot: [0, 0, x > 0 ? 14 : -14] })]) },
+      { n: 'eyesClosed', parent: 'body', p: [0, EY, EZ], show: ['closed', 'happy', 'hurt', 'ko'], s: [line(E, EY - 0.6, 0), line(-E, EY - 0.6, 0)] },
+      // little pouty mouth that opens
+      { n: 'jaw', parent: 'body', p: [0, 25.6, 14], s: [['ell', [0, 25.6, 14.4], [2.2, 1.3, 1.6], 'lips']] },
+      { n: 'mouth', parent: 'body', p: [0, 26, 14], show: 'mouth:open', s: [['ell', [0, 25.2, 14.8], [1.6, 1.4, 1.2], 'eye']] },
+      // the mane: ribbon fins fanning back from the head
+      { n: 'tuftMane', parent: 'body', p: [0, 38, -2], s: [
+        ribbon([0, 40, 2], [0, 56, -10], 2.6), ribbon([5, 39, 1], [12, 53, -12], 2.3), ribbon([-5, 39, 1], [-12, 53, -12], 2.3),
+        ribbon([8, 36, -2], [19, 44, -16], 2.1), ribbon([-8, 36, -2], [-19, 44, -16], 2.1),
+      ] },
+      // fan pectoral fins (like little wings)
+      ...both({ n: 'wingL', parent: 'body', p: [12, 28, 2], s: [
+        ['ell', [17, 27, -2], [1.4, 8, 8.5], 'finA', { rot: [10, 20, -20] }],
+        ...[-50, -15, 20].map((a) => ['ell', [17, 27, -2], [1.6, 8.4, 1], 'finB', paintOn(['wingL'], { rot: [a, 20, -20] })]),
+      ] }),
+      // tail fan
+      { n: 'tail', parent: 'body', p: [0, 30, -14], s: [
+        ['ell', [0, 31, -21], [1.4, 9, 7], 'finA', { rot: [12, 0, 0], k: 2 }],
+        ...[-30, 0, 30].map((a) => ['ell', [0, 31, -21], [1.6, 9.4, 1.1], 'finC', paintOn(['tail'], { rot: [a + 12, 0, 0] })]),
+      ] },
+      // tiny crown + gem, and two curly feelers
+      { n: 'crown', parent: 'body', p: [0, 42.6, 4], s: [
+        ['tor', [0, 42.6, 4], 4.6, 1.1, 'crown', { k: 0.6 }],
+        ...[0, 72, 144, 216, 288].map((a) => { const r = a * Math.PI / 180; return ['cone', [Math.sin(r) * 4.6, 43, 4 + Math.cos(r) * 4.6], [Math.sin(r) * 4.9, 47.4, 4 + Math.cos(r) * 4.9], 1.2, 0.35, 'crown', { k: 0.8 }]; }),
+        ['sph', [0, 43.4, 8.8], 1.4, 'gem'],
+      ] },
+      ...both({ n: 'tuftFeelerL', parent: 'body', p: [6, 40, 9], s: [['chain', [[6, 39.5, 9, 0.9], [8.4, 43.6, 10, 0.7], [11, 44.6, 8, 0.55], [11.4, 42.6, 6.4, 0.5]], 'finB']] }),
+      // bubbles: a ring of floating bubbles (idle), blown bubbles (attacks)
+      ...[[-16, 46, 6, 2.2], [18, 52, 2, 1.6], [-20, 30, -4, 1.4], [15, 18, 8, 1.2]].map(([x, y, z, r], i) => ({ n: 'bubble' + i, p: [x, y, z], bill: true, s: [['sph', [x, y, z], r, 'bub']] })),
+      ...['fire', 'fire2', 'fire3'].map((n, i) => {
+        const a = [0, 25.6, 15], b = [[0, 28, 70], [6, 36, 54], [-6, 20, 56]][i];
+        return { n, parent: 'body', p: a, show: 'fire', s: [
+          ['sph', [b[0] * 0.45, a[1] + (b[1] - a[1]) * 0.45, a[2] + (b[2] - a[2]) * 0.45], 3.2 + i, 'bub'],
+          ['sph', b, 5.5 - i, 'bub'],
+          ['cone', a, b, 1.2, 3.2, 'fY', { wob: 1.2, grad: { a, b, stops: [[0, 'fCore'], [0.4, 'fY']] } }],
+        ] };
+      }),
+      ...[[-16, 64, 6, 3.4], [17, 72, 2, 2.8]].map(([x, y, z, r], i) => ({ n: 'heart' + i, p: [x, y, z], bill: true, show: 'hearts', s: [
+        ['sph', [x - r * 0.5, y + r * 0.3, z], r * 0.62, 'heart'], ['sph', [x + r * 0.5, y + r * 0.3, z], r * 0.62, 'heart'],
+        ['cone', [x, y + r * 0.1, z], [x, y - r * 1, z], r * 0.75, r * 0.12, 'heart', { k: r * 0.4 }]] })),
+      ...[0, 1, 2].map((i) => ({ n: 'zz' + i, p: [14, 54, 0], bill: true, show: 'zz', s: [
+        ['box', [14, 57, 0], [3, 0.7, 0.7], 0.3, 'zz'], ['box', [14, 51, 0], [3, 0.7, 0.7], 0.3, 'zz'], ['box', [14, 54, 0], [3.9, 0.7, 0.7], 0.3, 'zz', { rot: [0, 0, 52] }]] })),
+    ],
+    bond: { grow: { tuftMane: 1.3, crown: 1.2 } },
   };
 }
