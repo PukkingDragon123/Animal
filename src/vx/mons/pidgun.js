@@ -70,7 +70,7 @@ export const anim = {
     { bone: 'handL', tip: [0, 0, -9], k: 260, d: 13, gain: 0.3, max: 8 },
   ],
   faces: { eyes: EYES.slot },
-  fidget: { every: [4.5, 8], clips: ['peck', 'spin', 'puff'] },
+  fidget: { every: [3.5, 7], clips: ['dance', 'dance', 'spin', 'spin', 'peck', 'puff'] },
   clips: {
     // standing its ground: chest out, weight rolling foot to foot, the head snapping round in jerky pigeon
     // looks (snap — hold — snap), the revolver tapping its thigh, a tail flick, a slow sizing-up tilt
@@ -204,14 +204,34 @@ export const anim = {
       const gulp = bump(t, 1.55, 1.8); P.scl('neck', 1 + 0.12 * gulp, 1 - 0.05 * gulp, 1 + 0.12 * gulp);
       P.face('eyes', t < 0.4 ? 'wide' : t > 1.5 && t < 1.82 ? 'happy' : undefined); ES(P, 1 + 0.15 * bump(t, 0.05, 0.45), 1 + 0.25 * bump(t, 0.05, 0.45) - 0.2 * bump(t, 1.5, 1.82)); DART(P, -0.3 * bump(t, 0.05, 0.4));
     } },
-    // fidget: twirls the six-shooter three times round its wingtip and catches it, smug
-    spin: { len: 1.8, next: 'idle', f(P, t) {
-      const up = seg(t, 0, 0.2, E.out) * (1 - seg(t, 1.4, 1.75, E.inout));
+    // signature fidget: twirls the six-shooter three times round its wingtip, catches it, brings the barrel up
+    // under its bill and blows the smoke off it — smug
+    spin: { len: 2.7, next: 'idle', f(P, t) {
+      const up = seg(t, 0, 0.2, E.out) * (1 - seg(t, 1.12, 1.3, E.inout));
       P.rot('wingR', -34 * up, 0, -20 * up).rot('handR', -20 * up, 0, 0);
       P.rot('twirl', -1080 * seg(t, 0.18, 1.08, E.inout) + wob(t, 1.08, 14, 4, 6), 0, 0);
       P.rot('head', 10 * up, -16 * up, 6 * up);
-      P.face('eyes', t > 0.2 && t < 1.08 ? 'smug' : t > 1.1 && t < 1.6 ? 'smug' : undefined); DART(P, 0.3 * wave(t, 3) * bump(t, 0.2, 1.08));
+      const blow = seg(t, 1.2, 1.5, E.back) * (1 - seg(t, 2.2, 2.6, E.inout));
+      P.rot('wingR', -96 * blow, 0, 8 * blow).rot('handR', -10 * blow, 0, 0).rot('twirl', -70 * blow, 0, 0).rot('head', 6 * blow, -24 * blow, 0);
+      const puff = bump(t, 1.6, 2.0); P.rot('jaw', 16 * puff).scl('neck', 1 + 0.08 * puff);
+      P.face('eyes', t > 0.2 && t < 1.08 ? 'smug' : puff > 0.2 ? 'closed' : t > 2.0 && t < 2.5 ? 'smug' : undefined); DART(P, 0.3 * wave(t, 3) * bump(t, 0.2, 1.08));
       P.burst(1.1, 'sparkle', 'gun', MZ, { n: 3 });
+      if (t > 1.3 && t < 2.2) P.stream('pg_smoke', 'gun', MZ, { rate: 8, dir: [0, 1, 0] });
+      P.burst(1.75, 'pg_smoke', 'gun', MZ, { n: 8, dir: [1, 0.4, 0], speed: 1.4, spread: 0.4 });
+    } },
+    // dance: the snake sway — sliding side to side on the beat, chest leading, head popping, revolver up, then
+    // the finish: the six-shooter thrust at the sky, chest out, star eyes
+    dance: { len: 2.4, next: 'idle', f(P, t) {
+      const beat = (t / 0.4) % 1, n = Math.floor(t / 0.4), hit = Math.exp(-beat * 6), on = 1 - seg(t, 1.85, 1.95);
+      const end = seg(t, 1.9, 2.05, E.back) * (1 - seg(t, 2.25, 2.4)), sw = Math.sin((t / 0.8) * Math.PI * 2) * on;
+      P.pos('root', sw * 1.6, 0, 0).rot('body', 0, sw * 12, -sw * 8).rot('head', 10 * hit * on - 4, -sw * 10, sw * 8);
+      const dy = -0.8 * hit * on; P.pos('body', 0, dy, 0).sq('body', -0.05 * hit * on); plant(P, dy, 4);
+      P.pos(n % 2 ? 'footL' : 'footR', 0, 1.2 * Math.sin(beat * Math.PI) * on, 0);
+      P.rot('wingR', -30 * on - 10 * hit * on, 0, -20 * on).rot('twirl', -30 * on, 0, 0).rot('wingL', 0, 0, 30 * on + 14 * hit * on).rot('tail', -8 * hit, sw * 12, 0);
+      P.rot('wingR', -120 * end, 0, -10 * end).rot('twirl', -40 * end, 0, 0).scl('neck', 1 + 0.15 * end).rot('body', -8 * end, 0, 0).rot('jaw', 20 * end);
+      P.face('eyes', end > 0.3 ? 'star' : hit > 0.6 ? 'happy' : 'smug'); ES(P, 1 + 0.1 * hit * on, 1 - 0.12 * hit * on);
+      for (let i = 0; i < 5; i++) P.burst(i * 0.4 + 0.02, 'note', 'head', [i % 2 ? 4 : -4, 26, 3], {});
+      P.burst(2.0, 'sparkle', 'gun', MZ, { n: 8 }).burst(2.0, 'sparkle', 'head', [0, 27, 3], { n: 5 });
     } },
     // fidget: the coo display — neck puffed, two bows, a half turn on the spot and back
     puff: { len: 2.0, next: 'idle', f(P, t) {

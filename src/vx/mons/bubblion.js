@@ -1,8 +1,8 @@
 // Bubblion — the water starter (Hydro), a Prince homage. A haughty little black-and-white
 // lionfish prince living inside a big wobbly ball of water: bold zebra stripes, a lion's mane of
 // banded fin rays over a ruffled shirt-collar of frills (a jabot cascades under the chin), venom
-// spines, long feathery pectoral fins, pouty black lips, a black masquerade mask with simple white
-// heavy-lidded eye shapes, arched brows, and a tilted gold crown set with a single purple raindrop.
+// spines, long feathery pectoral fins, pouty black lips, sultry almond eyes in deep purple with an eyeliner
+// wing, a tentacle over each eye, a curly pompadour fin crest, and a tilted gold crown set with a single purple raindrop.
 // It swims laps inside its ball, rides it like a bouncy castle, and snipes with water bullets.
 //
 // The ball's rim and highlights are a cut-out disc that turns to face the camera. The engine has
@@ -13,6 +13,8 @@ import * as THREE from '../../../vendor/three.module.js';
 import { E, seg, bump, wob, wave, key, bounce, hop } from '../anim.js';
 import { defineFx } from '../fx.js';
 import { shade, ramp, dith, shift } from './kit.js';
+import { eyeRig, eyesAt, eyesScale, glance, keepEyes } from './eyes.js';
+import { blackGold } from '../model.js';
 
 const D2R = Math.PI / 180;
 const R = 15, BC = [0, 15, 0];          // the water ball: radius and centre (it rests on the ground)
@@ -76,26 +78,44 @@ const face = (p, w, h, f, c) => {
     p.px(i, j, band ? ramp(BLK, t, i, j) : pout ? BLK[1] : whisk ? GRY[1] : ramp(WHT, t, i, j));
   }
 };
-// eyes: big round kawaii eyes in the recent-Pokémon style — a dark outline, a near-black navy fill
-// that brightens to water-blue in the lower third, a big catchlight high on the outer side and a
-// small glint low on the inner side; one tiny eyeliner flick at the outer corner (a Prince nod).
-// 8 × 9 texels, the outer corner at x = 0 (the left eye is mirrored). Attitude comes from the lid
-// shapes and the brows above
-const EC = { K: '#0d0f1c', D: '#141c33', M: '#1f4f86', L: '#3fa6dc', W: '#ffffff' };
-const EYES = {
-  proud: ['K.......', '.KKKKKK.', '.KWWDDDK', '.KWWDDDK', '.KWDDDDK', '.KDDDDDK', '.KDDMMDK', '.KMLLLWK', '..KKKKK.'],
-  smug: ['........', '........', '........', 'K.......', '.KKKKKKK', '.KWDDDDK', '.KDDMMDK', '.KMLLLWK', '..KKKKK.'],      // flat lid: haughty
-  glare: ['K.......', '.KKK....', '.KKKKK..', '.KWKKKKK', '.KWDDKKK', '.KDDDDDK', '.KDDMMDK', '.KMLLLWK', '..KKKKK.'],   // lid tilted in: angry
-  sad: ['........', '....KKK.', '..KKKKKK', '.KKKKKKK', '.KKWWDDK', '.KDDDDDK', '.KDDMMDK', '.KMLLLWK', '..KKKKK.'],     // lid tilted out
-  wide: ['K.......', '.KKKKKK.', '.KWWWWWK', '.KWWWWWK', '.KWWKWWK', '.KWWWWWK', '.KWWWWWK', '.KWWWWWK', '..KKKKK.'],    // comic shock
-  happy: ['........', '........', '........', '....KK..', '...KKKK.', '..KK..KK', '..K....K', '........', '........'],
-  closed: ['........', '........', '........', '........', '........', '..K....K', '...KKKK.', '........', '........'],
-  shut: ['........', '........', '..KK....', '....KK..', '......KK', '....KK..', '..KK....', '........', '........'],
-  x: ['........', '........', '..KK..KK', '...KKKK.', '....KK..', '...KKKK.', '..KK..KK', '........', '........'],
-  swirl: ['........', '..KKKKK.', '.K.....K', '.K.KKK.K', '.K.K.K.K', '.K.KK..K', '.K.....K', '..KKKKK.', '........'],
-};
-const stamp = (rows) => (p) => rows.forEach((r, y) => { for (let x = 0; x < r.length; x++) if (EC[r[x]]) p.px(x, y, EC[r[x]]); });
-const EYEP = Object.fromEntries(Object.entries(EYES).map(([k, rows]) => [k, stamp(rows)]));
+// eyes (hand-pixelled at full texture resolution, Pokémon-style): sultry almond eyes with no whites, solid deep
+// purple under a heavy black lid line that runs out past the outer corner into an eyeliner flick, one white
+// glint. Its own design: no other Tokonmon wears the winged lid. Attitude comes from the lid states
+// (smug, angry, sad) and the brows above
+const EYES = eyeRig({ style: 'pix', chunk: 1, glow: 'all', at: [-2.15, 15.6, 6.47], line: K, iris: '#8a44e8', irisDark: '#4a1a96', pupilColor: '#1a0830', extra: ['smug', 'glint'], map: {
+  open: [
+    'l...........',
+    '.lllllllll..',
+    '..lIIIIIIIll',
+    '.lIIhhkkkIIl',
+    'liiIhkkkkIil',
+    '.liiikkkiiil',
+    '..lliiiiill.',
+    '....lllll...',
+  ],
+  happy: [
+    '............',
+    '............',
+    '....llll....',
+    '..ll....ll..',
+    '.l........l.',
+    'l..........l',
+    '............',
+    '............',
+  ],
+  closed: [
+    '............',
+    '............',
+    '............',
+    '............',
+    'l...........',
+    '.lllllllllll',
+    '..llllllll..',
+    '............',
+  ],
+} });
+EYES.slot.states.aim = ['eR-angry', 'eL-closed'];          // squinting down the barrel
+EYES.slot.states.side = ['eR-smug', 'eL-angry'];           // a sardonic once-over
 // a lionfish fin ray: a banded spine in a membrane whose edge ruffles like a shirt frill
 const rayP = (ph = 0) => (p, w, h) => {
   const cx = (w - 1) / 2;
@@ -199,9 +219,57 @@ const raindrop = (p, w, h) => {
 const lipP = shade('#34343f', { top: '#5a5c6c', bottom: '#18181f', grain: 0 });
 const upperLip = (p, w, h, f) => { lipP(p, w, h, f); if (f === 'south') { p.px(Math.floor(w / 2) - 1, 0, '#1c1c24'); p.px(Math.floor(w / 2), 0, '#1c1c24'); } };
 const lowerLip = (p, w, h, f) => { lipP(p, w, h, f); if (f === 'south') { p.hl(0, w - 1, 0, '#4a4c5a'); p.hl(1, 3, 1, '#7a7e90'); p.px(1, 1, '#ffffff'); p.px(2, 1, '#e4e6ee'); } if (f === 'up') { p.hl(0, w - 1, h - 1, '#6a6e7e'); p.px(1, h - 1, '#ffffff'); p.px(2, h - 1, '#c8ccd8'); } };
-// thin arched brows (the outer end at x = 0): a sculpted, faintly sardonic arch
-const browP = (p) => { for (const [x, y] of [[0, 2], [1, 1], [2, 1], [3, 0], [4, 0], [5, 0], [6, 0], [7, 1]]) { p.px(x, y, K); p.px(x, y + 1, x > 1 && x < 7 ? BLK[1] : K); } };
 const tentacle = (p, w, h) => { for (let j = 0; j < h; j++) { const dark = (j >> 1) % 2 === 0; p.px(1, j, dark ? BLK[1] : '#ffffff'); if (j > 1 && j % 2 === 0) p.px(j % 4 === 0 ? 0 : 2, j, dark ? GRY[1] : WHT[2]); } };
+
+// the pompadour fin crest: a quiff of black fin curls rolling up and back off the forehead, each banded with a
+// white spiral like the lionfish's stripes. curls: [a, y, r] with a = z (profile plane) or x (front plane)
+function quiffP(curls, axis, base) {
+  return (p, w, h, f, c) => {
+    for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) {
+      const q = tp(c, f, i, j, w, h), a = axis === 'x' ? q[2] : q[0], b = q[1];
+      let hit = null;
+      for (const k of curls) { const d = Math.hypot(a - k[0], b - k[1]); if (d < k[2]) hit = { k, d }; }
+      if (!hit) { if (b < base[2] && a > base[0] && a < base[1]) p.px(i, j, ramp(BLK, 0.5 + (base[2] - b) * 0.2, i, j)); continue; }
+      const { k, d } = hit, s = d / k[2], ang = Math.atan2(b - k[1], a - k[0]);
+      let col = b > k[1] + k[2] * 0.3 ? BLK[0] : s > 0.55 ? BLK[2] : BLK[1];
+      if (s > 0.2 && ((((ang / (Math.PI * 2) - s * 1.6) % 1) + 1) % 1) < 0.2) col = s > 0.7 ? WHT[1] : '#ffffff';
+      if (s > 0.86) col = K;
+      p.px(i, j, col);
+    }
+  };
+}
+// drip: a gold curb chain (links alternate lit and shadowed) and the purple velvet cape, trimmed in gold with a
+// ruffled hem and a scatter of raindrop sequins
+const linkP = (p, w, h, f) => { for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) p.px(i, j, f === 'down' ? GOLD[4] : (i + j) % 3 === 0 ? GOLD[3] : f === 'up' || j === 0 ? GOLD[0] : GOLD[1]); };
+const capeP = (p, w, h) => {
+  for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) {
+    const v = j / (h - 1), u = i / (w - 1), hem = h - 1 - Math.round(1.4 * Math.abs(Math.sin(u * Math.PI * 4)));
+    if (j > hem) continue;
+    const fold = Math.sin(u * Math.PI * 5 + v * 1.4);
+    let col = fold > 0.55 ? AME[1] : fold < -0.5 ? '#2a0c58' : AME[2];
+    if (v < 0.12) col = j === 0 ? '#3a1478' : AME[3];                                         // gathered at the collar
+    if (i === 0 || i === w - 1 || j >= hem - 1) col = j >= hem - 1 && (i + j) % 2 ? GOLD[2] : GOLD[1];   // gold trim
+    if (((i * 7 + j * 13) % 29) === 0 && v > 0.2 && j < hem - 2) col = AME[0];                   // sequins
+    p.px(i, j, col);
+  }
+};
+// a raspberry beret: knitted berry-red wool, a darker band, a little stalk on top
+const beretP = (p, w, h, f) => { for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) p.px(i, j, f === 'down' ? '#5a0a26' : f === 'up' ? ((i * 3 + j * 5) % 7 < 2 ? '#ff6a9a' : (i + j) % 2 ? '#e0306a' : '#c82060') : j === h - 1 ? '#7a1034' : (i + j) % 2 ? '#d02866' : '#b81c58'); };
+// a gold hoop seen face-on, a pearl swinging in it
+// round lenses: a thin gold rim round purple glass, one hard glint
+const lensP = (p, w, h) => { const cx = (w - 1) / 2, cy = (h - 1) / 2; for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) { const d = Math.hypot((i - cx) / (w / 2), (j - cy) / (h / 2)); if (d > 1.02) continue; p.px(i, j, d > 0.72 ? (i + j < w ? GOLD[0] : GOLD[2]) : j < cy ? AME[2] : AME[3]); } p.px(Math.round(cx - 1), Math.round(cy - 1), '#ffffff'); };
+// the cloud guitar: a white cloud-lobed body with purple swirls and a dark soundhole, on a purple neck
+const cloudP = (p, w, h) => {
+  const L = [[0.32, 0.62, 0.3], [0.62, 0.6, 0.34], [0.5, 0.32, 0.27], [0.22, 0.32, 0.18], [0.82, 0.3, 0.17]];
+  for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) {
+    const u = i / (w - 1), v = j / (h - 1); let d = 9; for (const [a, b, r] of L) d = Math.min(d, Math.hypot(u - a, (v - b) * h / w) / r);
+    if (d > 1) continue;
+    p.px(i, j, d > 0.82 ? AME[2] : Math.hypot(u - 0.5, v - 0.55) < 0.1 ? K : ((u * 7 + v * 5) % 1.6) < 0.18 ? AME[0] : '#ffffff');
+  }
+};
+const fretP = (p, w, h, f) => { for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) p.px(i, j, f === 'up' ? AME[1] : j % 3 === 0 ? GOLD[1] : (i === 0 ? AME[1] : AME[2])); };
+const QUIFF_X = [[2.4, 20.3, 1.2], [3.6, 21.2, 1.4], [5.0, 21.1, 1.45], [6.2, 20.0, 1.3]];     // profile: [z, y, r], the front curl rolls lowest
+const QUIFF_Z = [[-2.7, 20.0, 1.25], [-1.3, 21.0, 1.45], [0.1, 20.4, 1.2]];                  // front: [x, y, r]
 
 // ---------------------------------------------------------------- water painters
 // the ball seen face-on: a crisp cyan edge, a bright Fresnel rim (widest on the lit upper left),
@@ -328,7 +396,6 @@ const spineCubes = SPINES.flatMap(([z, L, lean]) => {
   const y = z > -1.6 ? 18.5 : 17.5, pv = [0, y, z];
   return [P([-2 / 3, y, z], [4 / 3, L, 0], spineP, { plane: 'z', pivot: pv, rot: [lean, 0, 0] }), P([0, y, z - 2 / 3], [0, L, 4 / 3], spineP, { plane: 'x', pivot: pv, rot: [lean, 0, 0] })];
 });
-const eyeParts = (side) => Object.keys(EYEP).map((k) => P(side < 0 ? [-3.5, 14.12, 6.46] : [0.833, 14.12, 6.46], [8 / 3, 3, 0], EYEP[k], { plane: 'z', glow: true, mirror: side > 0, id: (side < 0 ? 'eR-' : 'eL-') + k, hide: k !== 'proud' }));
 const ROOT_R = [-3.1, 13.6], ROOT_L = [3.1, 13.6];
 
 export const def = {
@@ -361,16 +428,19 @@ export const def = {
       P([-3.3, 11.4, 6.4], [6.6, 2.6, 0.5], body, { faces: { south: face } }),          // the jaw juts a little (lionfish underbite)
       P([-1.1, 12.6, 6.8], [2.2, 0.6, 0.9], upperLip),
       P([-1.0, 12.0, 6.85], [2.0, 0.9, 0.8], '#120c14', { outline: false }),
-      ...eyeParts(-1), ...eyeParts(1),
+    ] },
+    ...EYES.bones,
+    // the pompadour: crossed planes (profile and front) of curly black fin, peeking out from under the cocked crown
+    { name: 'quiff', parent: 'head', pivot: [-1.2, 18.4, 4.6], cubes: [
+      P([-1.3, 17.6, 1.0], [0, 4.6, 6.6], quiffP(QUIFF_X, 'x', [1.6, 6.8, 19.2]), { plane: 'x' }),
+      P([-4.0, 18.0, 5.4], [5.4, 4.6, 0], quiffP(QUIFF_Z, 'z', [-3.6, 0.8, 19.4]), { plane: 'z' }),
     ] },
     { name: 'jaw', parent: 'head', pivot: [0, 12.6, 7.1], cubes: [P([-1.35, 11.6, 6.7], [2.7, 1, 1.4], lowerLip)] },
     { name: 'gum', parent: 'jaw', pivot: [0, 12.1, 8.2], cubes: [P([-1.5, 10.6, 9.7], [3, 3, 0], bubSpr, { plane: 'z', id: 'gum', hide: true })] },
     { name: 'browR', parent: 'head', pivot: [-2.0, 17.65, 6.5], rot: [0, 0, 3], cubes: [
-      P([-3.33, 17.2, 6.48], [8 / 3, 1, 0], browP, { plane: 'z' }),
       P([-3.9, 17.95, 6.5], [1, 8 / 3, 0], tentacle, { plane: 'z', pivot: [-3.4, 18.0, 6.55], rot: [-24, 0, 26] }),
     ] },
     { name: 'browL', parent: 'head', pivot: [2.0, 17.9, 6.5], rot: [0, 0, -7], cubes: [
-      P([0.67, 17.45, 6.48], [8 / 3, 1, 0], browP, { plane: 'z', mirror: true }),
       P([2.9, 18.3, 6.5], [1, 8 / 3, 0], tentacle, { plane: 'z', pivot: [3.4, 18.35, 6.55], rot: [-24, 0, -26] }),
     ] },
     { name: 'crown', parent: 'head', pivot: [0.8, 18.7, 4.0], rot: [6, 0, -14], cubes: [
@@ -380,6 +450,41 @@ export const def = {
       P([-1.2, 19.93, 2.3], [0, 7 / 3, 3.4], crownPts(2), { plane: 'x' }),
       P([2.8, 19.93, 2.3], [0, 7 / 3, 3.4], crownPts(2), { plane: 'x' }),
       P([-0.2, 18.75, 5.8], [2, 7 / 3, 0], raindrop, { plane: 'z' }),
+    ].map((c) => ({ ...c, id: 'acc-crown', hide: true })).concat([
+      // (or) a raspberry beret, cocked the same way
+      P([-2.0, 18.4, 1.0], [5.6, 1.3, 5.8], beretP, { id: 'acc-beret', hide: true }),
+      P([-1.4, 19.7, 1.6], [4.4, 0.6, 4.6], beretP, { id: 'acc-beret', hide: true }),
+      P([0.6, 20.3, 3.6], [0.5, 0.7, 0.5], '#5a0a26', { id: 'acc-beret', hide: true }),
+    ]) },
+    // drip 2: a heavy gold chain round the throat with a purple raindrop pendant swinging over the jabot
+    { name: 'chain', parent: 'head', pivot: [0, 10.6, 6.0], cubes: [
+      P([-2.9, 10.9, 4.6], [1.4, 0.5, 0.5], linkP, { pivot: [-2.2, 11.15, 4.85], rot: [0, -38, -30], id: 'acc-pendant', hide: true }),
+      P([-1.9, 10.35, 5.6], [1.5, 0.5, 0.5], linkP, { pivot: [-1.15, 10.6, 5.85], rot: [0, -16, -16], id: 'acc-pendant', hide: true }),
+      P([-0.75, 10.1, 6.05], [1.5, 0.5, 0.5], linkP, { id: 'acc-pendant', hide: true }),
+      P([0.4, 10.35, 5.6], [1.5, 0.5, 0.5], linkP, { pivot: [1.15, 10.6, 5.85], rot: [0, 16, 16], id: 'acc-pendant', hide: true }),
+      P([1.5, 10.9, 4.6], [1.4, 0.5, 0.5], linkP, { pivot: [2.2, 11.15, 4.85], rot: [0, 38, 30], id: 'acc-pendant', hide: true }),
+    ] },
+    { name: 'pendant', parent: 'chain', pivot: [0, 10.1, 6.4], cubes: [
+      P([-0.3, 9.5, 6.25], [0.6, 0.7, 0.4], linkP, { id: 'acc-pendant', hide: true }),
+      P([-1.0, 7.0, 6.5], [2.0, 2.6, 0], raindrop, { plane: 'z', id: 'acc-pendant', hide: true }),
+    ] },
+    // drip 3: a Purple Rain cape of velvet, gold-trimmed, draping back from the shoulders over the tail
+    // drip 2 (or): little round purple shades pushed up on its brow, under the crown
+    { name: 'shades', parent: 'head', pivot: [0, 17.6, 6.6], rot: [-14, 0, 0], cubes: [
+      P([-3.3, 16.9, 6.75], [2.6, 2.0, 0], lensP, { plane: 'z', id: 'acc-shades', hide: true }),
+      P([0.7, 16.9, 6.75], [2.6, 2.0, 0], lensP, { plane: 'z', id: 'acc-shades', hide: true, mirror: true }),
+      P([-0.7, 17.75, 6.6], [1.4, 0.35, 0.35], GOLD[1], { id: 'acc-shades', hide: true }),
+      P([-3.75, 17.75, 2.6], [0.35, 0.35, 4.2], GOLD[2], { id: 'acc-shades', hide: true }), P([3.4, 17.75, 2.6], [0.35, 0.35, 4.2], GOLD[2], { id: 'acc-shades', hide: true }),
+    ] },
+    // drip 3 (or): the cloud guitar slung across its back, the neck over its right shoulder
+    { name: 'guitar', parent: 'fish', pivot: [3.4, 13.0, -1.6], rot: [-38, 0, 0], cubes: [
+      P([3.7, 7.6, -5.6], [0, 5.8, 6.6], cloudP, { plane: 'x', id: 'acc-guitar', hide: true }),
+      P([3.2, 12.6, -2.25], [0.6, 7.4, 0.7], fretP, { id: 'acc-guitar', hide: true }),
+      P([3.15, 19.8, -2.5], [0.7, 1.6, 1.2], AME[3], { id: 'acc-guitar', hide: true }),
+    ] },
+    { name: 'cape', parent: 'fish', pivot: [0, 18.3, -1.2], rot: [52, 0, 0], cubes: [
+      P([-4.6, 9.3, -1.2], [9.2, 9.0, 0], capeP, { plane: 'z', id: 'acc-cape', hide: true }),
+      P([-3.4, 17.9, -1.6], [6.8, 0.8, 0.8], linkP, { id: 'acc-cape', hide: true }),
     ] },
     { name: 'maneT', parent: 'head', pivot: MC, cubes: MANE.maneT },
     { name: 'maneL', parent: 'head', pivot: MC, cubes: MANE.maneL },
@@ -488,6 +593,9 @@ function koPose(P, k = 1) {
   P.rot('crown', 0, 0, -40 * k).pos('crown', 2.6 * k, -1.6 * k, 0.4 * k);
   P.rot('jaw', 12 * k).rot('spines', -20 * k, 0, 0).scl('spines', 1 - 0.2 * k);
 }
+// the supraorbital tentacles over the eyes (real lionfish anatomy, no brows): + cocks them up and out (angry),
+// − droops them (worried); lift raises both
+const brows = (P, a, lift = 0) => P.rot('browR', 0, 0, -a).rot('browL', 0, 0, a).pos('browR', 0, lift, 0).pos('browL', 0, lift, 0);
 const RAIN = [[-11, 0], [-7, -4], [-5, 4], [-2, -2], [0, 5], [2, 1], [5, -4], [7, 3], [11, -1]];
 
 export const anim = {
@@ -509,9 +617,12 @@ export const anim = {
     { bone: 'browR', tip: [-1, 2, 0], k: 220, d: 12, gain: 0.4, max: 10 },
     { bone: 'browL', tip: [1, 2, 0], k: 220, d: 12, gain: 0.4, max: 10 },
     { bone: 'crown', tip: [0, 2, 0], k: 260, d: 13, gain: 0.35, max: 8 },
+    { bone: 'quiff', tip: [0, 3, 1], k: 210, d: 10, gain: 0.5, max: 10 },
+    { bone: 'pendant', tip: [0, -2.4, 0.4], k: 90, d: 5, gain: 1.1, max: 30 },
+    { bone: 'cape', tip: [0, -8, 0], k: 70, d: 5, gain: 0.9, max: 22, axes: [1, 0.4, 0.6] },
   ],
   faces: {
-    eyes: { default: 'proud', states: { ...Object.fromEntries(Object.keys(EYEP).map((k) => [k, ['eR-' + k, 'eL-' + k]])), aim: ['eR-glare', 'eL-closed'] } },
+    eyes: EYES.slot,
     shell: { default: 'on', states: { on: ['disc', 'gloss', 'cage', 'inner'], off: [] } },
     pop: { default: 'off', states: { off: [], a: ['pop-a'], b: ['pop-b'] } },
     puddle: { default: 'off', states: { off: [], on: ['puddle'] } },
@@ -535,7 +646,10 @@ export const anim = {
       const hov = 1 - S.swim, toss = key([[0.35, 0], [0.55, 1, 'out'], [0.8, -0.35], [1.05, 0]], t), pose = bump(t, 4.25, 4.8);
       P.rot('head', -6 * hov - 5 * pose, 18 * toss, -4 * toss).rot('fish', 0, 0, 3 * toss).rot('browL', 0, 0, 12 * bump(t, 0.4, 1.3));
       mane(P, 1 + 0.1 * pose); fins(P, 14 * pose);
-      P.face('eyes', t > 0.45 && t < 1.1 ? 'smug' : t > 4.35 && t < 4.7 ? 'happy' : undefined);
+      // eyes: little sideways darts while it hovers, a smug lid on the toss, a happy squint for the pose
+      const [gx, gy] = glance(t, [[0, 0], [-0.35, 0.1], [-0.35, 0.1], [0, 0], [0.4, 0], [0.25, -0.15]], 0.8);
+      eyesAt(P, gx * hov, gy * hov).face('eyes', t > 0.45 && t < 1.1 ? 'smug' : t > 4.35 && t < 4.7 ? 'happy' : t > 2.35 && t < 2.55 ? 'glint' : undefined);
+      eyesScale(P, 1 + 0.06 * bump(t, 4.35, 4.7), 1 - 0.22 * bump(t, 4.3, 4.45) + 0.08 * bump(t, 4.45, 4.8));
       P.stream('bblion-bub', 'head', LIPS, { rate: 0.7 + S.swim * 3.5, dir: [0, 0.5, 0.6], speed: 0.6 });
     } },
     // the ball bounds forward in big squashy hops while the fish paddles furiously inside
@@ -548,7 +662,7 @@ export const anim = {
       P.pos('swim', 0, h.air ? -1.4 * Math.cos(h.k * Math.PI) : -drop * 0.9, 1.2).rot('fish', 14 - 8 * air, 0, Math.sin(ph / 2) * 4);
       for (const [s, sg] of [['R', 1], ['L', -1]]) P.rot('fin' + s + '1', 0, sg * (8 + Math.sin(ph) * 30), sg * Math.cos(ph) * 14).rot('fin' + s + '2', 0, sg * Math.sin(ph - 0.8) * 22, 0);
       P.rot('tail1', 0, Math.sin(ph) * 12, 0).rot('tail2', 0, Math.sin(ph - 1) * 20, 0).rot('head', -8 * air, 0, 0);
-      P.face('eyes', 'glare'); P.lookW = 0.4;
+      P.face('eyes', 'angry'); brows(P, 10, -0.15); eyesAt(P, 0, -0.1 * air); P.lookW = 0.4;
       P.burst(0.8 * 0.63, 'splash', 'root', [0, 0.6, 3], { n: 6, dir: [0, 1, 0.3], speed: 0.8 });
       P.stream('bblion-bub', 'head', LIPS, { rate: 5, dir: [0, 0.4, -0.6], speed: 0.8 });
     } },
@@ -574,13 +688,16 @@ export const anim = {
       mane(P, 1 - 0.14 * suck + 0.32 * puff, 16 * puff); P.scl('jab', 1 + 0.2 * puff);
       P.rot('spines', 16 * puff, 0, 0).scl('spines', 1 + 0.25 * puff); fins(P, 40 * puff - 10 * suck, 20 * puff);
       P.rot('head', 10 * suck - 24 * puff + wave(t, 12) * 3 * puff, 0, wave(t, 9) * 4 * puff).rot('jaw', 34 * puff);
-      P.rot('browR', 0, 0, 10 * puff).rot('browL', 0, 0, -10 * puff);
+      brows(P, 16 * puff - 8 * suck, 0.3 * suck);
       P.rot('head', -10 * smug, 12 * smug, 0).rot('browL', 0, 0, 12 * smug);
-      P.face('eyes', suck > 0.3 ? 'shut' : t > BURST && t < REFORM + 0.1 ? 'wide' : puff > 0.3 ? 'glare' : smug > 0.4 ? 'smug' : undefined);
+      const pop = t > BURST && t < REFORM + 0.1;
+      P.face('eyes', suck > 0.3 ? 'shut' : pop ? 'shock' : puff > 0.3 ? 'angry' : smug > 0.4 ? 'smug' : undefined);
+      eyesScale(P, 1 - 0.15 * suck + (pop ? 0.3 : 0) + 0.1 * puff, 1 - 0.3 * suck + (pop ? 0.35 : 0) - 0.05 * puff);
+      if (pop) brows(P, -14, 0.7);
       P.blinkOK = puff < 0.1; P.lookW = 1 - puff;
       P.burst(BURST, 'bblion-ring', 'float', BC, {}).burst(BURST, 'splash', 'float', BC, { n: 22, spread: 1, speed: 1.7 })
         .burst(BURST, 'bblion-bub', 'float', BC, { n: 14, spread: 1, speed: 2 }).burst(BURST, 'drop', 'float', [0, 27, 0], { n: 8, spread: 1, speed: 1.5 });
-      P.burst(REFORM, 'bblion-glint', 'float', BC, { n: 8, spread: 1, speed: 0.9 });
+      P.burst(REFORM, 'bblion-glint', 'float', BC, { n: 8, spread: 1, speed: 0.9 }).burst(BURST + 0.02, 'sweat', 'head', [3.6, 18.6, 6.2], { n: 2, dir: [1, 1, 0.3] });
       if (puff > 0.5 && t < BURST) P.stream('bblion-bub', 'head', LIPS, { rate: 14, dir: [0, 1, 0.5], speed: 1.4, spread: 0.5 });
     } },
     // physical: backs up, coils, and rams the ball's wall — the whole ball lunges and flattens
@@ -594,7 +711,9 @@ export const anim = {
       squash(P, -0.08 * back + wob(t, 0.66, 0.07, 3, 5));
       P.pos('swim', 0, 0, -3.4 * back + 3.4 * lunge).rot('fish', 8 * back - 10 * lunge, 0, 0).rot('tail1', 0, 24 * back, 0).rot('tail2', 0, 30 * back, 0);
       P.scl('head', 1 + 0.1 * smack, 1 + 0.05 * smack, 1 - 0.2 * smack); mane(P, 1 + 0.12 * smack, -10 * lunge); fins(P, -20 * lunge + 30 * smack, -30 * lunge);
-      P.face('eyes', smack > 0.3 ? 'shut' : back > 0.15 || lunge > 0.15 ? 'glare' : undefined); P.lookW = 1 - lunge;
+      P.face('eyes', smack > 0.3 ? 'shut' : back > 0.15 || lunge > 0.15 ? 'angry' : t > 0.8 ? 'smug' : undefined); P.lookW = 1 - lunge;
+      brows(P, 16 * Math.max(back, lunge) - 6 * smack); eyesScale(P, 1 + 0.15 * smack, 1 - 0.3 * smack);
+      P.burst(0.18, 'anger', 'head', [3.4, 19.2, 6], {});
       P.burst(0.43, 'splash', 'float', [0, 15, 15], { n: 16, dir: [0, 0.3, 1], speed: 1.5, spread: 0.8 }).burst(0.43, 'bblion-ring', 'float', [0, 15, 15.5], {})
         .burst(0.43, 'star', 'float', [0, 18, 16], { n: 3 }).burst(0.43, 'spark', 'float', [0, 15, 16], {});
     } },
@@ -608,7 +727,10 @@ export const anim = {
       P.pos('swim', 0, 0.4 * aim, 2.8 * aim - 2.4 * fire).rot('fish', -4 * charge + 10 * fire, 0, 4 * aim);
       P.scl('head', 1 + 0.1 * charge, 1 + 0.04 * charge, 1 + 0.04 * charge).rot('jaw', -6 * charge + 30 * fire).pos('jaw', 0, 0, 0.5 * charge);
       P.rot('crown', 0, 0, wave(t, 11) * 6 * charge); mane(P, 1 + 0.08 * charge - 0.06 * fire, 8 * charge); fins(P, -16 * fire, 10 * charge);
-      P.face('eyes', aim > 0.3 && t < 1.12 ? 'aim' : t >= 1.12 && t < 1.62 ? 'smug' : undefined).face('gum', t > 0.12 && t < 0.55 ? 'on' : 'off');
+      P.face('eyes', aim > 0.3 && t < 1.12 ? 'aim' : t >= 1.12 && t < 1.62 ? 'side' : t >= 1.62 ? 'smug' : undefined).face('gum', t > 0.12 && t < 0.55 ? 'on' : 'off');
+      P.rot('browR', 0, 0, -14 * aim).rot('browL', 0, 0, -10 * aim).pos('browL', 0, -0.3 * aim, 0);           // one brow down to squint, one cocked
+      eyesScale(P, 1 + 0.08 * charge, 1 - 0.1 * charge + 0.12 * fire); eyesAt(P, 0.12 * fire * wave(t, 9), 0);
+      P.rot('browL', 0, 0, 16 * bump(t, 1.12, 1.62));
       P.scl('gum', 0.2 + 1.2 * charge + wave(t, 9) * 0.08 * charge);
       P.blinkOK = false; P.lookW = 0.6;
       P.burst(0.55, 'bblion-shot', 'head', [0, 12.2, 9.9], { n: 1, dir: [0, 0.02, 1] }).burst(0.55, 'splash', 'head', LIPS, { n: 7, dir: [0, 0.2, 1], spread: 0.3, speed: 1.2 })
@@ -627,7 +749,9 @@ export const anim = {
       P.scl('ball', 1 + 0.09 * k, 1 - 0.1 * k, 1 - 0.07 * k); squash(P, wob(t, 0.1, 0.07, 4, 6));
       P.pos('swim', 0, 0.8 * k, -3 * k).rot('fish', -18 * k, 0, wave(t, 14) * 8 * k).rot('swim', 0, wob(t, 0.05, 25, 2.5, 5), 0);
       mane(P, 1 - 0.1 * k, -12 * k); fins(P, 30 * k, -20 * k);
-      P.face('eyes', t < 0.42 ? 'shut' : undefined); P.lookW = 1 - k;
+      P.face('eyes', t < 0.12 ? 'shock' : t < 0.42 ? 'shut' : t < 0.6 ? 'sad' : undefined); P.lookW = 1 - k;
+      eyesScale(P, 1 + 0.3 * bump(t, 0, 0.14), 1 + 0.35 * bump(t, 0, 0.14) - 0.2 * bump(t, 0.14, 0.42)); brows(P, -14 * k, 0.4 * k);
+      P.burst(0.06, 'sweat', 'head', [-3.8, 18.4, 6.2], { n: 2, dir: [-1, 1, 0.3] });
       const up = bump(t, 0.04, 0.5); P.pos('crown', 0, 5 * up, 0).rot('crown', 0, 360 * seg(t, 0.04, 0.5), 18 * up);
       P.burst(0.03, 'drop', 'float', BC, { n: 10, spread: 1, speed: 1.6 }).burst(0.03, 'spark', 'float', [0, 16, 15], {}).burst(0.5, 'bblion-glint', 'head', [0.8, 20, 4], { n: 2 });
     } },
@@ -649,13 +773,16 @@ export const anim = {
         for (const t0 of [LAND, 1.5, 1.95]) { const f = bump(t, t0, t0 + 0.3) * (t0 === LAND ? 1 : 0.7); P.pos('swim', 0, 2.2 * f, 0).rot('tail1', 0, 26 * f, 0).rot('tail2', 0, 22 * f, 0).rot('fish', 0, 0, 10 * f); }
       }
       P.burst(LAND, 'splash', 'root', [0, 1, 1], { n: 12, dir: [0, 1, 0], spread: 1, speed: 1.1 }).burst(LAND, 'star', 'head', [0, 18, 5], { n: 4 });
-      P.face('eyes', t < LAND ? 'wide' : 'swirl'); P.blinkOK = false; P.lookW = 0;
+      P.face('eyes', t < 0.3 ? 'teary' : t < LAND ? 'shock' : 'swirl'); P.blinkOK = false; P.lookW = 0;
+      eyesScale(P, 1 + 0.25 * bump(t, POP - 0.05, LAND), 1 + 0.35 * bump(t, POP - 0.05, LAND)); brows(P, -16 * dizzy, 0.3);
+      P.burst(0.1, 'tear', 'head', [-2.4, 14.4, 6.8], { n: 1, dir: [-0.3, -1, 0.4] });
       if (t < LAND) { fins(P, 50 * fall); mane(P, 1 + 0.15 * fall); }
     } },
     // knocked out: lying in its puddle, flopping weakly now and then, swirly-eyed
     down: { len: 2.4, loop: true, f(P, t, c) {
       base(P, c, { k: 0.25, bubbles: 0 });
       P.face('shell', 'off').face('puddle', 'on').face('contact', 'off').face('eyes', 'swirl'); P.blinkOK = false; P.lookW = 0; P.breathW = 0.4;
+      brows(P, -12, 0.2); eyesScale(P, 1 + 0.08 * wave(t, 0.8), 1 - 0.08 * wave(t, 0.8));
       swell(P, 0.001); koPose(P, 1);
       const f = bump(t, 0.9, 1.3);
       P.pos('swim', 0, 1.2 * f, 0).rot('tail1', 0, 22 * f, 0).rot('tail2', 0, 20 * f, 0).rot('fish', 0, 0, 6 * f).rot('jaw', 6 * wave(t, 0.8));
@@ -679,7 +806,8 @@ export const anim = {
       P.rot('finR1', 30 * pose, 10 * pose, -128 * pose).rot('finR2', 0, 0, -26 * pose + hold * 6).rot('finL1', 0, -20 * pose, 26 * pose);
       P.rot('head', -24 * pose, 0, 8 * pose); mane(P, 1 + 0.22 * pose, 14 * pose); P.rot('spines', 14 * pose, 0, 0).scl('spines', 1 + 0.15 * pose);
       P.rot('browL', 0, 0, 16 * pose).rot('jaw', 6 * pose);
-      P.face('eyes', t > 1.76 && t < 1.98 ? 'happy' : pose > 0.3 ? 'smug' : undefined); P.lookW = 1 - Math.max(spin < 1 ? spin : 0, pose);
+      P.face('eyes', t < 0.25 ? 'glint' : spin > 0 && spin < 1 ? 'happy' : t < 1.76 ? 'star' : t < 1.98 ? 'happy' : pose > 0.3 ? (t > 2.5 && t < 2.75 ? 'wink' : 'smug') : undefined); P.lookW = 1 - Math.max(spin < 1 ? spin : 0, pose);
+      eyesScale(P, 1 + 0.2 * bump(t, 1.0, 1.4), 1 + 0.25 * bump(t, 1.0, 1.4) - 0.25 * catchK); brows(P, -8 * pose, 0.25 * pose);
       P.burst(1.77, 'bblion-glint', 'head', [0.8, 21, 4], { n: 6, spread: 1, speed: 0.7 }).burst(2.0, 'bblion-glint', 'float', [-8, 24, 6], { n: 3, speed: 0.4 });
       if (t > 1.95) for (const [x, z] of RAIN) P.stream('bblion-rain', 'root', [x, 33, z], { rate: 6, dir: [0, -1, 0], key: 'r' + x + z });
       P.burst(1.95, 'bblion-glint', 'float', [0, 30, 2], { n: 5, spread: 1, speed: 0.8 });
@@ -692,7 +820,8 @@ export const anim = {
       P.pos('swim', 0.8, -4.2 + br * 0.5, 1.2).rot('swim', 0, -12, 0).rot('fish', 3 + br * 1.5, 0, 17 + br * 2).rot('head', 2, 0, 7).rot('jaw', 5 + 3 * Math.max(0, br));
       fins(P, -24); mane(P, 0.93, -6); P.rot('spines', -12, 0, 0).rot('tail1', 0, 6, 0);
       P.rot('crown', 0, 0, -30).pos('crown', -0.9, -0.9, 0.4);
-      P.face('eyes', 'closed'); P.blinkOK = false; P.lookW = 0; P.breathW = 0.5;
+      P.face('eyes', br > 0.85 ? 'sleepy' : 'closed'); P.blinkOK = false; P.lookW = 0; P.breathW = 0.5;
+      eyesScale(P, 1, 0.9 + 0.1 * br); brows(P, -6, -0.15);
       P.burst(0.6, 'bblion-bub', 'head', LIPS, { n: 1, dir: [0, 1, 0.2], speed: 0.3 }).burst(2.6, 'bblion-bub', 'head', LIPS, { n: 2, dir: [0, 1, 0.2], speed: 0.3 });
       P.burst(1.3, 'z', 'head', [3, 21, 5], {}).burst(3.1, 'z', 'head', [3, 21, 5], {});
     } },
@@ -706,7 +835,10 @@ export const anim = {
       P.rot('crown', -30 * on, 180 * back, -26 * on + wave(t, 7) * 8 * shake).pos('crown', -0.5 * on, -2.5 * on + 4.2 * hopUp, 1.7 * on);
       P.rot('head', -26 * toss - 12 * proud + 5 * on, wave(t, 6.5) * 16 * shake + 12 * proud, wave(t, 6.5, 1) * 5 * shake);
       P.rot('browL', 0, 0, 14 * proud).rot('browR', 0, 0, -6 * on); fins(P, 16 * shake + 10 * toss); mane(P, 1 + 0.08 * toss, 10 * toss);
-      P.face('eyes', t > 0.2 && t < 0.62 ? 'wide' : shake > 0.05 ? 'shut' : proud > 0.3 ? 'smug' : undefined); P.lookW = 1 - Math.max(on, toss, proud);
+      P.face('eyes', t > 0.2 && t < 0.62 ? 'shock' : shake > 0.05 ? 'shut' : proud > 0.3 ? 'smug' : undefined); P.lookW = 1 - Math.max(on, toss, proud);
+      eyesScale(P, 1 + 0.2 * bump(t, 0.2, 0.62), 1 + 0.3 * bump(t, 0.2, 0.62) - 0.25 * shake); eyesAt(P, 0, 0.25 * bump(t, 0.2, 0.62));
+      brows(P, 18 * shake - 10 * bump(t, 0.2, 0.62), 0.5 * bump(t, 0.2, 0.62));
+      P.burst(0.7, 'anger', 'head', [-3.6, 19.4, 6], {}).burst(0.25, 'sweat', 'head', [3.8, 18.6, 6], { n: 1, dir: [1, 1, 0.3] });
       P.burst(1.42, 'bblion-glint', 'head', [0.8, 21.5, 4], { n: 3, speed: 0.5 }).burst(1.75, 'bblion-bub', 'head', LIPS, { n: 1, dir: [0, 1, 0.3] });
     } },
     // fidget: admires its reflection in the ball's wall, flexing mane and fins
@@ -716,7 +848,9 @@ export const anim = {
       const turn = seg(t, 0.1, 0.5, E.inout) * (1 - seg(t, 2.0, 2.45, E.inout)), flex = bump(t, 0.7, 1.9);
       P.pos('swim', -3.2 * turn, 0, 1 * turn).rot('swim', 0, -70 * turn, 0);
       mane(P, 1 + 0.16 * flex, 12 * flex); fins(P, 30 * flex, 20 * flex); P.rot('head', -10 * flex, 0, 8 * wave(t, 1.5) * flex);
-      P.face('eyes', turn > 0.5 ? (flex > 0.6 ? 'happy' : 'smug') : undefined); P.lookW = 1 - turn;
+      P.face('eyes', turn > 0.5 ? (flex > 0.6 ? 'heart' : 'smug') : undefined); P.lookW = 1 - turn;
+      eyesScale(P, 1 + 0.15 * flex * Math.abs(wave(t, 3)), 1 + 0.15 * flex * Math.abs(wave(t, 3))); brows(P, -6 * flex, 0.3 * flex);
+      P.burst(1.25, 'heart', 'head', [-3, 19, 6], { n: 2, speed: 0.5 });
       P.burst(1.1, 'bblion-glint', 'float', [-13, 18, 4], { n: 3, speed: 0.3 });
     } },
     // fidget: blows a bubble from its pout — it grows, it pops in its face; it composes itself
@@ -728,7 +862,10 @@ export const anim = {
       P.scl('gum', 0.15 + 1.75 * grow + wave(t, 5) * 0.06 * grow).rot('jaw', -6 * grow * (t < POP ? 1 : 0)).pos('jaw', 0, 0, 0.4 * grow * (t < POP ? 1 : 0));
       P.pos('swim', 0, 0, -1.6 * flinch).rot('head', -14 * flinch - 10 * recover, -18 * recover, wave(t, 9) * 4 * flinch);
       mane(P, 1 + 0.2 * flinch, -8 * flinch); fins(P, 26 * flinch);
-      P.face('eyes', t < POP ? (grow > 0.35 ? 'wide' : undefined) : t < POP + 0.4 ? 'shut' : t < 1.75 ? 'sad' : recover > 0.2 ? 'smug' : undefined); P.lookW = 1 - Math.max(flinch, recover);
+      P.face('eyes', t < POP ? (grow > 0.35 ? 'wide' : undefined) : t < POP + 0.4 ? 'shut' : t < 1.75 ? 'teary' : recover > 0.2 ? 'smug' : undefined); P.lookW = 1 - Math.max(flinch, recover);
+      eyesAt(P, 0, -0.2 * grow * (t < POP ? 1 : 0)); eyesScale(P, 1 + 0.1 * grow * (t < POP ? 1 : 0), 1 + 0.15 * grow * (t < POP ? 1 : 0) - 0.3 * flinch);
+      brows(P, t < POP ? -6 * grow : -14 * flinch + 10 * recover, t < POP ? 0.3 * grow : 0);
+      P.burst(POP + 0.05, 'sweat', 'head', [3.8, 18.4, 6], { n: 2, dir: [1, 1, 0.3] });
       P.burst(POP, 'splash', 'head', [0, 12.2, 10.8], { n: 8, spread: 1, speed: 0.8 }).burst(POP, 'bblion-ring', 'head', [0, 12.2, 10.8], { scale: 0.3 });
     } },
   },
@@ -736,9 +873,20 @@ export const anim = {
 def.anim = anim;
 // where buyable gear fits: `at` in model units at rest (same space as cube origins), `size` = the width
 // of that part. The fish carries them as it swims; 'fish' is its body bone
+// appearance tiers: normal wears one of the first list, dripped adds one of the second, ultra dripped one of the third
+def.drip = [
+  [{ id: 'acc-crown', name: 'Raindrop crown' }, { id: 'acc-beret', name: 'Raspberry beret' }],
+  [{ id: 'acc-pendant', name: 'Rain pendant chain' }, { id: 'acc-shades', name: 'Round purple shades' }],
+  [{ id: 'acc-cape', name: 'Purple Rain cape' }, { id: 'acc-guitar', name: 'Cloud guitar' }],
+];
 def.attach = {
   head: { bone: 'head', at: [0, 18.8, 3.9], size: 7.4 },
   face: { bone: 'head', at: [0, 16.1, 6.5], size: 7.4 },
   neck: { bone: 'fish', at: [0, 11.0, 5.0], size: 5.8 },
   back: { bone: 'fish', at: [0, 18.6, -0.6], size: 5.2 },
 };
+
+// the ultra-drip form: the eyes keep their own colours, and pale creams that blackGold would lacquer black turn
+// champagne gold instead, so the face stays readable in black and gold
+const _lum = (c) => { const n = parseInt(c.slice(1, 7), 16), r = n >> 16, g = (n >> 8) & 255, b = n & 255; return (Math.max(r, g, b) + Math.min(r, g, b)) / 510; };
+def.dripForm = { map: keepEyes(EYES, (c, glow) => { const v = blackGold(c, glow); return !glow && typeof c === 'string' && c[0] === '#' && _lum(c) > 0.8 && _lum(v) < 0.35 ? '#f2dca0' : v; }) };

@@ -260,9 +260,11 @@ export function eyeRig(o = {}) {
   const size = o.style === 'pix' && o.map ? [o.map.open[0].length * (o.chunk ?? 2) / (o.ppu || 3), o.map.open.length * (o.chunk ?? 2) / (o.ppu || 3)] : o.size || [3, 3.4];
   const [x, y, z] = at, [w, h] = size;
   const glow = (s) => o.glow === 'all' || (GLOW.has(s) && o.glow !== false);
+  // every colour the eye planes paint with, so a recolouring form (the ultra-drip form) can leave the eyes alone
+  const iris = o.iris || '#3a6ad0', colors = new Set([...Object.values(pixPal(o)), INK, WHITE, '#d6dcee', '#ff3e6c', '#ffd23a', '#8ad8ff', iris, o.irisLo || shiftHex(iris, 0.3), o.irisHi || shiftHex(iris, -0.45), o.color || INK, o.accent || '#5a6aa8'].filter(Boolean));
   if (o.single) {
     const cubes = states.map((s) => ({ o: [x - w / 2, y - h / 2, z], s: [w, h, 0], plane, tex: eyeArt(s, o), glow: glow(s), id: 'e-' + s, hide: s !== 'open', outline: false }));
-    return { bones: [{ name: o.name || 'eye', parent, pivot: [x, y, z], cubes }], slot: { default: 'open', states: Object.fromEntries(states.map((s) => [s, ['e-' + s]])) } };
+    return { bones: [{ name: o.name || 'eye', parent, pivot: [x, y, z], cubes }], slot: { default: 'open', states: Object.fromEntries(states.map((s) => [s, ['e-' + s]])) }, colors };
   }
   const mk = (side) => states.map((s) => ({
     o: side < 0 ? [x - w / 2, y - h / 2, z] : [-x - w / 2, y - h / 2, z], s: [w, h, 0], plane, mirror: side > 0,
@@ -275,8 +277,10 @@ export function eyeRig(o = {}) {
   const slot = { default: 'open', states: Object.fromEntries(states.map((s) => [s, ['eR-' + s, 'eL-' + s]])) };
   // (planes are painted with eyeArt, which paints at low res: o.chunk texels per pixel, default 2)
   if (states.includes('happy')) slot.states.wink = ['eR-open', 'eL-happy'];
-  return { bones, slot };
+  return { bones, slot, colors };
 }
+// wrap a species' drip-form colour map (def.dripForm.map) so the eyes keep their own colours
+export function keepEyes(eyes, map) { return (c, glow) => (typeof c === 'string' && eyes.colors.has(c) ? c : map(c, glow)); }
 
 // ---------------------------------------------------------------- clip helpers
 // move both eye bones together (darts, glances; model units), squash / stretch them about their centres

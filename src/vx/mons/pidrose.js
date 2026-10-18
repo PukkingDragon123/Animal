@@ -67,7 +67,7 @@ export const anim = {
     { bone: 'bandL', tip: [0, -1, -3.5], k: 120, d: 8, gain: 0.9, max: 30 },
   ],
   faces: { eyes: EYES.slot },
-  fidget: { every: [4.5, 8], clips: ['sniff', 'preen', 'peck'] },
+  fidget: { every: [3.5, 7], clips: ['dance', 'dance', 'toss', 'toss', 'sniff', 'preen', 'peck'] },
   clips: {
     // all attitude: the hips roll, the tail swishes, the head tips with a slow sassy tilt, the rose turns
     idle: { len: 2.6, loop: true, f(P, t) {
@@ -171,6 +171,31 @@ export const anim = {
       P.rot('wingL', 20, 0, -6).rot('handL', -16, 0, 0).rot('rose', -20, 0, 20).rot('tail', 6, 0, 0);
       P.face('eyes', 'closed'); ES(P, 1.05, 0.8 + 0.05 * br); P.blinkOK = false; P.lookW = 0; P.breathW = 0;
       P.burst(0.5, 'z', 'head', [-3, 25, 4], {}).burst(1.9, 'z', 'head', [-3, 25, 4], {});
+    } },
+    // signature fidget: the rose toss — a dip, a flick, the rose spins up into the air… and she catches it
+    // without looking, a puff of petals, a wink
+    toss: { len: 2.2, next: 'idle', f(P, t) {
+      const dip = bump(t, 0.05, 0.4), flick = seg(t, 0.35, 0.45, E.out) * (1 - seg(t, 0.5, 0.7)), air = seg(t, 0.42, 1.25, E.lin);
+      const hgt = Math.sin(air * Math.PI) * 9 * (air > 0 && air < 1 ? 1 : 0);
+      P.pos('body', 0, -0.8 * dip, 0); plant(P, -0.8 * dip, 4);
+      P.rot('wingL', -40 * flick - 10 * dip, 0, 0).pos('rose', 0, hgt, hgt * 0.15).rot('rose', 0, 0, -720 * air * (air < 1 ? 1 : 0));
+      const look = bump(t, 0.4, 1.2); P.rot('head', -24 * look, 0, -6 * look); P.lookW = 1 - look;
+      const ctch = bump(t, 1.22, 1.5); P.rot('wingL', 10 * ctch, 0, 0).sq('body', -0.05 * ctch).rot('head', 6 * ctch, 0, 0);
+      P.face('eyes', look > 0.3 ? 'wide' : t > 1.3 && t < 2.0 ? 'wink' : undefined); ES(P, 1 + 0.15 * look, 1 + 0.2 * look);
+      P.burst(1.25, 'pg_petal', 'rose', BLOOM, { n: 8, speed: 1.0 }).burst(1.28, 'sparkle', 'rose', BLOOM, { n: 4 });
+    } },
+    // dance: the sassy sway — hips swinging on the beat, a full twirl, the rose held high, then a pose with a
+    // shower of petals and a wink
+    dance: { len: 2.6, next: 'idle', f(P, t) {
+      const beat = (t / 0.42) % 1, hit = Math.exp(-beat * 6), on = 1 - seg(t, 2.0, 2.1), sw = Math.sin((t / 0.84) * Math.PI * 2) * on;
+      P.pos('root', sw * 1.3, 0, 0).rot('body', 0, sw * 16, sw * 9).rot('tail', 0, -sw * 24, sw * 10).rot('head', 6 * hit * on, sw * 12, -sw * 10);
+      const dy = -0.6 * hit * on; P.pos('body', 0, dy, 0); plant(P, dy, 4);
+      P.rot('root', 0, 360 * seg(t, 1.0, 1.5, E.inout), 0).pos('root', 0, 1.2 * bump(t, 1.0, 1.5), 0);
+      P.rot('wingL', -50 * on, 0, -10 * on).rot('rose', 0, 30 * Math.sin(t * Math.PI * 2), 0).rot('wingR', 0, 0, -30 * on - 10 * hit * on);
+      const end = seg(t, 2.0, 2.15, E.back) * (1 - seg(t, 2.4, 2.6)); P.rot('wingL', -80 * end, 0, -20 * end).rot('body', -6 * end, 0, 0).rot('head', -8 * end, 0, 12 * end);
+      P.face('eyes', end > 0.3 ? 'wink' : hit > 0.6 ? 'happy' : 'open'); ES(P, 1, 1 - 0.12 * hit * on);
+      for (let i = 0; i < 5; i++) P.burst(i * 0.42 + 0.02, 'note', 'head', [i % 2 ? -4 : 4, 26, 3], {});
+      P.burst(2.1, 'pg_petal', 'rose', BLOOM, { n: 24, speed: 1.6 }).burst(2.1, 'sparkle', 'head', [0, 27, 3], { n: 5 });
     } },
     // fidget: brings the rose to her bill, eyes closed, a long sniff… and a petal drifts off
     sniff: { len: 2.6, next: 'idle', f(P, t) {

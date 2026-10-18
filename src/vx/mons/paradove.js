@@ -120,6 +120,10 @@ const talons = (x, z) => {
 // ---------------------------------------------------------------- particles
 const blazeSpr = (f) => (p, W, H) => fireP(f, 1, { hs: [1] })(p, W, H);
 defineFx('pg_blaze', { w: 14, h: 22, frames: [0, 1, 2, 3].map(blazeSpr), glow: true, life: [0.55, 0.9], size: [0.5, 0.18], speed: [0.6, 1.4], grav: -2.2, drag: 1.4, spread: 0.35, fps: 12, tint: [[1, 1, 1], [1, 0.8, 0.5], [0.9, 0.35, 0.15]] });
+// the ultra-drip form burns blue: the same flames repainted through a blue pen
+const BLUE = { '#fff6c8': '#f0fcff', '#ffd040': '#8ae4ff', '#ff9a2a': '#3c96ff', '#ff5a1a': '#2a52e0' };
+const blueSpr = (f) => (p, W, H) => blazeSpr(f)({ px: (x, y, c) => p.px(x, y, BLUE[c] || c) }, W, H);
+defineFx('pg_blueblaze', { w: 14, h: 22, frames: [0, 1, 2, 3].map(blueSpr), glow: true, life: [0.55, 0.9], size: [0.5, 0.18], speed: [0.6, 1.4], grav: -2.2, drag: 1.4, spread: 0.35, fps: 12, tint: [[1, 1, 1], [0.6, 0.85, 1], [0.25, 0.35, 0.95]] });
 const chipSpr = (c) => (p) => { p.px(0, 0, c); p.px(1, 0, BN[0]); p.px(1, 1, c); p.px(2, 1, BN[3]); };
 defineFx('pg_bone', { w: 3, h: 2, frames: [chipSpr(BN[1]), chipSpr(BN[2])], life: [0.5, 0.9], size: [0.06, 0.06], speed: [2, 3.6], grav: 8, drag: 0.4, spread: 0.7, spin: 10 });
 
@@ -262,7 +266,7 @@ export const anim = {
     { bone: 'tail', tip: [0, 0, -4], k: 160, d: 10, gain: 0.5, max: 14 },
   ],
   faces: { eyes: EYES.slot, fire: { default: 'a', states: { a: ['fire-a'], b: ['fire-b'], c: ['fire-c'], off: [] } } },
-  fidget: { every: [5, 9], clips: ['tiphat', 'rattle', 'preen'] },
+  fidget: { every: [3.5, 7], clips: ['dance', 'dance', 'hattrick', 'hattrick', 'tiphat', 'rattle', 'preen'] },
   clips: {
     // menace at rest: slow heavy breaths that swell the fire, the wings lifting and settling like a burning
     // cloak, the skull tilting to size you up, the jaw creaking, embers streaming off its back
@@ -371,6 +375,43 @@ export const anim = {
       P.stream('pg_smoke', 'head', [0, 36, 10], { rate: 1.5, scale: 2 });
       P.burst(0.6, 'z', 'head', [4, 44, 6], { scale: 2 }).burst(2.2, 'z', 'head', [4, 44, 6], { scale: 2 });
     } },
+    // dance: a slow burning stomp on a heavy 0.7 s beat — the body drops on each beat, a talon stamps sparks, the
+    // wings flap the flames high in turn, the hat rocks; a full turn on beat four, then the finish: wings flung
+    // wide, a pillar of fire, the hat tipped and held
+    dance: { len: 3.4, next: 'idle', f(P, t) {
+      const B = 0.7, b = Math.min(3, Math.floor(t / B)), u = (t % B) / B, side = b % 2 ? 1 : -1, live = 1 - seg(t, 2.6, 2.8, E.inout);
+      const drop = (1 - Math.min(1, u * 3.2)) * (u < 0.85 ? 1 : 0) * live, lift = Math.sin(u * Math.PI) * live;
+      const spin = seg(t, 2.1, 2.75, E.inout), fin = seg(t, 2.7, 2.95, E.back) * (1 - seg(t, 3.15, 3.4, E.inout));
+      const dy = -1.6 * drop + 0.6 * lift + 1.0 * fin; P.pos('body', 0, dy, 0).sq('body', -0.05 * drop + 0.03 * fin); plant(P, dy, 13);
+      P.rot('root', 0, 360 * spin, 0).rot('body', 6 * drop - 8 * fin, 12 * side * lift * (1 - spin), 6 * side * lift);
+      P.rot('legR', side < 0 ? -26 * lift : 0, 0, 0).rot('legL', side > 0 ? -26 * lift : 0, 0, 0);
+      P.rot('head', 10 * drop - 14 * fin, -14 * side * lift, -10 * side * lift).rot('jaw', 10 * drop + 30 * fin);
+      const fr = side < 0 ? lift : 0.3 * lift, fl = side > 0 ? lift : 0.3 * lift;
+      P.rot('wingR', -30 * fr - 40 * fin, 10 * fr + 20 * fin, -40 * fr - 50 * fin).rot('foreR', 0, 0, -30 * fr - 40 * fin).rot('handR', 0, 0, 20 * fr);
+      P.rot('wingL', -30 * fl - 40 * fin, -10 * fl - 20 * fin, 40 * fl + 50 * fin).rot('foreL', 0, 0, 30 * fl + 40 * fin).rot('handL', 0, 0, -20 * fl);
+      P.rot('hat', -18 * fin, 0, 12 * side * lift).pos('hat', 0, 1.6 * fin, 1.2 * fin);
+      burn(P, t, 1 + 0.5 * drop + 0.9 * fin); embers(P, 1 + 2 * drop + 4 * fin);
+      for (let i = 0; i < 4; i++) P.burst(i * B + 0.02, 'spark', i % 2 ? 'footL' : 'footR', [i % 2 ? 4.2 : -4.2, 0.5, 4], { scale: 1.6 }).burst(i * B + 0.02, 'dust', 'root', [i % 2 ? 4 : -4, 0.5, 4], { n: 4 });
+      P.burst(2.8, 'pg_blaze', 'root', [0, 1, 0], { n: 34, spread: 0.5, speed: 3.2 }).burst(2.8, 'ring', 'root', [0, 1, 0], { scale: 3.5 }).burst(2.8, 'note', 'head', [0, 46, 4], { n: 3 });
+      P.face('eyes', fin > 0.3 ? 'star' : drop > 0.6 ? 'angry' : 'smug'); ES(P, 1 + 0.1 * fin, 1 - 0.15 * drop + 0.15 * fin); P.lookW = 0.3;
+    } },
+    // signature: the hat trick — a wingtip flicks the top hat off, it spins high up through a column of fire, the
+    // skull follows it with its eyes, and it drops back dead on the wig with a wobble; star eyes and a jaw grin
+    hattrick: { len: 2.8, next: 'idle', f(P, t) {
+      const reach = seg(t, 0.05, 0.35, E.inout) * (1 - seg(t, 0.45, 0.8, E.inout)), flick = seg(t, 0.35, 0.45, E.out);
+      const fly = seg(t, 0.4, 1.7, E.lin), arc = 4 * fly * (1 - fly) * (t < 1.7 ? 1 : 0);
+      const land = t > 1.7 ? wob(t, 1.7, 1, 4, 5) : 0, pose = seg(t, 1.75, 2.0, E.back) * (1 - seg(t, 2.4, 2.8, E.inout));
+      burn(P, t, 1 + 0.7 * arc); embers(P, 1 + 2 * arc);
+      P.rot('wingR', -70 * reach - 30 * flick * (1 - fly), 30 * reach, -20 * reach - 30 * flick * (1 - fly)).rot('foreR', 0, 0, -70 * reach);
+      P.pos('hat', 0, 26 * arc + 1.2 * reach, 1.5 * arc).rot('hat', -20 * reach + 360 * 2 * fly * (t < 1.7 ? 1 : 0) + 6 * land, 540 * fly * (t < 1.7 ? 1 : 0), 4 * land);
+      P.rot('head', -28 * arc + 10 * land, 0, 0).rot('jaw', 12 * arc + 20 * pose).rot('body', -6 * arc, 0, 0);
+      const dy = -1.2 * Math.abs(land) + 0.6 * pose; P.pos('body', 0, dy, 0).sq('body', -0.04 * Math.abs(land)); plant(P, dy, 13);
+      P.rot('wingL', -30 * pose, -20 * pose, 40 * pose).rot('foreL', 0, 0, 40 * pose);
+      if (t > 0.45 && t < 1.6) P.stream('pg_blaze', 'head', [0, 44 + 26 * arc, 3], { rate: 30, spread: 0.5, speed: 0.8, key: 'ht' });
+      P.burst(0.42, 'spark', 'head', [0, 44, 3], { scale: 1.5 }).burst(1.72, 'ring', 'head', [0, 44, 3], { scale: 2 }).burst(1.72, 'star', 'head', [0, 46, 3], { n: 5 });
+      P.face('eyes', t > 1.75 ? (pose > 0.2 ? 'star' : undefined) : arc > 0.15 ? 'wide' : undefined); P.lookW = 1 - Math.min(1, arc * 3); ES(P, 1 + 0.15 * arc + 0.1 * pose);
+      P.pos('eyeR', 0, 0.3 * arc, 0).pos('eyeL', 0, 0.3 * arc, 0);
+    } },
     // fidget: tips its top hat with a wingtip — a slow, polite, terrifying greeting
     tiphat: { len: 2.0, next: 'idle', f(P, t) {
       burn(P, t); embers(P);
@@ -398,3 +439,5 @@ export const anim = {
   },
 };
 def.anim = anim;
+// the ultra-drip form (&drip=3): the automatic black-and-gold map; flames, embers and the blaze sprites burn blue
+def.dripForm = { fx: { pg_blaze: 'pg_blueblaze' } };

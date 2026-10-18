@@ -7,6 +7,7 @@ import * as THREE from '../../../vendor/three.module.js';
 import { defineFx } from '../fx.js';
 import { poly, ramp, shift, mix, h2 } from './kit.js';
 import { eyeRig } from './eyes.js';
+import { blackGold } from '../model.js';
 
 export { shift, mix, h2, poly, ramp };
 const D2R = Math.PI / 180;
@@ -551,6 +552,31 @@ export const crateP = (p, w, h, face) => {
   if (face === 'north' || face === 'east' || face === 'west') for (let x = 1; x < w - 1; x++) for (let y = Math.round(h * 0.4); y < Math.round(h * 0.4) + 2; y++) p.px(x, y, (x % 4 === 1) ? '#f2e2c0' : J.tnt);
   if (sideF(face)) { for (let y = 0; y < h; y++) { p.px(0, y, '#5a3a20'); p.px(w - 1, y, '#5a3a20'); } }
 };
+
+// ---------------------------------------------------------------- the ultra-drip form (black and gold)
+// Raccoons are mostly grey, which the default mapping leaves alone, so this map lacquers the fur
+// black, turns the pale fur, creams and the listed colours (ring-tail bands, eyes, bronze, horns…)
+// to gold, keeps pure whites and inks, and lets fire burn blue.
+const _hsl = (c) => { const n = parseInt(c.slice(1, 7), 16), r = ((n >> 16) & 255) / 255, g = ((n >> 8) & 255) / 255, b = (n & 255) / 255, mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2, d = mx - mn; if (!d) return { h: 0, s: 0, l }; let h = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4; h *= 60; if (h < 0) h += 360; return { h, s: d / (1 - Math.abs(2 * l - 1)), l }; };
+const _hex = (h, s, l) => { const c = (1 - Math.abs(2 * l - 1)) * s, x = c * (1 - Math.abs(((h / 60) % 2) - 1)), m = l - c / 2, [r, g, b] = h < 60 ? [c, x, 0] : h < 120 ? [x, c, 0] : h < 180 ? [0, c, x] : h < 240 ? [0, x, c] : h < 300 ? [x, 0, c] : [c, 0, x]; return '#' + [r, g, b].map((v) => Math.round(Math.max(0, Math.min(1, v + m)) * 255).toString(16).padStart(2, '0')).join(''); };
+export function raccoonDrip(gold = []) {
+  const G = new Set(gold.filter((c) => typeof c === 'string').map((c) => c.toLowerCase())), Gf = gold.filter((c) => typeof c === 'function');
+  return (c, glow) => {
+    if (typeof c !== 'string' || c[0] !== '#' || c.length < 7) return c;
+    if (glow) return blackGold(c, true);
+    const hsl = _hsl(c), { s, l } = hsl;
+    if (G.has(c.toLowerCase()) || Gf.some((f) => f(hsl))) return _hex(44, 0.86, Math.min(0.86, 0.24 + l * 0.6));
+    if (l > 0.94 || l < 0.1) return c;                                                  // glints and inks stay
+    if (s < 0.17) return l > 0.8 ? _hex(44, 0.8, 0.3 + l * 0.5) : _hex(255, 0.1, 0.05 + l * 0.32);   // greys → black lacquer, pale fur → gold
+    return blackGold(c, false);
+  };
+}
+defineFx('fusespark_blue', { w: 3, h: 3, paint: (p) => { p.px(1, 0, '#c8ecff'); p.px(0, 1, '#7ac0ff'); p.px(1, 1, '#ffffff'); p.px(2, 1, '#5aa0ff'); p.px(1, 2, '#3a70ff'); }, glow: true, life: [0.15, 0.35], size: [0.035, 0.015], speed: [1.2, 2.6], grav: 5, drag: 1, spread: 0.8 });
+defineFx('boom_blue', {
+  w: 32, h: 32, frames: [0, 1].map((f) => (p, w, h) => { const c = (w - 1) / 2; for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const a = Math.atan2(y - c, x - c), r = Math.hypot(x - c, y - c), R = c * (0.78 + 0.22 * Math.abs(Math.sin(a * 5 + f))); if (r > R) continue; p.px(x, y, r < R * 0.35 ? '#ffffff' : r < R * 0.6 ? '#c8ecff' : r < R * 0.82 ? '#5aa8ff' : '#2a5aff'); } }),
+  glow: true, life: [0.32, 0.4], size: [0.2, 1.6], speed: [0, 0], grav: 0, fps: 10, pop: true,
+});
+export const DRIP_FX = { fusespark: 'fusespark_blue', boom: 'boom_blue' };
 
 // ---------------------------------------------------------------- FK / IK rig
 // rig(def) gives a clip the model-space frame of any bone (from the rest pose + this frame's

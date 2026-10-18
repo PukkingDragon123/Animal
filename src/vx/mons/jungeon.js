@@ -53,7 +53,7 @@ export const anim = {
     { bone: 'handL', tip: [0, -6, 0], k: 220, d: 11, gain: 0.4, max: 14, axes: [1, 0, 1] },
   ],
   faces: { eyes: EYES.slot },
-  fidget: { every: [4.5, 8], clips: ['chew', 'stomp', 'peck'] },
+  fidget: { every: [3.5, 7], clips: ['dance', 'dance', 'flip', 'flip', 'chew', 'stomp', 'peck'] },
   clips: jungeonClips({ prop: 'gun', MZ }),
 };
 def.anim = anim;

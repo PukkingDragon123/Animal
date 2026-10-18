@@ -1024,6 +1024,31 @@ export function jungeonClips(o) {
       }
       P.rot('head', 8 + 8 * Math.max(0, wave(t, 2.5)), 0, 0); P.face('eyes', 'angry'); P.burst(0.2, 'anger', 'head', [-5, 34, 4], {});
     } },
+    // dance: the pogo — straight-legged jumps on the beat, a headbang on every landing, a wing strumming air
+    // guitar, the crest whipping; the finish lands in a wide power stance, wings up, crest flared
+    dance: { len: 2.6, next: 'idle', f(P, t) {
+      const on = 1 - seg(t, 1.95, 2.05), ph = (t / 0.4) % 1, jump = Math.sin(ph * Math.PI) * on, land = Math.exp(-ph * 7) * on;
+      P.pos('root', 0, 3.2 * jump, 0).sq('body', 0.06 * jump - 0.08 * land).rot('head', 26 * land - 6, 0, wave(t, 1.25) * 8 * on);
+      P.rot('legR', -10 * jump, 0, 0).rot('legL', -10 * jump, 0, 0).rot('footR', -20 * jump, 0, 0).rot('footL', -20 * jump, 0, 0);
+      const strum = Math.sin(t * Math.PI * 2 * 5) * on; P.rot('wingL', -60 * on, -20 * on, 30 * on).rot('handL', -30 * on, 0, 0).rot('wingR', -36 * on + strum * 10, 0, 16 * on).rot('handR', -40 * on, 0, strum * 10);
+      flare(P, land * 0.6); P.rot('tail', 0, wave(t, 1.25) * 14 * on, 0);
+      const end = seg(t, 2.0, 2.15, E.back) * (1 - seg(t, 2.42, 2.6)), dy = -1.6 * end;
+      P.pos('body', 0, dy, 0); pl(P, dy); P.pos('footR', -1.2 * end, 0, 0).pos('footL', 1.2 * end, 0, 0).rot('wingR', -150 * end, 0, -20 * end).rot('wingL', -150 * end, 0, 20 * end).rot('jaw', 22 * end); flare(P, end);
+      P.face('eyes', end > 0.3 ? 'star' : land > 0.5 ? 'shut' : 'angry'); ES(P, 1 + 0.12 * land, 1 - 0.2 * land + 0.2 * end);
+      for (let i = 0; i < 5; i++) P.burst(i * 0.4 + 0.05, 'note', 'head', [i % 2 ? 5 : -5, 34, 4], {}).burst(i * 0.4 + 0.38, 'dust', 'root', [0, 0.5, 2], { n: 3, spread: 1, scale: 0.6 });
+      P.burst(2.05, 'sparkle', 'head', [0, 36, 3], { n: 8 }).burst(2.05, 'anger', 'head', [5, 34, 4], {});
+      if (!gun) P.burst(2.05, 'pg_petal', 'rose', TIP, { n: 16, speed: 1.4 });
+    } },
+    // signature fidget: spits the prop straight up out of its bill — it tumbles end over end — and catches it
+    // again in the corner of its bill without looking; a puff of smoke / petals and a smug look
+    flip: { len: 2.2, next: 'idle', f(P, t) {
+      const dip = bump(t, 0.05, 0.38), toss = seg(t, 0.34, 0.42, E.out) * (1 - seg(t, 0.42, 0.6)), air = seg(t, 0.4, 1.2, E.lin), fly = air > 0 && air < 1 ? 1 : 0;
+      P.rot('head', 18 * dip - 26 * toss, 0, 0).pos('body', 0, -0.8 * dip, 0); pl(P, -0.8 * dip);
+      P.pos(PB, 0, Math.sin(air * Math.PI) * 10 * fly, 0).rot(PB, 720 * air * fly, 0, 0);
+      const ctch = bump(t, 1.18, 1.45); P.rot('head', 8 * ctch, 0, 0).sq('body', -0.05 * ctch).rot('jaw', 14 * fly);
+      P.face('eyes', fly ? 'wide' : t > 1.3 && t < 2.0 ? (gun ? 'sleepy' : 'wink') : undefined); ES(P, 1 + 0.15 * fly, 1 + 0.25 * fly);
+      P.burst(1.2, gun ? 'pg_smoke' : 'pg_petal', PB, TIP, { n: 6, speed: 0.8 }).burst(1.2, 'sparkle', PB, TIP, { n: 4 });
+    } },
     // fidget: a bow down for a crumb (the prop never leaves its bill)
     peck: { len: 2.0, next: 'idle', f(P, t) {
       const look = seg(t, 0, 0.3, E.out) * (1 - seg(t, 1.45, 1.9, E.inout)), pk = peck(t, 0.55, 0.3) + peck(t, 0.95, 0.3);

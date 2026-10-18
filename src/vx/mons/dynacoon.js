@@ -8,7 +8,7 @@
 import { E, seg, bump, wob, wave, key, bounce, hop } from '../anim.js';
 import {
   PAL, J, P, mirrorCube, aimX, rod, furP, bellyP, tuftP, bangsP, skullP, muzzleP, noseP, jawP, mouthP, tongueP, toothP,
-  earPlaneP, hairP, maskEyes, tailP, handP, footP, cardP, tapeP, bottleCapP, crateP, ironP, velvetP, tornHemP, leatherP, glassP, tntP, fuseP, fuseSparkP, teethP, clawP, rig, shift, ramp,
+  earPlaneP, hairP, maskEyes, tailP, handP, footP, cardP, tapeP, bottleCapP, crateP, ironP, velvetP, tornHemP, leatherP, glassP, tntP, fuseP, fuseSparkP, teethP, clawP, raccoonDrip, DRIP_FX, rig, shift, ramp,
 } from './raccoon_parts.js';
 
 const F = PAL.dyna;
@@ -232,6 +232,8 @@ def.drip = [
   [{ id: 'dc-blazer', name: 'Ripped school blazer' }, { id: 'dc-belt', name: 'Bottle-cap belt' }],
   [{ id: 'dc-crate', name: 'Blasting-crate pack' }, { id: 'dc-rocket', name: 'Shoulder firework rocket' }],
 ];
+// the ultra-drip form: black-lacquered fur and dynamite, gold paper, gold tail bands, blue fire and sparks
+def.dripForm = { map: raccoonDrip([F.ringL, F.tip, F.bolt]), fx: DRIP_FX };
 def.attach = {
   head: { bone: 'head', at: [0, 24.0, 1.3], size: 11.333 },
   face: { bone: 'head', at: [0, 20.3, 5.05], size: 11.333 },
@@ -278,7 +280,7 @@ export const anim = {
     bomb: { default: 'off', states: { off: [], on: ['bomb'] } },
     bmbspark: { default: 'off', states: { off: [], a: ['bmb-a'], b: ['bmb-b'], c: ['bmb-c'] } },
   },
-  fidget: { every: [5, 9], clips: ['fuse', 'cackle'] },
+  fidget: { every: [3.5, 7], clips: ['dance', 'dance', 'fuse', 'cackle'] },
   clips: {
     // a hunched, menacing sway; tosses the fizzing stick in his fist and catches it, grinning
     idle: { len: 2.4, loop: true, f(P, t) {
@@ -449,6 +451,26 @@ export const anim = {
       P.face('eyes', k > 0.3 ? 'happy' : undefined); P.lookW = 1 - k;
       fizz(P, t, 20);
       P.burst(0.4, 'note', 'head', [6, 27, 4], {});
+    } },
+    // dance: a dirty-deeds stomp — heavy stomps on the beat with a shoulder shimmy, a spinning toss of
+    // the lit stick while he turns on the spot, and a finish with a fountain of sparks held high
+    dance: { len: 2.7, next: 'idle', f(P, t) {
+      const S = 1 - seg(t, 1.3, 1.4), toss = bump(t, 1.4, 2.0), D = seg(t, 2.05, 2.2, E.back) * (1 - seg(t, 2.5, 2.7));
+      let dy = 0;
+      for (const [t0, sd] of [[0.1, 'R'], [0.45, 'L'], [0.8, 'R'], [1.1, 'L']]) {
+        const k = bump(t, t0, t0 + 0.28), land = t > t0 + 0.28 ? wob(t, t0 + 0.28, -0.6, 4, 9) : 0;
+        P.pos('foot' + sd, 0, 2.8 * k, 0.8 * k).pos('leg' + sd, 0, 1.8 * k, 0).rot('body', 0, 0, (sd === 'R' ? 7 : -7) * k);
+        dy += land; P.burst(t0 + 0.28, 'dust', 'foot' + sd, [sd === 'R' ? -3.4 : 3.4, 0.4, 2], { n: 3, spread: 1, speed: 0.6 });
+      }
+      P.pos('body', 0, dy - 0.8 * D, 0).rot('body', -6 * D, wave(t, 2.5) * 12 * S, 0).sq('body', dy * 0.04); plant(P, dy - 0.8 * D);
+      P.rot('armR', wave(t, 2.5) * 16 * S - 60 * toss - 150 * D, 0, 10 * D).rot('foreR', -20 * S - 40 * toss - 20 * D, 0, 0);
+      P.rot('armL', -wave(t, 2.5) * 16 * S - 40 * D, 0, -30 * D).rot('foreL', -30 * S - 40 * D, 0, 0);
+      P.pos('held', 0, 7 * toss, -1.5 * toss).rot('held', 0, 0, 540 * seg(t, 1.4, 2.0));
+      P.rot('root', 0, 360 * seg(t, 1.45, 1.95, E.inout), 0);
+      P.rot('head', 8 * Math.abs(wave(t, 2.5)) * S - 18 * D, wave(t, 2.5, 1) * 10 * S, 0).rot('jaw', 6 + 26 * D + 8 * toss);
+      P.face('eyes', D > 0.3 ? 'happy' : toss > 0.3 ? 'wide' : t > 0.1 ? 'angry' : undefined); eyeSq(P, 1, 1 + 0.15 * toss);
+      fizz(P, t, 30 + 140 * D);
+      P.burst(2.12, 'star', 'held', HELD_FUSE, { n: 6, spread: 1 }).burst(2.14, 'note', 'head', [6, 28, 4], { n: 2 }).burst(2.2, 'riff', 'head', [-6, 28, 4], { n: 3 });
     } },
   },
 };

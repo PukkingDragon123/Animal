@@ -8,7 +8,7 @@
 import { E, seg, bump, wob, wave, key } from '../anim.js';
 import {
   PAL, J, P, mirrorCube, rod, furP, bellyP, tuftP, skullP, muzzleP, noseP, jawP, mouthP, tongueP, toothP,
-  maskEyes, hairP, tailP, handP, footP, teethP, pipeP, ironP, galvP, lidP, jerryP, seatP, canEngineP, finsP, bronzeP, lensP, jetP, leatherP, chainP, rig, shift, ramp,
+  maskEyes, hairP, tailP, handP, footP, teethP, pipeP, ironP, galvP, lidP, jerryP, seatP, canEngineP, finsP, bronzeP, lensP, jetP, leatherP, chainP, raccoonDrip, DRIP_FX, rig, shift, ramp,
 } from './raccoon_parts.js';
 
 const F = PAL.hell;
@@ -246,6 +246,8 @@ def.drip = [
   [{ id: 'hc-scarf', name: 'Back-in-black scarf' }, { id: 'hc-chain', name: 'Bell chain' }],
   [{ id: 'hc-pauldrons', name: 'Spiked iron pauldrons' }, { id: 'hc-vest', name: 'Studded leather vest' }],
 ];
+// the ultra-drip form: black lacquer over everything, gold horns, tank, bell, devil spade and tail bands, and the pipes burn blue
+def.dripForm = { map: raccoonDrip([F.ringL, F.tip, J.bronze, J.bronzeHi, J.bronzeLo, ({ h, s, l }) => (h < 12 || h > 340) && s > 0.45 && l > 0.2]), fx: DRIP_FX };
 def.attach = {
   head: { bone: 'head', at: [0, 40.6, -4.2], size: 12.4 },
   face: { bone: 'head', at: [0, 33.2, 0.1], size: 12 },
@@ -275,6 +277,7 @@ function exhaust(P, t, fire, smoke = 2.5) {
 }
 const eyeSq = (P, sx, sy) => P.scl('eyeR', sx, sy, 1).scl('eyeL', sx, sy, 1);
 const dart = (P, dx, dy = 0) => P.pos('eyeR', dx, dy, 0).pos('eyeL', dx, dy, 0);
+const bang = (t, per = 0.4) => { const u = (((t % per) + per) % per) / per; return u < 0.14 ? E.out(u / 0.14) : 1 - E.inout((u - 0.14) / 0.86); };
 const spin = (P, rr, rf = rr) => P.rot('wheelR', rr, 0, 0).rot('wheelF', rf, 0, 0);
 
 export const anim = {
@@ -297,7 +300,7 @@ export const anim = {
     eyes: EYES.slot,
     exh: { default: 'off', states: { off: [], a: ['ex-a'], b: ['ex-b'], c: ['ex-c'] } },
   },
-  fidget: { every: [5, 9], clips: ['rev', 'polish'] },
+  fidget: { every: [3.5, 7], clips: ['dance', 'dance', 'chug', 'rev', 'polish'] },
   clips: {
     // the engine idling under him: a fine rumble, smoke from the pipes, a slow nod to the beat, a
     // twist of the throttle that makes the pipes spit fire
@@ -462,6 +465,43 @@ export const anim = {
       P.face('eyes', k > 0.5 ? 'sleepy' : undefined); P.lookW = 1 - k;
       P.burst(1.0, 'sparkle', 'helmet', [8.4, 42, -3.4], { n: 3 }).burst(1.6, 'sparkle', 'helmet', [8.4, 42, -3.4], { n: 4 }).burst(2.0, 'sparkle', 'helmet', [-8.4, 42, -3.4], { n: 2 });
       exhaust(P, t, 0, 2);
+    } },
+    // dance: the bike dances — the front wheel hops on every beat while he rocks the frame and
+    // headbangs, the bell swinging; it finishes in a roaring wheelie with his fist up
+    dance: { len: 2.7, next: 'idle', f(P, t) {
+      engine(P, t, 1.0);
+      const D = seg(t, 1.9, 2.1, E.out) * (1 - seg(t, 2.5, 2.7, E.in3)), on = t < 1.9 ? 1 : 0;
+      const tap = on * Math.max(0, Math.sin(((t / 0.4) % 1) * Math.PI)), n = on * bang(t, 0.4);
+      P.rot('bike', -9 * tap - 22 * D + wob(t, 2.6, -3, 3, 6), 0, wave(t, 1.25) * 6 * on);
+      P.rot('steer', 0, wave(t, 1.25, 1) * 10 * on, 0);
+      spin(P, t * 220 + 900 * seg(t, 1.9, 2.7), t * 120);
+      P.rot('head', 18 * n - 16 * D, wave(t, 1.25) * 10 * on, 0).rot('body', 6 * n - 8 * D, 0, wave(t, 1.25) * 4 * on).rot('jaw', 10 * n + 30 * D);
+      P.rot('mane1', -14 * n, 0, 0).rot('scarf1', 10 * D, 0, 0);
+      grips(P, { wL: 1 - D });
+      P.rot('armL', -150 * D, 0, -30 * D).rot('foreL', -30 * D, 0, 0);
+      exhaust(P, t, D > 0.3 ? 1.6 : tap > 0.8 ? 0.6 : 0, 3);
+      for (const b of [0.4, 0.8, 1.2, 1.6]) P.burst(b, 'dust', 'root', [0, 0.5, 19], { n: 2, speed: 0.5 }).burst(b, 'note', 'head', [0, 43, 0], { n: 1 });
+      P.burst(2.0, 'ring', 'bell', BELL, { scale: 2 }).burst(2.0, 'riff', 'head', [0, 43, 0], { n: 4, spread: 1 }).burst(2.6, 'dust', 'root', [0, 0.5, 19], { n: 6, spread: 1 });
+      P.face('eyes', D > 0.3 ? 'happy' : n > 0.5 ? 'angry' : undefined); eyeSq(P, 1 + 0.06 * n, 1 - 0.12 * n);
+    } },
+    // fidget (signature): leans down, unscrews the jerry-can tank and takes a long swig of fuel…
+    // sits up with puffed cheeks, breathes a roaring jet of fire, coughs a smoke ring and grins
+    chug: { len: 3.2, next: 'idle', f(P, t) {
+      engine(P, t, 0.6);
+      const lean = seg(t, 0.15, 0.55, E.inout) * (1 - seg(t, 1.35, 1.6, E.inout));
+      const gulp = t > 0.6 && t < 1.3 ? Math.max(0, Math.sin((t - 0.6) * Math.PI * 2 * 3)) : 0;
+      const puff = seg(t, 1.55, 1.75, E.out) * (1 - seg(t, 1.8, 1.9)), blow = seg(t, 1.85, 1.95, E.out) * (1 - seg(t, 2.6, 2.85, E.inout));
+      P.rot('body', 30 * lean - 10 * blow, 0, 0).pos('body', 0, -1.0 * lean, 1.0 * lean);
+      P.rot('head', 26 * lean - 6 * gulp + 10 * puff - 14 * blow + wave(t, 14) * 3 * blow, 0, 0).rot('jaw', 10 * gulp + 36 * blow - 4 * puff);
+      P.scl('head', 1 + 0.08 * puff, 1 + 0.05 * puff, 1 + 0.08 * puff);
+      grips(P, { wL: 1 - lean });
+      if (lean > 0) R.reach(P, 'armL', 'foreL', R.at(P, 'bike', [1.4, 20.4, 4.6]), { pole: POLE_L, w: lean });
+      P.face('eyes', puff > 0.3 ? 'wide' : blow > 0.3 ? 'angry' : gulp > 0.2 ? 'closed' : t > 2.7 ? 'happy' : undefined); P.lookW = 1 - Math.max(lean, blow);
+      eyeSq(P, 1 - 0.1 * puff, 1 + 0.2 * puff);
+      const M = [0, 29.4, 4.8];
+      if (blow > 0.2) P.stream('breath', 'head', M, { rate: 150, dir: [0, 0.1, 1], speed: 1.1, spread: 0.18 }).stream('ember', 'head', M, { rate: 20, spread: 1 });
+      P.burst(2.75, 'smoke', 'head', M, { n: 4, dir: [0, 0.6, 1], speed: 0.8 }).burst(2.8, 'ring', 'head', M, { scale: 0.6 }).burst(1.0, 'sweat', 'head', [6, 40, 0], { n: 1, dir: [1, 0.5, 0] });
+      exhaust(P, t, blow > 0.3 ? 1.2 : 0, 2);
     } },
   },
 };

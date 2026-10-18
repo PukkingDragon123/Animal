@@ -198,46 +198,32 @@ export function shutter(o) {
   };
 }
 
-// ---------------------------------------------------------------- kawaii eyes
-// Big rounded eyes in the recent-generation style: a 1-texel dark outline, a near-black iris tinted with
-// an accent colour, a lighter accent gradient in the lower third, one big white catchlight high on the
-// outer side and a small glint low on the inner side. Painted on a plane with the OUTER corner at x = 0
-// (mirror the plane for the other eye). States: open, angry (a flat lid cutting the top, tilted in),
-// sad (the lid tilted out), happy (^), closed (a soft curve), hurt (>), swirl, x.
-// o: ink, iris, acc [mid, light], shape ('oval' | 'tear'), lid (0..1 of the height), tilt, cl (catchlight size)
-export function kawaii(state, o = {}) {
-  const ink = o.ink || '#1a1016', iris = o.iris || '#22142a', acc = o.acc || ['#5a3a8a', '#a07ad8'], W = '#ffffff';
-  return (p, w, h) => {
-    const cx = (w - 1) / 2, cy = (h - 1) / 2, rx = w / 2, ry = h / 2;
-    const ins = (x, y) => { if (x < 0 || y < 0 || x >= w || y >= h) return false; const k = o.shape === 'tear' ? 0.84 + 0.16 * ((y + 0.5) / h) : 1; return ((x - cx) / (rx * k)) ** 2 + ((y - cy) / ry) ** 2 <= 1.0; };
-    const line = (x0, y0, x1, y1, th = 2) => { const n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0)) * 2 + 1; for (let i = 0; i <= n; i++) { const x = Math.round(x0 + ((x1 - x0) * i) / n), y = Math.round(y0 + ((y1 - y0) * i) / n); p.px(x, y, ink); if (th > 1) p.px(x, y + 1, ink); } };
-    if (state === 'open' || state === 'angry' || state === 'sad') {
-      const L = state === 'open' ? -1 : h * (o.lid ?? 0.34), tl = (o.tilt ?? 0.32) * h;
-      const lidY = (x) => (state === 'angry' ? L - tl / 2 + (x / (w - 1)) * tl : L + tl / 2 - (x / (w - 1)) * tl);    // angry: inner side lower; sad: outer side lower
-      const inEye = (x, y) => ins(x, y) && (state === 'open' || y >= Math.round(lidY(x)));
-      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-        if (!inEye(x, y)) continue;
-        const edge = !inEye(x - 1, y) || !inEye(x + 1, y) || !inEye(x, y - 1) || !inEye(x, y + 1), t = (y + 0.5) / h;
-        p.px(x, y, edge ? ink : t > 0.86 ? acc[1] : t > 0.7 ? acc[0] : iris);
-      }
-      // the catchlight: big, high on the outer side (just under the lid when there is one); a small glint low inside
-      const cl = o.cl ?? (w >= 8 ? 3 : 2), y0 = state === 'open' ? 1 + (h > 8 ? 1 : 0) : Math.round(lidY(1)) + 1, x0 = 1;
-      for (let y = y0; y < y0 + cl; y++) for (let x = x0; x < x0 + cl; x++) if (inEye(x, y) && inEye(x - 1, y) && inEye(x, y - 1)) p.px(x, y, W);
-      const gx = w - 3, gy = h - 3; if (inEye(gx, gy) && inEye(gx + 1, gy) && inEye(gx, gy + 1)) p.px(gx, gy, W);
-    } else if (state === 'happy') {
-      for (let x = 0; x < w; x++) { const u = (x - cx) / rx, y = Math.round(h * 0.62 - (1 - u * u) * h * 0.38); p.px(x, y, ink); p.px(x, y + 1, ink); }
-    } else if (state === 'closed') {
-      for (let x = 0; x < w; x++) { const u = (x - cx) / rx, y = Math.round(h * 0.52 + (1 - u * u) * h * 0.16); p.px(x, y, ink); if (Math.abs(u) < 0.75) p.px(x, y + 1, ink); }
-    } else if (state === 'hurt') {
-      line(0, Math.round(h * 0.18), w - 2, Math.round(cy)); line(0, Math.round(h * 0.82) - 1, w - 2, Math.round(cy));
-    } else if (state === 'swirl') {
-      for (let a = 0; a < 16; a += 0.18) { const r = (a / 16) * Math.min(rx, ry) * 1.02, x = Math.round(cx + Math.cos(a) * r), y = Math.round(cy + Math.sin(a) * r * (ry / rx)); p.px(x, y, ink); }
-    } else if (state === 'x') {
-      line(0, Math.round(h * 0.15), w - 1, Math.round(h * 0.85) - 1); line(0, Math.round(h * 0.85) - 1, w - 1, Math.round(h * 0.15));
-    }
+// ---------------------------------------------------------------- shared accessories (drip)
+// big chunky sneakers: a thick two-tone sole, a padded upper, a contrast panel — no logos
+export function sneaker(o) {
+  const { up, upHi, upLo, panel, sole, soleLo, lace } = o;
+  return (p, w, h, face) => {
+    const soleH = Math.max(2, Math.round(h * 0.38));
+    fill(p, w, h, (x, y) => (face === 'up' ? upHi : face === 'down' ? soleLo : y >= h - soleH ? (y === h - 1 ? soleLo : y === h - soleH ? shift(sole, 0.1) : sole) : ramp([upHi, up, upLo], y / Math.max(1, h - soleH - 1), x, y)));
+    if (face === 'up') { for (let y = 1; y < h - 2; y += 2) for (let x = Math.floor(w / 2) - 1; x <= Math.floor(w / 2); x++) p.px(x, y, lace); return; }
+    if (face === 'east' || face === 'west') fill(p, w, h, (x, y) => (y < h - soleH && y > 0 && Math.abs(x - w * 0.55) < w * 0.22 - (y - 1) * 0.3 ? panel : null));
+    if (face === 'south') fill(p, w, h, (x, y) => (y === h - soleH - 1 && x > 0 && x < w - 1 ? panel : null));
+    if (isSide(face)) for (let x = 0; x < w; x += 3) p.px(x, h - Math.ceil(soleH / 2), soleLo);
   };
 }
-export const KAWAII = ['open', 'angry', 'sad', 'happy', 'closed', 'hurt', 'swirl', 'x'];
+// a big gold piece: a round medallion with a raised bear face and two gem eyes (an original motif)
+export function piece(o = {}) {
+  const G = { ...GOLD, ...o.gold }, gem = o.gem || '#ff3a6a';
+  return (p, w, h) => {
+    const cx = (w - 1) / 2, cy = (h - 1) / 2 + 0.2, R = Math.min(w, h) / 2;
+    fill(p, w, h, (x, y) => { const d = Math.hypot(x - cx, y - cy); if (d > R) return null; if (d > R - 1) return G.lo; return x + y < cx + cy - R * 0.5 ? G.hi : x + y > cx + cy + R * 0.6 ? G.lo : G.base; });
+    // the raised bear face: two ears, a muzzle, gem eyes
+    for (const sx of [-1, 1]) { const ex = Math.round(cx + sx * R * 0.48), ey = Math.round(cy - R * 0.5); p.px(ex, ey, G.spec); p.px(ex, ey + 1, G.deep); }
+    p.px(Math.round(cx - R * 0.28), Math.round(cy - R * 0.05), gem); p.px(Math.round(cx + R * 0.28), Math.round(cy - R * 0.05), gem);
+    fill(p, w, h, (x, y) => (Math.hypot((x - cx) * 1.3, y - cy - R * 0.38) < R * 0.36 ? G.hi : null));
+    p.px(Math.round(cx), Math.round(cy + R * 0.28), G.deep); edgeLine(p, G.deep);
+  };
+}
 
 // ---------------------------------------------------------------- motion helpers
 // keep feet planted while the hips rise or sink by dy units: the legs shift and stretch
@@ -327,3 +313,17 @@ defineFx('bear-slash', {
   },
   glow: true, life: [0.22, 0.28], size: [0.34, 0.42], speed: [0, 0], grav: 0, pop: true,
 });
+// short barbershop hair for the head cap: 360 waves on top, a crisp line-up at the edge, a soft fade on the sides
+export function waves(c, o = {}) {
+  const hi = o.hi || shift(c, 0.22), lo = o.lo || shift(c, -0.22), edge = o.edge || shift(c, -0.45);
+  return (p, w, h, face) => {
+    if (face === 'up') {
+      const cx = (w - 1) / 2, cy = (h - 1) * (o.cy ?? 0.55);
+      fill(p, w, h, (x, y) => { const r = Math.hypot(x - cx, (y - cy) * 1.1), a = Math.atan2(y - cy, x - cx); const b = Math.floor((r + Math.sin(a * 3) * 0.7) / 2) % 3; return b === 0 ? lo : b === 1 ? c : (r < 2 ? hi : c); });
+      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (Math.abs(x - y * 0.5 - w * 0.2) < 0.6 && y < h * 0.6) p.px(x, y, hi);
+      return;
+    }
+    fill(p, w, h, (x, y) => (face === 'down' ? lo : y === h - 1 ? edge : (y + (x >> 1)) % 3 === 0 ? lo : c));
+    if (isSide(face)) for (let x = 0; x < w; x++) p.px(x, 0, hi);
+  };
+}

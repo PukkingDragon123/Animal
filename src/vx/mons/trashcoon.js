@@ -8,7 +8,7 @@
 import { E, seg, bump, wob, wave, key, bounce, hop } from '../anim.js';
 import {
   PAL, J, P, mirrorCube, aimX, furP, bellyP, tuftP, skullP, muzzleP, noseP, jawP, mouthP, tongueP, toothP,
-  earPlaneP, hairP, maskEyes, tailP, handP, footP, cardP, tapeP, bottleCapP, barkP, leafP, tieP, tabP, trashBagP, bagHemP, bandanaP, rod, aimZ, rig, shift, ramp,
+  earPlaneP, hairP, maskEyes, tailP, handP, footP, cardP, tapeP, bottleCapP, barkP, leafP, tieP, tabP, trashBagP, bagHemP, bandanaP, rod, aimZ, raccoonDrip, DRIP_FX, rig, shift, ramp,
 } from './raccoon_parts.js';
 
 const F = PAL.trash;
@@ -238,6 +238,8 @@ def.drip = [
   [{ id: 'tc-tie', name: 'Soda-can tie' }, { id: 'tc-capchain', name: 'Bottle-cap chain' }],
   [{ id: 'tc-cape', name: 'Trash-bag cape' }, { id: 'tc-vguitar', name: 'Crate V-guitar' }],
 ];
+// the ultra-drip form: lacquered black fur, gold creams, gold tail bands and gold eyes
+def.dripForm = { map: raccoonDrip([F.ringL, F.tip, '#e8961e', '#ffcf52']), fx: DRIP_FX };
 // buyable gear sockets (model units): top of the head, between the eyes, front of the neck, middle of the back
 def.attach = {
   head: { bone: 'head', at: [0, 18.667, 1.2], size: 10 },
@@ -297,7 +299,7 @@ export const anim = {
     eyes: EYES.slot,
     tongue: { default: 'in', states: { in: [], out: ['tongue-out'] } },
   },
-  fidget: { every: [5, 9], clips: ['spin', 'capspin'] },
+  fidget: { every: [3.5, 7], clips: ['dance', 'dance', 'spin', 'capspin'] },
   clips: {
     // can't stand still: bounces and headbangs on every beat, strums 8ths, taps a foot, changes chords
     idle: { len: 2.0, loop: true, f(P, t) {
@@ -500,6 +502,27 @@ export const anim = {
       const pop = seg(t, 2.32, 2.38, E.in) * (1 - seg(t, 2.42, 2.75, E.inout));
       P.sq('body', -0.08 * pop).rot('head', 6 * pop, 0, 0);
       P.burst(2.34, 'cardbit', 'cap', CAP_TOP, { n: 3 }).burst(1.3, 'sparkle', 'cap', CAP_TOP, { n: 2 });
+    } },
+    // dance: the schoolboy rock routine — a duck-walk shuffle, a four-count headbang on power chords,
+    // a leaping spin, and a one-legged finish with the stick to the sky and the tongue out
+    dance: { len: 2.8, next: 'idle', f(P, t) {
+      const A = 1 - seg(t, 0.85, 1.0), Bw = seg(t, 0.85, 1.0) * (1 - seg(t, 1.7, 1.8)), C = bump(t, 1.78, 2.24), D = seg(t, 2.2, 2.35, E.back) * (1 - seg(t, 2.62, 2.8));
+      const h = hop(t, 0.3, 1.1, { crouch: 0.5, air: [0.12, 0.62] }), nb = bang(t, 0.2) * Bw, dy = (-1.7 + h.y) * A - 1.0 * Bw - 0.6 * D;
+      P.pos('root', 0, 4.5 * C, 0).rot('root', 0, 360 * seg(t, 1.8, 2.22, E.inout), 0);
+      P.pos('body', 0, dy, 0.4 * A).rot('body', -8 * A + 10 * nb, 14 * Math.sin((t * Math.PI) / 0.9) * A, 3 * A).sq('body', h.sq * 0.6 * A - 0.06 * nb);
+      plant(P, dy, ['legL']); P.pos('footL', 0, Math.max(0, h.y) * 0.9 * A, 0);
+      P.pos('legR', 0, dy, 0.4 * A + 0.8 * D).rot('legR', -76 * A - 50 * D, 0, -8 * A).scl('legR', 1, 1 + ((4.47 + dy) / 4.47 - 1) * Bw, 1);
+      P.pos('footR', -0.3 * A, (2.5 + dy + h.y * 0.5) * A + 2.4 * D, 4.6 * A + 2.6 * D).rot('footR', -42 * A - 30 * D, 0, 0);
+      aimStick(P, nlerp(REST_DIR, [-0.4, 1, 0.05], D), [0, 0, 1]); P.pos('stick', -3.0 * D, 7.4 * D, -3.4 * D);
+      play(P, { strum: strumAt(t, Bw > 0.5 ? 0.2 : 0.15), slide: wave(t, 2.5) * 1.4 * A, wR: 1 - D, wL: 1 - D });
+      R.reach(P, 'armR', 'foreR', R.at(P, 'stick', s(1.0, 0, 0)), { pole: [-1, -0.3, -0.2], w: D });
+      P.rot('armL', -130 * D, 0, 40 * D).rot('foreL', -30 * D, 0, 0);
+      P.rot('head', (8 - 12 * Math.sin(((t / 0.3) % 1) * Math.PI * 2)) * A + 26 * nb - 18 * D, 0, 6 * D).rot('jaw', 8 * A + 14 * nb + 30 * D);
+      eyeSq(P, 1 + 0.08 * nb, 1 - 0.14 * nb + 0.15 * C);
+      P.face('eyes', D > 0.3 ? 'happy' : C > 0.3 ? 'wide' : Bw > 0.5 ? 'angry' : 'sleepy').face('tongue', D > 0.4 ? 'out' : 'in');
+      for (const b of [0.9, 1.1, 1.3, 1.5]) P.burst(b, 'riff', 'stick', STRUM_FX, { n: 2, dir: [0, 0.6, 1] });
+      P.burst(2.24, 'dust', 'root', [0, 0.5, 0], { n: 6, spread: 1 }).burst(2.3, 'shockring', 'stick', NECK_TIP, {}).burst(2.3, 'sparkle', 'stick', NECK_TIP, { n: 6 }).burst(2.32, 'riff', 'head', [0, 22, 4], { n: 5, spread: 1 });
+      P.burst(0.29, 'dust', 'footL', [2.6, 0.3, 1], { n: 1, speed: 0.4, scale: 0.5 }).burst(0.59, 'dust', 'footL', [2.6, 0.3, 1], { n: 1, speed: 0.4, scale: 0.5 });
     } },
   },
 };

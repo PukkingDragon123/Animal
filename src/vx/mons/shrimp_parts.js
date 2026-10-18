@@ -160,44 +160,39 @@ export function blade(cs, o = {}) {
   };
 }
 
-// ---------------------------------------------------------------- the stalked eye (kawaii, Gen 8–9 style)
-// One big rounded eye on each stalk: a 1-texel dark outline, a dark iris tinted with the accent colour,
-// a lighter accent gradient in the lower third, one big white catchlight high on the outer side and a
-// small glint low on the inner side. Expressions are simple shapes in the outline colour drawn straight
-// onto the stalk's shell: happy ^, closed ‿, hurt > <, faint swirl or X, angry = a flat lid line
-// cutting off the top of the eye. Outer side x = 0, inner side x = w − 1 (right eye; the left is mirrored).
-export const EYE_STATES = ['open', 'angry', 'happy', 'closed', 'hurt', 'swirl', 'x'];
-export function kawaiiEye(state, P) {          // P: { line, iris, mid, light, white }
-  return (p, w, h) => {
-    const cx = (w - 1) / 2, cy = (h - 1) / 2, rx = w / 2, ry = h / 2;
-    const inside = (x, y) => x >= 0 && y >= 0 && x < w && y < h && ((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2 <= 1;
-    const dot = (x, y) => { x = Math.round(x); y = Math.round(y); if (x >= 0 && y >= 0 && x < w && y < h) p.px(x, y, P.line); };
-    const line = (x0, y0, x1, y1, th = 2) => { const n = Math.ceil(Math.hypot(x1 - x0, y1 - y0) * 2); for (let i = 0; i <= n; i++) { const x = x0 + ((x1 - x0) * i) / n, y = y0 + ((y1 - y0) * i) / n; for (let k = 0; k < th; k++) dot(x, y + k); } };
-    if (state === 'open' || state === 'angry') {
-      const cut = state === 'angry' ? Math.round(h * 0.34) : -1;          // the flat lid line
-      for (let y = Math.max(0, cut); y < h; y++) for (let x = 0; x < w; x++) {
-        if (!inside(x, y)) continue;
-        const edge = y === cut || !inside(x - 1, y) || !inside(x + 1, y) || !inside(x, y - 1) || !inside(x, y + 1);
-        const t = (y + 0.5 - h * 0.64) / (h * 0.36);                       // the lower third
-        p.px(x, y, edge ? P.line : t > 0.5 ? P.light : t > 0 ? P.mid : P.iris);
-      }
-      const big = w >= 11 ? 3 : 2, y0 = cut >= 0 ? cut + 1 : Math.round(h * 0.15), x0 = Math.round(w * 0.18);
-      for (let j = 0; j < big - (cut >= 0 ? 1 : 0); j++) for (let i = 0; i < big; i++) p.px(x0 + i, y0 + j, P.white);
-      p.px(w - 1 - x0 - 1, Math.round(h * 0.7), P.white);                // the little glint, low on the inner side
-    } else if (state === 'happy') {                                     // ^
-      for (let x = 1; x < w - 1; x++) { const d = Math.abs(x - cx) / (cx - 1 || 1); dot(x, cy - 2 + d * d * 4); dot(x, cy - 1 + d * d * 4); }
-    } else if (state === 'closed') {                                    // ‿ a soft curve
-      for (let x = 1; x < w - 1; x++) { const d = Math.abs(x - cx) / (cx - 1 || 1); dot(x, cy + 2 - d * d * 3); }
-      dot(1, cy - 1); dot(w - 2, cy - 1);
-    } else if (state === 'hurt') {                                      // > (the left eye mirrors it to <)
-      line(1.5, h * 0.2, w - 2.5, cy - 0.5); line(w - 2.5, cy - 0.5, 1.5, h * 0.8 - 1);
-    } else if (state === 'swirl') {
-      for (let a = 0; a < Math.PI * 4.2; a += 0.12) { const r = a * (Math.min(rx, ry) - 0.6) / (Math.PI * 4.2); dot(cx + Math.cos(a) * r, cy + Math.sin(a) * r * (ry / rx)); }
-    } else if (state === 'x') {
-      line(1.5, h * 0.22, w - 2.5, h * 0.78 - 1); line(w - 2.5, h * 0.22, 1.5, h * 0.78 - 1);
+// ripped jeans: washed denim with seams, fading at the knees and a frayed rip
+export function denim(o = {}) {
+  return (p, w, h, face) => {
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      let c = face === 'up' ? '#5a7ac8' : face === 'down' ? '#1c2a5a' : ((x * 7 + y * 3) % 11 === 0 ? '#5a7ac8' : (x + y) % 2 ? '#3a5aa8' : '#34509a');
+      if (face !== 'up' && face !== 'down' && (x === 0 || x === w - 1)) c = '#ffd27a';            // the stitched seams
+      p.px(x, y, c);
     }
+    if (o.rip && (face === 'south' || face === 'north')) { const cy = Math.round(h * 0.55), cx = Math.floor(w / 2); for (let x = cx - 2; x <= cx + 2; x++) { p.px(x, cy, '#f4f0e8'); p.px(x, cy - 1, x % 2 ? '#c8d4f0' : '#f4f0e8'); } p.px(cx - 3, cy, '#c8d4f0'); p.px(cx + 3, cy - 1, '#c8d4f0'); }
+    if (o.cuff && face !== 'up' && face !== 'down') for (let x = 0; x < w; x++) { p.px(x, h - 1, '#8aa4e0'); p.px(x, h - 2, '#6a88d0'); }
   };
 }
+// ---------------------------------------------------------------- the stalked eye
+// Drawn with the shared eye kit (eyes.js, style 'pix', Cobblemon low-res): the mantis shrimp's own eye —
+// no whites, a teal iris split by the striped midband (accent row), and a slit of pseudopupils above and
+// below it. Each eye hangs on its own stalk bone (parentR / parentL), so it swivels with the stalk.
+export const SHRIMP_EYE = {
+  open: [
+    '..llllll..',
+    '.llIIIIll.',
+    'lIIIIIIIIl',
+    'lIhhIkIIIl',
+    'lIhhikiiIl',
+    'liiiikiiil',
+    'cccccccccc',
+    'cccccccccc',
+    'liiiikiiil',
+    'liiiikiiil',
+    'liiiiiihil',
+    '.liiiiiil.',
+    '..llllll..',
+  ],
+};
 // the eye's housing on the stalk: shell, with the mantis shrimp's midband as a flat three-stripe band
 // round the sides and back (model height [y0, y1]); the front stays plain for the eye
 export const eyeHousingP = (P, y0, y1, ppu = 3) => (p, w, h, face, cube) => {
@@ -283,7 +278,37 @@ export const FX = {
   zap: defineFx('shrimp-zap', { w: 5, h: 5, paint: dotSpr('#ffffff', '#7affc4'), glow: true, life: [0.1, 0.16], size: [0.09, 0.05], speed: [7, 8], grav: 0, drag: 0, spread: 0.02 }),
   zapring: defineFx('shrimp-zapring', { w: 16, h: 16, paint: ringSpr('#4affa0', '#e8fff0'), glow: true, life: [0.32, 0.4], size: [0.05, 0.42], speed: [3.4, 3.8], grav: 0, drag: 1.2, spread: 0.02, fade: true }),
   orb: defineFx('shrimp-orb', { w: 9, h: 9, paint: orbSpr, glow: true, life: [0.35, 0.7], size: [0.1, 0.02], speed: [0.1, 0.5], grav: -0.3, drag: 1.5, spread: 1, fade: true }),
+  orbBlue: defineFx('shrimp-orbblue', { w: 9, h: 9, paint: (p, w, h) => { const c = (w - 1) / 2; for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const d = Math.hypot(x - c, y - c) / c; if (d < 0.35) p.px(x, y, '#ffffff'); else if (d < 0.6) p.px(x, y, '#c8f0ff'); else if (d < 0.85) p.px(x, y, '#4ab8ff'); else if (d < 1.05 && (x + y) % 2) p.px(x, y, '#2a6aff'); } }, glow: true, life: [0.35, 0.7], size: [0.1, 0.02], speed: [0.1, 0.5], grav: -0.3, drag: 1.5, spread: 1, fade: true }),
+  zapBlue: defineFx('shrimp-zapblue', { w: 16, h: 16, paint: ringSpr('#4ab8ff', '#e8f6ff'), glow: true, life: [0.32, 0.4], size: [0.05, 0.42], speed: [3.4, 3.8], grav: 0, drag: 1.2, spread: 0.02, fade: true }),
   shock: defineFx('shrimp-shock', { w: 32, h: 32, paint: ringSpr('#ffd27a', '#ffffff'), glow: true, life: [0.42, 0.5], size: [0.3, 3.2], speed: [0, 0], grav: 0, fade: true }),
+};
+
+// ---------------------------------------------------------------- the ultra-drip form
+// The line's luxury form: the cool armour (blues, greens, teals, violets) and the mane turn to black lacquer,
+// the warm wash (oranges, reds, pinks, yellows, the pearl clubs) turns to bright gold, and anything that
+// glows — eyes, UFOs, the ray gun — burns blue. Ray-gun rings and foo-orb trails swap to blue too.
+const hsl = (hex) => {
+  const n = parseInt(hex.slice(1, 7), 16), r = ((n >> 16) & 255) / 255, g = ((n >> 8) & 255) / 255, b = (n & 255) / 255;
+  const mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2, d = mx - mn;
+  if (!d) return { h: 0, s: 0, l };
+  let h = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4; h *= 60; if (h < 0) h += 360;
+  return { h, s: d / (1 - Math.abs(2 * l - 1)), l };
+};
+const fromHsl = (h, s, l) => {
+  const c = (1 - Math.abs(2 * l - 1)) * s, x = c * (1 - Math.abs(((h / 60) % 2) - 1)), m = l - c / 2;
+  const [r, g, b] = h < 60 ? [c, x, 0] : h < 120 ? [x, c, 0] : h < 180 ? [0, c, x] : h < 240 ? [0, x, c] : h < 300 ? [x, 0, c] : [c, 0, x];
+  return '#' + [r, g, b].map((v) => Math.round(Math.max(0, Math.min(1, v + m)) * 255).toString(16).padStart(2, '0')).join('');
+};
+export const DRIP_FORM = {
+  map(c, glow) {
+    if (typeof c !== 'string' || c[0] !== '#' || c.length < 7) return c;
+    if (glow) { const { h, s, l } = hsl(c); return s > 0.15 ? fromHsl(205 + (h % 40) * 0.4, Math.min(1, s * 1.05), Math.min(0.96, l)) : c; }
+    const { h, s, l } = hsl(c);
+    if (s < 0.14) return c;                                              // whites, greys, the ink outline stay
+    if (h >= 290 || h < 75) return fromHsl(44, 0.9, Math.min(0.9, 0.2 + l * 0.66));   // the warm wash → gold
+    return fromHsl(258, 0.16, 0.05 + l * 0.26);                          // the cool armour and the mane → black lacquer
+  },
+  fx: { 'shrimp-orb': 'shrimp-orbblue', 'shrimp-zapring': 'shrimp-zapblue' },
 };
 
 // ---------------------------------------------------------------- rig helpers
