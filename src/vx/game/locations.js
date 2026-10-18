@@ -17,6 +17,11 @@ export const LOCATIONS = {
       arena: { target: [30, 3.4, 40], dist: 15, yaw: 90, pitch: 18 },
     },
     arena: { at: [30, 39.5], r: 5, axis: 'x', cam: { dist: 8, yaw: 180, pitch: 20 } },
+    life: [
+      { kind: 'mon', species: ['pidgun', 'pidrose'], n: 5, area: [6, 34, 58, 35.8], fidget: 'fidget' },
+      { kind: 'mon', species: ['pidgun', 'pidrose'], n: 3, area: [6, 21, 58, 22.6], fidget: 'fidget' },
+      { kind: 'person', n: 4, lanes: [[[1, 22], [63, 22]], [[1, 35], [63, 35]]] },
+    ],
     hotspots: [
       { id: 'ladies', label: 'Painted Ladies', icon: 'star', at: [20, 9, 16], act: async (app) => { await app.world.shot('houses', 1.6); await app.say('', 'Seven Victorian houses in candy colours. Every tourist in San Francisco ends up taking this photo.'); await app.world.shot(app.world.loc.view, 1.4); } },
       { id: 'grass', label: 'Tall grass', icon: 'leaf', at: [40, 5, 40], act: async (app) => app.story.wildBattle('alamo') },

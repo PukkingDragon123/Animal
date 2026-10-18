@@ -71,6 +71,7 @@ export class VxWorld {
     this.setCam(v);
     this.hotspots = (L.hotspots || []).map((h) => ({ ...h }));
     this.ready = true;
+    if (o.life !== false) this.spawnLife(L.life || []).catch((e) => console.warn('life', e));
     return sc;
   }
   clear() {
@@ -99,6 +100,33 @@ export class VxWorld {
     return a;
   }
   actor(id) { return this.actors.get(id); }
+  // ambient life: pigeons strutting and pecking, passers-by walking the sidewalks.
+  // life: [{ kind: 'mon', species: ['pidgun', 'pidrose'], n, area: [x0, z0, x1, z1] } | { kind: 'person', n, lanes: [[[x, z], …], …] }]
+  async spawnLife(list = []) {
+    let k = 0;
+    for (const L of list) for (let i = 0; i < (L.n || 1); i++) {
+      const id = 'life' + k++, r = () => Math.random();
+      if (L.kind === 'mon') {
+        const sp = Array.isArray(L.species) ? L.species[Math.floor(r() * L.species.length)] : L.species, [x0, z0, x1, z1] = L.area;
+        const a = await this.addMon(id, sp, [x0 + r() * (x1 - x0), z0 + r() * (z1 - z0), r() * 6.28]);
+        a.life = { area: L.area, wait: r() * 3, fidget: L.fidget }; a.speed = L.speed || 0.9;
+      } else {
+        const lane = L.lanes[Math.floor(r() * L.lanes.length)], fwd = r() < 0.5, pts = fwd ? lane : lane.slice().reverse();
+        const a = this.addPerson(id, 'passerby' + (1 + Math.floor(r() * 400)), [pts[0][0], pts[0][1], 0]);
+        const t = r(); a.g.position.x += (pts[1][0] - pts[0][0]) * t; a.g.position.z += (pts[1][1] - pts[0][1]) * t;
+        a.life = { lane: pts, walker: true }; a.speed = 1.1 + r() * 0.5;
+      }
+    }
+  }
+  thinkLife(a, dt) {
+    const L = a.life; if (!L || a.path) return;
+    if (L.walker) { this.remove(a.id); const r = Math.random(), lane = L.lane.slice().reverse(); const b = this.addPerson(a.id, 'passerby' + (1 + Math.floor(r * 400)), [lane[0][0], lane[0][1], 0]); b.life = { lane, walker: true }; b.speed = a.speed; b.walkTo(lane.slice(1)); return; }
+    L.wait -= dt; if (L.wait > 0) return;
+    const [x0, z0, x1, z1] = L.area, r = Math.random();
+    const fid = L.fidget && a.anim.clips[L.fidget] ? [L.fidget] : (a.anim.spec.fidget && a.anim.spec.fidget.clips) || [];
+    if (r < 0.35 && fid.length) { a.play(fid[Math.floor(Math.random() * fid.length)], { restart: true }); L.wait = 2 + Math.random() * 2; return; }
+    a.walkTo([x0 + Math.random() * (x1 - x0), z0 + Math.random() * (z1 - z0)]).then(() => { L.wait = 1 + Math.random() * 3; });
+  }
   remove(id) { const a = this.actors.get(id); if (a) { this.st.actors.remove(a.g); this.actors.delete(id); } }
   emote(id, kind = 'anger', n = 1) { const a = this.actor(id); if (a) this.fx.emit(kind, a.headPos(), { n, scale: 1 }); }
   burst(kind, at, o = {}) { this.fx.emit(kind, new THREE.Vector3(...at), o); }
@@ -116,7 +144,7 @@ export class VxWorld {
     if (!this.ready) return;
     this.st.time += dt;
     const look = this.st.cam.position;
-    for (const a of this.actors.values()) a.update(dt, { fx: this.fx, look });
+    for (const a of [...this.actors.values()]) { if (a.life) { if (a.life.walker && !a.path && !a.started) { a.started = true; a.walkTo(a.life.lane.slice(1)); } else this.thinkLife(a, dt); } a.update(dt, { fx: this.fx, look }); }
     this.fx.update(dt);
     const c = this.cam;
     if (this.tween) {

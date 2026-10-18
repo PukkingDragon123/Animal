@@ -28,11 +28,35 @@ no real logos, cover artwork, mascots or likenesses. Models live in `src/vx/mons
 | **Thrashark** | Metallica ("Ride the Lightning") | sawblade-finned walking shark crackling with lightning |
 | **Lemmo** | Beyoncé ("Lemonade") | the walking lemon battery with a little baseball bat and a bee motif |
 | **Cabbunny** | Bad Bunny | the cabbage bunny with edgy shades, painted claws, summer swagger |
-| **Kappachi** | Nirvana ("Nevermind") | the Tea Garden kappa chasing a cucumber on a fishhook, flannel round its waist |
+| **Kappachi** | The Beach Boys | the Tea Garden kappa in a striped surf shirt with a little surfboard; its dish sloshes like a wave |
 | **Chochobake** | Michael Jackson ("Thriller") | Chinatown's one-eyed paper-lantern ghost in a red-jacket pattern with one sparkly glove; moonwalks |
+
+## Second wave (requested)
+| Line | Artist homage | Stages |
+|---|---|---|
+| **Woodbub** → **Hartbox** → *Utero* form | Nirvana | a wooden baby swimming with a fishing rod on its back, a dollar bill dangling ahead of it ("Nevermind") → a giant wooden golem shaped like a heart-shaped box → when it is knocked out while bonded it unfolds into the beautiful anatomical angel ("In Utero") |
+| **Grillfin** → **Astroshark** | Travis Scott | a meme tiger fish with a gold grill and chains → a badass theme-park shark ("Astroworld", flames, rollercoaster fin) |
+| **Sandmander** | Metallica ("Enter Sandman", the black album) | a black desert sand lizard with a coiled-snake pattern, an hourglass tail and a nightcap — sleep-sand attacks |
+| **Justatue** | Metallica ("...And Justice for All") | a cracked, blindfolded justice statue golem with scales and ropes |
+| **Creepetal** → **Plastree** | Radiohead ("Creep", "Fake Plastic Trees") | a sad, wilting flower that thinks it's a creep → a glossy plastic toy tree with price tags and a wind-up key |
+| **Weirdfin** | Radiohead ("Weird Fishes/Arpeggi") | an eerie deep-sea fish striped in rainbow arpeggio bands with a glowing lure |
+| **Snarlpup** → **Wonderwoof** → **Supernoir** | Oasis ("Don't Look Back in Anger", "Wonderwall", "Champagne Supernova") | an angry puppy → a cocky teen dog → a redemption hero on two legs in a long detective coat who pulls out a photo of Sally |
+| **Coolpillar** → **Pupalace** → **Killaqueen** / **Bohemonarch** | Queen | a weird pop-art caterpillar in "Cool Cat"/Hot Space colour blocks → a royal, jewelled cocoon → the Killer Queen butterfly or the king "Bohemian Rhapsody" monarch |
+| **Zapkit** → **Thundersabre** | ThunderCats (cartoon homage) | a cute lightning kitten → a dark, fierce sabre-toothed storm cat |
+| **Zeppra** → **Stairgasus** | Led Zeppelin | a zebra foal with a blimp-round belly → a winged pegasus climbing a stairway of cloud ("Stairway to Heaven") |
+| **Rollick** | The Rolling Stones | a rolling boulder with huge lips and a long tongue |
+| **Neverdecker** | The Smiths ("There Is a Light That Never Goes Out") | a red double-decker-bus whale whose windows never go dark, gladioli in its blowhole |
+| **Johnlemon**, **McCarapace**, **Harrisun**, **Starrfish** | The Beatles | the Fab Four: a lemon in round wire glasses, a left-handed bass-shelled hermit crab, a sun with a sitar, a drumming starfish. **Four Beatles in one team: "Fab Four" boost.** |
+| **Yokat** | Yoko Ono | a ghost cat in a wide black hat and round dark glasses who can team up with Johnlemon |
+| **Blackvolt** (legendary) | AC/DC ("Back in Black") | an all-black thunderbird with silver lightning and a tolling bell |
+| **Prismoon** (legendary) | Pink Floyd ("The Dark Side of the Moon") | a black crystal dragon whose prism head splits light into a rainbow |
+
+The **Elite Four** fight is a rooftop battle in the spirit of the famous rooftop concert.
 
 ## Evolution conditions (new)
 * **Paradove**: Jungeon faints from a burn while bonded with its trainer (battle event `burn_faint_bonded`).
 * **Hellcoon**: Dynacoon reaches Lv.32 after winning a race on the Highway (Great Highway at night).
 * **Yeezilla / Polobruin**: Bearbreak at Lv.30 — Yeezilla if it has more KOs than heals, Polobruin if its friendship is maxed and it has shielded a teammate 20 times.
 * **Everpunch**: Foopod lands 50 critical punches.
+* **Utero** (form): Hartbox is knocked out while bonded.
+* **Killaqueen / Bohemonarch**: Pupalace at Lv.30 — Killaqueen by day, Bohemonarch during a thunderstorm night ("thunderbolt and lightning").

@@ -25,9 +25,31 @@ const R = {
   chef: { build: 'big', skin: '#e6b48e', hair: { style: 'buzz', color: '#2a2422' }, eyes: { color: '#2a2018' }, top: { kind: 'apron', color: '#f2f0ea', color2: '#c83a3a' }, bottom: { kind: 'slacks', color: '#2a2a30' }, shoes: { kind: 'dress', color: '#1e1a1a' }, acc: ['headband'], bandColor: '#c83a3a', mood: 'happy', idlePose: 'hips' },
   chess: { build: 'old', skin: '#d6a882', hair: { style: 'bald', color: '#d8d4d0' }, beard: 'full', beardColor: '#e8e4e0', eyes: { color: '#2a2018', shape: 'narrow' }, top: { kind: 'vest', color: '#e8e2d4', color2: '#6a5a4a', inner: '#e8e2d4' }, bottom: { kind: 'slacks', color: '#5a5048' }, shoes: { kind: 'dress', color: '#2a2220' }, acc: ['glasses'], mood: 'calm', energy: 0.5 },
 };
+// random passers-by: a deterministic outfit from a seed
+const SKINS = ['#f2cdb0', '#e6b48e', '#d29a72', '#c48a62', '#8a5a3e', '#6a4430', '#f0c8a8', '#d8a27a'];
+const HAIRS = ['#1e1a22', '#2a1e1a', '#3a2a20', '#6a4a2a', '#a8763a', '#d8d0c4', '#c8303a', '#e8e4e0'];
+const CLOTH = ['#3a6ab0', '#c83a3a', '#e8b43a', '#2e2e36', '#5a9a6a', '#e8e4dc', '#8a3a8a', '#e8603a', '#4a5a7a', '#2e4a8a', '#7a3a4a', '#d8d0c4'];
+export function passerby(seed) {
+  let x = (seed * 2654435761) >>> 0; const r = () => ((x = (x * 1664525 + 1013904223) >>> 0) / 4294967296);
+  const pick = (a) => a[Math.floor(r() * a.length)];
+  const build = pick(['adult', 'adult', 'teen', 'tall', 'big', 'old', 'kid']);
+  return {
+    name: 'passerby' + seed, build, skin: pick(SKINS),
+    hair: { style: pick(build === 'old' ? ['bald', 'bun', 'short', 'buzz'] : ['short', 'spiky', 'long', 'bob', 'ponytail', 'slick', 'buzz', 'afro', 'bun']), color: build === 'old' ? '#e8e4e0' : pick(HAIRS) },
+    eyes: { color: pick(['#3a2a1e', '#4a3424', '#3a5a8a', '#2a4a2a']) },
+    top: { kind: pick(['tee', 'hoodie', 'jacket', 'coat', 'tee', 'tank', 'suit']), color: pick(CLOTH), inner: pick(CLOTH) },
+    bottom: { kind: pick(['jeans', 'jeans', 'slacks', 'shorts', 'skirt', 'track']), color: pick(['#2e3a5e', '#34406a', '#2a2a30', '#5a5048', '#3a3238', '#6a5a4a']) },
+    shoes: { kind: pick(['sneakers', 'boots', 'dress']), color: pick(['#f2f0ea', '#2a2a32', '#5a3a2a', '#c83a3a']) },
+    acc: [r() < 0.3 ? 'glasses' : null, r() < 0.15 ? 'cap' : null, r() < 0.2 ? 'backpack' : null, r() < 0.15 ? 'headphones' : null, r() < 0.2 ? 'bag' : null].filter(Boolean),
+    capColor: pick(CLOTH), packColor: pick(CLOTH), bagColor: pick(CLOTH), mood: pick(['calm', 'happy', 'cool', 'tired']),
+  };
+}
 const cache = {};
 export const CAST_NAMES = Object.keys(R);
 export const RECIPES = R;
-export function cast(name) { if (!cache[name]) cache[name] = person({ name, ...R[name], top: { ...R[name].top, print: null } }); return cache[name]; }
+export function cast(name) {
+  if (!cache[name]) { const r = R[name] || (name.startsWith('passerby') ? passerby(+name.slice(8) || 1) : R.hero); cache[name] = person({ name, ...r, top: { ...r.top, print: null } }); }
+  return cache[name];
+}
 // a sculpted voxel person (a Model-compatible instance for the Animator)
 export function castVox(name, extra = {}) { return new VoxPerson({ name, ...R[name], ...extra }); }
