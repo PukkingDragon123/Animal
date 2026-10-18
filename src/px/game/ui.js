@@ -190,6 +190,8 @@ export class PixelUI {
     D.t += 1 / 60; D.shown = Math.min(total, D.shown + (D.o.speed || 1.6));
     this.panel(bx, by, bw, bh, { dots: false });
     if (D.name) { const nw = this.tw(D.name) + 14; this.panel(bx + 8, by - 11, nw, 14, { fill: D.o.nameColor || T.cyan2, edge: T.cyan, edgeL: '#9ff0ff' }); this.text(D.name, bx + 15, by - 7, T.text, { shadow: T.ink }); }
+    // voice babble: one blip per newly revealed character (the audio engine paces and filters them)
+    if (this.voice && D.name) { const shownNow = Math.floor(D.shown); for (let i = D.voiced || 0; i < shownNow; i += 2) this.voice(D.name, D.str[i]); D.voiced = shownNow; }
     let left = Math.floor(D.shown);
     for (let i = 0; i < lines.length && i < 5; i++) {
       const part = lines[i].slice(0, Math.max(0, left)); left -= lines[i].length + 1;

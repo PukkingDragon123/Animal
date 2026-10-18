@@ -10,6 +10,7 @@ import * as S from '../../game/state.js';
 import { Story2D } from './story.js';
 import { Phone } from './phone.js';
 import { MAPS, loadMaps } from './maps.js';
+import { loadDesigns } from './mon.js';
 import { createElemon } from '../../game/elemon.js';
 import { ITEMS } from '../../data/items.js';
 import { recordEat } from '../../data/progress.js';
@@ -28,13 +29,16 @@ export class App {
     this.gl = document.getElementById('gl'); this.uiCv = document.getElementById('ui');
     this.post = new HD2D(this.gl);
     this.ui = new PixelUI(320, 180);
+    const VOICES = { 'Coach Gonda': 'coach', Kaito: 'rival', Mika: 'friend', Taro: 'kid', Thrash: 'punk', Riff: 'punk', Moshi: 'punk', 'Dr. Hoshino': 'professor', Barber: 'elder', '???': 'rival' };
+    this.ui.voice = (name, ch) => { if (this.audio && this.audio.voice) this.audio.voice(VOICES[name] || 'friend', ch); };
     this.layout();
     addEventListener('resize', () => this.layout());
     this.bindInput();
     try { const m = await import('../../audio/audio.js'); this.audio = m.audio || m.default || NO_AUDIO; } catch (e) { this.audio = NO_AUDIO; }
     if (this.audio.autoUnlock) this.audio.autoUnlock(window);
     await loadFonts();
-    await loadMaps();
+    await loadMaps(); this.MAPS = MAPS;
+    await loadDesigns();
     this.world = new World2D(this);
     this.phone = new Phone(this);
     this.story = new Story2D(this);

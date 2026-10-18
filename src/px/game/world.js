@@ -3,7 +3,7 @@
 // mask) or use WASD/arrows; walk up to a hotspot and tap its bubble (or press
 // Space/E) to talk, eat, read, enter or battle.
 import { Actor } from '../scene2d.js';
-import { MonSprite, yawOf, bank } from './mon.js';
+import { MonSprite, yawOf, bank, hasDesign } from './mon.js';
 import { T } from './ui.js';
 import { MAPS } from './maps.js';
 
@@ -29,11 +29,22 @@ export class World2D {
     // wandering Tokonmon / NPC creatures
     this.npcs = [];
     for (const n of built.npcs || []) this.addNpc(n);
+    // wild Tokonmon roaming designated areas (only species that have a 3D model yet)
+    for (const W of built.wild || []) for (let k = 0; k < (W.count || 1); k++) {
+      const pool = W.species.filter((sp) => hasDesign(sp)); if (!pool.length) break;
+      for (let tries = 0; tries < 20; tries++) {
+        const x = W.area[0] + Math.random() * W.area[2], y = W.area[1] + Math.random() * W.area[3];
+        if (!this.walkable(x, y, 6)) continue;
+        const sp = pool[(Math.random() * pool.length) | 0], lv = W.level[0] + Math.floor(Math.random() * (W.level[1] - W.level[0] + 1));
+        this.addNpc({ species: sp, x, y, roam: 40, wild: true, level: lv }); break;
+      }
+    }
     this.cam(true);
     this.path = null; this.hotNear = null;
     if (M.music && app.audio.music) app.audio.music(M.music, { fade: 1.2 });
     if (M.ambience && app.audio.ambience) app.audio.ambience(M.ambience);
     if (M.onEnter) M.onEnter(this);
+    if (app.story && app.story.onArrive) app.story.onArrive(id);
     return this;
   }
   addNpc(n) {
@@ -151,6 +162,8 @@ export class World2D {
       if (!n.target) { n.wait -= dt; if (n.wait <= 0) { const a = Math.random() * Math.PI * 2, r = Math.random() * (n.roam || 30); const tx = n.home[0] + Math.cos(a) * r, ty = n.home[1] + Math.sin(a) * r * 0.6; if (this.walkable(tx, ty)) n.target = [tx, ty]; n.wait = 1 + Math.random() * 3; } n.spr.setBase('idle'); if (n.spr.clip === 'walk') n.spr.play('idle'); }
       else { const dx = n.target[0] - n.a.x, dy = n.target[1] - n.a.y, d = Math.hypot(dx, dy); if (d < 2) n.target = null; else { const s = 30 * dt; n.a.x += dx / d * s; n.a.y += dy / d * s; n.spr.yaw = yawOf(dx, dy); if (n.spr.clip === 'idle') n.spr.play('walk'); } }
     }
+    // bumping into a wild Tokonmon starts a battle
+    if (this.control && !ui.dialog && !this.busy) for (const n of this.npcs) if (n.wild && !(n.cool > this.t) && Math.hypot(n.a.x - me.x, (n.a.y - me.y) * 1.3) < 16) { this.wildFight(n); break; }
     // nearest hotspot within reach
     let best = null, bd = Infinity;
     for (const h of this.meta.hotspots) { if (h.when && !h.when(app)) continue; const d = Math.hypot(h.x - me.x, (h.y - me.y) * 1.4); if (d < (h.r || 26) && d < bd) { bd = d; best = h; } }
@@ -161,6 +174,13 @@ export class World2D {
     for (const ex of this.meta.exits || []) if (me.x > ex.x && me.x < ex.x + ex.w && me.y > ex.y && me.y < ex.y + ex.h && this.control && !this._exiting) { this._exiting = true; Promise.resolve(app.onExit(ex)).finally(() => { this._exiting = false; }); }
     this.cam(false, dt);
     if (this.tapMark) this.tapMark.t += dt;
+  }
+  async wildFight(n) {
+    this.busy = true; this.path = null; this.control = false;
+    const app = this.app, name = (await import('../../data/species.js')).SPECIES[n.species].name;
+    const res = await app.startBattle({ title: `WILD ${name.toUpperCase()}!`, subtitle: app.state.flags.license ? 'weaken it, then CATCH' : 'no Tamer License yet: battle only', foe: { name, team: [[n.species, n.level || 4]], ai: 'wild' }, wild: true, at: [Math.max(140, Math.min(this.sc.w - 140, n.a.x)), Math.max(150, Math.min(this.sc.h - 60, n.a.y))] });
+    if (res && (res.winner === 0 || res.reason === 'capture')) this.removeNpc(n); else n.cool = this.t + 6;
+    this.control = true; this.busy = false;
   }
   async interact(h) {
     if (this.busy) return;

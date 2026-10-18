@@ -2,7 +2,8 @@
 // plaza where Coach Gonda has three starters waiting → pick your partner → the
 // soul-stone bracelet + phone → rival Kaito challenges you → free roam.
 import { T } from './ui.js';
-import { MonSprite, bank } from './mon.js';
+import { MonSprite, bank, hasDesign } from './mon.js';
+const DESIGNS_HAS = (id) => hasDesign(id);
 import { buildPlaza } from '../../data/scenes/plaza.js';
 import { SPECIES } from '../../data/species.js';
 import * as S from '../../game/state.js';
@@ -83,8 +84,63 @@ export class Story2D {
     else await app.say('Kaito', 'Ha! Told you. Don\'t cry about it.', 'Coach Gonda: Don\'t mind him. Losing your first battle is a tradition. Rest up on the bench.');
     S.healParty(app.state, 1);
     app.state.story.beat = 'roam1'; app.save();
+    this.onArrive('plaza');
     await app.say('Coach Gonda', 'Explore the plaza a bit. Grab a bowl of ramen — Tokonmon learn things from food, you know. Spicy food especially, for that one.', 'Meet me at the subway gate when you\'re ready for the League office.');
     app.objective = 'Explore the plaza — then meet Coach Gonda at the subway gate';
+  }
+
+  // ------------------------------------------------------------------ chapter 1 beats (called after every map load)
+  onArrive(mapId) {
+    const app = this.app, w = app.world, s = app.state, beat = s.story.beat;
+    const hot = (h) => w.meta.hotspots.unshift(Object.assign({ r: 30, icon: 'talk' }, h));
+    const coach = (x, y, act, label = 'Coach Gonda') => { const n = w.addNpc({ species: 'kanizumo', x, y, still: true, yaw: 0, talk: act, label }); return n; };
+    if (mapId === 'plaza' && beat === 'roam1') {
+      hot({ x: 222, y: 270, label: 'Coach', bubbleH: 40, act: async () => {
+        await app.say('Coach Gonda', 'There you are! Change of plan — the League office can wait a day.', "First I want to see you two train properly. To Castle Park! My training ground's by the moat.");
+        s.story.beat = 'park1'; app.objective = 'Train with Coach Gonda at Osaka Castle Park';
+        if (app.MAPS.castle_park) await app.travel('castle_park', 'gate');
+        else await app.say('', '(Osaka Castle Park is still being painted — check back soon!)');
+      } });
+    }
+    if (mapId === 'castle_park' && beat === 'park1') {
+      const sp = w.meta.spawns.ring || w.meta.spawns.start;
+      coach(sp[0] + 30, sp[1] - 10, async () => {
+        await app.say('Coach Gonda', 'Welcome to the ring! Kanizumo and I have trained here every morning for nine years.', 'Bow to your opponent. Then give us everything. Bond when it feels right!');
+        const res = await app.startBattle({ title: 'VS  COACH GONDA', subtitle: 'sparring match', foe: { name: 'Coach Gonda', team: [['kanizumo', 6]], ai: 'normal' }, at: sp, money: 400 });
+        await app.say('Coach Gonda', res && res.winner === 0 ? 'HA! Kanizumo hasn\'t been pushed out of the ring like that in years!' : 'Not bad at all! Kanizumo had to plant both feet.', 'You\'ve earned this — a Tamer License. With it you can soul-link with wild Tokonmon. Weaken them first, then CATCH.');
+        s.flags.license = true; S.addItem(s, 'quartz', 5); app.ui.toast('Got the Tamer License + 5 Quartz', { icon: 'star', color: T.green });
+        await app.say('Mika', 'Coach! Is this the rookie Kaito keeps complaining about? Hi! I\'m Mika, and this is Zapanda!', 'We\'re all getting ice cream at the Yellow Submarine in Dotonbori. You\'re coming. That\'s not a question!');
+        s.flags.met_mika = true; s.story.beat = 'dotonbori1'; app.save();
+        app.objective = 'Meet everyone at the Yellow Submarine in Dotonbori (phone → Map)';
+        w.npcs.filter((n) => n.species === 'kanizumo').forEach((n) => w.removeNpc(n));
+      });
+      if (DESIGNS_HAS('zapanda')) w.addNpc({ species: 'zapanda', x: sp[0] - 60, y: sp[1] + 30, roam: 30 });
+    }
+    if (mapId === 'dotonbori' && beat === 'dotonbori1') {
+      const sp = w.meta.spawns.icecream || w.meta.spawns.start;
+      const meet = async () => {
+        await app.say('Mika', 'Over here! I already ordered for you: the Octopus\'s Garden Sundae. Trust me.');
+        await app.say('Taro', 'H-hi. I\'m Taro. This is Beatlet. He headbangs when he\'s happy.');
+        await app.say('Coach Gonda', 'Mmm. Third sundae. Don\'t tell my doctor.');
+        await app.say('???', 'Well, well. Look who\'s blocking OUR canal.');
+        await app.say('Thrash', 'Team Metallica. This bridge is our turf, and turf costs ¥10,000. Each.', 'Or… three on three. You lose, you pay. We lose, we walk.');
+        await app.say('Coach Gonda', 'Three on three it is. Kid — take Taro\'s Beatlet as your second. Switch between them, and watch for team combos with Mika and me!');
+        const borrowed = app.newMon('beatlet', 5); borrowed.nick = "Taro's Beatlet";
+        const foesTeam = (sp1, sp2) => [[DESIGNS_HAS(sp1) ? sp1 : 'studrat', 6], [DESIGNS_HAS(sp2) ? sp2 : 'studrat', 5]];
+        const res = await app.startBattle({ title: 'TEAM METALLICA', subtitle: '3 vs 3 on the canal', only: [app.state.party[0], borrowed],
+          allies: [{ name: 'Mika', team: [['zapanda', 6]] }, { name: 'Coach Gonda', team: [['kanizumo', 7]] }],
+          foes: [{ name: 'Thrash', team: foesTeam('studrat', 'moshbull'), ai: 'normal' }, { name: 'Riff', team: [[DESIGNS_HAS('thrashark') ? 'thrashark' : 'studrat', 6]] }, { name: 'Moshi', team: [[DESIGNS_HAS('moshbull') ? 'moshbull' : 'studrat', 5]] }],
+          at: sp, money: 800, music: 'battle_punk' });
+        if (res && res.winner === 0) await app.say('Thrash', 'This isn\'t over. Team Metallica never forgets a face.', 'Moshi: …sorry about the bridge thing. (He slips a takoyaki to a stray cat on his way out.)');
+        else await app.say('Thrash', 'Pay up! …Ugh, keep it. Not worth the paperwork.', 'Moshi lingers, feeding a stray cat, then hurries after them.');
+        s.flags.met_taro = true; s.flags.met_moshi_glimpse = true; s.story.beat = 'night1'; app.save();
+        await app.say('Coach Gonda', 'Good teamwork. Get some dinner and some sleep — tomorrow you register for the Osaka League.');
+        app.objective = 'Day 2: register for the Osaka League (coming soon) — explore, battle wild Tokonmon, eat!';
+      };
+      hot({ x: sp[0], y: sp[1], label: 'Ice cream!', icon: 'bowl', act: meet });
+      if (DESIGNS_HAS('beatlet')) w.addNpc({ species: 'beatlet', x: sp[0] + 40, y: sp[1] + 10, roam: 14 });
+      if (DESIGNS_HAS('zapanda')) w.addNpc({ species: 'zapanda', x: sp[0] - 36, y: sp[1] + 12, roam: 14 });
+    }
   }
 
   async roam() {

@@ -34,18 +34,22 @@ export class Battle2D {
       // staging: on the current map, arena centred near the player (or a given point)
       const w = app.world;
       this.sc = w.sc;
-      const c = spec.at || [Math.max(140, Math.min(this.sc.w - 140, w.me.x)), Math.max(260, Math.min(this.sc.h - 70, w.me.y - 10))];
+      const c = spec.at || [Math.max(140, Math.min(this.sc.w - 140, w.me.x)), Math.max(150, Math.min(this.sc.h - 70, w.me.y - 10))];
       this.ox = c[0]; this.oy = c[1];
       this.savedActors = new Set(this.sc.actors); this.sc.actors.clear();
       for (const n of w.npcs) n.a.hidden = true;
       // teams
-      const mine = S.battleTeam(s, 3).map((m) => battleSnapshot(m, s.unlocks.slots));
-      const foeSnaps = spec.foe.team.map(([sp, lv, o]) => { const m = createElemon(sp, { level: lv, wild: true, friendship: 100 }); for (const [l, id] of SPECIES[sp].learn) if (l <= lv && !m.skills.known.includes(id)) m.skills.known.push(id); m.skills.active = m.skills.known.filter((id) => SKILLS[id] && SKILLS[id].kind === 'active').slice(0, 4); return battleSnapshot(m, { active: 4, ult: 1, passive: 2 }); });
+      const mine = (spec.only || S.battleTeam(s, spec.partySize || 3)).map((m) => battleSnapshot(m, s.unlocks.slots));
+      const npcSnap = ([sp, lv, o]) => { const m = createElemon(sp, { level: lv, wild: true, friendship: 100 }); for (const [l, id] of SPECIES[sp].learn) if (l <= lv && !m.skills.known.includes(id)) m.skills.known.push(id); m.skills.active = m.skills.known.filter((id) => SKILLS[id] && SKILLS[id].kind === 'active').slice(0, 4); const sn = battleSnapshot(m, { active: 4, ult: 1, passive: 2 }); if (o && o.boss) { sn.maxHp = Math.round(sn.maxHp * 1.8); sn.hp = sn.maxHp; } return sn; };
       const items = {}; for (const id of ['takoyaki', 'okonomiyaki', 'ramune', 'matcha']) if (s.bag[id]) items[id] = s.bag[id];
+      const foes = spec.foes || [spec.foe];
       this.st = createBattle({
-        seed: (Math.random() * 1e9) | 0, arena: { r: 8 },
-        sides: [{ trainers: [{ id: 'player', name: s.player.name, isPlayer: true, team: mine, items, canBond: !!s.flags.bracelet }] }, { trainers: [{ id: 'foe', name: spec.foe.name, ai: spec.foe.ai || 'normal', team: foeSnaps }] }],
-        rules: Object.assign({ items: true }, spec.rules || {}),
+        seed: (Math.random() * 1e9) | 0, arena: { r: spec.arenaR || (foes.length > 1 ? 9.5 : 8), type: spec.arenaType },
+        sides: [
+          { trainers: [{ id: 'player', name: s.player.name, isPlayer: true, team: mine, items, canBond: !!s.flags.bracelet }, ...(spec.allies || []).map((a, i) => ({ id: 'ally' + i, name: a.name, ai: a.ai || 'buddy', team: a.team.map(npcSnap) }))] },
+          { trainers: foes.map((f, i) => ({ id: 'foe' + i, name: f.name, ai: f.ai || 'normal', team: f.team.map(npcSnap) })) },
+        ],
+        rules: Object.assign({ items: true }, spec.wild ? { wild: true, capture: !!s.flags.license, flee: true } : {}, spec.rules || {}),
       });
       this.ptr = playerTrainer(this.st);
       // sprites
@@ -175,6 +179,10 @@ export class Battle2D {
         case 'emote': { const u = U(e.u); if (u) this.playOnce(u, 'happy', 1); break; }
         case 'order': { const u = U(e.u); if (u && u.side === 0) { const r = this.units.get(u.id); r.orderT = e.delay; r.orderDur = e.delay; r.orderKind = e.kind; } break; }
         case 'item': app.ui.toast('Used ' + String(e.id).replace('_', ' '), { icon: 'bag' }); break;
+        case 'captureThrow': this.callout('SOUL LINK!', Math.round((e.chance || 0) * 100) + '% chance', T.green, 1); break;
+        case 'captureShake': for (let i = 0; i < (e.shakes || 1); i++) setTimeout(() => { this.callout(String(i + 1) + '…', '', T.text, 0.5); app.audio.sfx('capture_shake'); }, 650 * (i + 1)); if (!e.ok) setTimeout(() => { this.callout('IT BROKE FREE!', '', '#ff8a2b', 1); app.audio.sfx('capture_fail'); }, 650 * ((e.shakes || 1) + 1)); break;
+        case 'captured': this.callout('GOTCHA!', 'soul link established', T.green, 1.6, true); app.audio.sfx('capture_success'); break;
+        case 'captureImmune': this.callout("CAN'T BE CAUGHT!", '', T.red, 1); break;
         case 'disobey': { const u = U(e.u); if (u) { const [X, Y] = this.W(u.x, u.z); this.pop(X, Y - 40, 'ignores you…', T.dim, 1); } break; }
         default: break;
       }
@@ -284,6 +292,8 @@ export class Battle2D {
     const bench = T_.team.map((id) => unitById(st, id)).filter((u) => u && u.id !== me.id && u.state !== 'faint');
     act(T_.switching ? Math.ceil(switchLeft(T_)) + 's' : 'Swap', 'swap', T.green, 'Tab', () => trainerCommand(st, T_.id, { type: 'switch', to: bench[0] && bench[0].id }), { disabled: !bench.length || !!T_.switching || T_.switchCd > 0 });
     act('Emote', 'smile', T.pink, 'e', () => cmd({ type: 'emote', id: Object.keys(EMOTES)[0] }), { disabled: me.emoteCd > 0 });
+    if (st.rules.capture) act('Catch', 'star', T.green, 'c', () => { const f = this.foe(); if (!f) return; const gem = ['diamond', 'amethyst', 'ruby', 'sapphire', 'emerald', 'topaz', 'opal', 'quartz'].find((g) => this.app.state.bag[g] > 0) || 'quartz'; if (trainerCommand(st, T_.id, { type: 'capture', gem, gemMul: 1 })) { this.app.audio.sfx('capture_throw'); if (this.app.state.bag[gem]) S.addItem(this.app.state, gem, -1); } }, { disabled: !this.foe() });
+    if (st.rules.flee) act('Run', 'dodge', T.dim, 'r', () => trainerCommand(st, T_.id, { type: 'flee' }));
     const hasItem = Object.values(T_.items || {}).some((v) => v > 0);
     act('Item', 'bag', T.green, 'q', () => { const id = ['takoyaki', 'okonomiyaki', 'ramune', 'matcha'].find((k) => (T_.items[k] || 0) > 0); if (id && trainerCommand(st, T_.id, { type: 'item', id })) this.app.audio.sfx('bio_heal'); }, { disabled: !hasItem });
     // tap the arena: target a foe or move there
@@ -318,6 +328,14 @@ export class Battle2D {
     const parts = [];
     for (const u of r.units) { if (u.side !== 0) { S.seen(s, u.species); continue; } const mon = S.monByUid(s, u.uid); if (!mon) continue; mon.hp = u.fainted ? 0 : Math.max(0.05, u.hp / u.maxHp); if (u.took) parts.push(mon); }
     for (const id of r.used.items || []) S.addItem(s, id, -1);
+    if (r.reason === 'capture' && r.captured) {
+      const c = r.captured, mon = createElemon(c.species, { level: c.level, wild: true, ot: s.player.name });
+      mon.hp = Math.max(0.2, c.hp || 0.5);
+      for (const [lv, id] of SPECIES[c.species].learn) if (lv <= c.level && !mon.skills.known.includes(id)) mon.skills.known.push(id);
+      mon.skills.active = mon.skills.known.filter((id) => SKILLS[id] && SKILLS[id].kind === 'active').slice(0, 4);
+      const where = S.addElemon(s, mon); s.stats.captures++;
+      out.push(`${SPECIES[c.species].name} joined your ${where === 'party' ? 'team' : 'box'}!`);
+    }
     if (won && parts.length) {
       let exp = 0; for (const u of r.units) if (u.side === 1) exp += ((SPECIES[u.species].exp || 50) * (u.level || 5)) / 6;
       exp *= 1.4;

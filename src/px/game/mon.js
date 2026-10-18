@@ -7,6 +7,12 @@ import { SPRITES } from '../../data/sprites/sdf_starters.js';
 
 export const DESIGNS = Object.assign({}, SPRITES);
 export const hasDesign = (id) => !!DESIGNS[id];
+// more Tokonmon live in their own modules; load whichever exist
+export async function loadDesigns() {
+  for (const f of ['sdf_friends', 'sdf_wild', 'sdf_evos', 'sdf_rivals', 'sdf_league']) {
+    try { const m = await import(`../../data/sprites/${f}.js`); Object.assign(DESIGNS, m.SPRITES || {}); } catch (e) { /* not designed yet */ }
+  }
+}
 
 // 8 facings: yaw 0 = toward the viewer (screen down), 90 = screen right, 180 = away, -90 = left
 export const YAWS = [0, 45, 90, 135, 180, -135, -90, -45];
