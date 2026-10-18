@@ -205,15 +205,22 @@ const JACKET = [
   P([-6.6, 12.0, -3.4], [3.0, 1.2, 6.8], leather, { id: 'acc-jacket', hide: true }),
 ];
 const CH = P([-4.4, 11.0, 5.62], [3.9, 0.6, 0.5], goldP, { pivot: [-4.4, 11.3, 5.87], rot: [0, 0, -24], id: 'acc-chain', hide: true });
-// goofy hand-pixelled eyes (Fuecoco-like): round whites with a big black pupil
-const EYES = eyeRig({ style: 'pix', chunk: 2, at: [-3.1, 19.6, 6.24], line: '#2a0e10', map: { open: [
-  '..lll..',
-  '.lwwwl.',
-  'lwhkkwl',
-  'lwkkkwl',
-  'lwkkkwl',
-  '.lwwsl.',
-  '..lll..',
+// goofy hand-drawn eyes (Fuecoco-like): big round whites, a black pupil in a dark ember ring, two glints
+const EYES = eyeRig({ style: 'pix', chunk: 1, at: [-3.1, 19.6, 6.24], line: '#2a0e10', pupilColor: '#14060a', irisDark: '#5a1a12', map: { open: [
+  '....llllll....',
+  '..llssssssll..',
+  '.lsswwwwwwssl.',
+  '.lwwwIIIIwwwl.',
+  'lwwwIkkkkIwwwl',
+  'lwwIkhhkkkIwwl',
+  'lwwIkhkkkkIwwl',
+  'lwwIkkkkkkIwwl',
+  'lwwIkkkkkhIwwl',
+  'lwwwIkkkkIwwwl',
+  '.lwwwIIIIwwwl.',
+  '.lwwwwwwwwwwl.',
+  '..llwwwwwwll..',
+  '....llllll....',
 ] } });
 export const def = {
   name: 'chilichick', ppu: 3, scale: 0.42, outline: { color: '#1c0a0e', px: 1.4 },
