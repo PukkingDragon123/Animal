@@ -8,7 +8,7 @@
 import { E, seg, bump, wob, wave, key, bounce, hop } from '../anim.js';
 import {
   PAL, J, P, mirrorCube, aimX, furP, bellyP, tuftP, skullP, muzzleP, noseP, jawP, mouthP, tongueP, toothP,
-  earPlaneP, hairP, maskEyes, tailP, handP, footP, cardP, tapeP, bottleCapP, barkP, leafP, tieP, tabP, trashBagP, bagHemP, rig, shift, ramp,
+  earPlaneP, hairP, maskEyes, tailP, handP, footP, cardP, tapeP, bottleCapP, barkP, leafP, tieP, tabP, trashBagP, bagHemP, bandanaP, rod, aimZ, rig, shift, ramp,
 } from './raccoon_parts.js';
 
 const F = PAL.trash;
@@ -112,6 +112,24 @@ const legCubes = [
   P([-4.333, 0.333, -1.333], [2.667, 1.333, 2.667], sock(1)),
 ];
 const footCube = P([-3.933, 0.0, -1.4], [2.667, 1.0, 4.667], foot, { pivot: [-2.6, 0, 0.6], rot: [0, -12, 0] });
+// the brass bottle-cap medallion (with a bolt) and the V-guitar's painted wings
+const medalP = (p, w, h, face) => {
+  if (face !== 'south') { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, x % 2 ? J.brassLo : J.brass); return; }
+  const cx = (w - 1) / 2, cy = (h - 1) / 2, r = Math.min(w, h) / 2 + 0.3;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const d = Math.hypot(x - cx, y - cy); p.px(x, y, d > r - 0.8 ? ((Math.round(Math.atan2(y - cy, x - cx) * 3) % 2) ? J.brassLo : J.brass) : x + y < w - 2 ? J.brassHi : J.brass); }
+  [[3, 0], [2, 1], [3, 1], [1, 2], [2, 2], [3, 2], [2, 3], [1, 4], [0, 5]].forEach(([x, y]) => p.px(Math.round(cx) - 2 + x, Math.round(cy) - 3 + y, J.marker));
+};
+const wingP = (p, w, h, face) => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, face === 'up' ? '#ff6a5a' : (y === 1 || y === h - 2) && (face === 'south' || face === 'north') ? '#f4ece0' : ramp(['#ff5a48', '#d8262a', '#d8262a', '#8a1420'], h > 1 ? y / (h - 1) : 0.5, x, y)); };
+// the V-guitar: neck from VN0 up over the left shoulder, the two wings fanning down from its foot
+const VN0 = [-2.6, 7.6, -4.35], VN1 = [3.4, 15.6, -4.35];
+const VG_CUBES = (() => {
+  const d = [VN1[0] - VN0[0], VN1[1] - VN0[1]], L = Math.hypot(...d), u = [-d[0] / L, -d[1] / L], out = [];
+  for (const a of [26, -26]) { const r = (a * Math.PI) / 180, v = [u[0] * Math.cos(r) - u[1] * Math.sin(r), u[0] * Math.sin(r) + u[1] * Math.cos(r)]; out.push(rod(VN0, [VN0[0] + v[0] * 4.6, VN0[1] + v[1] * 4.6, VN0[2]], 0.6, 1.9, wingP, { sideV: [0, 0, 1], over: 0.8, id: 'tc-vguitar', hide: true })); }
+  out.push(rod(VN0, VN1, 0.6, 0.9, barkP({ string: true }), { sideV: [0, 0, 1], id: 'tc-vguitar', hide: true }));
+  out.push(P([VN1[0] - 0.8, VN1[1] - 0.4, VN0[2] - 0.35], [1.6, 1.8, 0.7], barkP(), { id: 'tc-vguitar', hide: true }));
+  out.push(rod([2.6, 13.4, -3.9], [3.6, 11.2, 2.2], 0.5, 0.5, tapeP, { id: 'tc-vguitar', hide: true }));
+  return out;
+})();
 // a chamfered tail segment (two crossed boxes) with continuous rings
 const tailSeg = (cx, cy, z0, len, w, h, s0, o = {}) => [
   P([cx - w / 2, cy - (h - 0.667) / 2, z0 - len], [w, h - 0.667, len], tailP(F, s0, o)),
@@ -134,10 +152,15 @@ export const def = {
       P([-3.833, 10.667, -2.5], [7.667, 0.667, 5.333], fur),
       P([-4.0, 7.667, -3.667], [8.0, 3.0, 1.0], furBack),
       P([-2.333, 8.667, 3.36], [4.667, 2.333, 0], tuftP(F, { cream: true }), { plane: 'z', pivot: [0, 10, 3.36], rot: [0, 0, -90] }),
-      P([-0.667, 9.167, 3.167], [1.333, 1.333, 0.667], tabP, { id: 'drip2', hide: true }),
+      P([-0.667, 9.167, 3.167], [1.333, 1.333, 0.667], tabP, { id: 'tc-tie', hide: true }),
+      // tier 2 (or): a chain of crushed bottle caps with a big brass medallion stamped with a bolt
+      ...[0, 0.2, 0.4, 0.6, 0.8].flatMap((t) => [-1, 1].map((sd) => P([sd * (3.6 - t * 3.3) - 0.45, 10.6 - t * 1.7 - 0.45, 3.36], [0.9, 0.9, 0.3], bottleCapP(J.alu, J.aluHi, J.aluLo), { id: 'tc-capchain', hide: true }))),
+      P([-1.15, 7.7, 3.38], [2.3, 2.3, 0.5], medalP, { id: 'tc-capchain', hide: true }),
+      // tier 3 (or): a mini V-guitar cut from a fruit crate, slung on its back on a twine strap
+      ...VG_CUBES,
     ] },
     // a flattened soda can worn as a schoolboy tie, its pull tab for the knot
-    { name: 'tie', parent: 'body', pivot: [0, 9.4, 3.6], rot: [-14, 0, 0], cubes: [P([-1.333, 4.9, 3.65], [2.667, 4.5, 0], tieP, { plane: 'z', id: 'drip2', hide: true })] },
+    { name: 'tie', parent: 'body', pivot: [0, 9.4, 3.6], rot: [-14, 0, 0], cubes: [P([-1.333, 4.9, 3.65], [2.667, 4.5, 0], tieP, { plane: 'z', id: 'tc-tie', hide: true })] },
     { name: 'tail1', parent: 'body', pivot: [0.6, 4.0, -3.0], rot: [14, -28, 0], cubes: tailSeg(0.6, 4.0, -2.4, 5.6, 3.667, 3.667, 6) },
     { name: 'tail2', parent: 'tail1', pivot: [0.6, 4.0, -7.6], rot: [22, -8, 0], cubes: tailSeg(0.6, 4.0, -6.9, 6.0, 4.333, 4.333, 19) },
     { name: 'tail3', parent: 'tail2', pivot: [0.6, 4.0, -12.6], rot: [24, 0, 0], cubes: tailSeg(0.6, 4.0, -11.9, 5.4, 3.667, 3.667, 34) },
@@ -183,27 +206,38 @@ export const def = {
     { name: 'earR', parent: 'head', pivot: [-3.667, 19.667, -0.333], rot: [-4, 14, 24], cubes: earCubes },
     { name: 'earL', parent: 'head', pivot: [3.667, 19.667, -0.333], rot: [-4, -14, -24], cubes: earCubes.map(mirrorCube) },
     { name: 'cap', parent: 'head', pivot: [0, 18.667, 0.4], rot: [-6, 0, 7], cubes: [
-      P([-5.167, 18.0, -3.833], [10.333, 2.0, 8.667], bandP, { id: 'drip1' }),
-      P([-5.5, 19.667, -4.167], [11.0, 1.667, 9.333], puffP, { id: 'drip1' }),
-      P([-4.667, 21.333, -3.333], [9.333, 0.5, 7.667], capTopP, { id: 'drip1' }),
-      P([-0.667, 21.833, 0.0], [1.333, 0.5, 1.333], bottleCapP(), { id: 'drip1' }),
-      P([1.333, 21.267, -4.333], [1.333, 0.75, 9.667], tapeP, { id: 'drip1' }),
-      P([-4.333, 18.0, 4.833], [8.667, 0.5, 3.667], brimP, { pivot: [0, 18.25, 4.833], rot: [12, 0, 0], id: 'drip1' }),
+      P([-5.167, 18.0, -3.833], [10.333, 2.0, 8.667], bandP, { id: 'tc-cap', hide: true }),
+      P([-5.5, 19.667, -4.167], [11.0, 1.667, 9.333], puffP, { id: 'tc-cap', hide: true }),
+      P([-4.667, 21.333, -3.333], [9.333, 0.5, 7.667], capTopP, { id: 'tc-cap', hide: true }),
+      P([-0.667, 21.833, 0.0], [1.333, 0.5, 1.333], bottleCapP(), { id: 'tc-cap', hide: true }),
+      P([1.333, 21.267, -4.333], [1.333, 0.75, 9.667], tapeP, { id: 'tc-cap', hide: true }),
+      P([-4.333, 18.0, 4.833], [8.667, 0.5, 3.667], brimP, { pivot: [0, 18.25, 4.833], rot: [12, 0, 0], id: 'tc-cap', hide: true }),
+      // tier 1 (or): a red rock bandana knotted at the back, its tails hanging down
+      P([-5.2, 17.0, 4.15], [10.4, 1.6, 0.5], bandanaP, { id: 'tc-bandana', hide: true }),
+      P([-5.45, 17.0, -2.4], [0.5, 1.6, 6.8], bandanaP, { id: 'tc-bandana', hide: true }), P([4.95, 17.0, -2.4], [0.5, 1.6, 6.8], bandanaP, { id: 'tc-bandana', hide: true }),
+      P([-4.6, 17.0, -3.45], [9.2, 1.6, 0.5], bandanaP, { id: 'tc-bandana', hide: true }),
+      P([-0.9, 16.6, -4.2], [1.8, 2.2, 0.9], bandanaP, { id: 'tc-bandana', hide: true }),
+      P([-1.7, 13.4, -4.4], [1.3, 3.4, 0.3], bandanaP, { id: 'tc-bandana', hide: true, pivot: [-0.6, 16.6, -4.3], rot: [-18, 0, -16] }),
+      P([0.4, 13.7, -4.4], [1.3, 3.1, 0.3], bandanaP, { id: 'tc-bandana', hide: true, pivot: [0.6, 16.6, -4.3], rot: [-24, 0, 14] }),
     ] },
-    { name: 'flap', parent: 'cap', pivot: [3.3, 17.567, 8.3], rot: [62, 0, 8], cubes: [P([2.3, 17.567, 8.3], [2.0, 0, 1.333], flapP, { plane: 'y', id: 'drip1' })] },
+    { name: 'flap', parent: 'cap', pivot: [3.3, 17.567, 8.3], rot: [62, 0, 8], cubes: [P([2.3, 17.567, 8.3], [2.0, 0, 1.333], flapP, { plane: 'y', id: 'tc-cap', hide: true })] },
     // drip 3: a black trash-bag cape, taped on at the shoulders, a duct-tape bolt on the back
     { name: 'cape1', parent: 'body', pivot: [0, 10.6, -3.4], rot: [8, 0, 0], cubes: [
-      P([-4.6, 5.4, -3.9], [9.2, 5.4, 0.4], trashBagP({ bolt: true }), { id: 'drip3', hide: true }),
-      P([-4.4, 9.9, -3.6], [1.6, 1.4, 6.2], tapeP, { id: 'drip3', hide: true }), P([2.8, 9.9, -3.6], [1.6, 1.4, 6.2], tapeP, { id: 'drip3', hide: true }),
+      P([-4.6, 5.4, -3.9], [9.2, 5.4, 0.4], trashBagP({ bolt: true }), { id: 'tc-cape', hide: true }),
+      P([-4.4, 9.9, -3.6], [1.6, 1.4, 6.2], tapeP, { id: 'tc-cape', hide: true }), P([2.8, 9.9, -3.6], [1.6, 1.4, 6.2], tapeP, { id: 'tc-cape', hide: true }),
     ] },
     { name: 'cape2', parent: 'cape1', pivot: [0, 5.6, -3.7], rot: [10, 0, 0], cubes: [
-      P([-4.9, 2.6, -3.9], [9.8, 3.2, 0.4], trashBagP(), { id: 'drip3', hide: true }),
-      P([-4.9, 1.4, -3.7], [9.8, 1.2, 0], bagHemP, { plane: 'z', id: 'drip3', hide: true }),
+      P([-4.9, 2.6, -3.9], [9.8, 3.2, 0.4], trashBagP(), { id: 'tc-cape', hide: true }),
+      P([-4.9, 1.4, -3.7], [9.8, 1.2, 0], bagHemP, { plane: 'z', id: 'tc-cape', hide: true }),
     ] },
   ],
 };
 // drip tiers (1 normal → 3 ultra dripped)
-def.drip = ['Cardboard schoolboy cap', 'Soda-can tie', 'Trash-bag cape'];
+def.drip = [
+  [{ id: 'tc-cap', name: 'Cardboard schoolboy cap' }, { id: 'tc-bandana', name: 'Rock bandana' }],
+  [{ id: 'tc-tie', name: 'Soda-can tie' }, { id: 'tc-capchain', name: 'Bottle-cap chain' }],
+  [{ id: 'tc-cape', name: 'Trash-bag cape' }, { id: 'tc-vguitar', name: 'Crate V-guitar' }],
+];
 // buyable gear sockets (model units): top of the head, between the eyes, front of the neck, middle of the back
 def.attach = {
   head: { bone: 'head', at: [0, 18.667, 1.2], size: 10 },

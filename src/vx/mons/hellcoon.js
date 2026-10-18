@@ -8,7 +8,7 @@
 import { E, seg, bump, wob, wave, key } from '../anim.js';
 import {
   PAL, J, P, mirrorCube, rod, furP, bellyP, tuftP, skullP, muzzleP, noseP, jawP, mouthP, tongueP, toothP,
-  maskEyes, hairP, tailP, handP, footP, teethP, pipeP, ironP, galvP, lidP, jerryP, seatP, canEngineP, finsP, bronzeP, lensP, jetP, rig, shift, ramp,
+  maskEyes, hairP, tailP, handP, footP, teethP, pipeP, ironP, galvP, lidP, jerryP, seatP, canEngineP, finsP, bronzeP, lensP, jetP, leatherP, chainP, rig, shift, ramp,
 } from './raccoon_parts.js';
 
 const F = PAL.hell;
@@ -122,12 +122,12 @@ const GRIP_R = [-8.9, 27.7, 7.6], GRIP_L = [8.9, 27.7, 7.6];
 
 // ---------------------------------------------------------------- the rider
 const armCubes = [P([-8.95, 21.0, -7.25], [3.5, 6.333, 3.5], fur), P([-9.4, 24.5, -7.7], [4.4, 3.4, 4.4], fur),
-  // drip 3: a spiked iron pauldron riveted over the shoulder
-  P([-10.0, 26.0, -8.3], [5.4, 2.4, 5.6], ironRiv, { id: 'drip3', hide: true }),
-  P([-10.3, 24.6, -8.5], [5.0, 1.6, 6.0], ironRust, { id: 'drip3', hide: true }),
+  // tier 3: a spiked iron pauldron riveted over the shoulder
+  P([-10.0, 26.0, -8.3], [5.4, 2.4, 5.6], ironRiv, { id: 'hc-pauldrons', hide: true }),
+  P([-10.3, 24.6, -8.5], [5.0, 1.6, 6.0], ironRust, { id: 'hc-pauldrons', hide: true }),
   ...[[-8.4, -6.4], [-8.4, -3.8], [-9.6, -5.1]].flatMap(([x, z], i) => [
-    P([x - 0.7, 28.4, z - 0.7], [1.4, 1.2, 1.4], iron, { id: 'drip3', hide: true }),
-    P([x - 0.4, 29.6, z - 0.4], [0.8, 1.0 + (i === 2 ? 0.6 : 0), 0.8], ironP({ rivets: false }), { id: 'drip3', hide: true }),
+    P([x - 0.7, 28.4, z - 0.7], [1.4, 1.2, 1.4], iron, { id: 'hc-pauldrons', hide: true }),
+    P([x - 0.4, 29.6, z - 0.4], [0.8, 1.0 + (i === 2 ? 0.6 : 0), 0.8], ironP({ rivets: false }), { id: 'hc-pauldrons', hide: true }),
   ]),
 ];
 const foreCubes = [P([-8.7, 16.2, -7.0], [3.0, 5.3, 3.0], sock(0.5)), P([-8.95, 13.2, -7.25], [3.5, 2.4, 3.5], hand)];
@@ -177,12 +177,18 @@ export const def = {
       P([-8.0, 21.5, -10.5], [16, 6, 8.5], fur, { faces: { north: furBack } }),
       P([-6.0, 28.3, -10.0], [12, 1.2, 7.0], fur),
       // the scarf wound round the neck
-      P([-5.6, 27.6, -2.0], [11.2, 2.2, 1.4], scarfP, { id: 'drip2', hide: true }), P([-5.6, 27.6, -11.4], [11.2, 2.2, 1.4], scarfP, { id: 'drip2', hide: true }),
-      P([-6.2, 27.6, -11.0], [1.4, 2.2, 9.4], scarfP, { id: 'drip2', hide: true }), P([4.8, 27.6, -11.0], [1.4, 2.2, 9.4], scarfP, { id: 'drip2', hide: true }),
-      P([0.4, 26.4, -12.2], [2.6, 2.6, 1.6], scarfP, { id: 'drip2', hide: true }),
+      P([-5.6, 27.6, -2.0], [11.2, 2.2, 1.4], scarfP, { id: 'hc-scarf', hide: true }), P([-5.6, 27.6, -11.4], [11.2, 2.2, 1.4], scarfP, { id: 'hc-scarf', hide: true }),
+      P([-6.2, 27.6, -11.0], [1.4, 2.2, 9.4], scarfP, { id: 'hc-scarf', hide: true }), P([4.8, 27.6, -11.0], [1.4, 2.2, 9.4], scarfP, { id: 'hc-scarf', hide: true }),
+      P([0.4, 26.4, -12.2], [2.6, 2.6, 1.6], scarfP, { id: 'hc-scarf', hide: true }),
+      // tier 2 (or): a heavy iron chain with a little bronze bell for a pendant
+      rod([-5.4, 28.0, -1.6], [0, 23.8, -1.1], 0.6, 1.0, chainP, { sideV: [0, 0, 1], over: 0.6, ...{ id: 'hc-chain', hide: true } }),
+      rod([5.4, 28.0, -1.6], [0, 23.8, -1.1], 0.6, 1.0, chainP, { sideV: [0, 0, 1], over: 0.6, ...{ id: 'hc-chain', hide: true } }),
+      P([-0.9, 21.6, -1.6], [1.8, 1.8, 1.6], bronzeP, { id: 'hc-chain', hide: true }), P([-1.2, 21.0, -1.9], [2.4, 0.6, 2.2], bronzeP, { id: 'hc-chain', hide: true }),
+      // tier 3 (or): a sleeveless studded leather vest with a flaming-wheel patch on the back
+      P([-8.3, 20.0, -11.3], [16.6, 8.8, 10.1], leatherP({ studs: true, open: true, patch: true, fur: '#5e5866' }), { id: 'hc-vest', hide: true }),
     ] },
-    { name: 'scarf1', parent: 'body', pivot: [1.6, 27.4, -12.6], rot: [-28, 18, 0], cubes: [P([0.4, 27.2, -19.6], [2.4, 0.5, 7.2], scarfP, { id: 'drip2', hide: true })] },
-    { name: 'scarf2', parent: 'scarf1', pivot: [1.6, 27.4, -19.4], rot: [-8, 6, 0], cubes: [P([0.5, 27.22, -25.8], [2.2, 0.45, 6.6], scarfP, { id: 'drip2', hide: true }), P([0.5, 27.45, -27.4], [2.2, 0, 1.6], fringeP, { plane: 'y', id: 'drip2', hide: true })] },
+    { name: 'scarf1', parent: 'body', pivot: [1.6, 27.4, -12.6], rot: [-28, 18, 0], cubes: [P([0.4, 27.2, -19.6], [2.4, 0.5, 7.2], scarfP, { id: 'hc-scarf', hide: true })] },
+    { name: 'scarf2', parent: 'scarf1', pivot: [1.6, 27.4, -19.4], rot: [-8, 6, 0], cubes: [P([0.5, 27.22, -25.8], [2.2, 0.45, 6.6], scarfP, { id: 'hc-scarf', hide: true }), P([0.5, 27.45, -27.4], [2.2, 0, 1.6], fringeP, { plane: 'y', id: 'hc-scarf', hide: true })] },
     { name: 'tail1', parent: 'body', pivot: [0.6, 17.6, -11.4], rot: [-8, -14, 0], cubes: tailSeg(0.6, 17.6, -10.8, 7.0, 4.333, 4.333, 6) },
     { name: 'tail2', parent: 'tail1', pivot: [0.6, 17.6, -17.4], rot: [12, -6, 0], cubes: tailSeg(0.6, 17.6, -16.8, 6.6, 4.0, 4.0, 24) },
     { name: 'tail3', parent: 'tail2', pivot: [0.6, 17.6, -23.2], rot: [22, 0, 0], cubes: tailSeg(0.6, 17.6, -22.6, 5.8, 3.333, 3.333, 41) },
@@ -220,16 +226,26 @@ export const def = {
     ] },
     // the devil iron helmet: riveted rim, dome, crest ridge, a short brim, red horns
     { name: 'helmet', parent: 'head', pivot: [0, 36, -4], cubes: [
-      P([-6.6, 34.6, -9.1], [13.2, 1.8, 9.8], ironRust, { id: 'drip1' }),
-      P([-6.2, 36.4, -8.7], [12.4, 2.8, 9.0], ironRiv, { id: 'drip1' }),
-      P([-5.0, 39.2, -7.6], [10.0, 1.4, 6.8], iron, { id: 'drip1' }),
-      P([-0.7, 36.8, -9.3], [1.4, 4.0, 10.0], ironRiv, { id: 'drip1' }),
-      P([-6.2, 34.6, 0.6], [12.4, 0.8, 1.6], iron, { id: 'drip1' }),
-      ...horn(-1).map((c) => ({ ...c, id: 'drip1' })), ...horn(1).map((c) => ({ ...c, id: 'drip1' })),
+      P([-6.6, 34.6, -9.1], [13.2, 1.8, 9.8], ironRust, { id: 'hc-helmet', hide: true }),
+      P([-6.2, 36.4, -8.7], [12.4, 2.8, 9.0], ironRiv, { id: 'hc-helmet', hide: true }),
+      P([-5.0, 39.2, -7.6], [10.0, 1.4, 6.8], iron, { id: 'hc-helmet', hide: true }),
+      P([-0.7, 36.8, -9.3], [1.4, 4.0, 10.0], ironRiv, { id: 'hc-helmet', hide: true }),
+      P([-6.2, 34.6, 0.6], [12.4, 0.8, 1.6], iron, { id: 'hc-helmet', hide: true }),
+      ...horn(-1).map((c) => ({ ...c, id: 'hc-helmet', hide: true })), ...horn(1).map((c) => ({ ...c, id: 'hc-helmet', hide: true })),
+      // tier 1 (or): a black leather biker cap with a chain across the peak and two little red horns
+      P([-6.4, 34.5, -9.0], [12.8, 2.0, 9.6], leatherP({ c: '#22202a', hi: '#4a4656', lo: '#141218' }), { id: 'hc-bikercap', hide: true }),
+      P([-6.9, 36.4, -9.6], [13.8, 1.5, 10.8], leatherP({ c: '#26242e', hi: '#5a5668', lo: '#161420', studs: true }), { id: 'hc-bikercap', hide: true }),
+      P([-6.0, 34.3, 0.4], [12.0, 0.6, 2.6], leatherP({ c: '#16141a', hi: '#6a6878', lo: '#0c0b10' }), { pivot: [0, 34.6, 0.6], rot: [12, 0, 0], id: 'hc-bikercap', hide: true }),
+      P([-5.0, 35.0, 0.62], [10.0, 0.6, 0.3], chainP, { id: 'hc-bikercap', hide: true }),
+      ...[-1, 1].flatMap((sd) => [P([sd * 4.4 - 0.8, 37.8, -4.6], [1.6, 1.4, 1.6], hornP(1), { pivot: [sd * 4.4, 37.8, -3.8], rot: [0, 0, -sd * 18], id: 'hc-bikercap', hide: true }), P([sd * 4.9 - 0.5, 39.1, -4.3], [1.0, 1.3, 1.0], hornP(3), { pivot: [sd * 4.4, 37.8, -3.8], rot: [0, 0, -sd * 18], id: 'hc-bikercap', hide: true })]),
     ] },
   ],
 };
-def.drip = ['Devil iron helmet', 'Black scarf', 'Spiked iron pauldrons'];
+def.drip = [
+  [{ id: 'hc-helmet', name: 'Devil iron helmet' }, { id: 'hc-bikercap', name: 'Horned biker cap' }],
+  [{ id: 'hc-scarf', name: 'Back-in-black scarf' }, { id: 'hc-chain', name: 'Bell chain' }],
+  [{ id: 'hc-pauldrons', name: 'Spiked iron pauldrons' }, { id: 'hc-vest', name: 'Studded leather vest' }],
+];
 def.attach = {
   head: { bone: 'head', at: [0, 40.6, -4.2], size: 12.4 },
   face: { bone: 'head', at: [0, 33.2, 0.1], size: 12 },

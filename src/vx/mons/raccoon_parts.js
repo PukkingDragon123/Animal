@@ -516,6 +516,35 @@ export const trashBagP = (o = {}) => (p, w, h, face) => {
 };
 // the ragged hem of the cape (plane): torn plastic points
 export const bagHemP = (p, w, h) => { for (let x = 0; x < w; x++) { const l = Math.max(1, h - ((x * 5) % 4)); for (let y = 0; y < l; y++) p.px(x, y, (x + y) % 5 === 0 ? '#4a4a58' : '#1e1e26'); } };
+// a red rock bandana: white specks in a loose diamond pattern, a darker fold along the bottom
+export const bandanaP = (p, w, h, face) => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, face === 'down' || y === h - 1 ? '#7a1018' : (x + y * 2) % 5 === 0 && (x + y) % 2 === 0 ? '#f6ecdc' : y === 0 ? '#ee4a46' : '#c8202a'); };
+// school-blazer velvet: bottle green, gold piping along the edges, a darker nap stripe
+export const velvetP = (o = {}) => (p, w, h, face) => {
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, face === 'up' ? J.velHi : face === 'down' ? J.velDeep : ramp([J.velHi, J.vel, J.vel, J.velLo], h > 1 ? y / (h - 1) : 0.5, x, y));
+  if (!sideF(face)) return;
+  for (let x = 0; x < w; x++) p.px(x, 0, J.pipe);
+  if (o.open && face === 'south') { const a = Math.round(w * 0.38), b = Math.round(w * 0.62); for (let y = 1; y < h; y++) for (let x = a; x < b; x++) p.px(x, y, (x === a || x === b - 1) ? J.pipe : '#e8e0d0'); for (let y = 2; y < h; y += 3) p.px(Math.floor(w / 2), y, '#b8b0a0'); }
+  if (o.patch && face === 'south') { const x0 = Math.round(w * 0.12), y0 = 2; p.rect(x0, y0, 4, 3, J.velLo); p.hl(x0, x0 + 3, y0, J.pipe); }
+};
+// a ragged torn hem (plane)
+export const tornHemP = (c, lo) => (p, w, h) => { for (let x = 0; x < w; x++) { const l = Math.max(1, h - ((x * 7) % 5 > 2 ? 2 : (x % 3 === 0 ? 1 : 0))); for (let y = 0; y < l; y++) p.px(x, y, y === l - 1 ? lo : c); } };
+// leather: brown or black hide, silver studs along the edges, an optional flaming-wheel back patch
+export const leatherP = (o = {}) => (p, w, h, face) => {
+  const c = o.c || J.leather, hi = o.hi || J.leatherHi, lo = o.lo || J.leatherLo;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, face === 'up' ? hi : face === 'down' ? lo : ramp([hi, c, c, lo], h > 1 ? y / (h - 1) : 0.5, x, y));
+  if (!sideF(face)) return;
+  if (o.studs) for (let x = 1; x < w - 1; x += 3) { p.px(x, 1, '#dfe4ec'); p.px(x, h - 2, '#dfe4ec'); }
+  if (o.open && face === 'south') { const a = Math.round(w * 0.36), b = Math.round(w * 0.64); for (let y = 0; y < h; y++) for (let x = a; x < b; x++) p.px(x, y, o.fur || '#5e5866'); for (let y = 1; y < h; y += 3) { p.px(a - 1, y, '#dfe4ec'); p.px(b, y, '#dfe4ec'); } }
+  if (o.patch && face === 'north' && w > 14 && h > 12) {
+    const cx = Math.floor(w / 2), cy = Math.floor(h / 2) + 1, R = Math.min(w, h) * 0.3;
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const d = Math.hypot(x - cx, y - cy); if (Math.abs(d - R) < 0.8) p.px(x, y, '#c8ccd4'); else if (d < R - 1 && (Math.round(Math.atan2(y - cy, x - cx) * 2.5) % 2 === 0)) p.px(x, y, '#9aa0aa'); }
+    for (let k = 0; k < 5; k++) for (let j = 0; j < 3 + (k % 2) * 2; j++) p.px(cx - 4 + k * 2, cy - Math.round(R) - 1 - j, j > 2 ? '#ffd040' : '#ff6a20');   // flames rising off the wheel
+  }
+};
+// a goggle lens / a glossy dark-amber pane with a white glint
+export const glassP = (p, w, h) => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, x === 0 || y === 0 || x === w - 1 || y === h - 1 ? '#2a2026' : (x - y === 1 || x - y === 2) ? '#fff2d0' : y > h / 2 ? '#c87a20' : '#8a4a18'); };
+// a run of chain (box): steel links drawn along its length
+export const chainP = (p, w, h, face) => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, face === 'up' ? '#dfe4ec' : (x % 3 === 2) ? '#5a6070' : y === 0 ? '#eef2f8' : '#a8b0bc'); };
 // a wooden blasting-crate (the detonator pack): planks, a red stencil band
 export const crateP = (p, w, h, face) => {
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, face === 'up' ? (x % 4 === 3 ? '#7a5434' : '#b8885a') : (y % 4 === 3 ? '#6a4628' : ramp(['#c09060', '#a87648', '#86582e'], h > 1 ? y / (h - 1) : 0.5, x, y)));
