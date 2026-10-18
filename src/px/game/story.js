@@ -7,6 +7,7 @@ const DESIGNS_HAS = (id) => hasDesign(id);
 import { buildPlaza } from '../../data/scenes/plaza.js';
 import { SPECIES } from '../../data/species.js';
 import { ambient } from '../ambient.js';
+import { Actor } from '../scene2d.js';
 import * as S from '../../game/state.js';
 
 const STARTERS = [
@@ -210,12 +211,17 @@ class TitleScreen {
     this.sc = buildPlaza({ viewW: app.vw, viewH: app.vh, night: true });
     this.sc.cam.x = 40; this.sc.cam.y = 60;
     this.sc.fx.push(ambient('fireflies'));
+    // the three starters, asleep under the street lamp
+    this.mons = [['chilichick', 316, 294, 'sleep', -45], ['strawbaa', 398, 300, 'sleep', 45], ['bubblion', 352, 286, 'idle', -30]].map(([id, x, y, clip, yaw]) => {
+      const spr = new MonSprite(id, { scale: 0.58, yaw }); spr.play(clip); spr.setBase(clip);
+      this.sc.actors.add(new Actor({ x, y, src: () => spr.frame() })); return spr;
+    });
     app.attachStage(this.sc, { terrain: this.sc.terrain, night: true });
     app.post.opts.night = 0.25; app.post.opts.bloom = 0.7; app.post.opts.threshold = 0.72; app.post.opts.rays = 0;
     this.choice = new Promise((r) => { this.resolve = r; });
     app.battle = app.battle || null;
   }
-  update(dt) { this.t += dt; this.sc.cam.x = 40 + Math.sin(this.t * 0.05) * 60 + this.t * 2; this.sc.cam.y = 60 + Math.sin(this.t * 0.03) * 20; if (this.sc.vw !== this.app.vw) this.sc.setView(this.app.vw, this.app.vh); }
+  update(dt) { this.t += dt; for (const m of this.mons) m.update(dt); this.sc.cam.x = 40 + Math.sin(this.t * 0.05) * 60 + this.t * 2; this.sc.cam.y = 60 + Math.sin(this.t * 0.03) * 20; if (this.sc.vw !== this.app.vw) this.sc.setView(this.app.vw, this.app.vh); }
   render(t) { return this.sc.render(t); }
   drawUI(ui) {
     const W = ui.w, H = ui.h, cx = W >> 1, y0 = Math.round(H * 0.22);
