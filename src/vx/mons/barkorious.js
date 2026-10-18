@@ -651,10 +651,10 @@ export const anim = {
       P.face('eyes', on > 0.5 ? 'happy' : undefined);
       for (let k = 0; k < 6; k++) {
         const tk = 0.4 + k * bt;
-        P.burst(tk, 'goldnote', 'head', MOUTH, { n: 3, dir: [0, 0.6, 1], speed: 1.8, spread: 0.5 }).burst(tk, 'splash', 'head', MOUTH, { n: 10, dir: [0, 0.5, 1], speed: 2.2, spread: 0.35 });
+        P.burst(tk, 'goldnote', 'head', MOUTH, { n: 3, dir: [0, 0.6, 1], speed: 1.8, spread: 0.5 }).burst(tk, 'splash', 'head', MOUTH, { n: 12, dir: [0, 0.5, 1], speed: 2.4, spread: 0.35, scale: 1.8 });
         if (k % 2 === 0) P.burst(tk, 'barkring', 'head', MOUTH, { dir: [0, 0.2, 1] });
       }
-      if (live) P.stream('drop', 'head', MOUTH, { rate: 40, dir: [0, 0.4, 1], speed: 2, spread: 0.3 });
+      if (live) P.stream('drop', 'head', MOUTH, { rate: 40, dir: [0, 0.4, 1], speed: 2, spread: 0.3, scale: 1.6 });
       P.burst(2.22, 'barkring', 'head', MOUTH, { scale: 2, dir: [0, 0.4, 1] }).burst(2.22, 'goldnote', 'head', [0, 30, 9], { n: 10, spread: 1, speed: 2 }).burst(2.22, 'splash', 'head', MOUTH, { n: 36, dir: [0, 1, 0.5], speed: 2.4, spread: 0.6 });
     } },
     hurt: { len: 0.65, next: 'idle', f(P, t) {
@@ -674,6 +674,7 @@ export const anim = {
       ko(P, fall);
       P.face('eyes', 'swirl').face('tongue', t > 1.3 ? 'out' : 'in'); P.blinkOK = false; P.lookW = 0;
       for (const z of [-12, -2, 8]) P.burst(1.45, 'dust', 'root', [-11, 9, z], { n: 6, spread: 1, speed: 1.2 });
+      P.burst(1.45, 'dust', 'root', [-9, 10, 16], { n: 8, spread: 1, speed: 1.4 }).burst(1.47, 'dust', 'root', [-6, 6, -28], { n: 6, spread: 1, speed: 1.2 });
       P.burst(1.0, 'star', 'head', [0, 31, 5], { n: 5 });
     } },
     down: { len: 2.4, loop: true, f(P, t) {
@@ -710,15 +711,15 @@ export const anim = {
     // asleep on the dock like every sea lion at Pier 39: flat on its belly, nose to the sky, snoring
     sleep: { len: 4.2, loop: true, f(P, t) {
       const br = Math.sin((t / 4.2) * Math.PI * 2), inh = Math.max(0, br), snore = bump(t, 0.4, 1.9);
-      P.pos('body', 0, -2.6 + 0.2 * br, 0).rot('body', 2, 0, 0);
-      P.pos('armR', 0, 2.6, 0).pos('armL', 0, 2.6, 0).rot('armR', 0, 0, -14).rot('armL', 0, 0, 14).rot('flipR', 0, 0, 14).rot('flipL', 0, 0, -14);
-      squash(P, -0.04 + 0.045 * br);
-      P.rot('neck', -4 + br, 0, 4).rot('head', -24 - 3 * inh, 12, 9).rot('jaw', 5 + 7 * inh + wave(t, 22) * 2.5 * snore);
+      P.pos('body', 0, -3.1 + 0.25 * br, 0).rot('body', 2, 0, 0);
+      P.pos('armR', 0, 3.1, 0).pos('armL', 0, 3.1, 0).rot('armR', 0, 0, -16).rot('armL', 0, 0, 16).rot('flipR', 0, 0, 16).rot('flipL', 0, 0, -16);
+      squash(P, -0.05 + 0.06 * br);
+      P.rot('neck', -2 + br, 0, 6).rot('head', -17 - 3 * inh, 14, 16).rot('jaw', 5 + 7 * inh + wave(t, 22) * 2.5 * snore);
       P.rot('crown', -10, 0, 6).pos('crown', 0, -0.3, -0.8);
       P.rot('whiskR', 0, 0, wave(t, 11) * 4 * snore).rot('whiskL', 0, 0, -wave(t, 11, 1) * 4 * snore);
       P.rot('hindL', 8 + 4 * br, 0, 0).rot('hindR', 6, 0, 0);
       P.face('eyes', 'closed'); P.blinkOK = false; P.lookW = 0; P.breathW = 0;
-      P.burst(0.9, 'z', 'head', [-3, 30, 11], {}).burst(2.1, 'z', 'head', [-3, 30, 11], {}).burst(3.3, 'z', 'head', [-3, 30, 11], {});
+      for (const tz of [0.9, 2.1, 3.3]) P.burst(tz, 'z', 'head', [-3, 30, 11], { scale: 1.8 });
     } },
     // fidget: a smug sea-lion clap — three slaps, a bark on each
     clap: { len: 2.0, next: 'idle', f(P, t) {

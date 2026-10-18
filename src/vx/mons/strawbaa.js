@@ -684,8 +684,8 @@ export const anim = {
   springs: [
     { bone: 'beard', tip: [0, -4, 1], k: 150, d: 8, gain: 0.9, max: 18, axes: [1, 0.4, 1] },
     { bone: 'beardTip', tip: [0, -4, 0.5], k: 120, d: 7, gain: 1.0, max: 22, axes: [1, 0.4, 1] },
-    { bone: 'earR', tip: [-6, -1, 0], k: 150, d: 8, gain: 0.7, max: 16 },
-    { bone: 'earL', tip: [6, -1, 0], k: 150, d: 8, gain: 0.7, max: 16 },
+    { bone: 'earR', tip: [-6, -1, 0], k: 150, d: 8, gain: 0.7, max: 12, axes: [0.5, 1, 0.6] },
+    { bone: 'earL', tip: [6, -1, 0], k: 150, d: 8, gain: 0.7, max: 12, axes: [0.5, 1, 0.6] },
     { bone: 'stem', tip: [0, 3, -1.5], k: 120, d: 6, gain: 1.0, max: 26 },
     { bone: 'cap', tip: [0, 1.5, 0], k: 260, d: 12, gain: 0.5, max: 10 },
     { bone: 'tail', tip: [0, -1, -2.5], k: 170, d: 8, gain: 1.0, max: 26 },
@@ -716,7 +716,7 @@ export const anim = {
       const chew = seg(t, 0.15, 0.45) * (1 - seg(t, 2.9, 3.2)), ph = t * 1.5 * TAU;
       P.rot('jaw', (2 + 4 * Math.max(0, Math.sin(ph))) * chew, 8 * Math.sin(ph) * chew, 0).rot('head', 0, 0, 1.4 * Math.sin(ph - 0.5) * chew);
       const fl = bump(t, 1.05, 1.3), fr = bump(t, 2.55, 2.78);
-      P.rot('earL', -12 * fl, 0, 30 * fl).rot('earR', -12 * fr, 0, -30 * fr);
+      P.rot('earL', 0, -20 * fl, 8 * fl).rot('earR', 0, 20 * fr, -8 * fr);
       P.rot('tail', 0, 22 * wave(t, 5.5) * bump(t, 1.9, 2.6), 0);
       if (c.loopN % 2 === 0) {
         const jerk = seg(t, 3.45, 3.55, E.out) * (1 - seg(t, 3.6, 4.1)), frown = bump(t, 3.2, 4.2);
@@ -731,7 +731,7 @@ export const anim = {
       } else {
         const sigh = bump(t, 3.1, 4.7);
         P.face('eyes', sigh > 0.45 ? 'closed' : undefined); P.blinkOK = sigh < 0.1;
-        P.rot('head', 7 * sigh, 0, 5 * sigh).rot('earL', 0, 0, -12 * sigh).rot('earR', 0, 0, 12 * sigh);
+        P.rot('head', 7 * sigh, 0, 5 * sigh).rot('earL', 0, 0, -7 * sigh).rot('earR', 0, 0, 7 * sigh);
         trunk(P, { dy: -0.6 * sigh }); P.sq('body', 0.03 * bump(t, 3.1, 3.7) - 0.03 * bump(t, 3.8, 4.6));
         P.burst(3.95, 'steam', 'head', MOUTH, { n: 3, dir: [0, -0.3, 1], speed: 0.5, scale: 0.6 });
       }
@@ -761,7 +761,7 @@ export const anim = {
       P.rot('jaw', 4 * crouch + 34 * up + wave(t, 15) * 3 * up);
       P.scl('body', 1 + 0.11 * puff, 1 + 0.08 * puff, 1 + 0.11 * puff).scl('neck', 1 + 0.08 * puff);
       P.pos('browR', 0, 0.8 * up, 0).pos('browL', 0, 0.8 * up, 0).rot('browR', 0, 0, -12 * crouch).rot('browL', 0, 0, 12 * crouch);
-      P.rot('earL', 0, 0, 26 * up).rot('earR', 0, 0, -26 * up);
+      P.rot('earL', 0, -14 * up, 9 * up).rot('earR', 0, 14 * up, -9 * up);
       P.face('eyes', crouch > 0.3 ? 'glare' : up > 0.3 ? 'open' : undefined); P.blinkOK = up < 0.1;
       const land = t > 1.72 ? 1 : 0;
       P.sq('body', wob(t, 1.72, -0.14, 2.6, 6)).rot('head', wob(t, 1.72, 8, 2.6, 6));
@@ -790,7 +790,7 @@ export const anim = {
       if (t > 0.5 && t < 0.78) for (const [leg, off] of [['legFR', 0], ['legFL', 0.7], ['legBR', 3.1], ['legBL', 3.8]]) stride(P, leg, 26 * Math.cos(t * 30 + off), 1.6 * Math.max(0, Math.sin(t * 30 + off)));
       P.face('eyes', t < 0.72 ? 'glare' : t < 0.95 ? 'squeeze' : t < 1.35 ? 'glare' : undefined); P.blinkOK = false;
       P.rot('browR', 0, 0, -16 * lower).rot('browL', 0, 0, 16 * lower);
-      P.rot('earL', 0, -20 * charge, -24 * charge).rot('earR', 0, 20 * charge, 24 * charge);
+      P.rot('earL', 0, 18 * charge, -6 * charge).rot('earR', 0, -18 * charge, 6 * charge);
       snort(P, 0.4, 0.8);
       if (t > 0.54 && t < 0.72) P.stream('dust', 'root', [0, 0.3, -8], { rate: 34, dir: [0, 0.4, -1], speed: 0.8, spread: 0.6, scale: 0.6 });
       P.burst(0.72, 'ring', 'head', BROW, {}).burst(0.72, 'spark', 'head', BROW, { n: 2 }).burst(0.72, 'star', 'head', BROW, { n: 6, speed: 1.4 })
@@ -811,7 +811,7 @@ export const anim = {
       BL.forEach((b, i) => { const g = seg(t, 0.46 + i * 0.07, 0.72 + i * 0.07, E.back) * (1 - seg(t, 2.15 + i * 0.04, 2.5, E.in)); P.scl(b, Math.max(0.001, g)); });
       P.scl('body', 1 + 0.06 * lift).scl('cap', 1 + 0.22 * lift + 0.05 * wave(t, 2) * lift);
       P.burst(0.4, 'leaf', 'root', [0, 1, 0], { n: 16, dir: [0, 1, 0], speed: 2.4, spread: 0.9 }).burst(0.42, 'petal', 'root', [0, 1, 0], { n: 16, dir: [0, 1, 0], speed: 2.2, spread: 0.9 })
-        .burst(0.62, 'sparkle', 'cap', CROWN, { n: 8, speed: 1 });
+        .burst(0.62, 'sparkle', 'cap', CROWN, { n: 8, speed: 1 }).burst(0.44, 'ring', 'root', [0, 3, 0], { tint: [0.75, 1.25, 0.7], scale: 2.2 }).burst(0.6, 'ring', 'root', [0, 3, 0], { tint: [1.2, 0.85, 0.95], scale: 1.6 });
       if (t > 0.6 && t < 2.2) {
         const sw = t * 5;
         P.stream('heart', 'body', [0, 23, -2], { rate: 5, dir: [0, 1, 0], speed: 0.9, spread: 0.6 })
@@ -826,7 +826,7 @@ export const anim = {
       const k = seg(t, 0, 0.07, E.out) * (1 - seg(t, 0.18, 0.65, E.inout));
       trunk(P, { dz: -2.2 * k, a: -8 * k + wob(t, 0.18, 3, 3, 6), roll: 5 * k * wave(t, 9) });
       P.scl('body', 1 + 0.08 * k).rot('head', -14 * k, 0, 6 * k).rot('neck', -6 * k).rot('jaw', 22 * k);
-      P.rot('earL', 0, 0, 30 * k).rot('earR', 0, 0, -30 * k).pos('browR', 0, 0.6 * k, 0).pos('browL', 0, 0.6 * k, 0);
+      P.rot('earL', 0, -16 * k, 9 * k).rot('earR', 0, 16 * k, -9 * k).pos('browR', 0, 0.6 * k, 0).pos('browL', 0, 0.6 * k, 0);
       P.face('eyes', t < 0.42 ? 'squeeze' : undefined); P.blinkOK = false;
       P.burst(0.02, 'seed', 'body', [0, 21, -2], { n: 10, speed: 1.2 }).burst(0.02, 'spark', 'head', BROW, {}).burst(0.03, 'leaf', 'body', [0, 20, 0], { n: 3 });
     } },
@@ -880,7 +880,7 @@ export const anim = {
       for (const [leg, sx] of [['legBR', -1], ['legBL', 1]]) P.rot(leg, -82, sx * 24, -sx * 10).pos(leg, sx * 0.6, -8.7, 0);
       P.rot('neck', 11 + 1.5 * br).rot('head', -1 - 1.5 * br, 0, 5).rot('jaw', 2 + 6 * ex);
       P.rot('beard', -16).rot('beardTip', -12).rot('braidR1', -28, 0, -26).rot('braidL1', -28, 0, 26);
-      P.rot('earL', 0, 0, -20).rot('earR', 0, 0, 20).rot('tail', 20);
+      P.rot('earL', 0, 8, -8).rot('earR', 0, -8, 8).rot('tail', 20);
       P.face('eyes', 'sleep'); P.blinkOK = false; P.lookW = 0; P.breathW = 0;
       P.burst(2.3, 'z', 'head', ZZ, {}).burst(3.1, 'z', 'head', ZZ, {}).burst(2.6, 'steam', 'head', NOSE_L, { n: 1, dir: [0.3, -0.4, 1], speed: 0.3, scale: 0.5 });
     } },
@@ -901,7 +901,7 @@ export const anim = {
       P.rot('legFR', -26 * st).rot('legFL', -26 * st).pos('legFR', 0, -0.8 * st, 1.2 * st).pos('legFL', 0, -0.8 * st, 1.2 * st);
       P.rot('legBR', -6 * st).rot('legBL', -6 * st);
       P.rot('neck', -14 * yw).rot('head', -16 * yw + 2 * wave(t, 6) * yw).rot('jaw', 36 * yw + 2 * wave(t, 9) * yw);
-      P.rot('earL', 0, 0, 20 * yw).rot('earR', 0, 0, -20 * yw).pos('browR', 0, 0.5 * yw, 0).pos('browL', 0, 0.5 * yw, 0);
+      P.rot('earL', 0, -12 * yw, 8 * yw).rot('earR', 0, 12 * yw, -8 * yw).pos('browR', 0, 0.5 * yw, 0).pos('browL', 0, 0.5 * yw, 0);
       P.sq('body', 0.05 * yw).rot('tail', 0, 0, 0).rot('tail', -20 * st);
       P.face('eyes', yw > 0.2 ? 'squeeze' : t > 1.75 && t < 2.3 ? 'sleep' : undefined); P.blinkOK = yw < 0.1; P.lookW = 1 - yw;
       P.burst(1.5, 'steam', 'head', MOUTH, { n: 3, dir: [0, 0.3, 1], speed: 0.4, scale: 0.6 });

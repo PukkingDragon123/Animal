@@ -40,10 +40,12 @@ const muzP = fur(C.muz, { hi: C.muzHi, lo: C.muzLo, line: shift(C.muz, -0.12), l
 const muzFront = (p, w, h, face, cube) => {
   muzP(p, w, h, face, cube);
   if (face !== 'south') return;
-  const cx = Math.floor(w / 2), L = C.muzLine;
-  p.px(cx, h - 7, L); p.px(cx, h - 6, L); p.px(cx, h - 5, L);
-  for (const [x, y] of [[-1, -4], [-2, -4], [-3, -4], [-4, -5], [1, -4], [2, -4], [3, -4], [4, -5], [5, -6], [6, -6]]) p.px(cx + x, h + y, L);
-  p.px(cx + 5, h - 7, shift(L, 0.2));
+  const cx = Math.floor(w / 2), L = C.muzLine, y0 = h - 6;
+  p.vl(cx, y0, y0 + 1, L);                                       // philtrum
+  p.hl(cx - 4, cx + 3, y0 + 2, L);                               // the mouth
+  p.px(cx - 5, y0 + 1, L);                                       // one corner tucked
+  p.px(cx + 4, y0 + 1, L); p.px(cx + 5, y0, L);                  // the other lifts: a smirk
+  p.hl(cx - 2, cx + 1, y0 + 3, shift(C.muz, -0.16));             // a soft shadow under the lip
 };
 const noseP = (p, w, h, face) => {
   fill(p, w, h, (x, y) => (face === 'up' ? C.noseHi : face === 'down' ? '#140a06' : y === 0 ? C.noseHi : y >= h - 1 ? '#140a06' : C.nose));

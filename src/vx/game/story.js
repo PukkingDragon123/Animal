@@ -141,13 +141,31 @@ export class Story {
     const app = this.app, s = app.state;
     if (id === 'alamo' && !s.flags.alamo_seen) {
       S.setFlag(s, 'alamo_seen'); this.objective = 'Check the tall grass in the park';
-      await app.say('', 'The Painted Ladies glow in the late sun. Somewhere in the park, pigeons are cooing like they own the place.');
+      await this.pigeonGang();
     }
+  }
+  // Alamo Square: the pigeon gang that rules the park (the Guns N' Roses homage)
+  async pigeonGang() {
+    const app = this.app, w = app.world, P = w.loc.spots.park || [32, 39.5, 0], at = (x, z, h = 0.5) => [x, w.ground(x, z) + h, z];
+    const has = (id) => !!SPECIES[id];
+    await w.shot({ target: at(P[0], P[1]), dist: 9, yaw: 10, pitch: 18 }, 1.6);
+    await app.say('', 'The Painted Ladies glow in the late sun. Up in the park, a ring of pigeons struts in tight circles — like a band warming up.');
+    const boss = await w.addMon('gang-m', 'pidgun', [P[0] - 1, P[1] + 0.4, 0]), rose = await w.addMon('gang-f', 'pidrose', [P[0] + 1, P[1] + 0.6, 0]);
+    boss.play('cry'); await app.wait(900); rose.play('cry');
+    await app.say('', 'Two of them step out front: one twirling an oversized antique revolver, the other with a red rose tucked under her wing.', 'Every pigeon in the square goes quiet. Welcome to the jungle.');
+    if (has('pidgun')) {
+      const res = await app.startBattle({ foe: { name: 'Pigeon Gang', team: [['pidgun', 6]] }, title: 'PIGEON GANG!', subtitle: 'Alamo Square' });
+      await app.fade(0, 400);
+      if (res && res.winner === 0) { boss.play('hurt'); await app.say('', 'The gang scatters in a storm of feathers… but the rose-carrier lingers, eyeing you. Maybe she\'d join you, if you met her in the tall grass.'); }
+    } else await app.say('', '…they look you up and down, coo once, and go back to strutting. Not today.');
+    w.remove('gang-m'); w.remove('gang-f');
+    await w.shot(w.loc.view, 1.6);
   }
   // ------------------------------------------------------------------ actions used by hotspots
   async wildBattle(loc) {
     const app = this.app, w = app.world;
-    const foe = loc === 'alamo' ? (Math.random() < 0.5 ? 'cabbunny' : 'lemmo') : 'lemmo';
+    const pool = { alamo: ['pidgun', 'pidgun', 'cabbunny', 'lemmo', 'trashcoon'] }[loc] || ['lemmo'];
+    const ok = pool.filter((id) => SPECIES[id]), foe = ok[Math.floor(Math.random() * ok.length)] || 'lemmo';
     const res = await app.startBattle({ foe: { name: 'Wild ' + SPECIES[foe].name, team: [[foe, 4 + Math.floor(Math.random() * 3)]] }, wild: true, title: 'WILD TOKONMON!', subtitle: SPECIES[foe].name });
     await app.fade(0, 400);
     if (res && res.winner === 0) { S.setFlag(app.state, 'alamo_done'); this.objective = 'Explore the city'; }
