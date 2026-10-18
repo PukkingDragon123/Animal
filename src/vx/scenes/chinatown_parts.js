@@ -547,7 +547,7 @@ export function shade(hex, f) {
 // ============================================================ painted decals
 // Pixel-art painters for the 2D layer: each returns paint(p, W, H) for decal().
 // Every CJK string used is listed in SIGN_TEXT so prepare() can load its glyphs.
-export const SIGN_TEXT = '天下為公金龍酒家菜單燒鴨叉燒炒麵雲吞點心月滿餅家仁和堂中藥玉蓮珠寶銀雲茶樓福德廟旭日生果幸運餅玉門禮品中華百貨華埠禮品都板街萬事如意四季平安福星高照花開富貴金星茶太極吉屋出租中秋節麻雀月光音樂會蛋撻菠蘿包月餅特價新鮮酒店';
+export const SIGN_TEXT = '天下為公金龍酒家菜單燒鴨叉燒炒麵雲吞點心月滿餅家仁和堂中藥玉蓮珠寶銀雲茶樓福德廟旭日生果幸運餅玉門禮品中華百貨華埠禮品都板街萬事如意四季平安福星高照花開富貴金星茶太極吉屋出租中秋節麻雀月光音樂會蛋撻菠蘿包月餅特價新鮮酒店牙科旅行社功夫麻雀館宴會廳';
 
 // CJK text fitted and centred in a box (renders, measures the ink, shrinks until it fits)
 export function fit(p, str, bx, by, bw, bh, col, o = {}) {
@@ -779,10 +779,11 @@ export const P = {
     const cx = Math.round(W / 2), cy = Math.round(H * 0.45), r = Math.round(W * 0.17);
     for (let y = -r; y <= r; y++) for (let x = -r; x <= r; x++) { const d = Math.abs(x) / r + Math.max(0, y) / r; if (y < -r * 0.6 || d > 1) continue; p.px(cx + x, cy + y, d > 0.8 ? '#8a6a14' : x < 0 ? '#f0c040' : '#d8a028'); }
     for (const [dx, dy] of [[0, -2], [-1, -1], [0, -1], [1, -1], [-2, 0], [-1, 0], [0, 0], [1, 0], [2, 0], [-1, 1], [1, 1], [-1, 2], [1, 2]]) p.px(cx + dx, cy - 1 + dy, '#c8242c');
-    small(p, 'VS', cx, cy + r + 3, '#ffffff', { align: 'center', outline: '#141a3a' });
-    p.rect(0, 2, W, 9, '#f0c040'); small(p, 'TOKONMON', cx, 3, '#141a3a', { align: 'center' });
-    p.rect(0, 11, W, 7, '#141a3a'); small(p, 'LEAGUE', cx, 12, '#f0c040', { align: 'center', mini: true });
-    small(p, 'BATTLE NIGHT', cx, H - 17, '#ffffff', { align: 'center', mini: true });
+    const big = W >= 52, mini = !big;
+    small(p, 'VS', cx, cy + r + 3, '#ffffff', { align: 'center', outline: '#141a3a', mini: W < 40 });
+    p.rect(0, 2, W, big ? 9 : 7, '#f0c040'); small(p, 'TOKONMON', cx, 3, '#141a3a', { align: 'center', mini });
+    p.rect(0, big ? 11 : 9, W, 7, '#141a3a'); small(p, 'LEAGUE', cx, big ? 12 : 10, '#f0c040', { align: 'center', mini: true });
+    small(p, W >= 50 ? 'BATTLE NIGHT' : 'BATTLE', cx, H - 17, '#ffffff', { align: 'center', mini: true });
     small(p, 'SAT 7PM', cx, H - 11, '#f0c040', { align: 'center', mini: true });
     p.frame(0, 0, W, H, '#f0c040');
   },
@@ -818,6 +819,12 @@ export const P = {
     small(p, 'CALIFORNIA ST.', Math.floor(W / 2), Math.floor((H - 7) / 2), '#7c1a20', { align: 'center' });
   },
   carDest: () => (p, W, H) => { p.rect(0, 0, W, H, '#141414'); small(p, 'CALIFORNIA', Math.floor(W / 2), 2, '#f4f0d8', { align: 'center', mini: true }); small(p, 'VAN NESS', Math.floor(W / 2), H - 7, '#f0c040', { align: 'center', mini: true }); },
+  // gold leaf lettering on an upper-floor window (transparent between the strokes)
+  winText: (o) => (p, W, H) => {
+    const en = o.en ? 9 : 0;
+    fit(p, o.cjk, 3, 3, W - 6, H - 6 - en, o.col || '#f0c848', { vertical: true, outline: '#3a2a10', font: 'serif' });
+    if (o.en) { p.rect(1, H - en - 1, W - 2, en, '#1a1410'); small(p, o.en, Math.floor(W / 2), H - en + 1, o.col || '#f0c848', { align: 'center', mini: true }); }
+  },
   openSign: () => (p, W, H) => { p.rect(0, 0, W, H, '#14101a'); p.frame(0, 0, W, H, '#3a8aff'); small(p, 'OPEN', Math.floor(W / 2), Math.floor((H - 5) / 2), '#ff3a4a', { align: 'center', mini: true }); },
   chalk: () => (p, W, H) => {
     p.rect(0, 0, W, H, '#2a2e2a'); p.frame(0, 0, W, H, '#8a5a36'); p.frame(1, 1, W - 2, H - 2, '#6a4428');

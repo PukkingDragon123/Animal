@@ -332,15 +332,18 @@ function guitarTop(hole, wear) {
       p.px(x, y, e === 0 ? WOOD.bind : x % 3 === 1 ? WOOD.grain : x < w * 0.35 ? WOOD.topHi : WOOD.top);
     }
     const cx = w / 2 - 0.5;
+    for (const dx of [-1, 1]) for (let y = 0; y < h; y++) p.px(Math.round(cx + dx * 0.9), y, '#fff8e0');    // strings
     if (hole) {   // sound hole with a rosette ring, near the neck end (texture top = toward the neck)
       const cy = h * 0.42;
-      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const d = Math.hypot(x - cx, (y - cy) * 1.1); if (d < 2.1) p.px(x, y, WOOD.hole); else if (d < 3.0) p.px(x, y, (x + y) % 2 ? '#2e6a3a' : '#f2e2b0'); }
+      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const d = Math.hypot(x - cx, (y - cy) * 1.1); if (d < 2.3) p.px(x, y, WOOD.hole); else if (d < 3.2) p.px(x, y, (x + y) % 2 ? '#2e6a3a' : '#f2e2b0'); }
+      for (const dx of [-1, 1]) for (let y = 0; y < h; y++) p.px(Math.round(cx + dx * 0.9), y, '#fff8e0');
     }
     if (wear) {   // the famous worn-through patch below the sound hole, scuffs and scratched names
       for (let y = 0; y < 4; y++) for (let x = 0; x < 4; x++) if (Math.hypot(x - 1.5, y - 1.5) < 2.1) p.px(Math.round(cx + 1 + x - 1.5), y + 1, x + y < 3 ? WOOD.topLo : WOOD.hole);
       for (let k = 0; k < 4; k++) p.px(2 + k, h - 3 - (k % 2), '#fff4dc');
       for (let k = 0; k < 3; k++) p.px(w - 4 + (k % 2), h - 5 + k, '#fff4dc');
-      for (let x = Math.round(cx) - 2; x <= Math.round(cx) + 2; x++) { p.px(x, h - 4, '#3a2014'); p.px(x, h - 5, '#5a3420'); }   // the bridge
+      for (let x = Math.round(cx) - 3; x <= Math.round(cx) + 3; x++) { p.px(x, h - 4, '#3a2014'); p.px(x, h - 5, '#5a3420'); }   // the bridge
+      for (let y = 0; y < h - 5; y++) for (const dx of [-1, 1]) p.px(Math.round(cx + dx * 0.9), y, '#fff8e0');
     }
   };
 }
@@ -529,13 +532,20 @@ const braid = (s) => [
   ] },
 ];
 // the little road-worn guitar slung across its back (local frame: soundboard up, neck toward the tail)
-const GT = [1.4, 21.4, -6.6], GR = [9, -16, -22];
+const GT = [1.4, 21.6, -6.2], GR = [9, -14, -30];
+// a box in a sub-frame hinged at local point lp and turned by lrot, all inside the guitar's frame
+function inSub(lp, lrot, lc, s, tex) {
+  const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(...GR.map((v) => v * D2R))), ql = new THREE.Quaternion().setFromEuler(new THREE.Euler(...lrot.map((v) => v * D2R)));
+  const at = new THREE.Vector3(...lp).applyQuaternion(q).add(new THREE.Vector3(...GT)).toArray();
+  _eu.setFromQuaternion(q.clone().multiply(ql), 'XYZ');
+  return inFrame(at, [_eu.x / D2R, _eu.y / D2R, _eu.z / D2R], lc, s, tex);
+}
 const guitar = [
-  inFrame(GT, GR, [0, 0.6, 1.9], [5.0, 1.2, 3.8], guitarTop(false, true)),
-  inFrame(GT, GR, [0, 0.6, -0.4], [3.6, 1.2, 1.2], guitarTop(false, false)),
-  inFrame(GT, GR, [0, 0.6, -2.1], [4.2, 1.2, 2.6], guitarTop(true, false)),
-  inFrame(GT, GR, [0, 1.0, -6.4], [1.0, 0.6, 6.0], neckP),
-  inFrame(GT, GR, [0, 0.95, -10.5], [1.6, 0.5, 2.4], headstockP),
+  inFrame(GT, GR, [0, 0.75, 2.0], [5.4, 1.5, 4.0], guitarTop(false, true)),
+  inFrame(GT, GR, [0, 0.75, -0.4], [4.0, 1.5, 1.2], guitarTop(false, false)),
+  inFrame(GT, GR, [0, 0.75, -2.2], [4.6, 1.5, 2.8], guitarTop(true, false)),
+  inFrame(GT, GR, [0, 1.15, -6.1], [1.0, 0.7, 5.0], neckP),
+  inSub([0, 1.15, -8.5], [-14, 0, 0], [0, 0, -1.0], [1.7, 0.6, 2.2], headstockP),
 ];
 const strap = (s) => [
   P([s > 0 ? 4.4 : -8.0, 20.35, -4.9], [3.6, 0.4, 1.0], strapP),
@@ -604,13 +614,14 @@ export const def = {
     { name: 'body', parent: 'trunk', pivot: [0, 11, -2.5], cubes: [
       // the berry-shaped fleece: a big rounded mass at the shoulders, a smaller one tapering to the rump
       ...lump([0, 12.8, -0.4], [19.2, 15.4, 12.4], 1.8, woolP),
-      ...lump([0, 12.2, -9.2], [16.4, 13.4, 10.4], 1.8, woolP),
+      ...lump([0, 12.9, -9.2], [16.4, 12.8, 10.4], 1.8, woolP),
+      P([-6.4, 4.6, -5.0], [12.8, 1.4, 9.4], woolLow),
       // lumps that break up the silhouette: crown, back, flanks, brisket and the berry's pointed end
       P([-5.4, 19.8, -4.4], [10.8, 2.0, 7.6], woolTop),
       P([-3.8, 21.0, 0.0], [5.2, 2.0, 4.2], woolSmall), P([-5.6, 19.0, -12.0], [4.0, 1.4, 4.2], woolSmall), P([-5.0, 18.6, -7.6], [3.6, 1.6, 3.6], woolSmall),
       ...both(P([-10.4, 9.0, -2.4], [1.2, 7.0, 5.6], woolP), P([-9.0, 6.4, -9.8], [1.0, 4.6, 5.0], woolLow), P([-8.6, 10.2, -12.2], [1.0, 5.0, 4.2], woolSmall)),
       P([-5.6, 7.0, 5.6], [11.2, 9.4, 1.8], woolP),
-      P([-3.0, 9.4, -15.4], [6.0, 5.0, 1.4], woolSmall),
+      P([-3.0, 9.4, -15.4], [6.0, 5.0, 1.4], woolSmall), P([-6.4, 12.6, -14.6], [4.2, 3.8, 1.6], woolSmall), P([2.2, 7.4, -14.8], [4.4, 3.6, 1.6], woolSmall),
       ...strap(1), ...strap(-1),
     ] },
     { name: 'guitar', parent: 'body', pivot: GT, cubes: guitar },
@@ -852,23 +863,26 @@ export const anim = {
       const beat = Math.sin(((t - 0.5) / 0.35) * Math.PI) ** 2;
       P.rot('neck', -6 * proud).rot('head', -3 * proud + 6 * beat * jig, 0, 4 * Math.sin(((t - 0.5) / 0.7) * TAU) * jig);
       P.rot('tail', 0, 20 * Math.sin(t * 14) * jig, 0);
-      P.face('eyes', t > 1.82 && t < 2.2 ? 'wink' : jig > 0.5 ? 'happy' : undefined); P.blinkOK = t < 1.7 || t > 2.3;
+      const wk = bump(t, 1.78, 2.42);
+      P.face('eyes', t > 1.8 && t < 2.38 ? 'wink' : jig > 0.5 ? 'happy' : undefined); P.blinkOK = t < 1.7 || t > 2.45;
+      P.rot('head', 0, 6 * wk, 7 * wk).rot('browL', 0, 0, -10 * wk).pos('browR', 0, 0.4 * wk, 0);
       P.burst(1.85, 'glint', 'hornL', GLINT, {}).burst(1.86, 'sparkle', 'hornL', GLINT, { n: 5, speed: 0.4 });
       snort(P, 2.25, 0.8);
       P.rot('head', 5 * bump(t, 2.15, 2.45));
     } },
-    // asleep: lying down with its chin on its folded front hooves, beard spread out like a pillow, snoring
+    // asleep: lying down sphinx-style, forelegs out in front, chin resting over its hooves with the beard draped
+    // across them, snoring — a Z on every long exhale
     sleep: { len: 4, loop: true, f(P, t) {
-      const br = Math.sin((t / 4) * TAU);
+      const br = Math.sin((t / 4) * TAU), ex = Math.max(0, -br);
       trunk(P, { dy: -5.0 + 0.3 * br });
       P.sq('body', -0.04 + 0.035 * br);
-      for (const [leg, sx] of [['legFR', -1], ['legFL', 1]]) P.rot(leg, -86, 0, sx * 4).pos(leg, 0, -8.8, 1.0);
-      for (const [leg, sx] of [['legBR', -1], ['legBL', 1]]) P.rot(leg, -80, sx * 20, -sx * 12).pos(leg, 0, -8.6, 0);
-      P.rot('neck', 30 + 1.5 * br).rot('head', 8 - 2 * br, 0, 4).rot('jaw', 3 + 4 * Math.max(0, br));
-      P.rot('beard', -55).rot('beardTip', -20).rot('braidR1', -40, 0, -20).rot('braidL1', -40, 0, 20);
-      P.rot('earL', 0, 0, -16).rot('earR', 0, 0, 16);
+      for (const [leg, sx] of [['legFR', -1], ['legFL', 1]]) P.rot(leg, -88, sx * 4, 0).pos(leg, 0, -8.8, 5.2);
+      for (const [leg, sx] of [['legBR', -1], ['legBL', 1]]) P.rot(leg, -82, sx * 24, -sx * 10).pos(leg, sx * 0.6, -8.7, 0);
+      P.rot('neck', 11 + 1.5 * br).rot('head', -1 - 1.5 * br, 0, 5).rot('jaw', 2 + 6 * ex);
+      P.rot('beard', -16).rot('beardTip', -12).rot('braidR1', -28, 0, -26).rot('braidL1', -28, 0, 26);
+      P.rot('earL', 0, 0, -20).rot('earR', 0, 0, 20).rot('tail', 20);
       P.face('eyes', 'sleep'); P.blinkOK = false; P.lookW = 0; P.breathW = 0;
-      P.burst(1.0, 'z', 'head', ZZ, {}).burst(2.6, 'z', 'head', ZZ, {});
+      P.burst(2.3, 'z', 'head', ZZ, {}).burst(3.1, 'z', 'head', ZZ, {}).burst(2.6, 'steam', 'head', NOSE_L, { n: 1, dir: [0.3, -0.4, 1], speed: 0.3, scale: 0.5 });
     } },
     // fidget: shakes out its fleece like a wet dog — seeds and leaves fly, the guitar rattles
     shake: { len: 1.6, next: 'idle', f(P, t) {

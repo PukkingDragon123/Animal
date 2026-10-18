@@ -11,7 +11,7 @@ import { shade, gradient, poly, ramp, shift, mix, h2 } from './kit.js';
 
 const C = {
   hide: '#835a4a', hideHi: '#b8866a', hideLo: '#5c3c48', hideDeep: '#3c2840',
-  muz: '#e4be9c', muzHi: '#fae6cc', muzLo: '#b88a7c', muzDeep: '#80586c',
+  muz: '#b48a7c', muzHi: '#d4ae9c', muzLo: '#8a6670', muzDeep: '#5a3c4c',
   rock: ['#f2e6ce', '#ccb89c', '#968482', '#5e5068'], rockIn: '#4a3c54',
   horn: ['#fff6e0', '#e2cea8', '#ac9478', '#705c66'],
   hoof: ['#c4ae94', '#8e786c', '#62505e', '#403248'],
@@ -40,25 +40,27 @@ function hideP(c = C.hide, o = {}) {
 const hide = hideP(), hideDark = hideP(shift(C.hide, -0.08), { top: C.hide, bottom: C.hideDeep });
 // a seeded hash for painters
 const hh = (a, b, s) => h2(a | 0, b | 0, s);
-// craggy rock: banded stone cut into flat facets (each its own tone), dark cracks between some of
-// them, lit chips, pits, and (o.crosses) a field of small white crosses in receding rows
+// craggy rock: banded stone cut into a few big flat facets (each one tone, lit ones toward the top),
+// one or two deliberate cracks, lit chips along the rim, and (o.crosses) a field of small white crosses
 function rockP(seed = 1, o = {}) {
   const R = C.rock;
   return (p, w, h, face) => {
     const fs = seed * 13 + ['up', 'down', 'north', 'south', 'east', 'west', 'plane'].indexOf(face) * 7;
-    const n = Math.max(3, Math.round((w * h) / (o.cell || 46)));
+    const n = Math.max(2, Math.round((w * h) / (o.cell || 140)));
     const pts = []; for (let i = 0; i < n; i++) pts.push([hh(i, fs, 3) * w, hh(i, fs, 5) * h, hh(i, fs, 9)]);
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-      let d1 = 1e9, d2 = 1e9, k = 0;
-      for (let i = 0; i < n; i++) { const d = (x - pts[i][0]) ** 2 + (y - pts[i][1]) ** 2; if (d < d1) { d2 = d1; d1 = d; k = i; } else if (d < d2) d2 = d; }
-      const t = face === 'up' ? 0.1 : face === 'down' ? 1 : y / Math.max(1, h - 1);
-      let col = ramp([R[0], R[1], R[2]], Math.min(1, t * 0.9 + 0.1), x, y);
-      const v = pts[k][2]; col = v < 0.3 ? shift(col, -0.13) : v > 0.75 ? shift(col, 0.1) : col;
-      if (Math.sqrt(d2) - Math.sqrt(d1) < 0.8 && v < 0.55) col = C.rockIn;
-      p.px(x, y, col);
+      let d1 = 1e9, k = 0;
+      for (let i = 0; i < n; i++) { const d = (x - pts[i][0]) ** 2 + (y - pts[i][1]) ** 2; if (d < d1) { d1 = d; k = i; } }
+      const t = face === 'up' ? 0.05 : face === 'down' ? 1 : y / Math.max(1, h - 1), v = pts[k][2] + (1 - pts[k][1] / h) * 0.3 - 0.15;
+      const base = ramp([R[0], R[1], R[2]], Math.min(1, t * 0.8 + 0.15), x, y);
+      p.px(x, y, v < 0.28 ? shift(base, -0.12) : v > 0.72 ? shift(base, 0.08) : base);
     }
-    if (face !== 'up' && face !== 'down') { for (let x = 0; x < w; x++) p.px(x, 0, shift(R[0], 0.1)); for (let x = 0; x < w; x++) p.px(x, h - 1, R[3]); }
-    for (let i = 0; i < Math.round(w * h / 90); i++) { const x = Math.floor(hh(i, fs, 11) * w), y = Math.floor(hh(i, fs, 13) * h); p.px(x, y, R[3]); p.px(x + 1, y, shift(R[0], 0.15)); }
+    // cracks: a jagged dark line or two, with a lit lip along one side
+    for (let c = 0; c < (w * h > 300 ? 2 : 1); c++) {
+      let x = hh(c, fs, 21) * w, y = hh(c, fs, 23) * h * 0.5; const dx = (hh(c, fs, 25) - 0.5) * 0.9;
+      for (let i = 0; i < Math.min(h, 12); i++) { const X = Math.round(x), Y = Math.round(y); p.px(X, Y, C.rockIn); p.px(X + 1, Y, shift(R[0], 0.05)); x += dx + (i % 3 === 1 ? 0.8 : -0.4); y += 1; if (y >= h) break; }
+    }
+    if (face !== 'up' && face !== 'down') { for (let x = 0; x < w; x++) p.px(x, 0, (x * 7 + fs) % 5 === 0 ? R[1] : shift(R[0], 0.1)); for (let x = 0; x < w; x++) p.px(x, h - 1, R[3]); }
     if (o.crosses && face !== 'down') {
       // the field: rows of small white crosses, smaller and closer together toward the top
       for (let r = 0, y = h - 6; y > 1; r++) {
@@ -75,25 +77,26 @@ function rockP(seed = 1, o = {}) {
 }
 const hornP = (p, w, h, face) => {
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-    const t = face === 'up' ? 0 : face === 'down' ? 1 : y / Math.max(1, h - 1);
-    p.px(x, y, ramp(C.horn, Math.min(1, t * 0.85 + (x / w) * 0.25), x, y));
+    const t = face === 'up' ? 0.1 : face === 'down' ? 0.9 : y / Math.max(1, h - 1);
+    p.px(x, y, ramp([C.horn[0], C.horn[1], C.horn[2]], Math.min(1, t * 0.7 + (x / w) * 0.35), x, y));
   }
-  if (face !== 'up' && face !== 'down') { for (let y = 1; y < h; y += 4) { p.px(0, y, C.horn[3]); p.px(1, y, C.horn[2]); p.px(w - 1, y + 1, C.horn[3]); } p.px(1, 1, '#ffffff'); }
+  if (face !== 'up' && face !== 'down') { for (let x = 0; x < w; x++) { p.px(x, Math.floor(h * 0.5), C.horn[2]); p.px(x, Math.floor(h * 0.5) - 1, C.horn[0]); } for (let y = 0; y < h; y++) p.px(w - 1, y, C.horn[2]); }
 };
 const muzzleP = (p, w, h, face) => {
   shade(C.muz, { top: C.muzHi, bottom: C.muzLo, grain: 0 })(p, w, h, face);
-  if (face === 'south') {
-    // the nose pad: two flared nostrils, a wet sheen, the mouth line below
-    const ny = Math.round(h * 0.38);
-    for (const sx of [-1, 1]) {
-      const cx = Math.round(w / 2 + sx * w * 0.22);
-      for (let y = -2; y <= 2; y++) for (let x = -2; x <= 2; x++) { const d = (x / 2.2) ** 2 + (y / 1.8) ** 2; if (d <= 1) p.px(cx + x, ny + y, d > 0.5 ? C.muzDeep : '#3a1828'); }
-      p.px(cx - sx, ny - 2, C.muzHi);
-    }
-    for (let x = Math.round(w * 0.38); x < w * 0.62; x++) p.px(x, ny - 3, '#fff4e4');
-    for (let x = 1; x < w - 1; x++) p.px(x, h - 2, x < 3 || x > w - 4 ? C.muzLo : C.muzDeep);
+  if (face === 'up') { for (let y = h - 3; y < h; y++) for (let x = 2; x < w - 2; x++) p.px(x, y, '#a88890'); return; }
+  if (face !== 'south') { if (face === 'east' || face === 'west') for (let x = 0; x < w; x++) p.px(x, h - 2, C.muzLo); return; }
+  const cx = (w - 1) / 2, padB = Math.round(h * 0.72);
+  // the nose pad: a broad, slightly darker, moist rounded patch
+  for (let y = 1; y < padB; y++) for (let x = 1; x < w - 1; x++) { const u = (x - cx) / (w * 0.46), v = (y - padB * 0.5) / (padB * 0.55); if (u * u + v * v <= 1) p.px(x, y, u * u + v * v > 0.8 ? '#6a4a56' : y < padB * 0.3 ? '#a88890' : '#8e6e7a'); }
+  for (const sx of [-1, 1]) {
+    const nx = Math.round(cx + sx * w * 0.24), ny = Math.round(padB * 0.55);
+    for (let y = -3; y <= 3; y++) for (let x = -3; x <= 3; x++) { const d = (x / 2.6) ** 2 + (y / 3.2) ** 2; if (d <= 1) p.px(nx + x, ny + y, d > 0.55 ? '#6a3040' : '#2a1018'); }
+    p.px(nx - sx * 2, ny - 3, '#d8c0c4'); p.px(nx - sx * 3, ny - 2, '#d8c0c4');
   }
-  if (face === 'east' || face === 'west') { for (let x = 0; x < w; x++) p.px(x, h - 2, C.muzLo); }
+  for (let y = 2; y < padB - 2; y++) p.px(Math.round(cx), y, '#6a4a56');
+  for (let x = Math.round(w * 0.3); x < w * 0.45; x++) p.px(x, 2, '#e8d8dc');
+  for (let x = 1; x < w - 1; x++) p.px(x, h - 2, x < 3 || x > w - 4 ? C.muzLo : C.muzDeep);
 };
 const jawP = (p, w, h, face) => { shade(C.muz, { top: C.muzHi, bottom: C.muzLo, grain: 0, rim: false })(p, w, h, face); if (face === 'south') for (let x = 0; x < w; x++) p.px(x, 0, C.muzDeep); };
 const mouthP = (p, w, h) => { p.rect(0, 0, w, h, C.mouth); p.rect(1, 1, w - 2, Math.max(1, h - 2), C.gum); };
@@ -132,13 +135,27 @@ const tuftP = (seed) => (p, w, h) => {
     }
   }
 };
-const lockP = (p, w, h, face) => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const t = face === 'up' ? 0 : y / Math.max(1, h - 1); p.px(x, y, face === 'down' ? C.tuft[3] : (x === 0 && face !== 'east') ? C.tuft[0] : x === w - 1 ? C.tuft[3] : ramp([C.tuft[1], C.tuft[2], C.tuft[3]], t, x, y)); } if (face === 'south' && h > 4) for (let y = 1; y < h - 1; y += 3) p.px(Math.min(w - 2, 1 + (y % 2)), y, C.tuft[0]); };
-const tuftBox = (p, w, h, face) => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, face === 'up' ? ((x + y) % 4 === 0 ? C.tuft[0] : C.tuft[1]) : (x % 3 === 0 ? C.tuft[3] : y < 2 ? C.tuft[1] : C.tuft[2])); };
+const lockP = (p, w, h, face) => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const t = face === 'up' ? 0 : y / Math.max(1, h - 1); p.px(x, y, face === 'down' ? C.tuft[3] : x === 0 ? C.tuft[1] : x === w - 1 ? C.tuft[3] : ramp([C.tuft[1], C.tuft[2], C.tuft[3]], t * 0.9, x, y)); } if (face === 'south' || face === 'north') for (let y = 1; y < h - 2; y += 2) p.px(1 + ((y >> 1) % Math.max(1, w - 2)), y, C.tuft[0]); };
+const fringeP = (p, w, h, face) => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const t = face === 'up' ? 0 : y / Math.max(1, h - 1), st = (x + Math.floor(y / 4)) % 4; p.px(x, y, face === 'down' ? C.tuft[3] : x === 0 ? C.tuft[1] : x === w - 1 ? C.tuft[3] : st === 0 ? C.tuft[0] : st === 2 ? ramp([C.tuft[2], C.tuft[3]], t, x, y) : ramp([C.tuft[1], C.tuft[2]], t, x, y)); } };
+const tipsP = (p, w, h) => { for (let x = 0; x < w; x++) { const k = x % 5, l = Math.round(h * (k === 2 ? 1 : k === 1 || k === 3 ? 0.62 : 0.25) * (0.75 + 0.25 * Math.sin(x * 1.7))); for (let y = 0; y < l; y++) p.px(x, y, y === l - 1 ? C.tuft[3] : k === 2 && y < 2 ? C.tuft[0] : y < l * 0.5 ? C.tuft[2] : C.tuft[3]); } };
+const tuftBox = (p, w, h, face) => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const s = (x + Math.floor(y * 0.6)) % 5; p.px(x, y, face === 'up' ? (s === 0 ? C.tuft[0] : s === 3 ? C.tuft[2] : C.tuft[1]) : face === 'down' ? C.tuft[3] : y === 0 ? C.tuft[0] : s === 2 ? C.tuft[3] : ramp([C.tuft[1], C.tuft[2]], y / h, x, y)); } };
 // a marionette string: a thin bright thread with a frayed, cut end at the top
 const B4 = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
 const stringP = (fade) => (p, w, h) => { const m = Math.floor(w / 2); for (let y = 0; y < h; y++) { const k = fade ? 1 - y / h : 0; if (fade && k * 16 > B4[(y & 3) * 4 + (m & 3)] + 2) continue; p.px(m, y, y % 6 === 0 ? '#d8d0c0' : C.string); } };
 const earP = (p, w, h, face) => { hide(p, w, h, face); if (face === 'south' || face === 'down') { for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) p.px(x, y, y === 1 ? '#c87a7a' : '#e8a0a0'); } };
 const tailTuft = (p, w, h, face) => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, (x + y) % 3 === 0 ? C.tuft[1] : y > h - 3 ? C.tuft[3] : C.tuft[2]); };
+// the face: hide, a paler band across the eyes, a blaze down the bridge, darker jowls, a curl of hair on the poll
+const faceP = (p, w, h, face) => {
+  hide(p, w, h, face);
+  const cx = (w - 1) / 2;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const u = (x - cx) / (w / 2), v = y / h;
+    if (v > 0.18 && v < 0.5 && Math.abs(u) > 0.18) p.px(x, y, (x + y) % 7 === 0 ? C.hide : mix(C.hide, C.hideHi, 0.45));
+    if (v > 0.42 && Math.abs(u) < 0.2 + (v - 0.42) * 0.3) p.px(x, y, Math.abs(u) > 0.15 + (v - 0.42) * 0.3 ? C.hide : mix(C.hideHi, C.muz, 0.35));
+    if (v > 0.55 && Math.abs(u) > 0.62) p.px(x, y, shift(C.hide, -0.14));
+  }
+  for (let k = 0; k < 5; k++) { const x = Math.round(cx - 6 + k * 3), y = 1 + (k % 2); p.px(x, y, C.hideHi); p.px(x + 1, y + 1, shift(C.hide, -0.15)); }
+};
 // the chest: a paler bib of hide
 const chestP = (p, w, h, face) => {
   hide(p, w, h, face);
@@ -150,31 +167,32 @@ const chestP = (p, w, h, face) => {
 const petalsP = (p, w, h) => { const cx = (w - 1) / 2, cy = (h - 1) / 2; for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const a = Math.atan2(y - cy, x - cx), r = Math.hypot(x - cx, y - cy), R = (w / 2) * (0.62 + 0.38 * Math.abs(Math.cos(a * 2.5))); if (r > R) continue; p.px(x, y, r < 1.3 ? '#ffe060' : r > R - 1 ? '#e8608e' : x + y < w - 1 ? '#ffe6f0' : '#ff9ac0'); } };
 const stemP = (p, w, h) => { const m = Math.floor(w / 2); for (let y = 0; y < h; y++) p.px(m, y, '#3f8e3a'); for (let k = 0; k < 3; k++) { p.px(m - 1 - k, Math.round(h * 0.5) + k, '#80c64a'); p.px(m + 1 + k, Math.round(h * 0.7) - k, '#3f8e3a'); } };
 
-// eyes: 13 × 9 texels, outer corner at x = 0. Big, calm and warm: a relaxed upper lid, a round
+// eyes: 17 × 11 texels, outer corner at x = 0. Big, calm and warm: a relaxed upper lid, a round
 // amber iris, a dark pupil, one soft (not white) catchlight. The heavy stone brow does the glaring.
+const EW = 17, EH = 11;
 function eyeShape(p, o = {}) {
-  const lid = o.lid ?? 2.2, sl = o.slope ?? -0.05, ix = o.ix ?? 6.6, iy = o.iy ?? 5.0, ir = o.ir ?? 3.0;
-  const top = (x) => lid + sl * x + Math.abs(x - 6.5) ** 2 * 0.035, bot = (x) => 7.8 - Math.abs(x - 6.5) ** 2 * 0.06;
-  for (let y = 0; y < 9; y++) for (let x = 0; x < 13; x++) {
+  const lid = o.lid ?? 2.6, sl = o.slope ?? -0.05, ix = o.ix ?? 8.8, iy = o.iy ?? 6.4, ir = o.ir ?? 3.8;
+  const top = (x) => lid + sl * x + Math.abs(x - 8.5) ** 2 * 0.022, bot = (x) => 9.7 - Math.abs(x - 8.5) ** 2 * 0.042;
+  for (let y = 0; y < EH; y++) for (let x = 0; x < EW; x++) {
     const X = x + 0.5, Y = y + 0.5;
-    if (Y < top(X) - 1 || Y > bot(X) + 0.9) continue;
-    if (Y < top(X) || Y > bot(X) || x === 0 || x === 12) { p.px(x, y, C.ink); continue; }
+    if (Y < top(X) - 1.2 || Y > bot(X) + 1) continue;
+    if (Y < top(X) || Y > bot(X) || x === 0 || x === EW - 1) { p.px(x, y, C.ink); continue; }
     const d = Math.hypot(X - ix, Y - iy);
-    if (d < ir) p.px(x, y, d < 1.2 ? '#1a0c08' : Y < top(X) + 1.2 ? C.eyeLo : d > ir - 0.8 ? '#8a4a1c' : Y > iy + 1 ? C.eyeHi : C.eye);
-    else p.px(x, y, Y < top(X) + 1.1 ? '#d8cabc' : '#f6eee2');
+    if (d < ir) p.px(x, y, d < 1.5 ? '#1a0c08' : Y < top(X) + 1.4 ? C.eyeLo : d > ir - 0.9 ? '#8a4a1c' : Y > iy + 1.2 ? C.eyeHi : C.eye);
+    else p.px(x, y, Y < top(X) + 1.3 ? '#d8cabc' : '#f6eee2');
   }
-  for (let x = 0; x < 13; x++) { const y = Math.floor(top(x + 0.5)) - 1; p.px(x, y, C.ink); }
-  if (o.glint !== false) p.px(Math.round(ix - 1.5), Math.round(iy - 1), '#e8c8a0');
+  for (let x = 0; x < EW; x++) { const y = Math.floor(top(x + 0.5)) - 1; p.px(x, y, C.ink); }
+  if (o.glint !== false) { p.px(Math.round(ix - 2), Math.round(iy - 1), '#f0d4b0'); }
 }
 const EYES = {
-  calm: (p) => eyeShape(p),
-  fierce: (p) => eyeShape(p, { lid: 3.6, slope: 0.18, ir: 2.6, iy: 5.4 }),
-  wide: (p) => eyeShape(p, { lid: 1.0, slope: 0, ir: 2.6, iy: 4.6, ix: 6.4 }),
-  content: (p) => { for (let x = 1; x < 12; x++) { const y = Math.round(4.6 + Math.abs(x - 6) ** 2 * 0.06); p.px(x, y, C.ink); if (x > 2 && x < 10) p.px(x, y + 1, C.ink); } },
-  closed: (p) => { for (let x = 0; x < 13; x++) { const y = Math.round(5.4 - Math.abs(x - 6.5) ** 2 * 0.04); p.px(x, y, C.ink); p.px(x, y + 1, x > 1 && x < 11 ? C.ink : 0); } },
-  hurt: (p) => { for (let i = 0; i < 5; i++) { p.px(3 + i, 1 + i, C.ink); p.px(4 + i, 1 + i, C.ink); p.px(3 + i, 9 - i, C.ink); p.px(4 + i, 9 - i, C.ink); } },
-  x: (p) => { for (let i = 0; i < 8; i++) { p.px(2 + i, i, C.ink); p.px(3 + i, i, C.ink); p.px(9 - i, i, C.ink); p.px(10 - i, i, C.ink); } },
-  swirl: (p) => { for (let a = 0; a < 13; a += 0.2) { const r = a * 0.33, x = Math.round(6.5 + Math.cos(a) * r * 1.2), y = Math.round(4.5 + Math.sin(a) * r * 0.9); if (r < 4.4) p.px(x, y, C.ink); } },
+  calm: (p) => eyeShape(p, { lid: 3.6, slope: -0.03, ir: 3.9, iy: 6.8 }),
+  fierce: (p) => eyeShape(p, { lid: 4.4, slope: 0.16, ir: 3.2, iy: 7.0 }),
+  wide: (p) => eyeShape(p, { lid: 1.4, slope: 0, ir: 3.3, iy: 6.0, ix: 8.5 }),
+  content: (p) => { for (let x = 1; x < 16; x++) { const y = Math.round(5.6 + Math.abs(x - 8) ** 2 * 0.045); p.px(x, y, C.ink); if (x > 2 && x < 14) p.px(x, y + 1, C.ink); } },
+  closed: (p) => { for (let x = 0; x < 17; x++) { const y = Math.round(6.6 - Math.abs(x - 8.5) ** 2 * 0.03); p.px(x, y, C.ink); p.px(x, y + 1, x > 1 && x < 15 ? C.ink : 0); } },
+  hurt: (p) => { for (let i = 0; i < 6; i++) { p.px(4 + i, 1 + i, C.ink); p.px(5 + i, 1 + i, C.ink); p.px(4 + i, 10 - i, C.ink); p.px(5 + i, 10 - i, C.ink); } },
+  x: (p) => { for (let i = 0; i < 10; i++) { p.px(3 + i, i, C.ink); p.px(4 + i, i, C.ink); p.px(12 - i, i, C.ink); p.px(13 - i, i, C.ink); } },
+  swirl: (p) => { for (let a = 0; a < 14; a += 0.18) { const r = a * 0.38, x = Math.round(8.5 + Math.cos(a) * r * 1.25), y = Math.round(5.5 + Math.sin(a) * r * 0.95); if (r < 5.2) p.px(x, y, C.ink); } },
 };
 
 // ---------------------------------------------------------------- geometry helpers
@@ -189,11 +207,13 @@ function limb(a, b, r, tex, x = {}) {
 }
 // a horn: a chain of tapering segments through the points [x, y, z, r]
 const horn = (pts) => pts.slice(0, -1).map((a, i) => limb(a, pts[i + 1], (a[3] + pts[i + 1][3]) / 2, hornP));
-// a craggy boulder: a main block, a turned cap and a side lump, so it reads round and lumpy
-const boulder = (c, s, seed, rot, side) => [
-  P([c[0] - s[0] / 2, c[1] - s[1] / 2, c[2] - s[2] / 2], s, rockP(seed, { crosses: true }), { pivot: c, rot }),
-  P([c[0] - s[0] * 0.36, c[1] + s[1] * 0.3, c[2] - s[2] * 0.36], [s[0] * 0.72, s[1] * 0.34, s[2] * 0.72], rockP(seed + 5, { crosses: true }), { pivot: c, rot: [rot[0] - 8, rot[1] + 32, rot[2] * 0.4] }),
-  P([c[0] + side * s[0] * 0.28 - s[0] * 0.3, c[1] - s[1] * 0.42, c[2] - s[2] * 0.36], [s[0] * 0.6, s[1] * 0.6, s[2] * 0.72], rockP(seed + 9), { pivot: c, rot: [rot[0] + 10, rot[1] - 20, rot[2] + side * 10] }),
+// a craggy boulder: a block turned 45° and a squared block through it (an octagon from above), a
+// turned cap on top and a lump at the side — it reads as one big round rock
+const boulder = (c, s, seed, tip, side) => [
+  P([c[0] - s * 0.5, c[1] - s * 0.46, c[2] - s * 0.5], [s, s * 0.92, s], rockP(seed, { crosses: true }), { pivot: c, rot: [tip[0], 45, tip[2]] }),
+  P([c[0] - s * 0.56, c[1] - s * 0.38, c[2] - s * 0.56], [s * 1.12, s * 0.76, s * 1.12], rockP(seed + 3, { crosses: true }), { pivot: c, rot: [tip[0] * 0.6, 0, tip[2] * 0.6] }),
+  P([c[0] - s * 0.34, c[1] + s * 0.34, c[2] - s * 0.34], [s * 0.68, s * 0.3, s * 0.68], rockP(seed + 6, { crosses: true }), { pivot: c, rot: [tip[0], 22, tip[2]] }),
+  P([c[0] + side * s * 0.3 - s * 0.28, c[1] - s * 0.5, c[2] - s * 0.3], [s * 0.56, s * 0.5, s * 0.6], rockP(seed + 9), { pivot: c, rot: [10, 15, side * 12] }),
 ];
 // strings: two long, nearly straight segments of crossed thread; the upper one dissolves toward an
 // unseen puppeteer high above
@@ -210,7 +230,7 @@ const lock = (x, y, z, len, rz, k = 1) => [
   P([x - 1.1 * k, y - len * 0.62, z - 0.7], [2.2 * k, len * 0.62, 1.4], lockP, { pivot: [x, y, z], rot: [10, 0, rz] }),
   P([x - 0.7 * k, y - len, z - 0.45], [1.4 * k, len * 0.42, 0.9], lockP, { pivot: [x, y, z], rot: [10, 0, rz] }),
 ];
-const eyeStates = (side) => Object.entries(EYES).map(([k, fn]) => P(side < 0 ? [-8.6, 18.6, 26.06] : [3.0, 18.6, 26.06], [5.6, 3.8, 0], fn, { plane: 'z', mirror: side > 0, id: 'eye-' + k, hide: k !== 'calm' }));
+const eyeStates = (side) => Object.entries(EYES).map(([k, fn]) => P(side < 0 ? [-8.6, 19.4, 25.06] : [3.0, 19.4, 25.06], [5.6, 3.8, 0], fn, { plane: 'z', mirror: side > 0, id: 'eye-' + k, hide: k !== 'calm' }));
 
 // legs: front legs with spiked wristbands, hind legs with heavy haunches; all hang from root so the hooves stay planted
 const spikes = (x0, y, zF, zB, xo) => [
@@ -226,11 +246,11 @@ const legF = [
   P([-12.8, 0, 1.6], [7.8, 2.8, 9.2], hoofP),
 ];
 const legB = [
-  P([-13.2, 7.0, -21.0], [8.6, 12.0, 11.0], hide),
+  P([-12.8, 6.6, -20.0], [8.2, 11.0, 10.0], hide),
   P([-11.6, 2.4, -17.4], [5.8, 6.4, 5.8], hideDark),
   P([-12.0, 0, -18.0], [6.6, 2.8, 7.0], hoofP),
 ];
-const hornR = horn([[-8.0, 25.0, 20.5, 2.7], [-12.5, 26.0, 20.5, 2.4], [-16.5, 27.6, 21.0, 2.0], [-19.4, 30.6, 22.0, 1.6], [-20.4, 34.4, 23.6, 1.2], [-19.6, 38.2, 25.6, 0.7]]);
+const hornR = horn([[-8.0, 26.0, 19.0, 2.6], [-13.8, 27.2, 19.4, 2.25], [-18.4, 30.2, 20.8, 1.75], [-19.8, 34.8, 22.6, 1.2], [-18.6, 38.8, 24.6, 0.65]]);
 export const def = {
   name: 'moshbull', ppu: 3, scale: 0.46, outline: { color: C.ink, px: 1.5 },
   bones: [
@@ -242,60 +262,61 @@ export const def = {
     ...strings('strFR', 'legFR', [-14.0, 5.2, 6.0], [-16, 0, 14]),
     ...strings('strFL', 'legFL', [14.0, 5.2, 6.0], [-16, 0, -14]),
     { name: 'body', parent: 'root', pivot: [0, 18.0, 0], cubes: [
-      // the front: a wrecking ball of chest and shoulders
-      P([-13.0, 7.0, -6.0], [26.0, 23.0, 20.0], hide, { faces: { south: chestP, north: hideDark } }),
-      P([-14.0, 9.0, -5.0], [28.0, 18.0, 17.0], hide, { faces: { south: chestP } }),
-      // the rear: smaller and lower
-      P([-10.5, 8.0, -22.0], [21.0, 16.0, 18.0], hide, { faces: { north: hideDark } }),
-      P([-11.5, 9.5, -21.0], [23.0, 13.0, 16.0], hide, { faces: { north: hideDark } }),
-      P([-9.5, 6.0, -18.0], [19.0, 3.0, 26.0], hideDark),
-      // boulder shoulders, a ridge of plates over the hump and down the spine: the field of crosses
-      ...boulder([-14.5, 27.5, 3.5], [14.0, 13.0, 15.0], 1, [8, 16, -14], -1),
-      ...boulder([14.5, 27.5, 3.5], [14.0, 13.0, 15.0], 2, [8, -16, 14], 1),
-      P([-5.5, 28.6, -9.0], [11.0, 4.0, 8.0], rockP(3, { crosses: true }), { pivot: [0, 30.6, -5], rot: [-10, 8, 4] }),
-      P([-5.4, 23.0, -14.0], [10.8, 3.6, 8.0], rockP(4, { crosses: true }), { pivot: [0, 24.8, -10], rot: [-12, -8, -5] }),
-      P([-4.4, 19.0, -21.5], [8.8, 3.4, 6.0], rockP(5, { crosses: true }), { pivot: [0, 20.6, -18.5], rot: [-26, 6, 3] }),
+      // the front: a wrecking ball of chest and shoulders (three stacked blocks round it off)
+      P([-13.0, 7.0, -7.0], [26.0, 24.0, 20.0], hide, { faces: { south: chestP, north: hideDark } }),
+      P([-14.2, 9.5, -6.0], [28.4, 18.0, 18.0], hide, { faces: { south: chestP } }),
+      P([-11.0, 5.6, -5.0], [22.0, 28.0, 16.0], hide, { faces: { south: chestP } }),
+      // the rear: smaller and lower, the back sloping down to it
+      P([-9.5, 8.0, -21.0], [19.0, 14.0, 16.0], hide, { faces: { north: hideDark } }),
+      P([-10.4, 9.5, -20.0], [20.8, 11.0, 14.0], hide, { faces: { north: hideDark } }),
+      P([-10.0, 12.0, -12.0], [20.0, 15.0, 8.0], hide, { pivot: [0, 26, -8], rot: [-12, 0, 0] }),
+      P([-9.0, 6.0, -17.0], [18.0, 3.0, 24.0], hideDark),
+      // two boulder shoulders, plates down the spine: the field of crosses
+      ...boulder([-15.0, 27.0, 1.0], 14.5, 1, [6, 0, -12], -1),
+      ...boulder([15.0, 27.0, 1.0], 14.5, 2, [6, 0, 12], 1),
+      P([-5.0, 27.6, -12.0], [10.0, 3.6, 8.0], rockP(3, { crosses: true }), { pivot: [0, 29.4, -8], rot: [-14, 8, 4] }),
+      P([-4.4, 22.2, -19.0], [8.8, 3.2, 6.4], rockP(4, { crosses: true }), { pivot: [0, 23.8, -15.8], rot: [-24, -8, -5] }),
       P([-15.6, 13.5, -14.0], [3.2, 6.0, 7.0], rockP(6), { pivot: [-14, 16.5, -10.5], rot: [0, 4, 8] }),
       P([12.2, 13.0, -16.0], [3.2, 6.4, 8.0], rockP(7), { pivot: [13.8, 16.2, -12], rot: [0, -6, -10] }),
     ] },
-    { name: 'tail', parent: 'body', pivot: [0, 22.5, -22.0], rot: [22, 0, 0], cubes: [
-      P([-0.8, 12.0, -22.8], [1.6, 10.6, 1.6], hide),
-      P([-1.7, 7.2, -23.6], [3.4, 5.6, 3.0], tailTuft),
+    { name: 'tail', parent: 'body', pivot: [0, 21.0, -21.0], rot: [22, 0, 0], cubes: [
+      P([-0.8, 10.6, -21.8], [1.6, 10.6, 1.6], hide),
+      P([-1.7, 5.8, -22.6], [3.4, 5.6, 3.0], tailTuft),
     ] },
-    { name: 'head', parent: 'body', pivot: [0, 19.0, 12.0], rot: [6, 0, 0], cubes: [
-      P([-10.0, 11.0, 11.0], [20.0, 16.0, 15.0], hide, { faces: { north: hideDark } }),
-      P([-11.0, 12.5, 13.0], [22.0, 10.0, 11.0], hide),
-      // the heavy stone brow
-      P([-10.6, 22.4, 22.0], [9.0, 3.8, 5.6], rockP(8), { pivot: [-6.1, 24.3, 24.8], rot: [8, 0, -10] }),
-      P([1.6, 22.4, 22.0], [9.0, 3.8, 5.6], rockP(9), { pivot: [6.1, 24.3, 24.8], rot: [8, 0, 10] }),
-      P([-3.0, 24.6, 22.4], [6.0, 2.6, 4.0], rockP(10), { pivot: [0, 25.9, 24.4], rot: [6, 0, 0] }),
+    { name: 'head', parent: 'body', pivot: [0, 21.0, 12.0], rot: [2, 0, 0], cubes: [
+      P([-10.0, 10.5, 11.0], [20.0, 18.5, 14.0], hide, { faces: { south: faceP, north: hideDark } }),
+      P([-11.2, 12.5, 13.0], [22.4, 11.0, 10.0], hide),
+      // the heavy stone brow: a boss over each eye, a ridge between
+      P([-10.6, 23.2, 21.0], [9.0, 3.8, 5.6], rockP(8), { pivot: [-6.1, 25.1, 23.8], rot: [8, 0, -10] }),
+      P([1.6, 23.2, 21.0], [9.0, 3.8, 5.6], rockP(9), { pivot: [6.1, 25.1, 23.8], rot: [8, 0, 10] }),
+      P([-3.0, 25.4, 21.4], [6.0, 2.6, 4.0], rockP(10), { pivot: [0, 26.7, 23.4], rot: [6, 0, 0] }),
       // the muzzle and its nose pad
-      P([-8.0, 6.0, 23.0], [16.0, 11.4, 10.8], muzzleP),
-      P([-6.6, 7.0, 33.6], [13.2, 8.6, 1.2], muzzleP, { outline: false }),
+      P([-8.0, 7.6, 22.6], [16.0, 7.8, 7.2], muzzleP, { faces: { south: hide } }),
+      P([-7.0, 7.0, 23.4], [14.0, 8.8, 7.0], muzzleP),
       ...eyeStates(-1), ...eyeStates(1),
       ...hornR, ...hornR.map(mirrorCube),
-      // the root of the purple tuft, between the horns
-      P([-6.0, 27.0, 15.0], [10.0, 3.6, 9.0], tuftBox),
     ] },
-    { name: 'tuft', parent: 'head', pivot: [-3.6, 28.6, 26.0], cubes: [
-      ...lock(-7.6, 28.0, 27.6, 10.5, -16), ...lock(-5.2, 28.6, 28.4, 12.5, -5), ...lock(-2.8, 28.6, 28.2, 10.5, 7, 0.9), ...lock(-0.4, 28.2, 27.4, 7.5, 18, 0.8),
-      P([-8.4, 26.6, 21.0], [9.0, 3.0, 7.6], tuftBox),
+    { name: 'tuft', parent: 'head', pivot: [-3.6, 29.0, 24.0], cubes: [
+      P([-8.6, 27.6, 15.0], [11.0, 3.6, 10.6], tuftBox),
+      P([-9.0, 25.4, 22.8], [10.4, 4.0, 3.6], tuftBox, { pivot: [-3.8, 27.4, 24.6], rot: [24, 0, -8] }),
+      P([-9.6, 19.2, 26.4], [9.6, 8.0, 1.8], fringeP, { pivot: [-4.8, 27.2, 27.3], rot: [8, 0, -12] }),
+      P([-9.6, 15.2, 27.3], [9.6, 4.0, 0], tipsP, { plane: 'z', pivot: [-4.8, 27.2, 27.3], rot: [8, 0, -12] }),
     ] },
     { name: 'jaw', parent: 'head', pivot: [0, 7.6, 23.0], cubes: [
-      P([-7.0, 3.6, 22.4], [14.0, 3.4, 10.4], jawP),
-      P([-6.2, 6.8, 23.0], [12.4, 0.5, 9.4], mouthP, { outline: false }),
-      P([-3.6, 6.9, 24.6], [7.2, 0.5, 6.0], tongueP, { outline: false }),
+      P([-6.6, 4.4, 22.6], [13.2, 3.0, 8.4], jawP),
+      P([-5.8, 7.2, 23.2], [11.6, 0.5, 7.6], mouthP, { outline: false }),
+      P([-3.2, 7.3, 24.2], [6.4, 0.5, 5.4], tongueP, { outline: false }),
     ] },
-    { name: 'ring', parent: 'head', pivot: [0, 10.6, 34.6], cubes: [
-      ...[[0, 1.2], [45, 1.0], [90, 1.2], [135, 1.0], [180, 1.2], [225, 1.0], [270, 1.2], [315, 1.0]].map(([a, l]) => {
-        const r = 2.7, cx = 0, cy = 7.6, x = cx + Math.sin(a * D2R) * r, y = cy + Math.cos(a * D2R) * r;
-        return P([x - 1.15, y - 0.5, 34.2], [2.3, 1.0, 1.0], goldP, { pivot: [x, y, 34.7], rot: [0, 0, -a] });
+    { name: 'ring', parent: 'head', pivot: [0, 9.8, 30.6], cubes: [
+      ...[[0, 1.2], [45, 1.0], [90, 1.2], [135, 1.0], [180, 1.2], [225, 1.0], [270, 1.2], [315, 1.0]].map(([a]) => {
+        const r = 2.5, x = Math.sin(a * D2R) * r, y = 7.0 + Math.cos(a * D2R) * r;
+        return P([x - 1.05, y - 0.5, 30.4], [2.1, 1.0, 1.0], goldP, { pivot: [x, y, 30.9], rot: [0, 0, -a] });
       }),
     ] },
-    { name: 'earR', parent: 'head', pivot: [-10.0, 22.0, 17.5], rot: [0, 12, -24], cubes: [P([-17.4, 20.4, 15.4], [7.6, 3.2, 4.4], earP)] },
-    { name: 'earL', parent: 'head', pivot: [10.0, 22.0, 17.5], rot: [0, -12, 24], cubes: [P([9.8, 20.4, 15.4], [7.6, 3.2, 4.4], earP, { mirror: true })] },
-    ...strings('strHR', 'head', [-19.6, 38.2, 25.6], [-12, 0, 8]),
-    ...strings('strHL', 'head', [19.6, 38.2, 25.6], [-12, 0, -8]),
+    { name: 'earR', parent: 'head', pivot: [-10.0, 23.0, 17.5], rot: [0, 12, -24], cubes: [P([-17.4, 21.4, 15.4], [7.6, 3.2, 4.4], earP)] },
+    { name: 'earL', parent: 'head', pivot: [10.0, 23.0, 17.5], rot: [0, -12, 24], cubes: [P([9.8, 21.4, 15.4], [7.6, 3.2, 4.4], earP, { mirror: true })] },
+    ...strings('strHR', 'head', [-18.6, 38.8, 24.6], [-12, 0, 8]),
+    ...strings('strHL', 'head', [18.6, 38.8, 24.6], [-12, 0, -8]),
     { name: 'flower', parent: 'root', pivot: [0, 0, 36.0], cubes: [
       P([-1.0, 0, 36.0], [2.0, 4.6, 0], stemP, { plane: 'z', id: 'flower', hide: true }),
       P([0, 0, 35.0], [0, 4.6, 2.0], stemP, { plane: 'x', id: 'flower', hide: true }),
@@ -312,7 +333,7 @@ defineFx('quake', { w: 16, h: 12, frames: [0, 1].map(() => (p) => { for (let y =
 // ---------------------------------------------------------------- animation
 const LEGS = ['legFR', 'legFL', 'legBR', 'legBL'];
 const LEGY = 14.0;
-const HORNS = [0, 28, 30], MUZZLE = [0, 10, 35], NOSTRIL_R = [-3.4, 12.4, 34.8], NOSTRIL_L = [3.4, 12.4, 34.8];
+const HORNS = [0, 29, 28], MUZZLE = [0, 10, 31], NOSTRIL_R = [-3.4, 12.0, 30.6], NOSTRIL_L = [3.4, 12.0, 30.6];
 // keep the hooves planted while the body bobs (legs stretch or squash to reach)
 function plant(P, dy, legs = LEGS) { for (const l of legs) P.pos(l, 0, dy, 0).scl(l, 1, Math.max(0.4, (LEGY + dy) / LEGY), 1); }
 // the strings sway on their own, a slow drift

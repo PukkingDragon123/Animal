@@ -15,14 +15,14 @@ import { poly, ramp, shift, mix, h2 } from './kit.js';
 const C = {
   // hide: glossy dark chocolate, warm highlights; a warmer mask on the face
   hide: '#5a3424', hideHi: '#87573a', hideLo: '#3a1f16', hideDeep: '#26120c', gloss: '#b98258', spec: '#f2c896',
-  mask: '#96603c', maskLo: '#74462c',
-  belly: '#74462f', bellyHi: '#93603f', bellyLo: '#53301f',
+  mask: '#a26a42', maskLo: '#7e4c30',
+  belly: '#84533a', bellyHi: '#a46c4a', bellyLo: '#603927',
   mz: '#c48a58', mzHi: '#e4b47c', mzLo: '#98613a', mzDeep: '#5e3420',
   nose: '#2a1611', noseHi: '#6a4636',
   flip: '#4a2c20', flipHi: '#663e2c', flipLo: '#2e1a12', flipUnder: '#3e2a21', flipRim: '#6a4c3c', nail: '#d8c4a0',
   whisk: '#fbf3dc', whiskLo: '#c4b08c',
   curl: '#3a2216', curlHi: '#946244', curlLo: '#160a07',
-  lid: '#93603e', lidHi: '#a8744c', white: '#f4e6c8', whiteLo: '#cdb898', eye: '#2a140c', iris: '#d08a2a', glint: '#ffffff', lowLid: '#6a3a24',
+  lid: '#9e6842', lidHi: '#b47e52', white: '#f4e6c8', whiteLo: '#cdb898', eye: '#2a140c', iris: '#d08a2a', glint: '#ffffff', lowLid: '#6a3a24',
   gold: '#efb52c', goldHi: '#ffe07a', goldSpec: '#fffbe6', goldLo: '#b57610', goldDeep: '#734408',
   ruby: '#e3233d', rubyHi: '#ff8a96', sapph: '#2d6bea', sapphHi: '#9cc4ff', emer: '#17ad5f', emerHi: '#8af0b0',
   velvet: '#a3172b', velvetHi: '#d83446', velvetLo: '#640b1a',
@@ -46,12 +46,11 @@ const fill = (p, w, h, fn) => { for (let y = 0; y < h; y++) for (let x = 0; x < 
 function hide(o = {}) {
   const c = o.c || C.hide, hi = o.hi || C.hideHi, lo = o.lo || C.hideLo, gl = o.gloss || C.gloss, sp = o.spec || C.spec, k = o.seed || 1, top = mix(hi, c, 0.35);
   return (p, w, h, face) => {
-    fill(p, w, h, (x, y) => (face === 'up' ? top : face === 'down' ? (o.under || (((x >> 2) + (y >> 2)) % 5 === 0 ? C.bellyLo : C.belly)) : ramp([hi, c, c, lo], h > 1 ? y / (h - 1) : 0.5, x, y)));
+    fill(p, w, h, (x, y) => (face === 'up' ? ramp([top, top, c], Math.abs(x - (w - 1) * 0.42) / (w * 0.55), x, y) : face === 'down' ? (o.under || (y % 5 === 2 ? C.bellyLo : C.belly)) : ramp([hi, c, c, lo], h > 1 ? y / (h - 1) : 0.5, x, y)));
     if (face === 'up') {   // a long wet sheen along the back, a little off-centre
       const x0 = Math.round(w * 0.38);
       for (let y = 1; y < h - 1; y++) { if (h2(7, y >> 2, k) < 0.18) continue; p.px(x0, y, gl); p.px(x0 + 1, y, hi); if (h2(y >> 1, 3, k) > 0.8) p.px(x0, y, sp); }
       for (let y = 2; y < h - 2; y++) if (h2(11, y >> 2, k) < 0.4) p.px(x0 + 3, y, hi);
-      for (let x = 0; x < w; x++) { p.px(x, 0, hi); p.px(x, h - 1, hi); }
       return;
     }
     if (!isSide(face)) return;
@@ -433,10 +432,11 @@ export const def = {
       B([-5.67, 23.5, -1.67], [11.33, 5.67, 9.67], hide({ seed: 6 }), { faces: { south: faceP } }),
       B([-4.67, 29.17, -0.67], [9.33, 0.67, 7.67], hide({ seed: 7 })),
       B([-1.83, 24, 8], [3.67, 1, 3], hide({ seed: 15, c: C.mask, hi: mix(C.mask, C.mzHi, 0.4), lo: C.maskLo })),
-      B([-3, 20.83, 8], [6, 3.17, 5], muzzleP),
+      B([-3, 20.83, 8], [6, 3.17, 3.67], muzzleP), B([-2.67, 20.83, 11.67], [5.33, 2.83, 1.33], muzzleP),
       B([-4.33, 20.33, 8.33], [3, 3, 3.33], padP), flipX(B([-4.33, 20.33, 8.33], [3, 3, 3.33], padP)),
       B([-1.83, 23.33, 11], [3.67, 1.33, 2.17], noseP),
       B([-6.5, 25.67, 0.67], [0.83, 1.33, 1.67], hide({ seed: 8 })), flipX(B([-6.5, 25.67, 0.67], [0.83, 1.33, 1.67], hide({ seed: 8 }))),
+      B([6.17, 24.83, 1], [0.5, 1.17, 1.17], goldP), B([6.17, 24.5, 1.33], [0.5, 0.5, 0.5], goldP, { outline: false }),   // a small gold hoop in the left ear
       B([-2.5, 20, 11.67], [0.67, 0.83, 0.67], toothP, { outline: false }),
       B([1.83, 20, 11.67], [0.67, 0.83, 0.67], goldP, { outline: false }),          // one gold fang
       // the toddler curls, peeking out from under the cocked crown
@@ -525,8 +525,8 @@ function squash(P, a) {
 }
 // both fore flippers up in front of the chest, blades turned to face each other (open 0 = slapped together)
 function clapPose(P, k, open) {
-  P.rot('armR', -80 * k, 0, (20 + 16 * open) * k).rot('armL', -80 * k, 0, -(20 + 16 * open) * k);
-  P.rot('flipR', 0, (75 - 18 * open) * k, 90 * k).rot('flipL', 0, -(75 - 18 * open) * k, -90 * k);
+  P.rot('armR', -80 * k, 0, (20 + 24 * open) * k).rot('armL', -80 * k, 0, -(20 + 24 * open) * k);
+  P.rot('flipR', 0, (75 - 26 * open) * k, 90 * k).rot('flipL', 0, -(75 - 26 * open) * k, -90 * k);
 }
 // KO: rolled over onto its right side, belly to the crowd, head flopped on the dock, tongue out
 const KO = { roll: 80, lift: 8.8, armR: [-70, 0, 25], armL: [0, 0, -45], flipL: [0, 0, -20], neck: [0, 0, 18], head: [8, 0, 12], hindL: [0, 0, -20] };
@@ -568,6 +568,8 @@ export const anim = {
       const tap = u < 0.12 ? 0 : u < 0.62 ? E.out((u - 0.12) / 0.5) : 1 - E.in3((u - 0.62) / 0.38);
       P.rot('hindL', 18 * tap, 0, 0);
       P.rot('jaw', 5 * bump(u, 0.42, 0.85) * (i % 2));
+      const flick = bump(b, 2.5, 2.75) + bump(b, 6.5, 6.7) * 0.8;
+      P.rot('whiskR', 0, -10 * flick, -12 * flick).rot('whiskL', 0, 10 * flick, 12 * flick);
       const smug = seg(b, 1.9, 2.3, E.back) * (1 - seg(b, 3.6, 4.1));
       P.rot('browL', 0, 0, 12 * smug).pos('browL', 0, 0.45 * smug, 0);
       // 'sup: a lazy wave of the right flipper, leaning onto the left
@@ -671,7 +673,8 @@ export const anim = {
       P.rot('body', 0, wave(t, 1.4) * 8 * dizzy, wave(t, 1.8) * 6 * dizzy).rot('head', 0, wave(t, 1.8, 1) * 10 * dizzy, wave(t, 1.8) * 12 * dizzy);
       ko(P, fall);
       P.face('eyes', 'swirl').face('tongue', t > 1.3 ? 'out' : 'in'); P.blinkOK = false; P.lookW = 0;
-      P.burst(1.45, 'dust', 'root', [0, 0.6, 0], { n: 14, spread: 1, speed: 1.2 }).burst(1.0, 'star', 'head', [0, 31, 5], { n: 5 });
+      for (const z of [-12, -2, 8]) P.burst(1.45, 'dust', 'root', [-11, 9, z], { n: 6, spread: 1, speed: 1.2 });
+      P.burst(1.0, 'star', 'head', [0, 31, 5], { n: 5 });
     } },
     down: { len: 2.4, loop: true, f(P, t) {
       ko(P, 1);
@@ -687,7 +690,8 @@ export const anim = {
       P.face('prop', t > 0.1 && t < 3.45 ? 'on' : 'off').scl('hood', 1, Math.max(0.02, rise), 1);
       P.burst(0.14, 'dust', 'root', [HX, 0.6, HZ], { n: 12, spread: 1, speed: 1.2 }).burst(0.42, 'bling', 'hood', [HX, 6.6, HZ + 2.8], {});
       const arm = 46 * lift - 6 * lean;
-      P.rot('armR', 0, 0, -arm).rot('flipR', 0, 0, arm).rot('body', 0, 0, 4 * lean).rot('neck', 0, 0, -5 * lean);
+      P.rot('armR', 0, 0, -arm).rot('flipR', 0, 0, arm).rot('body', 0, 6 * lean, 7 * lean).pos('body', -0.8 * lean, -0.5 * lean, 0).rot('neck', 0, 0, -9 * lean).rot('head', 0, 8 * lean, -6 * lean);
+      P.pos('armL', 0, 0.5 * lean, 0).rot('armL', 0, 0, -6 * lean);
       // the crown toss (while leaning on the hood)
       const ct = t - 0.8, dip = seg(ct, 0, 0.3, E.inout) * (1 - seg(ct, 0.3, 0.38, E.out));
       const look = seg(ct, 0.3, 0.42, E.back) * (1 - seg(ct, 1.3, 1.62, E.inout));
@@ -747,7 +751,7 @@ export const anim = {
       P.rot('head', -6 * pose + 7 * bump(t, 1.35, 1.8), 0, (cute ? 14 : 4) * pose).rot('neck', 0, 0, 5 * pose);
       P.face('eyes', cute ? 'wide' : caught > 0.2 ? 'sly' : undefined); P.blinkOK = !cute;
       P.rot('browL', 0, 0, 14 * caught).pos('browL', 0, 0.5 * caught, 0);
-      for (const [tb, x, y, z] of [[0.15, -14, 10, -12], [0.2, 14, 10, -12], [0.25, -8, 21, -14], [0.3, 8, 21, -14], [0.35, 0, 27, -12], [0.4, -19, 4, -4], [0.45, 19, 4, -4], [0.5, 0, 14, -17]]) P.burst(tb, 'cloud', 'root', [x, y, z], { n: 2, spread: 0.6 });
+      for (const [tb, x, y, z] of [[0.15, -14, 10, -12], [0.2, 14, 10, -12], [0.25, -8, 21, -14], [0.3, 8, 21, -14], [0.35, 0, 27, -12], [0.4, -19, 4, -4], [0.45, 19, 4, -4], [0.5, 0, 14, -17], [0.42, -15, 2, 9], [0.47, 15, 2, 9], [0.52, 0, 2, 14]]) P.burst(tb, 'cloud', 'root', [x, y, z], { n: 2, spread: 0.6 });
       P.burst(1.15, 'flash', 'head', [0, 26, 17], {}).burst(1.17, 'sparkle', 'head', [0, 26, 15], { n: 8 });
     } },
   },

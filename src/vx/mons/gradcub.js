@@ -28,14 +28,14 @@ const C = {
 };
 
 // ---------------------------------------------------------------- painters
-const furP = (seed, o = {}) => fur(C.fur, { hi: C.furHi, lo: C.furLo, line: C.furEdge, tip: C.furTip, lite: C.furLite, sx: 9, sy: 6, tl: 4, seed, ...o });
+const furP = (seed, o = {}) => fur(C.fur, { hi: C.furHi, lo: C.furLo, line: C.furEdge, tip: C.furTip, lite: C.furLite, s: 10, seed, ...o });
 const headFur = furP(11);
-const headFur2 = furP(23, { sx: 8, sy: 5, tl: 3 });
-const legFur = furP(31, { sx: 7, sy: 5, tl: 3 });
+const headFur2 = furP(23, { s: 9 });
+const legFur = furP(31, { s: 8 });
 const fuzz = (seed, o = {}) => fringe(C.fur, { hi: C.furHi, lo: C.furLo, line: C.furLine, tip: C.furTip, seed, ...o });
 const headHalo = halo(C.fur, { hi: C.furHi, lo: C.furLo, line: C.furLine, tip: C.furTip, n: 30, depth: 0.13, inner: 0.74, sq: 2.6, seed: 4 });
 const earHalo = halo(C.fur, { hi: C.furHi, lo: C.furLo, line: C.furLine, tip: C.furTip, n: 14, depth: 0.2, inner: 0.6, sq: 2.2, seed: 8 });
-const muzP = fur(C.muz, { hi: C.muzHi, lo: C.muzLo, line: shift(C.muzLo, 0.08), lite: C.muzHi, ramp: [C.muzHi, C.muz, C.muz, shift(C.muz, -0.1)], sx: 6, sy: 4, tl: 2, seed: 5, y0: 1 });
+const muzP = fur(C.muz, { hi: C.muzHi, lo: C.muzLo, line: shift(C.muzLo, 0.1), lite: C.muzHi, ramp: [C.muzHi, C.muz, C.muz, shift(C.muz, -0.08)], s: 7, tipH: 2.5, seed: 5, y0: 1 });
 // the muzzle front: cream fluff, a short philtrum and a one-sided smirk
 const muzFront = (p, w, h, face, cube) => {
   muzP(p, w, h, face, cube);
@@ -51,7 +51,7 @@ const noseP = (p, w, h, face) => {
   if (face === 'up') { p.px(1, h - 1, C.noseSpec); p.px(2, h - 1, C.noseSpec); }
 };
 // round ears: fur outside, a warm inner ear in front
-const earP = (seed) => { const f = furP(seed, { sx: 6, sy: 4, tl: 3 }); return (p, w, h, face, cube) => {
+const earP = (seed) => { const f = furP(seed, { s: 7 }); return (p, w, h, face, cube) => {
   f(p, w, h, face, cube);
   if (face !== 'south') return;
   const cx = w / 2, cy = h / 2 + 0.3, rx = w / 2 - 2.2, ry = h / 2 - 2.2;
@@ -141,7 +141,7 @@ const starP = (p, w, h) => {
   p.px(Math.round(cx), Math.round(cy), C.pinkHi); p.px(Math.round(cx) + 1, Math.round(cy), C.pink); p.px(Math.round(cx), Math.round(cy) + 1, C.pinkLo); p.px(Math.round(cx) - 2, Math.round(cy) - 2, GOLD.spec);
 };
 // feet: fur above, three toe grooves in front, a cream felt sole with stitching
-const footP = (seed) => { const f = furP(seed, { sx: 6, sy: 4, tl: 2 }); return (p, w, h, face, cube) => {
+const footP = (seed) => { const f = furP(seed, { s: 7, tipH: 3 }); return (p, w, h, face, cube) => {
   f(p, w, h, face, cube);
   if (face === 'south') for (const fx of [0.33, 0.67]) { const x = Math.round(w * fx); for (let y = Math.floor(h * 0.3); y < h; y++) p.px(x, y, C.furLine); }
 }; };
@@ -151,7 +151,7 @@ const soleP = (p, w, h) => {
   fill(p, w, h, (x, y) => { const d = ((x + 0.5 - cx) / (w * 0.4)) ** 2 + ((y + 0.5 - cy) / (h * 0.36)) ** 2; return d < 1 ? (d > 0.72 && (x + y) % 2 ? C.muzLo : C.muz) : null; });
   for (const fx of [0.25, 0.5, 0.75]) { const x = Math.round(w * fx - 0.5); p.px(x, 1, C.muz); p.px(x + 1, 1, C.muz); p.px(x, 2, C.muzLo); p.px(x + 1, 2, C.muz); }
 };
-const pawP = (seed) => { const f = furP(seed, { sx: 6, sy: 4, tl: 2 }); return (p, w, h, face, cube) => {
+const pawP = (seed) => { const f = furP(seed, { s: 7, tipH: 3 }); return (p, w, h, face, cube) => {
   f(p, w, h, face, cube);
   if (face === 'down') { fill(p, w, h, (x, y) => (x > 0 && x < w - 1 && y > 0 && y < h - 1 ? C.muz : null)); }
 }; };

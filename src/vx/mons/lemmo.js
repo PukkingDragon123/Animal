@@ -13,7 +13,7 @@
 // bone, so the arc plane between their tips can never come loose; when a clip splays them apart,
 // splay() re-aims and stretches the arc onto the new tips.
 import { defineFx } from '../fx.js';
-import { E, seg, bump, wob, wave, bounce, hop } from '../anim.js';
+import { E, seg, bump, wob, wave, key, bounce, hop } from '../anim.js';
 import { shift, h2 } from './kit.js';
 
 const D2R = Math.PI / 180;
@@ -216,8 +216,8 @@ const woodP = (p, w, h, face) => {
 };
 const gripP = (p, w, h, face) => { for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) p.px(i, j, face === 'up' || face === 'down' ? C.grip[1] : (i + j) % 3 === 0 ? C.grip[0] : C.grip[1]); };
 const barrelP = (p, w, h, face) => { woodP(p, w, h, face); if (face !== 'up' && face !== 'down') hexCell(p, Math.floor(w / 2), Math.floor(h * 0.42), C.hive[2], C.hive[0]); };
-// a bee: black-and-gold stripes, a dark head, glassy wings (6 × 4 texels, flying right)
-const BEE = ['..ww..', '.wWWw.', 'ykykkk', '.ykyk.'];
+// a bee: black-and-gold stripes, a dark head, glassy wings (9 × 6 texels, flying right)
+const BEE = ['...ww.ww.', '...wWwWw.', '.ykykykk.', 'kykykykkk', '.ykykykk.', '...ykyk..'];
 const beeP = (p) => stamp(p, BEE, C.bee);
 // a crown point: a small pointed golden-green leaf with a bright rib
 const crownLeaf = (p, w, h) => {
@@ -287,7 +287,7 @@ const batCubes = [
 // a crown of five small leaves round the sprig
 const crownCubes = [0, 72, 144, 216, 288].map((a) => { const bx = Math.sin(a * D2R) * 1.9, bz = -1.2 + Math.cos(a * D2R) * 1.9; return P([bx - 1.167, 13.9, bz], [2.333, 4.333, 0], crownLeaf, { plane: 'z', pivot: [bx, 13.9, bz], rot: yawTilt(a, 20) }); });
 // the hive: three bees on an orbit round it (shown by the 'bees' slot)
-const beeCubes = [[0, 11.5], [130, 14.5], [250, 9.5]].flatMap(([a, y]) => { const x = Math.sin(a * D2R) * 10, z = Math.cos(a * D2R) * 10; return [P([x - 1, y - 0.667, z], [2, 1.333, 0], beeP, { plane: 'z', id: 'bee', hide: true }), P([x, y - 0.667, z - 1], [0, 1.333, 2], beeP, { plane: 'x', id: 'bee', hide: true })]; });
+const beeCubes = [[0, 11.5], [130, 14.5], [250, 9.5]].flatMap(([a, y]) => { const x = Math.sin(a * D2R) * 10, z = Math.cos(a * D2R) * 10; return [P([x - 1.5, y - 1, z], [3, 2, 0], beeP, { plane: 'z', id: 'bee', hide: true }), P([x, y - 1, z - 1.5], [0, 2, 3], beeP, { plane: 'x', id: 'bee', hide: true })]; });
 const leaf = (side) => [
   P([-2, LEAF_Y, LEAF_Z], [2, 8.333, 0], halfLeaf(side > 0), { plane: 'z', pivot: [0, LEAF_Y, LEAF_Z], rot: [0, 26, 0] }),
   P([0, LEAF_Y, LEAF_Z], [2, 8.333, 0], halfLeaf(side < 0), { plane: 'z', pivot: [0, LEAF_Y, LEAF_Z], rot: [0, -26, 0], mirror: true }),
@@ -378,6 +378,11 @@ function rollBack(P, a, A = 72) {
   return P.rot('root', -a, 0, 0).pos('root', 0, rest + (cy - rest) * (1 - s) - cy * Math.cos(r), -cy * Math.sin(r) - 1.2 * s);
 }
 const ears = (P, a) => P.rot('leafR', 0, 0, a).rot('leafL', 0, 0, -a);   // + droops the leaves, − lifts them
+// aim the bat by its absolute XYZ angles [x, z] (degrees): [0, 0] straight up, [90, c] level and
+// pointing round the compass (c = 0 forward, +90 to its right, −90 to its left); k blends from the rest pose
+const batAim = (P, x, z, k = 1) => P.rot('bat', (x - BAT_REST[0]) * k, 0, (z - BAT_REST[2]) * k);
+// the hive: bees on (k > 0), circling at speed rev (turns per second), drifting up by lift units
+const hive = (P, t, rev = 0.7, lift = 0) => P.face('bees', 'on').rot('bees', 0, t * 360 * rev, 0).pos('bees', 0, wave(t, 1.3) * 0.7 + lift, 0);
 
 export const anim = {
   start: 'idle', seed: 5,
@@ -389,91 +394,108 @@ export const anim = {
     { bone: 'leafR', tip: [0, 8.3, 0], k: 120, d: 7, gain: 1.1, max: 32 },
     { bone: 'leafL', tip: [0, 8.3, 0], k: 125, d: 7, gain: 1.1, max: 32 },
     { bone: 'sprig', tip: [0, 2, 0], k: 260, d: 12, gain: 0.5, max: 12 },
+    { bone: 'armR', tip: [-1.6, 0, 0], k: 230, d: 11, gain: 0.5, max: 9 },
+    { bone: 'armL', tip: [1.6, 0, 0], k: 230, d: 11, gain: 0.6, max: 12 },
   ],
   faces: {
     eyes: { default: 'sour', states: Object.fromEntries(Object.keys(EYES).map((k) => [k, ['eye-' + k]])) },
     mouth: { default: 'pout', states: { pout: ['m-lips'], open: ['m-open'], grit: ['m-grit'] } },
     arc: { default: 'a', states: Object.fromEntries([...ABC.map((f) => [f, ['arc-' + f]]), ...ABC.map((f) => ['big' + f, ['arc-big' + f]]), ['off', []]]) },
+    bees: { default: 'off', states: { off: [], on: ['bee'] } },
   },
-  fidget: { every: [4.5, 8], clips: ['pucker', 'zap'] },
+  fidget: { every: [4.5, 8], clips: ['pucker', 'zap', 'buzz'] },
   clips: {
-    // grumpy bouncing: two springy bobs on planted, squishing feet, a slow sour rock, an impatient toe tap
+    // grumpy bouncing: two springy bobs on planted feet, a slow sour rock; the bat taps its shoulder
+    // in time with an impatient foot, the other hand on its hip
     idle: { len: 1.6, loop: true, f(P, t) {
       const b = bounce(t, 0.8, { squash: 0.1, stretch: 0.045 }), big = t < 0.8 ? 1 : 0.65, dy = b.u * 1.15 * big;
       P.pos('body', 0, dy, 0).sq('body', b.sq * big).rot('body', 0, 0, wave(t, 1 / 1.6) * 3.2);
       const tap = bump(t, 0.98, 1.12) + bump(t, 1.16, 1.3);
       feet(P, dy); P.rot('footR', -24 * tap, 0, 0);
+      P.rot('bat', 0, 0, -12 * tap + b.u * 3).rot('armR', 0, 0, -6 * tap);
+      P.rot('armL', 0, -20, 24);
       const pk = Math.max(0, -b.sq) * 8;
       P.scl('mouth', 1 + 0.12 * pk, 1 - 0.08 * pk, 1 + 0.35 * pk);
       P.rot('rig', 0, 0, wave(t, 1 / 1.6, 0.8) * 2.5);
       ears(P, -b.u * 6 * big);
       crackle(P, t);
     } },
-    // a waddling rolling walk: the lemon rocks over each step
+    // a strut: rolling over each step, the bat riding its shoulder, the free hand swinging
     walk: { len: 0.64, loop: true, f(P, t) {
       const ph = (t / 0.64) * Math.PI * 2, s = Math.sin(ph), c = Math.cos(ph), dy = Math.abs(c) * 1.1;
       const lr = Math.max(0, s) * 1.9, ll = Math.max(0, -s) * 1.9;
       P.pos('body', 0, dy, 0).rot('body', 6, s * 5, s * 8).sq('body', -0.07 * (1 - Math.abs(c)) + 0.03 * Math.abs(c));
       feet(P, dy, [lr, ll]); P.pos('footR', 0, 0, s * 1.8).pos('footL', 0, 0, -s * 1.8).rot('footR', -14 * Math.max(0, s), 0, 0).rot('footL', -14 * Math.max(0, -s), 0, 0);
+      P.rot('armL', -s * 28, 0, 10).rot('bat', s * 5, 0, -Math.abs(c) * 6);
       P.rot('rig', 0, 0, -s * 4); ears(P, -Math.abs(c) * 8);
       crackle(P, t);
     } },
-    // battle cry: crouch, spring up with the electrodes flung wide and the arc roaring, land, shout
+    // battle cry: crouch, spring up with the bat thrust at the sky, electrodes flung wide, the arc roaring; land and shout
     cry: { len: 1.9, next: 'idle', f(P, t) {
       const h = t < 1.0 ? hop(t, 1.0, 5.5, { crouch: 1.6, air: [0.32, 0.72] }) : { y: 0, sq: wob(t, 1.0, -0.1, 3, 6) };
       const up = seg(t, 0.3, 0.45, E.back) * (1 - seg(t, 1.45, 1.8, E.inout)), shout = seg(t, 0.95, 1.05) * (1 - seg(t, 1.5, 1.7));
       if (h.y > 0) P.pos('root', 0, h.y, 0); else { P.pos('body', 0, h.y, 0); feet(P, h.y); }
       P.sq('body', h.sq).rot('body', -8 * up + wave(t, 11) * 3 * shout, 0, wave(t, 9) * 5 * shout);
+      batAim(P, -8, 10, up).pos('armR', 0, 3 * up, 0).rot('armL', 0, 0, 50 * up);
       splay(P, 24 * up + wob(t, 0.45, 6, 4, 5));
       ears(P, -28 * up);
       crackle(P, t, up > 0.3 ? 2 : 1);
       P.face('eyes', t < 0.3 || up > 0.3 ? 'fierce' : undefined).face('mouth', up > 0.3 && t < 1.6 ? 'open' : undefined);
-      P.burst(0.45, 'bolt', 'rig', MID, { n: 4, speed: 4 }).burst(0.45, 'spark', 'rig', TIPS[0], {}).burst(0.47, 'spark', 'rig', TIPS[1], {});
+      P.burst(0.45, 'bolt', 'rig', MID, { n: 4, speed: 4 }).burst(0.45, 'spark', 'bat', BAT_TIP, { scale: 1.3 }).burst(0.47, 'spark', 'rig', TIPS[1], {});
       P.burst(0.72, 'dust', 'root', [0, 0.5, 0], { n: 5, dir: [0, 0.2, 1], spread: 1, speed: 0.7, scale: 0.6 });
-      if (t > 0.5 && t < 1.5) P.stream('spark', 'rig', TIPS[(Math.floor(t * 9)) % 2], { rate: 10 }).stream('bolt', 'rig', MID, { rate: 8, speed: 3 });
+      if (t > 0.5 && t < 1.5) P.stream('spark', 'rig', TIPS[(Math.floor(t * 9)) % 2], { rate: 10 }).stream('bolt', 'bat', BAT_TIP, { rate: 8, speed: 3 });
     } },
-    // attack: wind back, then a headbutt that drives the live electrodes into the target
-    attack: { len: 1.0, next: 'idle', f(P, t) {
-      const back = seg(t, 0, 0.28, E.out) * (1 - seg(t, 0.28, 0.36, E.in)), hit = seg(t, 0.3, 0.42, E.in3) * (1 - seg(t, 0.5, 0.92, E.inout));
-      P.pos('root', 0, 1.2 * bump(t, 0.3, 0.5), -2.4 * back + 6.5 * hit);
-      P.rot('body', -16 * back + 30 * hit + wob(t, 0.42, -6, 3, 6), 0, 0).sq('body', -0.12 * back + 0.08 * hit * (1 - seg(t, 0.42, 0.5)) + wob(t, 0.44, -0.08, 4, 7));
-      feet(P, -0.8 * back);
-      P.rot('rig', -12 * back + 10 * hit, 0, 0); ears(P, 10 * back - 20 * hit);
-      crackle(P, t, hit > 0.5 ? 2 : 1);
-      P.face('eyes', t < 0.42 ? 'fierce' : t < 0.7 ? 'squeeze' : undefined).face('mouth', t > 0.2 && t < 0.42 ? 'grit' : undefined);
-      P.burst(0.42, 'spark', 'rig', MID, { scale: 1.4 }).burst(0.42, 'bolt', 'rig', MID, { n: 5, speed: 5 }).burst(0.43, 'star', 'rig', MID, { n: 4 });
+    // attack: 'Hold Up' — wind the bat back behind its shoulder, then a full swing through the target;
+    // window glass bursts on contact, juice and sparks with it
+    attack: { len: 1.15, next: 'idle', f(P, t) {
+      const K = key([[0, [-16, 46]], [0.3, [62, 140]], [0.36, [74, 128]], [0.44, [90, -20], 'out'], [0.52, [86, -105]], [0.78, [70, -95]], [1.05, [-16, 46]]], t);
+      batAim(P, K[0], K[1]);
+      const wind = seg(t, 0, 0.3, E.out) * (1 - seg(t, 0.34, 0.42, E.in)), fol = seg(t, 0.38, 0.5, E.out) * (1 - seg(t, 0.7, 1.05, E.inout));
+      P.rot('body', -6 * wind + 8 * fol, 34 * wind - 38 * fol + wob(t, 0.5, -6, 3, 6), 4 * wind);
+      P.pos('root', 0, 0.8 * bump(t, 0.34, 0.54), -1.5 * wind + 4.5 * fol).pos('armR', 0, 1.6 * wind + 2.4 * fol, 2.2 * fol);
+      P.sq('body', -0.1 * wind + 0.06 * fol * (1 - seg(t, 0.46, 0.56)) + wob(t, 0.5, -0.07, 4, 7));
+      feet(P, -0.8 * wind);
+      P.rot('armL', 0, 0, 30 * wind - 20 * fol); ears(P, 10 * wind - 22 * fol);
+      crackle(P, t, fol > 0.5 ? 2 : 1);
+      P.face('eyes', t < 0.44 ? 'fierce' : t < 0.72 ? 'squeeze' : 'smug').face('mouth', t > 0.2 && t < 0.44 ? 'grit' : t < 0.72 ? 'open' : undefined);
+      P.burst(0.44, 'shard', 'bat', BAT_TIP, { n: 14, speed: 1.3, spread: 1 }).burst(0.44, 'spark', 'bat', BAT_TIP, { scale: 1.5 }).burst(0.45, 'star', 'bat', BAT_TIP, { n: 4 }).burst(0.46, 'lemmojuice', 'bat', BAT_TIP, { n: 5, speed: 1.2 });
     } },
-    // special (Volto): charge until the arc roars, then discharge a crackling volley of lightning
+    // special (Volto): it raises the bat like a lightning rod until the arc roars, then levels it and
+    // fires a crackling volley of lightning down the bat at the target
     special: { len: 2.0, next: 'idle', f(P, t) {
       const charge = seg(t, 0.05, 0.75, E.inout) * (1 - seg(t, 0.82, 0.9)), fire = seg(t, 0.82, 0.92, E.out) * (1 - seg(t, 1.3, 1.7, E.inout));
       const shake = charge * (0.4 + 0.6 * seg(t, 0.4, 0.8));
       P.pos('body', 0, -1.2 * charge + 0.8 * fire, -1.5 * fire).sq('body', -0.14 * charge + 0.1 * fire * (1 - seg(t, 0.92, 1.05)) + wob(t, 1.0, -0.06, 4, 6));
       feet(P, -1.2 * charge + 0.8 * fire);
       P.rot('body', -6 * charge - 8 * fire + wave(t, 17) * 2.2 * shake, wave(t, 13, 1) * 2 * shake, wave(t, 19, 2) * 2.4 * shake);
+      const aim = seg(t, 0.78, 0.86, E.out) * (1 - seg(t, 1.35, 1.75, E.inout));
+      batAim(P, -6 + 96 * aim + wave(t, 19) * 2 * shake, 8 - 8 * aim, Math.max(charge, aim)).pos('armR', 0, 3.2 * charge + 1.2 * aim, 2 * aim);
       splay(P, 26 * charge + 18 * fire + wave(t, 21) * 3 * shake + wob(t, 0.9, 8, 5, 5));
-      ears(P, -40 * charge - 20 * fire);
+      ears(P, -40 * charge - 20 * fire); P.rot('armL', 0, 0, 40 * charge);
       crackle(P, t, charge > 0.2 || fire > 0.1 ? 2 : 1);
       P.face('eyes', charge > 0.15 ? 'fierce' : fire > 0.2 ? 'squeeze' : undefined).face('mouth', charge > 0.4 ? 'grit' : fire > 0.2 ? 'open' : undefined);
-      if (charge > 0.2) P.stream('spark', 'rig', TIPS[Math.floor(t * 12) % 2], { rate: 14 * charge }).stream('bolt', 'rig', MID, { rate: 10 * charge, speed: 2 });
-      P.burst(0.86, 'ring', 'rig', MID, { scale: 1.4 }).burst(0.86, 'spark', 'rig', MID, { scale: 1.8 }).burst(0.86, 'bolt', 'rig', MID, { n: 12, speed: 7, spread: 1 });
-      if (t > 0.86 && t < 1.3) P.stream('bolt', 'rig', MID, { rate: 60, dir: [0, 0.1, 1], speed: 11, spread: 0.22 }).stream('spark', 'rig', MID, { rate: 14, dir: [0, 0.1, 1], speed: 5, spread: 0.3 });
-      if (t > 1.2 && t < 1.8) P.stream('smoke', 'rig', TIPS[0], { rate: 4, scale: 0.5 }).stream('smoke', 'rig', TIPS[1], { rate: 4, scale: 0.5, key: 'z' });
+      if (charge > 0.2) P.stream('spark', 'bat', BAT_TIP, { rate: 16 * charge }).stream('bolt', 'rig', MID, { rate: 10 * charge, speed: 2 }).stream('bolt', 'bat', BAT_TIP, { rate: 8 * charge, speed: 2 });
+      P.burst(0.86, 'ring', 'bat', BAT_TIP, { scale: 1.4 }).burst(0.86, 'spark', 'rig', MID, { scale: 1.8 }).burst(0.86, 'bolt', 'rig', MID, { n: 12, speed: 7, spread: 1 });
+      if (t > 0.86 && t < 1.3) P.stream('bolt', 'bat', BAT_TIP, { rate: 60, dir: [0, 1, 0], speed: 11, spread: 0.22 }).stream('spark', 'bat', BAT_TIP, { rate: 14, dir: [0, 1, 0], speed: 5, spread: 0.3 });
+      if (t > 1.2 && t < 1.8) P.stream('smoke', 'bat', BAT_TIP, { rate: 4, scale: 0.5 }).stream('smoke', 'rig', TIPS[1], { rate: 4, scale: 0.5, key: 'z' });
     } },
     // squeezed flat, a squirt of juice flies out, pops back sour
     hurt: { len: 0.7, next: 'idle', f(P, t) {
       const k = seg(t, 0, 0.06, E.out) * (1 - seg(t, 0.14, 0.5, E.inout));
       P.pos('root', 0, 0, -2.2 * k).sq('body', -0.3 * k + wob(t, 0.16, 0.1, 3.5, 6)).rot('body', -10 * k + wob(t, 0.16, 5, 3, 6), 0, wave(t, 15) * 3 * k);
       feet(P, -1.4 * k);
+      P.rot('bat', 0, 0, 24 * k + wob(t, 0.16, -8, 3, 5)).rot('armL', 0, 0, 40 * k);
       splay(P, 18 * k); ears(P, -30 * k);
       crackle(P, t, t < 0.3 ? 0.5 : 1);
       P.face('eyes', t < 0.42 ? 'squeeze' : undefined).face('mouth', t < 0.42 ? 'open' : undefined);
       P.burst(0.03, 'lemmojuice', 'body', MOUTH, { n: 6, dir: [0, 0.8, 0.6], speed: 1.2 }).burst(0.03, 'spark', 'body', [0, 9, 6.5], {}).burst(0.05, 'bolt', 'rig', MID, { n: 3, speed: 3 });
     } },
-    // the arc sputters out, it wobbles, rolls back onto its round back, feet in the air
+    // the arc sputters out, it wobbles, lets the bat drop, and rolls back onto its round back, feet in the air
     faint: { len: 2.2, next: 'down', f(P, t) {
-      const dizzy = seg(t, 0, 0.3) * (1 - seg(t, 0.85, 1.0)), fall = seg(t, 0.9, 1.4, E.bounce);
+      const dizzy = seg(t, 0, 0.3) * (1 - seg(t, 0.85, 1.0)), fall = seg(t, 0.9, 1.4, E.bounce), drop = seg(t, 0.5, 0.9, E.in);
       P.rot('body', 0, wave(t, 1.5) * 16 * dizzy, wave(t, 2.1) * 10 * dizzy);
       rollBack(P, 72 * fall);
+      batAim(P, 50, 120, drop).rot('armR', 0, 0, 20 * drop).rot('armL', 0, 0, -30 * fall);
       P.rot('footR', -40 * fall + wob(t, 1.4, 12, 3, 4), 0, -18 * fall).rot('footL', -30 * fall + wob(t, 1.45, -10, 3, 4), 0, 16 * fall);
       splay(P, -10 * fall); ears(P, 30 * fall);
       crackle(P, t, t < 0.9 ? 0.7 - t * 0.6 : 0);
@@ -483,29 +505,35 @@ export const anim = {
     } },
     down: { len: 2.4, loop: true, f(P, t) {
       rollBack(P, 72 + wave(t, 1 / 2.4) * 3);                 // rocking gently on its round back
+      batAim(P, 50, 120).rot('armR', 0, 0, 20).rot('armL', 0, 0, -30);
       P.rot('footR', -40 + bump(t, 1.2, 1.36) * -14, 0, -18).rot('footL', -30, 0, 16);
       splay(P, -10); ears(P, 30);
       P.face('arc', t > 1.9 && t < 1.97 ? 'a' : 'off');
       P.face('eyes', 'swirl').face('mouth', 'open'); P.blinkOK = false; P.lookW = 0; P.breathW = 0.4;
       P.stream('smoke', 'rig', MID, { rate: 1.4, scale: 0.6 });
     } },
-    // victory: a hop with a full spin, the arc throws a ring of sparks; lands smug and sour
-    win: { len: 1.8, next: 'idle', f(P, t) {
+    // victory: a hop with a full spin and a ring of sparks; then it twirls the bat like a baton while
+    // its hive circles, and settles it back on its shoulder, smug and sour
+    win: { len: 2.4, next: 'idle', f(P, t) {
       const h = t < 0.9 ? hop(t, 0.9, 6, { crouch: 1.4 }) : { y: wob(t, 0.9, -1.0, 3, 6), sq: wob(t, 0.9, -0.14, 3, 6) };
       if (h.y > 0) P.pos('root', 0, h.y, 0); else { P.pos('body', 0, h.y, 0); feet(P, h.y); }
-      P.sq('body', h.sq).rot('root', 0, 360 * seg(t, 0.22, 0.66, E.inout), 0);
+      P.sq('body', h.sq).rot('root', 0, (360 * seg(t, 0.22, 0.66, E.inout)) % 360, 0);      // % 360: ends at 0 so the fade back to idle doesn't unwind it
       const flare = seg(t, 0.2, 0.32) * (1 - seg(t, 1.0, 1.3));
       splay(P, 20 * flare + wob(t, 0.9, 8, 4, 5)); ears(P, -30 * flare);
       crackle(P, t, flare > 0.3 ? 2 : 1);
+      const tw = seg(t, 1.0, 1.15, E.out) * (1 - seg(t, 1.9, 2.15, E.inout));
+      batAim(P, 90, 46 - 720 * seg(t, 1.05, 1.9, E.inout), tw).pos('armR', 0, 2 * tw, 1.4 * tw);
       const smug = seg(t, 1.0, 1.15);
-      P.face('eyes', t < 0.9 ? 'fierce' : 'smug').rot('body', -6 * smug + wave(t, 2.2) * 3 * smug, 0, 0);
+      P.face('eyes', t < 0.9 ? 'fierce' : 'smug').rot('body', -6 * smug + wave(t, 2.2) * 3 * smug, 0, 0).rot('armL', 0, -20 * smug, 24 * smug);
       P.scl('mouth', 1 + 0.2 * smug, 1, 1 + 0.6 * smug);
+      if (t > 0.9) hive(P, t, 0.8, 1.5 - 1.5 * seg(t, 0.9, 1.4, E.out));
       P.burst(0.9, 'ring', 'root', [0, 1, 0], {}).burst(0.9, 'spark', 'rig', MID, { scale: 1.5 }).burst(0.92, 'bolt', 'rig', MID, { n: 6, speed: 4 }).burst(0.9, 'dust', 'root', [0, 0.5, 0], { n: 5, spread: 1, speed: 0.8, scale: 0.6 });
     } },
-    // asleep: sunk onto squashed feet, ears drooped, the arc out but for a stray spark, Zzz
+    // asleep: sunk onto squashed feet, the bat hugged close, ears drooped, the arc out but for a stray spark, Zzz
     sleep: { len: 3.2, loop: true, f(P, t) {
       const br = Math.sin((t / 3.2) * Math.PI * 2), dy = -0.9 + br * 0.25;
       P.pos('body', 0, dy, 0).sq('body', -0.05 + br * 0.035).rot('body', 4, 0, 2); feet(P, dy);
+      batAim(P, -10, 24).rot('armL', 0, 0, -10);
       splay(P, -6); ears(P, 34 + br * 3); P.rot('rig', 6, 0, 0);
       P.scl('mouth', 0.85 + Math.max(0, br) * 0.2, 0.9, 0.7);
       P.face('arc', t > 2.2 && t < 2.27 ? 'a' : 'off');
@@ -518,6 +546,7 @@ export const anim = {
       P.sq('body', -0.08 * k + wave(t, 14) * 0.03 * shiv).rot('body', wave(t, 13) * 2.5 * shiv, 0, wave(t, 17, 1) * 3 * shiv);
       feet(P, -0.5 * k);
       P.scl('mouth', 1 - 0.25 * k, 1 - 0.1 * k, 1 + 1.1 * k);
+      P.rot('bat', 0, 0, wave(t, 13) * 4 * shiv).rot('armL', 0, 0, 30 * k);
       ears(P, -24 * k); splay(P, -6 * k + wave(t, 15) * 3 * shiv);
       crackle(P, t);
       P.face('eyes', k > 0.4 ? 'squeeze' : undefined); P.blinkOK = k < 0.1;
@@ -528,10 +557,25 @@ export const anim = {
       const peer = seg(t, 0.1, 0.4, E.inout) * (1 - seg(t, 0.8, 0.9)), jolt = seg(t, 0.84, 0.9, E.out) * (1 - seg(t, 1.0, 1.5, E.inout));
       P.rot('body', -10 * peer + wob(t, 0.86, -8, 4, 5), 0, 0);
       P.pos('root', 0, 2.6 * bump(t, 0.84, 1.08), 0).sq('body', 0.1 * jolt * (1 - seg(t, 0.95, 1.05)) + wob(t, 1.08, -0.1, 3.5, 6));
+      P.rot('bat', 0, 0, -20 * jolt).rot('armL', 0, 0, 60 * jolt);
       splay(P, -8 * peer + 30 * jolt); ears(P, -50 * jolt);
       crackle(P, t, t < 0.8 ? (t < 0.3 ? 1 : 0.35) : jolt > 0.2 ? 2 : 1);
       P.face('eyes', jolt > 0.2 ? 'wide' : peer > 0.4 ? 'fierce' : undefined).face('mouth', jolt > 0.2 ? 'open' : undefined); P.blinkOK = jolt < 0.1;
       P.burst(0.85, 'spark', 'rig', MID, { scale: 1.3 }).burst(0.85, 'bolt', 'rig', MID, { n: 4, speed: 3 }).burst(1.1, 'smoke', 'rig', MID, { n: 3, scale: 0.5 });
+    } },
+    // fidget: its hive drops by — the bees circle, it follows them round with a sour squint and shoos
+    // them off with a lazy wave of the bat
+    buzz: { len: 2.6, next: 'idle', f(P, t) {
+      const inn = seg(t, 0, 0.5, E.out), out = seg(t, 1.9, 2.5, E.in);
+      hive(P, t, 0.75, 5 * (1 - inn) + 7 * out);
+      if (t > 2.45) P.face('bees', 'off');
+      const ang = ((t * 0.75 * 360) % 360) * D2R;
+      P.rot('body', 0, Math.sin(ang) * 10 * (1 - out), Math.cos(ang) * 3);
+      const shoo = bump(t, 1.6, 2.1);
+      P.rot('bat', 0, 0, -40 * shoo + wave(t, 6) * 10 * shoo).pos('armR', 0, 1.2 * shoo, 0);
+      P.face('eyes', t > 0.4 && t < 1.6 ? 'smug' : shoo > 0.3 ? 'fierce' : undefined);
+      ears(P, wave(t, 2) * 6);
+      crackle(P, t);
     } },
   },
 };

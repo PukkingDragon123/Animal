@@ -112,8 +112,8 @@ const innerEar = (p, w, h) => {
 };
 // the tail: rust fur, cream rings; each ring has a glowing twin in its spectrum colour
 const tailP = (cols) => (p, w, h, face) => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { let c = furCol(cols, face, x, y, h); if ((face === 'east' || face === 'west' || face === 'up' || face === 'down') && (x + 2 * y) % 7 === 0) c = shift(c, -0.14); p.px(x, y, c); } };
-const rustT = tailP(COAT), ringT = tailP(RING);
-const glowRing = (col) => (p, w, h, face) => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const e = x === 0 || y === 0 || x === w - 1 || y === h - 1; p.px(x, y, e ? shift(col, -0.25) : (x + y) % 5 === 0 ? '#ffffff' : (x + 2 * y) % 7 === 1 ? shift(col, 0.35) : col); } };
+const rustT = tailP(COAT), ringT = tailP(RING), tipT = tailP([C.coatLo, C.coatDeep, '#3e1a20', '#2a1218']);
+const glowRing = (col) => (p, w, h, face) => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const e = x === 0 || y === 0 || x === w - 1 || y === h - 1, mid = Math.abs(x - (w - 1) / 2) < w * 0.18 || Math.abs(y - (h - 1) / 2) < h * 0.18; p.px(x, y, e ? shift(col, -0.22) : (x * 7 + y * 13) % 23 === 0 ? '#ffffff' : mid ? shift(col, 0.4) : col); } };
 const tongueP = (p, w, h) => { p.rect(0, 0, w, h, C.tongue); for (let x = 0; x < w; x++) p.px(x, 0, '#ff9aaa'); p.px(Math.floor(w / 2), 1, '#c84060'); };
 const mouthIn = (p, w, h) => { p.rect(0, 0, w, h, C.mouth); p.rect(1, 1, w - 2, h - 2, '#6a1c2c'); };
 const fangP = (p, w, h) => { p.rect(0, 0, w, h, '#fffaf0'); p.px(w - 1, h - 1, '#d8ccc4'); };
@@ -164,7 +164,7 @@ const tailBones = (() => {
       B(-wg / 2, TY - wg / 2, z0 - lr - lg, wg / 2, TY + wg / 2, z0 - lr, ringT),
       B(-wg / 2, TY - wg / 2, z0 - lr - lg, wg / 2, TY + wg / 2, z0 - lr, glowRing(C.spec[i]), { glow: true, inflate: 0.08, id: 'glow' + (i + 1), hide: true }),
     ];
-    if (i === TAIL.length - 1) cubes.push(B(-2.2, TY - 2.2, z0 - lr - lg - 2.4, 2.2, TY + 2.2, z0 - lr - lg, rustT), B(-1.1, TY - 1.1, z0 - lr - lg - 3.4, 1.1, TY + 1.1, z0 - lr - lg - 2.4, rustT));
+    if (i === TAIL.length - 1) { const e = z0 - lr - lg; cubes.push(B(-2.4, TY - 2.4, e - 2.2, 2.4, TY + 2.4, e, rustT), B(-1.6, TY - 1.6, e - 3.6, 1.6, TY + 1.6, e - 2.2, tipT), B(-0.8, TY - 0.8, e - 4.4, 0.8, TY + 0.8, e - 3.6, tipT)); }
     z -= lr + lg;
     return { name: 'tail' + (i + 1), parent: i ? 'tail' + i : 'body', pivot: [0, TY, z0], rot: [rx, 0, 0], cubes };
   });
@@ -229,15 +229,16 @@ export const def = {
 
 // ---------------------------------------------------------------- animation
 defineFx('zap', { w: 7, h: 9, frames: [0, 1, 2].map((f) => (p) => { let x = 3; for (let y = 0; y < 9; y++) { p.px(x, y, '#ffffff'); p.px(x + 1, y, '#fff27a'); if (y % 3 === 2) x += ((y + f) % 2 ? 2 : -2); x = Math.max(0, Math.min(5, x)); } }), glow: true, life: [0.08, 0.16], size: [0.1, 0.14], speed: [0, 0.4], grav: 0, spread: 1, spin: 6, fps: 30 });
-defineFx('ray', { w: 3, h: 3, paint: (p) => { p.px(1, 0, '#ffffff'); p.px(0, 1, '#ffffff'); p.px(1, 1, '#ffffff'); p.px(2, 1, '#ffffff'); p.px(1, 2, '#ffffff'); }, glow: true, life: [0.26, 0.34], size: [0.07, 0.11], speed: [6.5, 7.5], grav: 0, drag: 0, spread: 0.015 });
-defineFx('beam', { w: 3, h: 3, paint: (p) => { p.rect(0, 0, 3, 3, '#ffffff'); }, glow: true, life: [0.05, 0.06], size: [0.12, 0.08], speed: [6, 6.5], grav: 0, drag: 0, spread: 0.01 });
+defineFx('ray', { w: 4, h: 4, paint: (p) => { p.rect(1, 0, 2, 4, '#ffffff'); p.rect(0, 1, 4, 2, '#ffffff'); }, glow: true, life: [0.32, 0.32], size: [0.1, 0.14], speed: [1.5, 7.5], grav: 0, drag: 0, spread: 0.012 });
+defineFx('beam', { w: 5, h: 5, paint: (p) => { p.rect(1, 0, 3, 5, '#ffffff'); p.rect(0, 1, 5, 3, '#ffffff'); }, glow: true, life: [0.07, 0.07], size: [0.16, 0.12], speed: [0.5, 4.6], grav: 0, drag: 0, spread: 0.01 });
+defineFx('slash', { w: 11, h: 11, paint: (p) => { for (const o of [-3, 0, 3]) for (let i = 1; i < 10; i++) { const x = i + o, y = 10 - i; if (x >= 0 && x < 11) { p.px(x, y, i > 2 && i < 8 ? '#ffffff' : '#fff27a'); if (x + 1 < 11) p.px(x + 1, y, '#ffe23a'); } } }, glow: true, life: [0.2, 0.24], size: [0.3, 0.5], speed: [0, 0], grav: 0, pop: true });
 const MOUTH = [0, 13.2, 15.6], PRISM = [0, 22.6, 13], CHEEK = { R: [-6.4, 15.6, 11], L: [6.4, 15.6, 11] };
 const LEG = { FR: [-3.8, 8.6, 3], FL: [3.8, 8.6, 3], HR: [-4.4, 8.6, -5.5], HL: [4.4, 8.6, -5.5] }, BP = [0, 8.5, -5.5];
 const ALL = ['FR', 'FL', 'HR', 'HL'];
 // move the body (offsets in units, pitch + = nose down, roll + = toward its right) and keep the listed paws on the ground:
 // each planted leg hangs plumb and stretches or squashes to reach the floor
 function body(P, dx, dy, dz, pitch = 0, roll = 0, legs = ALL, yaw = 0) {
-  P.pos('body', dx, dy, dz).rot('body', pitch, yaw, roll);
+  P.pos('body', dx, dy, dz).rot('body', pitch, yaw, roll).rot('tail1', -pitch * (pitch < 0 ? 0.8 : 0.5), 0, 0);
   const p = pitch / R2D, r = roll / R2D;
   for (const k of legs) {
     const [x, y, z] = LEG[k], rx = x - BP[0], ry = y - BP[1], rz = z - BP[2];
@@ -261,12 +262,12 @@ export const anim = {
   springs: [
     { bone: 'earR', tip: [0, 4, 0], k: 220, d: 10, gain: 0.7, max: 22 },
     { bone: 'earL', tip: [0, 4, 0], k: 230, d: 10, gain: 0.7, max: 22 },
-    { bone: 'tail1', tip: [0, 0, -4.6], k: 170, d: 10, gain: 0.5, max: 14 },
-    { bone: 'tail2', tip: [0, 0, -4.6], k: 150, d: 9, gain: 0.6, max: 16 },
-    { bone: 'tail3', tip: [0, 0, -4.6], k: 130, d: 8, gain: 0.7, max: 18 },
-    { bone: 'tail4', tip: [0, 0, -4.6], k: 120, d: 8, gain: 0.75, max: 20 },
-    { bone: 'tail5', tip: [0, 0, -4.2], k: 110, d: 7, gain: 0.8, max: 22 },
-    { bone: 'tail6', tip: [0, 0, -6], k: 100, d: 7, gain: 0.85, max: 24 },
+    { bone: 'tail1', tip: [0, 0, -4.6], k: 190, d: 12, gain: 0.32, max: 9 },
+    { bone: 'tail2', tip: [0, 0, -4.6], k: 170, d: 11, gain: 0.36, max: 10 },
+    { bone: 'tail3', tip: [0, 0, -4.6], k: 150, d: 10, gain: 0.42, max: 12 },
+    { bone: 'tail4', tip: [0, 0, -4.6], k: 140, d: 9, gain: 0.46, max: 13 },
+    { bone: 'tail5', tip: [0, 0, -4.2], k: 130, d: 9, gain: 0.5, max: 14 },
+    { bone: 'tail6', tip: [0, 0, -6], k: 120, d: 8, gain: 0.55, max: 16 },
   ],
   faces: {
     eyes: { default: 'sly', states: Object.fromEntries(Object.keys(EYES).map((k) => [k, ['eye-' + k]])) },
@@ -310,9 +311,9 @@ export const anim = {
       P.rot('head', 52 * up + 6 * crouch, 0, wave(t, 5) * 4 * up).rot('jaw', 30 * up * (0.8 + 0.2 * wave(t, 9)));
       for (const [k, g] of [['FR', 1], ['FL', -1]]) P.rot('leg' + k, -70 * up, 0, -g * 70 * up + g * wave(t, 7) * 6 * up);
       P.rot('earR', 0, 0, 20 * up).rot('earL', 0, 0, -20 * up);
-      swish(P, t, 14 * up + 6, 1.4, -6 * up);
+      swish(P, t, 12 * up + 6, 1.4, 5 * up);
       brow(P, -14 * up, -14 * up);
-      P.face('eyes', crouch > 0.3 ? 'focus' : up > 0.3 ? 'wide' : undefined).face('prism', up > 0.4 ? 'lit' : 'off');
+      P.face('eyes', crouch > 0.3 || up > 0.3 ? 'focus' : undefined).face('prism', up > 0.4 ? 'lit' : 'off');
       charge(P, up > 0.3 ? (Math.floor(t * 18) % 7) : 0);
       P.blinkOK = false;
       if (up > 0.5) P.stream('zap', 'body', [0, 12, 0], { rate: 22, spread: 1, scale: 1.2 }).stream('zap', 'head', CHEEK.R, { rate: 10 }).stream('zap', 'head', CHEEK.L, { rate: 10, key: 'L' });
@@ -330,7 +331,8 @@ export const anim = {
       brow(P, -12, -12);
       P.face('eyes', crouch > 0.2 || sw > 0.1 ? 'focus' : undefined); P.blinkOK = false;
       charge(P, sw > 0.2 ? 3 : 0);
-      P.burst(0.4, 'spark', 'legFR', [-4, 2, 8], { n: 2 }).burst(0.4, 'bolt', 'legFR', [-4, 2, 8], { n: 3 }).burst(0.42, 'zap', 'legFR', [-4, 2, 8], { n: 5, speed: 1.4 });
+      const PAW = [-3.8, 0.4, 9];
+      P.burst(0.4, 'slash', 'body', [-2.5, 12, 19], {}).burst(0.4, 'spark', 'body', [-2.5, 12, 19], { n: 2 }).burst(0.4, 'bolt', 'legFR', PAW, { n: 3 }).burst(0.42, 'zap', 'legFR', PAW, { n: 6, speed: 1.6 });
       P.burst(0.52, 'dust', 'root', [0, 0.5, 4], { n: 6, spread: 1, speed: 1 });
     } },
     // prism beam: charges ring by ring (red → violet), the prism blazes, white light pours out and fans into a rainbow
@@ -348,10 +350,10 @@ export const anim = {
       if (t > 0.2 && t < 1.34) P.stream('zap', 'body', [0, 13, -4], { rate: 6 + lvl * 4, spread: 1, scale: 1.1 }).stream('zap', 'tail' + Math.max(1, lvl), [0, TY, -12 - lvl * 4.6], { rate: 6, key: 't' });
       P.burst(1.0, 'sparkle', 'head', PRISM, { n: 6, speed: 0.8 });
       if (fire) {
-        P.stream('beam', 'head', PRISM, { rate: 260, dir: [0, -0.02, 1] });
+        P.stream('beam', 'head', PRISM, { rate: 420, dir: [0, -0.02, 1] });
         C.spec.forEach((c, i) => {
           const rgb = [1, 3, 5].map((k) => parseInt(c.slice(k, k + 2), 16) / 255);
-          P.stream('ray', 'head', [0, 22.4, 26], { rate: 70, dir: [0, 0.16 - i * 0.065, 1], tint: rgb, key: 'r' + i });
+          P.stream('ray', 'head', [0, 22.4, 26], { rate: 240, dir: [0, 0.3 - i * 0.12, 1], tint: rgb, key: 'r' + i });
         });
         P.stream('zap', 'head', [0, 22.4, 25], { rate: 14, spread: 0.6, key: 'split' });
       }
@@ -376,7 +378,8 @@ export const anim = {
       body(P, 0, -0.6 * dizzy - 1.6 * fall, 0, 0, wave(t, 1.4) * 8 * dizzy + 98 * fall, fall > 0.05 ? [] : ALL);
       P.rot('head', 0, wave(t, 1.4, 1) * 14 * dizzy, wave(t, 1.4) * 10 * dizzy - 10 * fall).rot('jaw', 18 * fall);
       for (const k of ALL) P.rot('leg' + k, -14 * fall, 0, -24 * fall);
-      swish(P, t, 6 * (1 - fall), 0.7, -14 * fall);
+      swish(P, t, 6 * (1 - fall), 0.7, -10 * fall);
+      tailNames.forEach((n, i) => P.rot(n, 0, -24 * fall, 0));
       P.face('eyes', 'swirl').face('prism', 'off'); P.blinkOK = false; P.lookW = 0;
       charge(P, t < 0.9 ? [2, 1, 0][Math.floor(t * 6) % 3] : 0);
       P.burst(1.4, 'dust', 'root', [-6, 1, 0], { n: 10, spread: 1, speed: 1.2 }).burst(0.7, 'star', 'head', [0, 27, 8], { n: 5 });
@@ -386,7 +389,8 @@ export const anim = {
       body(P, 0, -1.6, 0, 0, 98, []);
       P.rot('head', 0, 0, -10).rot('jaw', 18 + wave(t, 0.4) * 4);
       for (const [k, i] of [['FR', 0], ['FL', 1], ['HR', 2], ['HL', 3]]) P.rot('leg' + k, -14 + wave(t, 0.8, i) * 4, 0, -24);
-      swish(P, t, 2, 0.4, -14);
+      swish(P, t, 3, 0.4, -10);
+      tailNames.forEach((n, i) => P.rot(n, 0, -24 + wave(t, 0.4, i * 0.5) * 4, 0));
       P.face('eyes', 'swirl').face('prism', 'off'); P.blinkOK = false; P.lookW = 0; P.breathW = 0.5;
       P.burst(0.9, 'zap', 'body', [0, 12, -2], { n: 2, speed: 0.6 }).burst(1.0, 'smoke', 'body', [0, 14, -2], { n: 1, scale: 0.5 });
     } },
@@ -405,14 +409,15 @@ export const anim = {
       P.burst(0.6, 'sparkle', 'head', PRISM, { n: 10, speed: 1.6 }).burst(1.4, 'sparkle', 'body', [0, 20, 0], { n: 8, speed: 1.4 });
       if (up > 0.5) P.stream('zap', 'body', [0, 14, 0], { rate: 8, spread: 1 });
     } },
-    // napping in a ball, tail wrapped round like a blanket, the rings slowly refilling
+    // napping on its belly, chin on its paws, the tail wrapped round its side like a blanket — the rings slowly refill
     sleep: { len: 3.6, loop: true, f(P, t) {
       const br = Math.sin((t / 3.6) * TAU);
-      body(P, 0, -3 + br * 0.25, 0, 6, 0, []);
-      P.sq('body', -0.04 + br * 0.03);
-      for (const k of ALL) P.scl('leg' + k, 1, 0.55, 1).rot('leg' + k, k[0] === 'F' ? -50 : 40, 0, 0);
-      P.rot('head', 34 + br * 2, 22, 12).rot('earR', 0, 0, 10).rot('earL', 0, 0, -10);
-      tailNames.forEach((n, i) => P.rot(n, -18 - (i < 2 ? 4 : 0), 24, 0));
+      body(P, 0, -3.4 + br * 0.25, 0, 4, 0, []);
+      P.sq('body', -0.05 + br * 0.03);
+      P.rot('legFR', -62, 0, 8).rot('legFL', -62, 0, -8).scl('legFR', 1, 0.8, 1).scl('legFL', 1, 0.8, 1);
+      P.rot('legHR', 60, 0, 10).rot('legHL', 60, 0, -10).scl('legHR', 1, 0.6, 1).scl('legHL', 1, 0.6, 1);
+      P.rot('head', 26 + br * 2, -10, -8).pos('head', 0, -1.2, 0.6).rot('earR', 0, 0, 12).rot('earL', 0, 0, -8);
+      [-48, -40, -34, -30, -24, -14].forEach((a, i) => P.rot(tailNames[i], -TAIL[i][4] - 2 + br * 1.5, a, 0));
       P.face('eyes', 'closed').face('prism', 'off'); P.blinkOK = false; P.lookW = 0; P.breathW = 0;
       charge(P, Math.floor((t / 3.6) * 7));
       P.burst(0.5, 'z', 'head', [4, 24, 10], {}).burst(2.2, 'z', 'head', [4, 24, 10], {});

@@ -71,8 +71,8 @@ const face = (p, w, h, f, c) => {
   body(p, w, h, f, c); if (f !== 'south') return;
   for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) {
     const [x, y] = tp(c, f, i, j, w, h), ax = Math.abs(x), t = tone(y) * 0.7;
-    const mask = ((ax - 2.0) / 1.9) ** 2 + ((y - 15.95) / 1.2) ** 2 < 1 || (ax < 0.7 && y > 15.45 && y < 16.5) || segD(ax, y, 3.1, 16.8, 3.8, 17.55) < 0.36;
-    const top = mask && !(((ax - 2.0) / 1.9) ** 2 + ((y + 0.34 - 15.95) / 1.2) ** 2 < 1 || (ax < 0.7 && y + 0.34 < 16.5) || segD(ax, y + 0.34, 3.1, 16.8, 3.8, 17.55) < 0.36);
+    const inMask = (yy) => ((ax - 2.0) / 1.95) ** 2 + ((yy - 15.95) / 1.3) ** 2 < 1 || (ax < 0.8 && yy > 15.35 && yy < 16.45) || segD(ax, yy, 3.0, 16.9, 3.8, 17.65) < 0.38;
+    const mask = inMask(y), top = mask && !inMask(y + 0.34);
     const whisk = segD(ax, y, 2.85, 14.1, 3.85, 13.6) < 0.18 || segD(ax, y, 2.75, 13.35, 3.85, 12.6) < 0.18;
     p.px(i, j, mask ? (top ? BLK[0] : BLK[2]) : whisk ? GRY[1] : ramp(WHT, t, i, j));
   }
@@ -81,19 +81,19 @@ const face = (p, w, h, f, c) => {
 // Heavy lids, small dot pupils: unimpressed, never cute. Closed states are drawn in light tones
 const EC = { K, W: '#ffffff', w: '#d6dae4', G: '#8c90a2' };
 const EYES = {
-  proud: ['..........', '..........', '..........', '..GGGGGGG.', '.WWWWWKKW.', '..WWWWKKW.', '....wwww..', '..........'],
-  side: ['..........', '..........', '..........', '..GGGGGGG.', '.KKWWWWWW.', '..KKWWWWw.', '....wwww..', '..........'],
-  up: ['..........', '...WWWW...', '.WWWKKWWW.', 'WWWWKKWWWW', '.WWWWWWWW.', '...wwww...', '..........', '..........'],
+  proud: ['..........', '...GGGGG..', '..........', '..WWWWKKW.', '...WWWKKW.', '.....ww...', '..........', '..........'],
+  side: ['..........', '...GGGGG..', '..........', '..KKWWWWW.', '...KKWWWW.', '.....ww...', '..........', '..........'],
+  up: ['..........', '...WKKW...', '.WWWKKWWW.', 'WWWWWWWWWW', '.WWWWWWWW.', '...wwww...', '..........', '..........'],
   wide: ['..........', '...WWWW...', '.WWWWWWWW.', 'WWWWWKWWWW', '.WWWWWWWW.', '...wwww...', '..........', '..........'],
-  glare: ['..........', '..........', '..........', '.GG.......', '.WWGGG....', '..WWWKKG..', '....wKK...', '..........'],
-  closed: ['..........', '..........', '..........', '..........', '.GGGGGGGG.', 'G.........', '..........', '..........'],
-  smug: ['..........', '..........', '..........', 'W........W', '.WW....WW.', '...WWWW...', '..........', '..........'],
-  shut: ['..........', 'WW........', '..WWW.....', '.....WWWW.', '..WWW.....', 'WW........', '..........', '..........'],
-  x: ['..........', '.WW....WW.', '...W..W...', '....WW....', '....WW....', '...W..W...', '.WW....WW.', '..........'],
+  glare: ['..........', '..........', '.WW.......', '..WWWW....', '...WWWKK..', '.....wKK..', '..........', '..........'],
+  closed: ['..........', '..........', '..........', '..........', '.GGGGGGGG.', '..........', '..........', '..........'],
+  smug: ['..........', '..........', '..........', '.W......W.', '..WW..WW..', '....WW....', '..........', '..........'],
+  shut: ['..........', '.WW.......', '...WWW....', '......WW..', '...WWW....', '.WW.......', '..........', '..........'],
+  x: ['..........', '..W....W..', '...W..W...', '....WW....', '...W..W...', '..W....W..', '..........', '..........'],
 };
 const stamp = (rows) => (p) => rows.forEach((r, y) => { for (let x = 0; x < r.length; x++) if (EC[r[x]]) p.px(x, y, EC[r[x]]); });
-const EYEP = Object.fromEntries(Object.entries(EYES).map(([k, rows]) => [k, stamp(rows)]));
-EYEP.swirl = (p) => { stamp(['..........', '...WWWW...', '.WWWWWWWW.', 'WWWWWWWWWW', '.WWWWWWWW.', '...wwww...', '..........', '..........'])(p); for (let a = 0; a < 14; a += 0.15) { const r = a * 0.2; if (r < 2.6) p.px(Math.round(4.5 + Math.cos(a) * r * 1.3), Math.round(3 + Math.sin(a) * r * 0.6), K); } };
+const EYEP = Object.fromEntries(Object.entries(EYES).map(([k, rows]) => [k, stamp(typeof location !== 'undefined' && location.search.includes('dbg=dot') ? ['..........', '..........', '..........', '....WW....', '....WW....', '..........', '..........', '..........'] : rows)]));
+EYEP.swirl = (p) => { stamp(['..........', '...WWWW...', '.WWWWWWWW.', 'WWWWWWWWWW', '.WWWWWWWW.', '...wwww...', '..........', '..........'])(p); for (const [x, y] of [[4, 2], [5, 2], [6, 3], [5, 4], [4, 4], [3, 3], [4, 3]]) p.px(x, y, K); };
 // a lionfish fin ray: a banded spine in a membrane whose edge ruffles like a shirt frill
 const rayP = (ph = 0) => (p, w, h) => {
   const cx = (w - 1) / 2;
@@ -326,7 +326,7 @@ const spineCubes = SPINES.flatMap(([z, L, lean]) => {
   const y = z > -1.6 ? 18.5 : 17.5, pv = [0, y, z];
   return [P([-2 / 3, y, z], [4 / 3, L, 0], spineP, { plane: 'z', pivot: pv, rot: [lean, 0, 0] }), P([0, y, z - 2 / 3], [0, L, 4 / 3], spineP, { plane: 'x', pivot: pv, rot: [lean, 0, 0] })];
 });
-const eyeParts = (side) => Object.keys(EYEP).map((k) => P(side < 0 ? [-3.67, 14.6, 6.46] : [1 / 3, 14.6, 6.46], [10 / 3, 8 / 3, 0], EYEP[k], { plane: 'z', mirror: side > 0, id: (side < 0 ? 'eR-' : 'eL-') + k, hide: k !== 'proud' }));
+const eyeParts = (side) => Object.keys(EYEP).filter((k) => !(typeof location !== 'undefined' && location.search.includes('dbg=proud')) || k === 'proud').map((k) => P(side < 0 ? [-3.67, 14.6, 6.46] : [1 / 3, 14.6, 6.46], [10 / 3, 8 / 3, 0], EYEP[k], { plane: 'z', mirror: side > 0, id: (side < 0 ? 'eR-' : 'eL-') + k, hide: k !== 'proud' }));
 const ROOT_R = [-3.1, 13.6], ROOT_L = [3.1, 13.6];
 
 export const def = {
@@ -358,7 +358,7 @@ export const def = {
       P([-2.9, 10.9, 2.0], [5.8, 0.5, 4.0], body),
       P([-1.1, 12.6, 6.3], [2.2, 0.6, 0.9], upperLip),
       P([-1.0, 12.0, 6.35], [2.0, 0.9, 0.8], '#120c14', { outline: false }),
-      ...eyeParts(-1), ...eyeParts(1),
+      ...(typeof location !== 'undefined' && location.search.includes('dbg=noeyes') ? [] : [...eyeParts(-1), ...eyeParts(1)]),
     ] },
     { name: 'jaw', parent: 'head', pivot: [0, 12.6, 6.6], cubes: [P([-1.35, 11.6, 6.2], [2.7, 1, 1.4], lowerLip)] },
     { name: 'gum', parent: 'jaw', pivot: [0, 12.1, 7.7], cubes: [P([-1.5, 10.6, 9.2], [3, 3, 0], bubSpr, { plane: 'z', id: 'gum', hide: true })] },

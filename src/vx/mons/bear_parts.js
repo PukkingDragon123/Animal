@@ -32,33 +32,28 @@ export function edgeLine(p, col, o = {}) {
 // o: hi, lo, line, lite, tip, sx (lock width, texels), sy (row pitch), tl (tip length), seed, rim, split
 export function fur(c, o = {}) {
   const hi = o.hi || shift(c, 0.2), lo = o.lo || shift(c, -0.28), line = o.line || shift(lo, -0.12), lite = o.lite || shift(c, 0.12);
-  const sx = o.sx || 9, sy = o.sy || 6, L0 = o.tl ?? 4, seed = o.seed || 1, tip = o.tip || null;
+  const s = o.s || 10, rowH = o.rowH || Math.round(s * 0.7), tipH = o.tipH ?? s * 0.5, pt = o.pt ?? 0.75, seed = o.seed || 1, tip = o.tip || null;
   return (p, w, h, face, cube) => {
     const base = (x, y) => (face === 'up' ? (o.upC || hi) : face === 'down' ? shift(lo, -0.14) : ramp(o.ramp || [hi, c, c, lo], h > 1 ? y / (h - 1) : 0.5, x, y));
     fill(p, w, h, base);
     if (face === 'down' && !o.under) return;
-    const ox = cube && isSide(face) && o.wrap !== false ? wrapX(face, cube) : 0;
-    const rows = Math.ceil((h + L0 + 4) / sy) + 1;
+    const ox = cube && isSide(face) && o.wrap !== false ? wrapX(face, cube) : 0, top = face === 'up';
+    const rows = Math.ceil(h / rowH) + 1;
+    // clumps: scallops with a pointed tip, laid bottom-up so each row overlaps the one beneath.
+    // The rim is lit on the left and dark on the right; the very tip catches a lighter colour.
     for (let r = rows; r >= 0; r--) {
-      const y0 = (r - 1) * sy + (o.y0 ?? -2);
-      for (let k = -2; k * sx - ox < w + sx * 2; k++) {
-        const cx = k * sx + ((r & 1) ? sx / 2 : 0) + Math.round((h2(k, r, seed) - 0.5) * (o.jit ?? 1)) - ox;
-        if (cx < -sx * 1.5 || cx > w + sx * 1.5) continue;
-        const L = L0 + Math.round(h2(r, k, seed + 3) * (o.tv ?? 1)), lean = Math.round((h2(k, r, seed + 5) - 0.5) * (o.lean ?? 2)), half0 = sx / 2;
-        const inside = (X, Y) => {
-          const yy = Y - y0; if (yy < 0) return false;
-          if (yy < sy) return Math.abs(X + 0.5 - cx) <= half0;
-          const v = (yy - sy + 1) / (L + 1); if (v >= 1) return false;
-          return Math.abs(X + 0.5 - cx - lean * v) <= half0 * (1 - v) + 0.2;
-        };
-        for (let Y = Math.max(0, y0); Y < Math.min(h, y0 + sy + L); Y++) for (let X = Math.floor(cx - half0 - 3); X <= Math.ceil(cx + half0 + 3); X++) {
-          if (X < 0 || X >= w || !inside(X, Y)) continue;
-          const yy = Y - y0, inTip = yy >= sy - 1, b = base(X, Y), u = (X + 0.5 - cx) / half0;
-          let col = b;
-          if (!inside(X, Y + 1)) col = face === 'up' ? shift(b, -0.2) : line;                       // the edge where the clump lies on the next row
-          else if (!inside(X, Y + 2) && inTip) col = shift(b, -0.1);                                 // a soft shadow above it
-          else if (yy >= 1 && yy <= 3 && u > -0.55 && u < -0.05 && Math.abs(u + 0.3 - (yy - 2) * 0.12) < 0.2) col = face === 'up' ? shift(hi, 0.08) : lite;   // a lit strand
-          if (tip && inTip && col !== line && yy >= sy + L - 2 && u < 0.4) col = tip;
+      const yTop = (r - 1) * rowH + (o.y0 ?? 0), off = (r % 2) * Math.floor(s / 2);
+      for (let k = -2; k * s + off - ox < w + s; k++) {
+        const x0 = k * s + off - ox; if (x0 + s < 0) continue;
+        const th = tipH * (1 + ((h2(k, r, seed) - 0.5) * (o.vary ?? 0.5)));
+        for (let yy = 0; yy < rowH + th + 1; yy++) for (let xx = 0; xx < s; xx++) {
+          const X = x0 + xx, Y = yTop + yy; if (X < 0 || X >= w || Y < 0 || Y >= h) continue;
+          const u = ((xx + 0.5) / s) * 2 - 1, bottom = rowH + (1 - Math.abs(u)) ** pt * th;
+          if (yy > bottom) continue;
+          let col = base(X, Y);
+          if (yy > bottom - 1.2) col = u < -0.2 ? (top ? shift(hi, 0.1) : lite) : top ? shift(col, -0.18) : line;
+          else if (yy > bottom - 2.3 && u > 0.25) col = shift(col, -0.1);
+          else if (tip && yy > bottom - 2.6 && Math.abs(u) < 0.34) col = tip;
           p.px(X, Y, col);
         }
       }

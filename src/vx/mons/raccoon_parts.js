@@ -106,26 +106,26 @@ export function rod(a, b, w, t, tex, x = {}) {
 }
 
 // ---------------------------------------------------------------- fur
-// scruffy fur: clean top-lit bands, staggered little hair clumps (a dark under-stroke with a
-// lit tip), sparse silver guard hairs, a jagged fringe where the fur overlaps the next form
+// fur: clean top-lit bands (mostly mid-tone), staggered soft hair clumps — a little "v" of a
+// darker tone with a lit pixel above — and, where asked, a jagged fringe along the bottom edge
 export function furP(F, o = {}) {
-  const c = o.c || F.c, top = o.top || F.hi, bot = o.bottom || F.lo, sx = o.sx || 6, sy = o.sy || 5;
+  const c = o.c || F.c, top = o.top || F.hi, bot = o.bottom || F.lo, sx = o.sx || 7, sy = o.sy || 6;
   return (p, w, h, face) => {
-    const band = (x, y) => (face === 'up' ? top : face === 'down' ? shift(bot, -0.12) : ramp([top, c, bot], h > 1 ? y / (h - 1) : 0.5, x, y));
+    const band = (x, y) => (face === 'up' ? top : face === 'down' ? shift(bot, -0.1) : ramp([top, c, c, bot], h > 1 ? y / (h - 1) : 0.5, x, y));
     fill(p, w, h, band);
     if (face === 'down') return;
-    for (let r = 0, y = o.y0 ?? 2; y < h - 1; y += sy, r++) for (let x = (r % 2) * (sx >> 1) + 1; x < w - 1; x += sx) {
+    for (let r = 0, y = o.y0 ?? 2; y < h - 1; y += sy, r++) for (let x = (r % 2) * (sx >> 1) + 1; x < w - 2; x += sx) {
       const b = band(x, y);
-      p.px(x, y, shift(b, -0.15)); p.px(x + 1, y + 1, shift(b, -0.17)); p.px(x + 2, y, shift(b, -0.1));
-      if (y > 0) p.px(x + 1, y - 1, shift(b, 0.1));
-      if (o.tips !== false && h2(x, y, 5) < 0.22) p.px(x + 2, y - 1 >= 0 ? y - 1 : y, F.tip);
+      p.px(x, y, shift(b, -0.09)); p.px(x + 1, y + 1, shift(b, -0.13)); p.px(x + 2, y, shift(b, -0.09));
+      if (y > 0) p.px(x + 1, y - 1, shift(b, 0.07));
+      if (o.tips && h2(x, y, 5) < 0.3) p.px(x + 1, y - 1 >= 0 ? y - 1 : y, F.tip);
     }
     if (face === 'up' || face === 'plane') return;
-    if (o.rim !== false) for (let x = 0; x < w; x++) p.px(x, 0, shift(top, 0.08));
-    if (o.fringe !== false && h > 3) for (let x = 0; x < w; x++) { const k = x % 3 === 1 ? 2 : 1; for (let y = h - k; y < h; y++) p.px(x, y, shift(bot, -0.22)); }
+    if (o.rim !== false) for (let x = 0; x < w; x++) p.px(x, 0, shift(top, 0.06));
+    if (o.fringe && h > 3) for (let x = 0; x < w; x++) { const k = x % 3 === 1 ? 2 : 1; for (let y = h - k; y < h; y++) p.px(x, y, shift(bot, -0.16)); }
   };
 }
-// fur with a pale belly patch on the front face (ragged edge)
+// fur with a pale belly patch on the front face (soft ragged edge, a few fur marks)
 export function bellyP(F, o = {}) {
   const fur = furP(F, o);
   return (p, w, h, face, cube) => {
@@ -133,88 +133,91 @@ export function bellyP(F, o = {}) {
     if (face !== 'south') return;
     const cx = w / 2 - 0.5, cy = h * (o.cy ?? 0.62), rx = w * (o.rx ?? 0.36), ry = h * (o.ry ?? 0.6);
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-      const d = ((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2, jag = ((x * 2 + y) % 4) * 0.05;
+      const d = ((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2, jag = ((x * 2 + y) % 4) * 0.04;
       if (d > 1 - jag) continue;
-      p.px(x, y, d > 0.8 - jag ? F.bellyLo : ramp([F.bellyHi, F.belly, F.bellyLo], (y - (cy - ry)) / (2 * ry), x, y));
+      p.px(x, y, d > 0.82 - jag ? F.bellyLo : ramp([F.bellyHi, F.belly, F.belly, F.bellyLo], (y - (cy - ry)) / (2 * ry), x, y));
     }
-    for (let y = Math.round(cy - ry * 0.5); y < h - 2; y += 4) for (let x = Math.round(cx - rx * 0.5) + ((y >> 2) % 2) * 2; x < cx + rx * 0.5; x += 4) { p.px(x, y, F.bellyLo); p.px(x + 1, y + 1, F.bellyLo); }
+    for (let y = Math.round(cy - ry * 0.4); y < h - 2; y += 4) for (let x = Math.round(cx - rx * 0.5) + ((y >> 2) % 2) * 2; x < cx + rx * 0.5; x += 4) { p.px(x, y, F.bellyLo); p.px(x + 1, y + 1, shift(F.bellyLo, 0.06)); }
   };
 }
-// a flat cut-out tuft (cheek ruffs, elbow fluff): jagged strands pointing toward +x of the texture
+// a flat cut-out tuft (cheek ruffs, elbows, bangs): jagged strands pointing toward +x of the texture
 export const tuftP = (F, o = {}) => (p, w, h) => {
   for (let y = 0; y < h; y++) {
     const l = Math.round(w * (0.35 + 0.65 * Math.abs(Math.sin(y * 1.25 + (o.ph || 0)))));
-    for (let x = w - l; x < w; x++) p.px(x, y, x === w - l ? F.lo : (o.cream ? (y < h * 0.4 ? F.c : F.cream) : y % 3 === 0 ? F.hi : F.c));
+    for (let x = w - l; x < w; x++) p.px(x, y, x === w - l ? (o.cream ? F.creamLo : F.lo) : (o.cream ? (x < w - l + 2 ? F.cream : F.creamHi) : y % 3 === 0 ? F.hi : F.c));
+  }
+};
+// hanging bangs (planes): fur spikes pointing down from the top edge
+export const bangsP = (F, o = {}) => (p, w, h) => {
+  for (let x = 0; x < w; x++) {
+    const k = x % 4, l = Math.round(h * (k === 1 ? 1 : k === 2 ? 0.7 : k === 3 ? 0.45 : 0.25) * (o.k || 1));
+    for (let y = 0; y < l; y++) p.px(x, y, y === l - 1 ? F.lo : k === 1 ? F.hi : F.c);
   }
 };
 
 // ---------------------------------------------------------------- the face
-// skull painter: fur everywhere, the bandit mask on the front wrapping round the sides, white
-// brows, the dark forehead stripe, pale cheeks. o: { ex, ey (eye centre, texels from the face
-// centre / top), mask: 'domino' | 'bar' (a censor bar), scar: true }
+// skull painter: fur everywhere, the bandit mask on the front wrapping round the sides, pale
+// brows arching over it, the dark forehead stripe, pale cheeks. o: { ex, ey (eye centre: texels
+// from the face centre / from the top), mask: 'domino' | 'bar' (a censor bar), scar }
 export function skullP(F, o = {}) {
-  const fur = furP(F, { sx: 7, sy: 6 });
-  const ex = o.ex ?? 6.5, ey = o.ey ?? 9.5, bar = o.mask === 'bar';
+  const fur = furP(F, { sx: 8, sy: 6 });
+  const ex = o.ex ?? 7.5, ey = o.ey ?? 9.5, bar = o.mask === 'bar';
+  const mtop = (dx) => (bar ? ey - 4.4 : dx < 1.5 ? ey - 2.4 : ey - 4.6 + Math.max(0, dx - ex - 2) * 0.5);
+  const mbot = (dx) => (bar ? ey + 3.8 : dx < 1.5 ? ey + 6 : ey + 3.6 + Math.max(0, dx - ex + 1) * 0.55);
   return (p, w, h, face, cube) => {
     fur(p, w, h, face, cube);
     if (face === 'south') {
       const cx = (w - 1) / 2;
       for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-        const dx = Math.abs(x - cx), out = Math.max(0, dx - ex);
-        const top = bar ? ey - 3.2 : ey - 3.4 + (dx < 1.6 ? 1.2 : 0) + (dx > ex + 2 ? (dx - ex - 2) * 0.35 : 0);
-        const bot = bar ? ey + 2.6 + (dx > ex + 3.5 ? 0.6 : 0) : ey + 2.4 + out * 0.6 + (dx < 1.6 ? -0.8 : 0);
-        if (y >= top && y <= bot) { p.px(x, y, y < top + 1 && !bar ? F.maskHi : F.mask); continue; }
-        // brows: a pale band arching over each eye patch
-        const bd = Math.abs(dx - ex - 0.3);
-        if (!bar && y < top && y >= top - 2.2 + bd * 0.14 && bd < 3.6) { p.px(x, y, y < top - 1.2 ? F.creamHi : F.cream); continue; }
-        // forehead stripe
-        if (y < top && dx < 1.6 + y * 0.06) { p.px(x, y, y < 2 ? F.lo : F.deep); continue; }
-        // cheeks below the mask
-        if (y > bot && dx > 1.5) p.px(x, y, ramp([F.creamHi, F.cream, F.creamLo], (y - bot) / Math.max(1, h - bot), x, y));
+        const dx = Math.abs(x - cx), t = mtop(dx), b = mbot(dx);
+        if (y >= t && y <= b) { p.px(x, y, y < t + 1 ? F.maskHi : y > b - 1 && !bar ? F.maskLo : F.mask); continue; }
+        if (!bar && y < t && dx >= 1.5) {   // the pale brow band arching over each eye patch
+          const bt = t - 3.2 + Math.abs(dx - ex) * 0.16;
+          if (y >= bt && dx < ex + 5) { p.px(x, y, y < bt + 1 ? F.creamHi : F.cream); continue; }
+        }
+        if (y < t && dx < 1.4 + y * 0.08) { p.px(x, y, y < 2 ? F.lo : F.deep); continue; }   // the forehead stripe
+        if (y > b && dx >= 1.2) p.px(x, y, ramp([F.creamHi, F.cream, F.cream, F.creamLo], (y - b) / Math.max(1, h - b), x, y));
       }
-      if (bar) { for (let x = 1; x < w - 1; x++) p.px(x, Math.round(ey - 3.2), F.maskHi); }
-      if (o.scar) {   // a pale scar slashing across the mask
-        const x0 = Math.round(cx + ex - 3), y0 = Math.round(ey - 5);
-        for (let k = 0; k < 9; k++) { p.px(x0 + k * 0.6, y0 + k, F.scar); if (k % 2) { p.px(x0 + k * 0.6 - 1, y0 + k, F.scarLo); p.px(x0 + k * 0.6 + 1, y0 + k, F.scarLo); } }
+      if (bar) for (let x = 2; x < w - 2; x += 5) p.px(x, Math.round(ey - 3.4), F.maskHi);
+      if (o.scar) {   // a pale scar slashing across the brow and the mask
+        const x0 = Math.round(cx + ex - 4), y0 = Math.round(ey - 8);
+        for (let k = 0; k < 12; k++) { const X = Math.round(x0 + k * 0.55); p.px(X, y0 + k, F.scar); if (k % 3 === 1) { p.px(X - 1, y0 + k, F.scarLo); p.px(X + 1, y0 + k, F.scarLo); } }
       }
     }
     if (face === 'east' || face === 'west') {
-      // the mask wraps back toward the ears, drooping
-      const front = (x) => (face === 'east' ? x : w - 1 - x);
+      // the mask wraps back toward the ears, drooping and narrowing
+      const edge = (w * 0 + (cube ? cube.s[0] * 3 : 30) - 1) / 2;
       for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-        const f = front(x), lim = w * (bar ? 0.34 : 0.42);
+        const f = face === 'east' ? x : w - 1 - x, lim = w * (bar ? 0.3 : 0.42);
         if (f > lim) continue;
-        const top = ey - 3 + f * 0.2, bot = ey + 2.5 + f * 0.45 - (f > lim - 2 ? 1 : 0);
-        if (y >= top && y <= bot) p.px(x, y, F.mask);
-        else if (y > bot && y < h - 1) p.px(x, y, ramp([F.cream, F.creamLo], (y - bot) / Math.max(1, h - bot), x, y));
+        const t = mtop(edge) + f * 0.25, b = mbot(edge) - f * 0.35;
+        if (y >= t && y <= b) p.px(x, y, F.mask);
+        else if (y > b && y < h - 1) p.px(x, y, ramp([F.cream, F.creamLo], (y - b) / Math.max(1, h - b), x, y));
       }
     }
   };
 }
-// the muzzle: pale with the mask's dark bridge running down its top to the nose
+// the muzzle: pale, with the mask's dark bridge running down its top to the nose
 export function muzzleP(F, o = {}) {
   return (p, w, h, face) => {
-    const base = (x, y) => (face === 'up' ? F.creamHi : face === 'down' ? F.creamLo : ramp([F.creamHi, F.cream, F.creamLo], h > 1 ? y / (h - 1) : 0.5, x, y));
-    fill(p, w, h, base);
+    fill(p, w, h, (x, y) => (face === 'up' ? F.creamHi : face === 'down' ? F.creamLo : ramp([F.creamHi, F.cream, F.cream, F.creamLo], h > 1 ? y / (h - 1) : 0.5, x, y)));
     const cx = (w - 1) / 2;
-    if (face === 'up') { for (let y = 0; y < h; y++) { const hw = 1.8 - (y / h) * 1.2; for (let x = 0; x < w; x++) if (Math.abs(x - cx) < hw) p.px(x, y, y < h * 0.5 ? F.mask : F.deep); } }
-    if (face === 'south') {
-      if (o.smirk !== false) {   // the philtrum and a mouth line curling up at one corner
-        p.vl(Math.round(cx), Math.max(0, h - 4), h - 2, F.ink);
-        for (let x = 1; x < w - 1; x++) p.px(x, h - 1, F.ink);
-        p.px(w - 2, h - 2, F.ink); p.px(w - 1, h - 3, F.ink); p.px(1, h - 2, F.creamLo);
-      }
+    if (face === 'up' && o.bridge !== false) for (let y = 0; y < h; y++) { const hw = (o.bw ?? 1.8) - (y / h) * (o.bt ?? 1.0); for (let x = 0; x < w; x++) if (Math.abs(x - cx) < hw) p.px(x, y, y < h * 0.6 ? F.mask : F.deep); }
+    if (face === 'south' && o.mouth) {   // philtrum and a mouth line curling up at one corner (the smirk)
+      p.vl(Math.round(cx), Math.max(0, h - 3), h - 2, F.ink);
+      for (let x = 1; x < w - 1; x++) p.px(x, h - 1, F.ink);
+      p.px(w - 2, h - 2, F.ink); p.px(w - 1, h - 3, F.ink);
     }
     if (face === 'east' || face === 'west') {
-      for (let x = 0; x < w; x++) p.px(x, h - 1, F.ink);
-      for (let k = 0; k < 3; k++) { const x = Math.round(w * 0.3) + k * 2, y = Math.round(h * 0.45) + (k % 2); p.px(face === 'east' ? x : w - 1 - x, y, F.creamLo); }
-      for (let x = 0; x < w; x++) if ((face === 'east' ? x : w - 1 - x) > w * 0.55) p.px(x, 0, F.c);
+      for (let x = 0; x < w; x++) p.px(x, h - 1, o.mouth ? F.ink : F.creamLo);
+      for (let k = 0; k < 3; k++) { const x = Math.round(w * 0.35) + k * 2, y = Math.round(h * 0.5) + (k % 2); p.px(face === 'east' ? x : w - 1 - x, y, F.creamLo); }
+      if (o.bridge !== false) for (let x = 0; x < w; x++) p.px(x, 0, F.c);
     }
   };
 }
 export const noseP = (F) => (p, w, h, face) => {
-  fill(p, w, h, (x, y) => (face === 'up' ? F.noseHi : y < 1 ? shift(F.nose, 0.18) : F.nose));
-  if (face === 'south' && w > 3) { p.px(1, 0, F.noseHi); p.px(2, 0, shift(F.noseHi, 0.15)); p.px(0, h - 1, F.ink); p.px(w - 1, h - 1, F.ink); p.px(Math.floor(w / 2), h - 1, F.ink); }
+  fill(p, w, h, (x, y) => (face === 'up' ? F.noseHi : y < 1 ? shift(F.nose, 0.16) : F.nose));
+  if (face === 'south' && w > 3) { p.px(1, 0, F.noseHi); p.px(2, 0, shift(F.noseHi, 0.15)); p.px(Math.floor(w / 2), h - 1, F.ink); }
 };
 export const jawP = (F) => (p, w, h, face) => {
   fill(p, w, h, (x, y) => (face === 'up' ? F.cream : face === 'down' ? F.creamLo : ramp([F.cream, F.cream, F.creamLo], h > 1 ? y / (h - 1) : 0.5, x, y)));
@@ -226,91 +229,89 @@ export const toothP = (p, w, h, face) => { fill(p, w, h, (x, y) => (y < h * 0.4 
 // ears: stepped boxes, rimmed in white, dark inside
 export const earP = (F, part) => (p, w, h, face) => {
   fill(p, w, h, (x, y) => (face === 'up' ? F.creamHi : face === 'down' ? F.lo : ramp([F.hi, F.c, F.lo], h > 1 ? y / (h - 1) : 0.5, x, y)));
-  if (face === 'south') {
-    fill(p, w, h, (x, y) => (x === 0 || x === w - 1 || (part === 'tip' && y === 0) ? F.creamHi : part === 'tip' ? F.cream : y < 1 && part === 'mid' ? F.cream : x === 1 || x === w - 2 ? F.mask : y > h - 2 && part === 'base' ? F.deep : F.maskHi));
-  } else if (face === 'north') {
-    fill(p, w, h, (x, y) => (x === 0 || x === w - 1 || (part === 'tip' && y < 2) ? F.cream : ramp([F.c, F.lo], y / Math.max(1, h - 1), x, y)));
-  } else if (face === 'east' || face === 'west') fill(p, w, h, (x, y) => (y === 0 && part === 'tip' ? F.creamHi : x === 0 || x === w - 1 ? F.cream : F.c));
+  if (face === 'south') fill(p, w, h, (x, y) => (x === 0 || x === w - 1 || (part === 'tip' && y === 0) ? F.creamHi : part === 'tip' ? F.cream : y === 0 && part === 'mid' ? F.creamLo : x === 1 || x === w - 2 ? F.maskHi : F.mask));
+  else if (face === 'north') fill(p, w, h, (x, y) => (x === 0 || x === w - 1 || (part === 'tip' && y < 2) ? F.cream : ramp([F.c, F.lo], y / Math.max(1, h - 1), x, y)));
+  else if (face === 'east' || face === 'west') fill(p, w, h, (x, y) => (y === 0 && part === 'tip' ? F.creamHi : x === 0 || x === w - 1 ? F.cream : F.c));
 };
 // whiskers: long pale strands, darker roots
-export const whiskerP = (p, w, h) => { for (const [y0, sl] of [[h * 0.25, -0.1], [h * 0.6, 0.02], [h * 0.92, 0.12]]) for (let x = 1; x < w; x++) { const y = Math.round(y0 + (w - x) * sl); p.px(x, y, x > w * 0.8 ? '#5a5462' : x < w * 0.3 ? '#fbf8f4' : '#dcd6dc'); } };
+export const whiskerP = (p, w, h) => { for (const [y0, sl] of [[h * 0.2, -0.1], [h * 0.6, 0.02], [h * 0.95, 0.12]]) for (let x = 1; x < w; x++) { const y = Math.round(y0 + (w - x) * sl); p.px(x, y, x > w * 0.8 ? '#5a5462' : x < w * 0.3 ? '#fbf8f4' : '#dcd6dc'); } };
 
 // ---------------------------------------------------------------- eyes
 // sharp bandit eyes: an almond with a straight hard upper lid that slants toward the snout, a
-// lash flick at the outer corner, a small slit pupil. Eye textures are 10 × 7 texels; x = 0 is
-// the outer corner. o: { lid (row of the lid at the outer corner), slope (per texel), low
-// (lower-lid row), ix, iy, ir (iris), pupil: 'slit' | 'dot', glow: palette or null }
+// lash flick at the outer corner, a small slit pupil. Shapes are authored in a 10 × 7 space and
+// scaled to the plane's texture; x = 0 is the outer corner. o: { lid (lid row at the outer
+// corner), slope, low (lower-lid row), curve, ix, iy, ir (iris), pupil: 'slit' | 'dot', glint }
 export function eyeShape(p, o = {}) {
-  const W = 10, H = 7, lid = o.lid ?? 1.6, slope = o.slope ?? 0.2, low = o.low ?? 5.6;
-  const top = (x) => lid + slope * x, bot = (x) => low - Math.abs(x - 5) ** 2 * (o.curve ?? 0.05);
+  const W = p.w, H = p.h, kx = 10 / W, ky = 7 / H;
+  const lid = o.lid ?? 1.6, slope = o.slope ?? 0.2, low = o.low ?? 5.6;
+  const top = (X) => lid + slope * X, bot = (X) => low - Math.abs(X - 5) ** 2 * (o.curve ?? 0.05);
   const ix = o.ix ?? 6, iy = o.iy ?? 3.6, ir = o.ir ?? 2.2;
-  const G = o.colors || { sclera: '#efe6cf', scleraLo: '#c8bca6', iris: '#e2a032', irisHi: '#ffd46a', irisLo: '#a2601a', pupil: '#1a1012', ink: '#120e15' };
+  const G = o.colors || EYE_TRASH.colors;
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
-    const X = x + 0.5, Y = y + 0.5;
-    if (Y < top(X) - 1.1 || Y > bot(X) + 1) continue;
-    if (Y < top(X) || Y > bot(X) || x === 0 || x === W - 1) { p.px(x, y, G.ink); continue; }
-    const d = Math.hypot(X - ix, (Y - iy) * 1.05);
-    if (d < ir) {
-      const pupil = o.pupil === 'dot' ? d < 0.9 : Math.abs(X - ix) < 0.6 && Math.abs(Y - iy) < (o.slitH ?? 1.6);
-      p.px(x, y, pupil ? G.pupil : d > ir - 0.7 ? G.irisLo : Y > iy + 0.6 ? G.irisHi : G.iris);
-    } else p.px(x, y, Y < top(X) + 1 ? G.scleraLo : G.sclera);
+    const X = (x + 0.5) * kx, Y = (y + 0.5) * ky, t = top(X), b = bot(X);
+    if (Y < t - ky || Y > b + ky) continue;
+    if (Y < t || Y > b || x === 0 || x === W - 1) { p.px(x, y, G.ink); continue; }
+    const dx = (X - ix) / kx, dy = (Y - iy) / ky, d = Math.hypot(dx, dy), R = ir / kx;
+    if (d < R) {
+      const pupil = o.pupil === 'dot' ? d < 1.1 : Math.abs(dx) < 0.62 && Math.abs(dy) < (o.slitH ?? 1.7) / ky;
+      p.px(x, y, pupil ? G.pupil : d > R - 0.9 ? G.irisLo : dy > 0.6 ? G.irisHi : G.iris);
+    } else p.px(x, y, Y < t + ky ? G.scleraLo : G.sclera);
   }
-  for (let x = 0; x < W; x++) p.px(x, Math.floor(top(x + 0.5)) - 1, G.ink);              // the hard lid line
-  if (o.flick !== false) { p.px(0, Math.floor(top(0.5)) - 2, G.ink); p.px(1, Math.floor(top(0.5)) - 2, G.ink); }
-  if (o.glint) p.px(Math.round(ix) - 1, Math.round(iy) - 1, '#ffffff');
+  for (let x = 0; x < W; x++) p.px(x, Math.floor(top((x + 0.5) * kx) / ky) - 1, G.ink);              // the hard lid line
+  if (o.flick !== false) { const y0 = Math.floor(top(0.5 * kx) / ky) - 2; p.px(0, y0, G.ink); p.px(1, y0, G.ink); p.px(0, y0 - 1, G.ink); }
+  if (o.glint && G.glint !== null) p.px(Math.round((ix - ir * 0.45) / kx), Math.round((iy - ir * 0.5) / ky), G.glint || '#ffffff');
 }
 // the full set of expression textures for one eye style
 export function eyeSet(style = {}) {
   const C = style.colors, ink = (C && C.ink) || '#120e15';
-  const base = (o) => (p) => eyeShape(p, { colors: C, pupil: style.pupil, ...o });
+  const base = (o) => (p) => eyeShape(p, { colors: C, pupil: style.pupil, glint: style.glint, ...o });
+  const line = (p, pts) => { for (const [x, y] of pts) p.px(Math.round(x * p.w / 10), Math.round(y * p.h / 7), ink); };
   return {
-    sly: base({ lid: 2.0, slope: 0.12, low: 5.2, ix: 6.4, iy: 3.9, ir: 2.0, glint: style.glint }),
-    glare: base({ lid: 1.4, slope: 0.36, low: 5.4, ix: 6.0, iy: 4.2, ir: 1.9, slitH: 1.1 }),
-    wide: base({ lid: 0.8, slope: 0.06, low: 6.2, ix: 5.2, iy: 3.4, ir: 1.8, pupil: 'dot', flick: false }),
-    smug: base({ lid: 2.9, slope: -0.04, low: 5.0, ix: 5.4, iy: 4.3, ir: 2.0, curve: 0.08 }),
-    closed: (p) => { for (let x = 0; x < 10; x++) { const y = Math.round(3.6 + Math.abs(x - 5) * 0.1 + x * 0.12); p.px(x, y, ink); if (x > 0 && x < 9) p.px(x, y - 1, ink); } p.px(0, 2, ink); p.px(1, 2, ink); },
-    hurt: (p) => { for (let i = 0; i < 4; i++) { p.px(2 + i, 1 + i, ink); p.px(3 + i, 1 + i, ink); p.px(2 + i, 6 - i, ink); p.px(3 + i, 6 - i, ink); } },
-    x: (p) => { for (let i = 0; i < 6; i++) { p.px(2 + i, i, ink); p.px(3 + i, i, ink); p.px(7 - i, i, ink); p.px(8 - i, i, ink); } },
-    swirl: (p) => { for (let a = 0; a < 13; a += 0.2) { const r = a * 0.28, x = Math.round(5 + Math.cos(a) * r * 1.25), y = Math.round(3.3 + Math.sin(a) * r * 0.85); if (r < 3.6) p.px(x, y, style.swirl || '#e8e2d6'); } },
+    sly: base({ lid: 2.0, slope: 0.1, low: 5.3, ix: 6.3, iy: 3.9, ir: 2.1, curve: 0.06 }),
+    glare: base({ lid: 1.3, slope: 0.36, low: 5.5, ix: 6.0, iy: 4.2, ir: 1.9, slitH: 1.2, curve: 0.04 }),
+    wide: base({ lid: 0.7, slope: 0.05, low: 6.2, ix: 5.2, iy: 3.4, ir: 1.7, pupil: 'dot', flick: false, glint: false }),
+    smug: base({ lid: 2.8, slope: -0.05, low: 5.1, ix: 5.6, iy: 4.3, ir: 2.0, curve: 0.09 }),
+    closed: (p) => { const W = p.w, H = p.h; for (let x = 0; x < W; x++) { const y = Math.round((3.4 + Math.abs(x * 10 / W - 5) * 0.1 + x * 10 / W * 0.12) * H / 7); p.px(x, y, ink); if (x > 0 && x < W - 1) p.px(x, y - 1, ink); } p.px(0, Math.round(2 * H / 7), ink); p.px(1, Math.round(2 * H / 7), ink); },
+    hurt: (p) => { const W = p.w, H = p.h, m = Math.round(H / 2); for (let i = 0; i < m; i++) { const x = Math.round(W * 0.2) + i; p.px(x, m - 1 - i + 0, ink); p.px(x + 1, m - 1 - i, ink); p.px(x, m + i - 1, ink); p.px(x + 1, m + i - 1, ink); } },
+    x: (p) => { const W = p.w, H = p.h, n = Math.min(W, H) - 1, x0 = Math.round((W - n) / 2); for (let i = 0; i < n; i++) { p.px(x0 + i, i, ink); p.px(x0 + i + 1, i, ink); p.px(x0 + n - i, i, ink); p.px(x0 + n - i - 1, i, ink); } },
+    swirl: (p) => { const W = p.w, H = p.h; for (let a = 0; a < 14; a += 0.15) { const r = a * 0.26, x = Math.round(W / 2 + Math.cos(a) * r * W / 9), y = Math.round(H / 2 + Math.sin(a) * r * H / 8); if (r < 3.6) p.px(x, y, style.swirl || '#e8e2d6'); } },
   };
 }
 // pale eye-whites read inside the black mask; glowing eyes (stages 2–3) have no whites at all
-export const EYE_TRASH = { colors: { sclera: '#efe6cf', scleraLo: '#c8bca6', iris: '#e2a032', irisHi: '#ffd46a', irisLo: '#a2601a', pupil: '#1a1012', ink: '#120e15' }, glint: true };
+export const EYE_TRASH = { colors: { sclera: '#f2ead4', scleraLo: '#c9bda6', iris: '#e8a42c', irisHi: '#ffd664', irisLo: '#9c5a14', pupil: '#1a1012', ink: '#120e15', glint: '#ffffff' }, glint: true };
 
 // ---------------------------------------------------------------- the ringed tail
-// rings alternate dark / pale along the tail; every dark ring is broken by a little bolt-shaped
-// notch (the wink at the bolt in the band's name). s0 = tail length (texels) at this segment's
-// root end, so neighbouring segments continue the rings. Segments run along local −z.
-const BOLT = ['..##', '.##.', '####', '.##.', '##..'];
+// rings alternate dark / pale along the tail with a tiny zig-zag edge; every dark ring carries a
+// little bolt-shaped notch (the wink at the bolt in the band's name). s0 = tail length (texels) at
+// this segment's root end, so neighbouring segments continue the rings. Segments run along local −z.
+const BOLT = ['..#', '.#.', '###', '.#.', '#..'];
 export function tailP(F, s0 = 0, o = {}) {
-  const per = o.per || 10, dk = o.dark || 5, tipAt = o.tipAt ?? 1e9;
+  const per = o.per || 12, dk = o.dark || 6, tipAt = o.tipAt ?? 1e9;
   return (p, w, h, face, cube) => {
     const L = Math.round(cube.s[2] * 3);
-    const map = (x, y) => face === 'east' ? [x, y] : face === 'west' ? [L - 1 - x, y] : face === 'up' ? [h - 1 - y, x] : face === 'down' ? [y, x] : face === 'south' ? [0, x] : [L - 1, x];
+    const map = (x, y) => (face === 'east' ? [x, y] : face === 'west' ? [L - 1 - x, y] : face === 'up' ? [h - 1 - y, x] : face === 'down' ? [y, x] : face === 'south' ? [0, x] : [L - 1, x]);
     const across = face === 'east' || face === 'west' ? h : w;
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-      const [a, c] = map(x, y), s = s0 + a, zz = [0, 1, 2, 1][((c % 4) + 4) % 4];
-      const lit = face === 'up' ? 0 : face === 'down' ? 2 : (c / Math.max(1, across - 1)) * 2;
+      const [a, c] = map(x, y), s = s0 + a, zz = (c % 3 === 1) ? 1 : 0;
+      const v = face === 'up' ? 0 : face === 'down' ? 1 : c / Math.max(1, across - 1);
       let col;
-      if (s >= tipAt) col = ramp([F.maskHi, F.mask, F.maskLo], lit / 2, x, y);
+      if (s >= tipAt) col = ramp([F.maskHi, F.mask, F.mask, F.maskLo], v, x, y);
       else {
         const k = (((s + zz) % per) + per) % per, dark = k < dk;
-        col = dark ? ramp([F.maskHi, F.ringD, F.maskLo], lit / 2, x, y) : ramp([F.tip, F.ringL, shift(F.ringL, -0.22)], lit / 2, x, y);
-        if (!dark && (k === dk) && lit < 1.6) col = shift(col, -0.12);
+        col = dark ? ramp([F.maskHi, F.ringD, F.ringD, F.maskLo], v, x, y) : ramp([F.tip, F.ringL, F.ringL, shift(F.ringL, -0.2)], v, x, y);
+        if (!dark && k === per - 1) col = shift(col, -0.1);
       }
       p.px(x, y, col);
     }
-    // bolt notches, one per dark ring per long face
+    if (o.bolts === false) return;
     if (face === 'east' || face === 'west' || face === 'up') {
-      const ringIdx0 = Math.ceil((s0 - dk) / per);
-      for (let k = ringIdx0; k * per < s0 + L; k++) {
-        const a0 = k * per - s0, c0 = Math.round(across * 0.5 + ((k * 7) % 5) - 3);
-        if (k * per >= tipAt) continue;
+      for (let k = Math.floor(s0 / per) - 1; k * per < s0 + L; k++) {
+        if (k * per + dk > tipAt) continue;
+        const a0 = k * per - s0 + Math.floor((dk - 3) / 2), c0 = Math.round(across / 2 - 2.5 + ((k * 3) % 3) - 1);
         BOLT.forEach((row, i) => [...row].forEach((ch, j) => {
           if (ch !== '#') return;
-          const a = a0 + i, c = c0 + j - 2; if (a < 0 || a >= L || c < 0 || c >= across) return;
-          const X = face === 'east' ? a : face === 'west' ? L - 1 - a : c, Y = face === 'up' ? h - 1 - a : c;
-          p.px(X, Y, F.bolt);
+          const a = a0 + j, c = c0 + i; if (a < 0 || a >= L || c < 0 || c >= across) return;
+          p.px(face === 'east' ? a : face === 'west' ? L - 1 - a : c, face === 'up' ? h - 1 - a : c, F.bolt);
         }));
       }
     }
@@ -348,9 +349,10 @@ export function cardP(o = {}) {
       const x0 = Math.round(a * w), x1 = Math.round(b * w);
       for (let y = 0; y < h; y++) for (let x = x0; x <= x1; x++) p.px(x, y, x === x0 || x === x1 ? J.tapeLo : (y + x) % 7 === 0 ? J.tapeHi : J.tape);
     }
-    if (o.arrows && (face === 'east' || face === 'west') && h >= 6 && w >= 12) {
-      for (const ax of [Math.round(w * 0.3), Math.round(w * 0.3) + 4]) { p.vl(ax, 2, h - 2, J.print); p.px(ax - 1, 3, J.print); p.px(ax + 1, 3, J.print); }
-      p.hl(Math.round(w * 0.3) - 2, Math.round(w * 0.3) + 6, h - 2, J.print);
+    if (o.arrows && (face === 'east' || face === 'west') && h >= 6 && w >= 12) {   // the "this way up" mark: two arrows over a bar
+      const y0 = 1, y1 = h - 2, x0 = Math.round(w * (o.arrowsAt ?? 0.3));
+      for (const ax of [x0, x0 + 4]) { p.vl(ax, y0 + 1, y1 - 1, J.print); p.px(ax, y0, J.print); p.px(ax - 1, y0 + 1, J.print); p.px(ax + 1, y0 + 1, J.print); }
+      p.hl(x0 - 2, x0 + 6, y1, J.print);
     }
   };
 }
@@ -399,7 +401,7 @@ export const barkP = (o = {}) => (p, w, h, face) => {
   fill(p, w, h, (x, y) => (face === 'up' ? J.barkHi : face === 'down' ? J.barkDeep : ramp([J.barkHi, J.bark, J.barkLo], h > 1 ? y / (h - 1) : 0.5, x, y)));
   for (let x = 2; x < w; x += 5 + (x % 3)) for (let y = 0; y < h; y++) if ((x + y) % 4 !== 0) p.px(x, y, face === 'up' ? J.bark : J.barkLo);
   for (let x = 4; x < w; x += 9) { p.px(x, Math.floor(h / 2), J.barkDeep); p.px(x + 1, Math.floor(h / 2), J.barkHi); }
-  if (o.string && (face === 'up' || face === 'south')) for (let x = o.s0 ?? 0; x < w - (o.s1 ?? 0); x++) p.px(x, face === 'up' ? h - 1 : 0, J.band);
+  if (o.string && face === 'south') for (let x = o.s0 ?? 0; x < w - (o.s1 ?? 0); x++) { p.px(x, Math.floor(h / 2), J.band); p.px(x, Math.floor(h / 2) + 1, x % 4 ? J.bandLo : J.band); }
 };
 export const leafP = (p, w, h) => {
   const cx = (w - 1) / 2;

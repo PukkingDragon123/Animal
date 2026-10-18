@@ -399,7 +399,7 @@ export const anim = {
       const gather = seg(t, 0.05, 0.3, E.inout) * (1 - seg(t, 0.3, 0.4)), spin = seg(t, 0.32, 0.5, E.in) * (1 - seg(t, 1.35, 1.6, E.inout));
       const fling = seg(t, 1.25, 1.35, E.out) * (1 - seg(t, 1.6, 1.9, E.inout));
       shades(P, on);
-      P.rot('root', 0, 1080 * seg(t, 0.32, 1.45, E.inout), 0).pos('root', 0, 1.6 * spin + 0.6 * wave(t, 6) * spin, 0);
+      P.rot('root', 0, (1080 * seg(t, 0.32, 1.45, E.inout)) % 360, 0).pos('root', 0, 1.6 * spin + 0.6 * wave(t, 6) * spin, 0);
       P.pos('body', 0, -1 * gather, 0).sq('body', -0.12 * gather + 0.06 * spin + wob(t, 1.5, -0.08, 3, 5));
       feet(P, -1 * gather);
       flare(P, -12 * gather + 62 * spin + 20 * fling, t, 6 * spin);

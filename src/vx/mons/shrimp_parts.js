@@ -124,22 +124,23 @@ export function hair(cs, o = {}) {
 // a fringe of spines along the far edge. Drawn with the blade's root at y = 0 (painter row 0).
 export function blade(cs, o = {}) {
   return (p, w, h) => {
-    const cx = (w - 1) / 2;
+    const cx = (w - 1) / 2, Y = (v) => Math.round(o.flip ? (1 - v) * (h - 1) : v * (h - 1));      // v: 0 root → 1 far end
     for (let y = 0; y < h; y++) {
-      const v = y / Math.max(1, h - 1), half = (o.taper ? 0.55 + 0.45 * Math.sin(Math.min(1, v * 1.4) * Math.PI * 0.5) : 1) * (w / 2) * (v > 0.82 ? Math.sqrt(Math.max(0, 1 - ((v - 0.82) / 0.2) ** 2)) * 0.5 + 0.5 : 1);
+      const v = o.flip ? 1 - y / Math.max(1, h - 1) : y / Math.max(1, h - 1);
+      const half = (0.62 + 0.38 * Math.sin(Math.min(1, v * 1.6) * Math.PI * 0.5)) * (w / 2) * (v > 0.8 ? Math.sqrt(Math.max(0, 1 - ((v - 0.8) / 0.24) ** 2)) * 0.6 + 0.4 : 1);
       for (let x = 0; x < w; x++) {
         const d = Math.abs(x - cx) / Math.max(0.5, half); if (d > 1) continue;
         let c = ramp([cs.root, cs.base, cs.edge], v * 1.05, x, y);
-        if (d > 0.82) c = cs.rim;
-        if (Math.abs(x - cx) < 0.6 && v < 0.85) c = cs.keel;
+        if (d > 0.78) c = cs.rim;
+        if (Math.abs(x - cx) < 0.6 && v < 0.8) c = cs.keel;
         p.px(x, y, c);
       }
     }
     if (o.eye) {     // the peacock eyespot near the far end
-      const ex = Math.round(cx), ey = Math.round(h * 0.7);
+      const ex = Math.round(cx), ey = Y(0.66);
       for (let y = -2; y <= 2; y++) for (let x = -2; x <= 2; x++) { const r = Math.hypot(x, y); if (r > 2.3) continue; p.px(ex + x, ey + y, r > 1.5 ? cs.eyeRing : r > 0.6 ? cs.eye : cs.eyeCore); }
     }
-    if (o.spines) for (let x = 1; x < w - 1; x += 2) { p.px(x, h - 1, cs.spine); }
+    if (o.spines) { const ye = Y(1); for (let x = 1; x < w - 1; x += 2) p.px(x, ye, cs.spine); }
   };
 }
 

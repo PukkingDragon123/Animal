@@ -584,8 +584,8 @@ export function build(o = {}) {
   newsBoxes(k, 236, Y0, 127); newsBoxes(k, 168, Y0, 200, ['#e8b830', '#2e7a4a', '#c8302c']);
   // a utility cabinet plastered with posters
   B(126, Y0, 128, 133, Y0 + 9, 131, (x, y, z) => (y === Y0 + 9 ? one(k, '#3e5a4a') : one(k, '#4a6a58')));
-  dS(126, Y0 + 1, 133, Y0 + 9, 131, P.league(), { ppm: 32 });
-  dE(128, Y0 + 1, 131, Y0 + 8, 133, P.concert(), { ppm: 32 });
+  dS(126, Y0 + 1, 133, Y0 + 9, 131, P.league(), { ppm: 48 });
+  dE(128, Y0 + 1, 131, Y0 + 8, 133, P.concert(), { ppm: 48 });
   // cardboard boxes stacked by the fruit stand and the gift shop
   for (const [x, z, h] of [[346, 114, 6], [346, 119, 4], [389, 114, 5]]) B(x, Y0, z, x + 4, Y0 + h - 1, z + 4, (xx, y, zz) => (y === Y0 + h - 1 || xx === x + 2 ? one(k, '#b88a58') : one(k, '#c8a070')));
   // rooftop clutter: satellite dishes and antennas
@@ -606,6 +606,19 @@ export function build(o = {}) {
   B(392, Y0 + 30, 135, 392, Y0 + 32, 145, one(k, '#2a6a3a'));
   dE(135, Y0 + 30, 145, Y0 + 32, 392, P.streetSign('GRANT AV', '都板街'), { ppm: 48 });
   dW(135, Y0 + 30, 145, Y0 + 32, 392, P.streetSign('GRANT AV', '都板街'), { ppm: 48 });
+
+  // ---------------------------------------------------------------- upstairs businesses: gold lettering on the glass
+  for (const [x0, f, cjk, en] of [[18, 2, '麻雀館', 'MAHJONG'], [186, 2, '牙科', 'DENTIST'], [317, 2, '旅行社', 'TRAVEL'], [366, 2, '功夫', 'KUNG FU'], [105, 3, '宴會廳', 'BANQUET'], [412, 2, '功夫', 'KUNG FU']]) {
+    const w = x0 === 186 || x0 === 366 ? 7 : x0 === 412 ? 10 : 9;
+    dS(x0, fl(f) + 6, x0 + w, fl(f) + 18, ZF - 1, P.winText({ cjk, en }), { ppm: 48, off: 0.03 });
+  }
+  // a tall corner sign on the California Street face of the pagoda building
+  B(448, fl(1) + 2, 100, 449, fl(3) + 4, 110, one(k, '#b02428'));
+  for (let y = fl(1) + 2; y <= fl(3) + 4; y++) for (const z of [100, 110]) v.set(450, y, z, night ? one(k, '#ffd040', GLOW) : one(k, '#e8d090'));
+  for (let z = 100; z <= 110; z++) for (const y of [fl(1) + 2, fl(3) + 4]) v.set(450, y, z, night ? one(k, '#ffd040', GLOW) : one(k, '#e8d090'));
+  dE(101, fl(1) + 3, 109, fl(3) + 3, 449, P.vboard({ cjk: '中華', bg: '#b02428', col: '#ffe070', frame: '#f0c040' }), { ppm: 40, glow: true, off: 0.03 });
+  // overhead wires between the rooftops and across the street
+  for (const [a, b, sag] of [[[64, roofY(3) - 2, ZF], [160, roofY(1) + 4, ZF + 1], 6], [[220, roofY(3) - 6, ZF], [300, roofY(2) - 2, ZF], 5], [[392, roofY(3) - 8, ZF], [448, Y0 + 40, 200], 8], [[0, roofY(2) - 4, ZF], [GX + 8, Y0 + 70, 120], 4]]) dr.wire(a, b, sag, 0x22201e);
 
   // ---------------------------------------------------------------- lanterns across the street (zigzag), along the square
   for (const [i, x] of [80, 160, 240, 320, 400].entries()) {

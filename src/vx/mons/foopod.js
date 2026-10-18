@@ -23,7 +23,7 @@ const C = {
   scale: '#ff9a2a', scaleHi: '#ffd060', scaleEdge: '#e0388e',
   hair: { base: '#2c2646', hi: '#4c4a7c', lo: '#141026', sheen: '#7c88dc' },
   belt: '#24357a', beltHi: '#4060b8', beltLo: '#141e4a', beltStripe: '#ff8a2a',
-  eye: '#1e5664', eyeHi: '#4a96a0', eyeLo: '#10303e', eyeShade: '#0b1a28', band: ['#ff3e9a', '#ffe23a', '#3ae8ff'],
+  eye: '#3a9c96', eyeHi: '#86dccc', eyeLo: '#1f5c66', eyeShade: '#14303e', band: ['#ff3e9a', '#ffe23a', '#3ae8ff'],
   stalk: ['#ffb43a', '#f08a2c'], mouth: '#2a0c1e', bristle: '#fff0c8',
   fan: { root: '#2a5ad0', base: '#3a46c8', edge: '#ff6a3a', rim: '#ff9a3a', keel: '#1a2a7a', eye: '#ffd23a', eyeRing: '#16124a', eyeCore: '#ff3e9a', spine: '#fff0c8' },
 };
@@ -38,22 +38,30 @@ const faceP = (p, w, h, face, cube) => {
   if (face !== 'south') return;
   for (const s of [-1, 1]) for (let k = 0; k < 4; k++) { const x = Math.round(w / 2 + s * (w * 0.34 - k)), y = Math.round(h * 0.55 + k * 0.6); p.px(x, y, C.spot); p.px(x + s, y + 1, C.spot); }
   for (let x = 2; x < w - 2; x++) p.px(x, Math.round(h * 0.28), shift(C.shellLo, -0.1));
+  const my = h - Math.round(h * 0.17), m = Math.floor(w / 2); for (let x = m - 5; x <= m + 4; x++) { p.px(x, my, C.mouth); p.px(x, my - 1, shift(C.shellLo, -0.05)); }
 };
 const plates = C.rb.map((c, i) => rainbowPlate(c, i ? C.rb[i - 1] : '#ffffff'));
 const backPs = C.back.map((c, i) => armour(c, { keel: true, sheen: C.back[i + 1] || C.tail[0], dots: 5, seed: i + 2 }));
 const tailPs = C.tail.map((c, i) => armour(c, { keel: true, dots: 4, sheen: '#8ab0ff', seed: i + 7 }));
 const armP = layer(armour(C.arm, { top: C.armHi, bottom: C.armLo }), spots(C.armSpot, { every: 4, skip: 0.42, core: C.armLo }));
 const foreP = layer(armour(C.fore, { top: C.foreHi, bottom: C.foreLo }), spots(C.armLo, { every: 4, skip: 0.55 }));
-// the smashing club: ivory heel with a coral band at the wrist, a white striking pad on top
+// the smashing club: a pearly heel (white → cream → peach), a coral cuff at the wrist, the dactyl's joint
+// creased into the front, and a white striking pad with a pearl sheen on top
 const clubP = (p, w, h, face) => {
+  const cuff = Math.round((h - 1) * 0.7);
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
     let c;
-    if (face === 'up') { const d = Math.max(Math.abs(x - (w - 1) / 2) / (w / 2), Math.abs(y - (h - 1) / 2) / (h / 2)); c = d > 0.8 ? C.club : d > 0.55 ? '#fffaf0' : C.clubHi; }
+    if (face === 'up') { const d = Math.max(Math.abs(x - (w - 1) / 2) / (w / 2), Math.abs(y - (h - 1) / 2) / (h / 2)); c = d > 0.78 ? C.club : d > 0.5 ? ((x + y) % 3 === 0 ? '#d4f2ff' : '#fff8ee') : '#ffffff'; }
     else if (face === 'down') c = C.clubBandLo;
-    else { const t = y / Math.max(1, h - 1); c = t > 0.74 ? (y === h - 1 ? C.clubBandLo : C.clubBand) : ramp([C.clubHi, C.club, C.clubLo], t / 0.74, x, y); if (y === 0) c = C.clubHi; }
+    else if (y > cuff) c = y === h - 1 ? C.clubBandLo : (x + y) % 4 === 0 ? shift(C.clubBand, 0.2) : C.clubBand;
+    else if (y === cuff) c = C.clubLo;
+    else c = y === 0 ? C.clubHi : y < cuff * 0.45 ? C.clubHi : y < cuff * 0.8 ? C.club : '#f0d2b4';
     p.px(x, y, c);
   }
-  if (face === 'south' || face === 'west' || face === 'east') { p.px(1, 1, '#ffffff'); p.px(2, 1, '#ffffff'); p.px(1, 2, '#ffffff'); const y = Math.round((h - 1) * 0.74) - 1; for (let x = 1; x < w - 1; x++) if (x % 2) p.px(x, y, C.clubLo); }
+  if (face === 'up' || face === 'down') return;
+  p.px(1, 1, '#ffffff'); p.px(2, 2, '#ffffff');
+  for (let k = 0; k < 3; k++) p.px(w - 2 - k, 2 + k, '#c4e8ff');                              // pearl sheen
+  if (face === 'south') { const x = Math.round(w * 0.64); for (let y = 2; y < cuff; y++) p.px(x, y, '#e6c2a2'); }   // the dactyl's joint
 };
 const legP = layer(armour(C.leg, { top: C.legHi, bottom: C.legLo }), (p, w, h, face) => { if (face === 'up' || face === 'down') return; for (let x = 0; x < w; x++) p.px(x, 1, shift(C.legLo, -0.1)); });
 const kneeP = armour(shift(C.leg, -0.08), { top: C.legHi, bottom: C.legLo, dots: 3 });
@@ -100,13 +108,31 @@ const buckleP = (p, w, h, face) => {
   const cx = Math.floor(w / 2);
   p.px(cx - 1, 1, '#ffd23a'); p.px(cx, 1, '#ffd23a'); for (let x = cx - 3; x <= cx + 2; x++) p.px(x, 2, '#ff7a2a'); p.px(cx - 2, 3, '#c04a1a'); p.px(cx + 1, 3, '#c04a1a');
 };
-const fanP = blade(C.fan, { eye: true, spines: true });
+const fanOuter = blade(C.fan, { eye: true, spines: true, flip: true });
+const fanInner = blade({ ...C.fan, root: '#2a6cc8', base: '#3a5ad8', edge: '#7a5ae8', rim: '#ffd23a' }, { spines: true, flip: true });
+const spineP = gradient(['#fff0c8', '#ffb43a', '#c0501e']);
 const telsonP = (p, w, h, face) => { armour('#2a4ac8', { top: '#6a8aff', bottom: '#1a2a7a', keel: true })(p, w, h, face); if (face === 'up') for (let x = 0; x < w; x += 2) p.px(x, 0, C.fan.spine); };
 const pleoP = (p, w, h) => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { if (y > h - 2 && x % 2) continue; p.px(x, y, (x + y) % 3 === 0 ? '#ffb0c8' : y < 2 ? '#c8386a' : '#ff6c8e'); } };
 
 // ---------------------------------------------------------------- the model
 const EM = eyeMap(EYEP);
-const eyeStates = () => Object.keys(EYE_ROWS).filter((k) => k !== 'closed').map((k) => B(-4.333, 21.8, 3.45, -0.667, 26.133, 3.45, grid(EYE_ROWS[k], EM), { plane: 'z', id: 'eye-' + k, hide: k !== 'glare' }));
+const eyeStates = () => Object.keys(EYE_ROWS).filter((k) => k !== 'closed').map((k) => B(-4.733, 23.0, 3.25, -1.067, 27.333, 3.25, grid(EYE_ROWS[k], EM), { plane: 'z', id: 'eye-' + k, hide: k !== 'glare' }));
+// shaggy hair: a row of locks, each its own outlined slab with a narrower tip, splayed a little so
+// the outlines separate them and the silhouette frays. spec: [a0, a1, bottom, splay°, lift°, depth]
+// axis 'z' = a side curtain (locks along z at x = at), axis 'x' = the back curtain (locks along x at z = at)
+function locks(axis, at, th, top, spec, seed = 1, side = -1) {
+  const out = [];
+  spec.forEach(([a0, a1, bot, splay = 0, lift = 0, dd = 0], i) => {
+    const P = hair(C.hair, { lock: 3, seed: seed + i, band: 0.16, off: i }), m = (a0 + a1) / 2;
+    const rot = axis === 'z' ? [lift, 0, side * splay] : [lift, 0, splay];
+    const pivot = axis === 'z' ? [at + th / 2 + side * dd, top, m] : [m, top, at + th / 2 + dd];
+    const box = (u0, u1, y0, y1) => (axis === 'z' ? B(at + side * dd, y0, u0, at + th + side * dd, y1, u1, P, { pivot, rot }) : B(u0, y0, at + dd, u1, y1, at + th + dd, P, { pivot, rot }));
+    out.push(box(a0, a1, bot, top));
+    const w = a1 - a0, k = Math.min(0.55, w * 0.28);
+    out.push(box(a0 + k * (i % 2 ? 1.3 : 0.7), a1 - k * (i % 2 ? 0.7 : 1.3), bot - 1.1, bot + 0.01));
+  });
+  return out;
+}
 const RIGHT = {
   thigh: { name: 'thighR', parent: 'root', pivot: [-2.8, 7.4, -0.6], cubes: [B(-4.0, 4.0, -1.8, -1.6, 7.8, 0.6, legP)] },
   shin: { name: 'shinR', parent: 'thighR', pivot: [-2.8, 4.2, -0.6], cubes: [
@@ -119,42 +145,41 @@ const RIGHT = {
     B(-3.4, 0, 2.9, -2.2, 0.67, 3.8, clawTipP),
     B(-3.4, 0, -3.0, -2.2, 0.8, -2.2, clawTipP),
   ] },
-  shoulder: { name: 'coxaR', parent: 'body', pivot: [-4.4, 13.2, 1.0], cubes: [B(-5.0, 12.1, -0.2, -3.6, 14.5, 2.2, armP)] },
-  arm: { name: 'armR', parent: 'body', pivot: [-4.4, 13.2, 1.0], rot: [26, 0, 0], cubes: [B(-6.0, 11.9, -0.2, -3.4, 14.5, 5.0, armP)] },
-  fore: { name: 'foreR', parent: 'armR', pivot: [-4.7, 13.2, 4.4], rot: [-30, 0, 0], cubes: [
-    B(-5.9, 12.0, 3.2, -3.5, 17.4, 5.6, foreP),
-    B(-5.5, 12.4, 5.6, -3.9, 16.6, 6.1, armP),                      // the folded dactyl blade along the front
+  shoulder: { name: 'coxaR', parent: 'body', pivot: [-4.4, 12.8, 1.0], cubes: [B(-5.2, 11.7, -0.3, -3.8, 14.2, 2.2, armP)] },
+  arm: { name: 'armR', parent: 'body', pivot: [-4.4, 12.8, 1.0], rot: [24, -6, 0], cubes: [B(-6.0, 11.6, -0.2, -3.4, 14.0, 4.6, armP)] },
+  fore: { name: 'foreR', parent: 'armR', pivot: [-4.7, 12.8, 4.1], rot: [-26, 0, 6], cubes: [
+    B(-5.85, 11.8, 2.95, -3.55, 16.0, 5.25, foreP),
+    B(-5.25, 12.6, 5.25, -4.15, 15.4, 5.75, armP),                     // the folded dactyl blade along the front
   ] },
-  club: { name: 'clubR', parent: 'foreR', pivot: [-4.7, 17.0, 4.4], cubes: [
-    B(-6.5, 16.6, 2.6, -2.9, 20.4, 6.4, clubP),
-    B(-6.2, 16.2, 2.9, -3.2, 20.8, 6.1, clubP),
-    B(-6.85, 17.0, 2.9, -2.55, 20.0, 6.1, clubP),
+  club: { name: 'clubR', parent: 'foreR', pivot: [-4.7, 15.7, 4.1], cubes: [
+    B(-6.25, 15.4, 2.5, -3.15, 18.6, 5.7, clubP),
+    B(-6.0, 15.05, 2.75, -3.4, 18.95, 5.45, clubP),
+    B(-6.55, 15.75, 2.75, -2.85, 18.25, 5.45, clubP),
   ] },
-  stalk: { name: 'stalkR', parent: 'head', pivot: [-2.5, 20.4, 1.6], cubes: [
-    B(-3.1, 20.0, 1.0, -1.9, 22.2, 2.2, stalkP),
-    B(-4.333, 21.8, -0.233, -0.667, 26.133, 3.433, eyeballP(EYEP)),
-    B(-4.5, 22.8, -0.4, -0.5, 24.467, 3.433, ringP),
-    B(-4.5, 21.65, -0.4, -0.5, 26.3, 3.6, eyeShutP(EYEP), { id: 'eye-shut', hide: true }),
+  stalk: { name: 'stalkR', parent: 'head', pivot: [-2.9, 20.6, 1.4], rot: [0, 0, 8], cubes: [
+    B(-3.45, 20.2, 0.85, -2.35, 23.4, 1.95, stalkP),
+    B(-4.733, 23.0, -0.433, -1.067, 27.333, 3.233, eyeballP(EYEP)),
+    B(-4.9, 24.0, -0.6, -0.9, 25.667, 3.233, ringP),
+    B(-4.9, 22.85, -0.6, -0.9, 27.5, 3.4, eyeShutP(EYEP), { id: 'eye-shut', hide: true }),
     ...eyeStates(),
   ] },
-  brow: { name: 'browR', parent: 'stalkR', pivot: [-2.5, 26.0, 0.2], rot: [12, 0, -10], cubes: [B(-4.6, 25.9, 0.0, -0.4, 26.7, 3.95, browP)] },
-  scale: { name: 'scaleR', parent: 'head', pivot: [-4.2, 16.8, 3.6], rot: [-6, 26, -32], cubes: [B(-8.0, 16.8, 2.0, -4.2, 16.8, 6.2, scaleP, { plane: 'y' })] },
-  ant: { name: 'antR', parent: 'head', pivot: [-4.0, 18.6, 3.6], rot: [-14, 0, 30], cubes: [B(-4.33, 18.6, 3.27, -3.67, 22.6, 3.93, antP)] },
-  ant2: { name: 'ant2R', parent: 'antR', pivot: [-4.0, 22.6, 3.6], rot: [-28, 0, -8], cubes: [B(-4.27, 22.6, 3.33, -3.73, 25.8, 3.87, antP), B(-4.4, 25.6, 3.2, -3.6, 26.4, 4.0, shade(C.scaleEdge))] },
-  hair: { name: 'hairR', parent: 'head', pivot: [-4.7, 20.6, 0.0], cubes: [
-    B(-5.3, 14.6, -3.6, -4.6, 21.0, 2.8, hairBox),
-    B(-4.95, 11.4, -3.4, -4.95, 14.8, 2.4, hairTips(3), { plane: 'x' }),
-  ] },
+  brow: { name: 'browR', parent: 'stalkR', pivot: [-2.9, 27.2, -0.1], rot: [14, 0, -12], cubes: [B(-4.85, 27.05, -0.3, -0.95, 27.65, 3.65, browP)] },
+  scale: { name: 'scaleR', parent: 'head', pivot: [-3.9, 18.4, 3.1], rot: [0, 34, -14], cubes: [B(-7.5, 16.9, 3.1, -3.9, 20.3, 3.1, scaleP, { plane: 'z' })] },
+  ant: { name: 'antR', parent: 'head', pivot: [-3.9, 19.6, 3.0], rot: [-16, 0, 38], cubes: [B(-4.23, 19.6, 2.67, -3.57, 23.4, 3.33, antP)] },
+  ant2: { name: 'ant2R', parent: 'antR', pivot: [-3.9, 23.4, 3.0], rot: [-34, 0, -14], cubes: [B(-4.17, 23.4, 2.73, -3.63, 26.6, 3.27, antP), B(-4.3, 26.4, 2.6, -3.5, 27.2, 3.4, shade(C.scaleEdge))] },
+  hair: { name: 'hairR', parent: 'head', pivot: [-4.4, 20.2, 0.0], cubes: locks('z', -4.95, 0.62, 20.6, [[-3.4, -1.7, 12.6, 6, 4, 0], [-1.75, 0.0, 11.8, 3, 2, 0.12], [-0.05, 1.7, 13.0, 7, -2, 0], [1.65, 3.0, 15.2, 10, -8, 0.1]], 3, -1) },
+  max: { name: 'maxR', parent: 'head', pivot: [-2.3, 16.6, 3.9], cubes: [B(-2.75, 14.9, 3.55, -1.95, 16.9, 4.35, foreP), B(-2.85, 14.2, 3.75, -2.05, 15.0, 4.85, clubP)] },
   pleo: { name: 'pleoR', parent: 'tail1', pivot: [-1.4, 5.4, -4.8], cubes: [B(-2.8, 3.2, -4.8, -0.4, 5.4, -4.8, pleoP, { plane: 'z' })] },
 };
 export const def = {
-  name: 'foopod', ppu: 3, scale: 0.34, outline: { color: C.ink, px: 1.4 },
+  name: 'foopod', ppu: 3, scale: 0.32, outline: { color: C.ink, px: 1.4 },
   bones: [
     { name: 'root', pivot: [0, 0, 0], cubes: [] },
     ...both(RIGHT.thigh, RIGHT.shin, RIGHT.foot),
     { name: 'body', parent: 'root', pivot: [0, 7.6, -0.4], cubes: [
       B(-4.2, 6.2, -3.4, 4.2, 14.8, 3.0, shellP),
-      B(-4.6, 7.6, -2.8, 4.6, 13.4, 2.4, shellP),
+      B(-4.8, 11.9, -3.1, 4.8, 14.9, 2.6, shellP),                      // the shoulder yoke
+      B(-4.5, 7.6, -2.8, 4.5, 11.9, 2.4, shellP),
       // the rainbow: a stack of chest plates, yellow → orange → red → magenta
       B(-3.8, 12.6, 2.4, 3.8, 14.6, 3.9, plates[0]),
       B(-3.7, 10.7, 2.4, 3.7, 12.7, 3.8, plates[1]),
@@ -165,53 +190,53 @@ export const def = {
       B(-3.7, 10.2, -3.85, 3.7, 12.5, -3.0, backPs[1]),
       B(-3.6, 8.0, -3.75, 3.6, 10.3, -3.0, backPs[2]),
       // waistband with the ray gun tucked in, and its saucer buckle
-      B(-4.8, 6.0, -3.8, 4.8, 7.6, 3.6, beltP),
-      B(-1.0, 5.85, 3.5, 1.0, 7.75, 4.0, buckleP),
+      B(-4.7, 6.0, -3.7, 4.7, 7.6, 3.5, beltP),
+      B(-1.0, 5.85, 3.4, 1.0, 7.75, 3.9, buckleP),
     ] },
-    { name: 'gunH', parent: 'body', pivot: [5.2, 7.4, 0.2], rot: [96, 0, -14], cubes: rayGun([5.2, 7.4, 0.2], 'gun-h', { k: 0.78 }) },
+    { name: 'gunH', parent: 'body', pivot: [5.05, 7.3, -0.2], rot: [70, 16, 0], cubes: rayGun([5.05, 7.3, -0.2], 'gun-h', { k: 0.62 }) },
     { name: 'head', parent: 'body', pivot: [0, 14.6, 0.2], cubes: [
-      B(-4.4, 14.4, -3.2, 4.4, 19.8, 3.8, shellP, { faces: { south: faceP } }),
-      B(-3.8, 19.6, -2.8, 3.8, 20.2, 3.2, shellP),
-      B(-0.8, 16.6, 3.7, 0.8, 18.4, 4.4, rostrumP),
-      B(-2.6, 15.2, 3.7, 2.6, 16.6, 4.5, lipP),
-      // the mop: a centre-parted cap, a fringe in two curtains, long hair down the back
-      B(-4.75, 19.6, -3.7, 4.75, 21.0, 3.75, hairCapP),
-      B(-4.6, 17.4, 3.92, 4.6, 21.0, 3.92, fringeP, { plane: 'z' }),
+      B(-4.0, 14.4, -3.0, 4.0, 19.6, 3.6, shellP, { faces: { south: faceP } }),
+      B(-3.5, 19.4, -2.6, 3.5, 20.0, 3.0, shellP),
+      B(-0.75, 16.6, 3.5, 0.75, 18.4, 4.2, rostrumP),
+      // the mop: a centre-parted cap and a fringe in two curtains
+      B(-4.3, 19.4, -3.4, 4.3, 20.6, 3.5, hairCapP),
+      B(-4.2, 17.5, 3.62, 4.2, 20.6, 3.62, fringeP, { plane: 'z' }),
     ] },
-    { name: 'hairB', parent: 'head', pivot: [0, 20.6, -3.7], cubes: [
-      B(-4.75, 13.2, -4.4, 4.75, 21.0, -3.7, hairBox),
-      B(-4.5, 10.0, -4.05, 4.5, 13.4, -4.05, hairTips(9), { plane: 'z' }),
-    ] },
+    { name: 'hairB', parent: 'head', pivot: [0, 20.2, -3.5], cubes: locks('x', -4.05, 0.62, 20.6, [[-4.3, -2.6, 12.2, -6, 6, 0], [-2.7, -0.9, 11.0, -2, 9, -0.15], [-0.95, 0.95, 11.6, 0, 7, 0], [0.9, 2.7, 10.8, 2, 9, -0.15], [2.6, 4.3, 12.4, 6, 6, 0]], 11) },
     { name: 'jaw', parent: 'head', pivot: [0, 15.3, 3.0], cubes: [
-      B(-2.2, 14.0, 2.6, 2.2, 15.3, 4.5, jawP),
-      B(-2.0, 15.2, 2.8, 2.0, 15.5, 4.3, mouthIn, { outline: false }),
+      B(-1.9, 14.0, 2.4, 1.9, 15.3, 4.2, jawP),
+      B(-1.7, 15.2, 2.6, 1.7, 15.5, 4.0, mouthIn, { outline: false }),
     ] },
-    { name: 'beard', parent: 'jaw', pivot: [0, 14.2, 4.0], cubes: [
-      B(-1.5, 12.8, 3.4, 1.5, 14.3, 4.6, beardP),
-      B(-1.3, 10.6, 4.05, 1.3, 13.0, 4.05, beardTipP, { plane: 'z' }),
-      B(0, 10.6, 3.4, 0, 13.0, 4.7, beardTipP, { plane: 'x' }),
+    { name: 'beard', parent: 'jaw', pivot: [0, 14.2, 3.8], cubes: [
+      B(-1.4, 12.8, 3.2, 1.4, 14.3, 4.4, beardP),
+      B(-1.2, 10.6, 3.85, 1.2, 13.0, 3.85, beardTipP, { plane: 'z' }),
+      B(0, 10.6, 3.2, 0, 13.0, 4.5, beardTipP, { plane: 'x' }),
     ] },
-    ...both(RIGHT.stalk, RIGHT.brow, RIGHT.scale, RIGHT.ant, RIGHT.ant2, RIGHT.hair),
+    ...both(RIGHT.stalk, RIGHT.brow, RIGHT.scale, RIGHT.ant, RIGHT.ant2, RIGHT.hair, RIGHT.max),
     ...both(RIGHT.shoulder, RIGHT.arm, RIGHT.fore, RIGHT.club),
-    { name: 'gunG', parent: 'clubL', pivot: [4.7, 18.2, 2.6], rot: [-90, 0, 0], cubes: rayGun([4.7, 18.2, 2.6], 'gun-g', { k: 0.78 }).map((c) => ({ ...c, hide: true })) },
-    { name: 'tail1', parent: 'body', pivot: [0, 7.2, -3.0], rot: [-38, 0, 0], cubes: [B(-3.0, 5.4, -7.4, 3.0, 8.8, -2.6, tailPs[0])] },
-    { name: 'tail2', parent: 'tail1', pivot: [0, 7.1, -7.2], rot: [-12, 0, 0], cubes: [B(-2.6, 5.6, -11.0, 2.6, 8.6, -7.0, tailPs[1])] },
-    { name: 'fan', parent: 'tail2', pivot: [0, 7.1, -10.8], rot: [84, 0, 0], cubes: [
-      B(-1.3, 6.75, -15.2, 1.3, 7.45, -10.6, telsonP),
-      B(-6.0, 7.1, -14.8, -1.2, 7.1, -10.6, fanP, { plane: 'y', pivot: [-1.2, 7.1, -10.8], rot: [0, -16, 0] }),
-      B(1.2, 7.1, -14.8, 6.0, 7.1, -10.6, fanP, { plane: 'y', mirror: true, pivot: [1.2, 7.1, -10.8], rot: [0, 16, 0] }),
+    { name: 'gunG', parent: 'clubL', pivot: [4.7, 16.8, 2.5], rot: [-90, 0, 0], cubes: rayGun([4.7, 16.8, 2.5], 'gun-g', { k: 0.62 }).map((c) => ({ ...c, hide: true })) },
+    { name: 'tail1', parent: 'body', pivot: [0, 7.2, -3.0], rot: [-38, 0, 0], cubes: [
+      B(-3.0, 5.4, -7.4, 3.0, 8.8, -2.6, tailPs[0]),
+      ...[-1, 1].flatMap((g) => [B(g < 0 ? -3.5 : 3.0, 5.8, -5.0, g < 0 ? -3.0 : 3.5, 6.6, -3.6, spineP), B(g < 0 ? -3.5 : 3.0, 5.8, -7.2, g < 0 ? -3.0 : 3.5, 6.6, -5.8, spineP)]),
+    ] },
+    { name: 'tail2', parent: 'tail1', pivot: [0, 7.1, -7.2], rot: [-12, 0, 0], cubes: [
+      B(-2.6, 5.6, -11.0, 2.6, 8.6, -7.0, tailPs[1]),
+      ...[-1, 1].map((g) => B(g < 0 ? -3.1 : 2.6, 5.9, -10.6, g < 0 ? -2.6 : 3.1, 6.7, -9.2, spineP)),
+    ] },
+    { name: 'fan', parent: 'tail2', pivot: [0, 7.1, -10.8], rot: [100, 0, 0], cubes: [
+      B(-1.2, 6.75, -15.8, 1.2, 7.45, -10.6, telsonP),
+      B(-1.0, 6.85, -16.5, -0.35, 7.35, -15.8, spineP), B(0.35, 6.85, -16.5, 1.0, 7.35, -15.8, spineP),
+      ...[[-50, fanOuter, 7.0], [-25, fanInner, 7.12], [25, fanInner, 7.12], [50, fanOuter, 7.0]].map(([a, P, y]) => B(-1.4, y, -16.6, 1.4, y, -10.8, P, { plane: 'y', mirror: a > 0, pivot: [0, y, -10.8], rot: [0, a, 0] })),
     ] },
     ...both(RIGHT.pleo),
   ],
 };
-// fix the fan blades: the painter draws the blade root at row 0, which for a 'y' plane is the back edge
-// (handled by orientation; see the atlas)
 
 // ---------------------------------------------------------------- animation
 const stance = legRig({ body: [0, 7.6, -0.4], hip: [-2.8, 7.4, -0.6], ankle: [-2.8, 1.2, -0.6], L1: 3.2, L2: 3.0 });
-const CLUB = { R: [-4.7, 20.6, 4.5], L: [4.7, 20.6, 4.5] };       // the striking pad (top of the club)
+const CLUB = { R: [-4.7, 19.0, 4.1], L: [4.7, 19.0, 4.1] };       // the striking pad (top of the club)
 const MOUTH = [0, 15.0, 4.6];
-const GUNG = [4.7, 18.2, 2.6], GUNK = 0.78, MZ = [GUNG[0] + MUZZLE[0] * GUNK, GUNG[1] + MUZZLE[1] * GUNK, GUNG[2] + MUZZLE[2] * GUNK];
+const GUNG = [4.7, 16.8, 2.5], GUNK = 0.62, MZ = [GUNG[0] + MUZZLE[0] * GUNK, GUNG[1] + MUZZLE[1] * GUNK, GUNG[2] + MUZZLE[2] * GUNK];
 // punch: k 0 = guard → 1 = arm thrown straight out in front; yaw turns the punch toward the centre line
 function punch(P, S, k, yaw = 10, up = 0) {
   const g = S === 'R' ? 1 : -1;
