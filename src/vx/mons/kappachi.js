@@ -318,9 +318,9 @@ function plant(P, dy) { for (const s of ['legR', 'legL']) P.pos(s, 0, dy, 0).scl
 // the board: stood beside it (rest), or carried under the arm (k), following the body's bob dy
 const carry = (P, k, dy = 0) => P.rot('board', 0, 0, -9 * k).pos('board', -1.6 * k, (3.2 + dy) * k, 0);
 // the board laid flat on the ground under it, nose forward (k blends from standing); roll rocks it on a wave
-// the board laid flat under its feet, sideways (nose to its right), k blends from standing; roll rocks it
+// the board laid flat under its feet (nose out to its front-right), k blends from standing; roll rocks it
 // along its length, pitch tips the nose up as if riding a wave face
-const flat = (P, k, roll = 0, pitch = 0) => P.rot('board', roll, 24 * k, 81 * k - pitch).pos('board', -2.7 * k, 0.3 * k, 0.4 * k);
+const flat = (P, k, roll = 0, pitch = 0) => P.rot('board', roll, 59 * k, 81 * k - pitch).pos('board', -2.4 * k, 0.3 * k, -3.6 * k);   // laid diagonally so the nose pokes out front-left
 
 export const anim = {
   start: 'idle', seed: 13,

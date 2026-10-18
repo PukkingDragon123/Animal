@@ -1,8 +1,8 @@
 // Beatlet — Taro's partner (Bio). A chubby little rhinoceros beetle and a wink at the
 // Beatles: its glossy head shell is a 1960s mop-top bowl cut with a fringe down to its
-// eyes, it wears a hot-pink band-jacket collar with gold frogging, its
-// belly segments are striped like a zebra crossing, and its six stubby feet end in pointed toes
-// with a little heel spur. A small forked horn rises from its crown with a leaf sprout growing in the
+// eyes, it wears a hot-pink band-jacket collar with gold frogging and gold epaulettes, its
+// belly segments are striped like a zebra crossing, and its six stubby feet wear pointed,
+// Cuban-heeled Beatle boots. A small forked horn rises from its crown with a leaf sprout growing in the
 // fork. It is sunny and always singing; it walks with a long, easy crosswalk stride, shakes
 // its mop-top on the high notes, and takes a deep bow at the end of every show.
 import { E, seg, bump, wob, wave, bounce } from '../anim.js';
@@ -16,6 +16,7 @@ const C = {
   satin: '#ff4fa3', satinHi: '#ff9ccc', satinLo: '#c42a78', satinDeep: '#8a1a56',
   gold: '#ffd23e', goldHi: '#fff6b0', goldLo: '#d0902a', goldDeep: '#8a561a',
   leg: '#4e283c', legHi: '#7a4650', legLo: '#2a1220',
+  boot: '#201820', bootHi: '#5a4a56', bootLo: '#100a10',
   zb: '#24222c', zw: '#f4f2ea', zwLo: '#c4c2ba',
   horn: ['#9a5440', '#622c32', '#3e1826', '#260c1a'],
   leaf: '#7ad04a', leafHi: '#d8ff8a', leafLo: '#3e9a36',
@@ -67,13 +68,18 @@ function elytraP(p, w, h, face, cube) {
   }
   if (face !== 'up' && face !== 'down') for (let x = 0; x < w; x++) p.px(x, 0, C.shellHi);
 }
-// the face: cream, in the shade of the fringe at the top, a soft chin shadow at the bottom
+// the face plate: glossy chestnut chitin, shaded under the fringe, a gloss streak on the upper cheek
+const FACE = ['#c8804a', '#8e4c2a', '#62301c', '#401c12'];
 function faceP(p, w, h, face) {
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
     const v = h > 1 ? y / (h - 1) : 0.5, d = (x + y) & 1;
-    p.px(x, y, face === 'up' ? C.faceLo : face === 'down' ? C.faceDeep : v < 0.16 || (v < 0.22 && d) || v > 0.88 || (v > 0.82 && d) ? C.faceLo : C.face);
+    let c = face === 'up' ? FACE[2] : face === 'down' ? FACE[3] : v < 0.14 || (v < 0.2 && d) ? FACE[2] : v > 0.86 || (v > 0.8 && d) ? FACE[2] : FACE[1];
+    if (face === 'south' && v > 0.3 && v < 0.62) { const g = x - (w * 0.12 + (v - 0.3) * w * 0.25); if (g >= 0 && g < 1.5) c = '#ffd8b0'; else if (g >= 1.5 && g < 2.5) c = FACE[0]; }
+    if ((face === 'east' || face === 'west') && v > 0.3 && v < 0.5) c = FACE[0];
+    p.px(x, y, c);
   }
 }
+const mandP = (p, w, h, face) => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, face === 'up' ? '#a06038' : y === h - 1 ? '#2a1008' : face === 'south' ? '#e0b088' : '#5a2a18'); };
 // the mop-top: combed-down glossy strands (jittered partings), a broken band of shine on the dome's shoulder,
 // a whorl on the crown, ragged strand tips along the bottom edge
 const jit = (x) => ((x * 7919) % 13) / 13;
@@ -131,8 +137,10 @@ function collarP(p, w, h, face, cube) {
   }
 }
 const legP = (p, w, h, face) => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, band(LEG, face, x, y, h)); if (face !== 'up' && face !== 'down') for (let x = 1; x < w - 1; x += 3) p.px(x, 1, C.legHi); };
-const bootP = (p, w, h, face) => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, face === 'up' ? C.legHi : y === h - 1 ? C.legLo : band(LEG, face, x, y, h)); };
-const heelP = (p, w, h) => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, y === 0 ? C.leg : C.legLo); };
+const bootP = (p, w, h, face) => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, face === 'up' ? ((x + y) % 3 ? C.boot : C.bootHi) : y === 0 ? C.bootHi : y === h - 1 ? C.bootLo : C.boot); if (face !== 'up' && face !== 'down') { p.px(1, 1, '#9a8a96'); p.px(2, 1, C.bootHi); } };
+const heelP = (p, w, h) => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, y === 0 ? '#6a4a3a' : '#3a2620'); };
+const goldP = (p, w, h, face) => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, (x + y) % 4 === 0 && face !== 'down' ? C.goldHi : band(GOLD, face, x, y, h)); };
+const tasselP = (p, w, h) => { for (let x = 0; x < w; x++) if (x % 2 === 0) for (let y = 0; y < h - (x % 4 === 0 ? 0 : 1); y++) p.px(x, y, y === 0 ? C.goldHi : y > h - 3 ? C.goldLo : C.gold); };
 const hornP = (p, w, h, face) => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, face === 'up' ? C.horn[0] : ramp(C.horn, h > 1 ? y / (h - 1) : 0.5, x, y)); if (face !== 'up' && face !== 'down') { p.px(0, 0, '#ffd8c0'); p.px(1, 0, '#c07a50'); } };
 const leafP = (p, w, h, face) => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, face === 'up' ? C.leafHi : y === Math.floor(h / 2) && face !== 'down' ? C.leafLo : ramp([C.leafHi, C.leaf, C.leafLo], h > 1 ? y / (h - 1) : 0.5, x, y)); };
 const stemP = (p, w, h) => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, x === 0 ? C.leafHi : C.leafLo); };
@@ -176,12 +184,12 @@ const EYE_KINDS = ['open', 'angry', 'sad', 'sly', 'happy', 'closed', 'hurt', 'x'
 const EYE_PAL = { line: '#14100c', iris: '#1a2414', mid: '#2e7a2a', low: '#86dc52', hi: '#ffffff', tear: 0.1 };
 const grid = (rows, map) => (p) => rows.forEach((r, y) => { for (let x = 0; x < r.length; x++) { const c = map[r[x]]; if (c) p.px(x, y, c); } });
 // mouth: 10 × 4 texels on the face below the eyes
-const MM = { K: C.ink, M: C.mouth, T: C.tongue, W: '#fffaf0' };
+const MM = { K: '#1e0a0c', M: '#3a0e14' };
 const MOUTHS = {
-  smile: ['..........', 'K........K', '.KK....KK.', '...KKKK...'],
-  sing: ['...KKKK...', '..KMMMMK..', '..KMTTMK..', '...KKKK...'],
-  belt: ['.KKKKKKKK.', 'KWWMMMMWWK', 'KMMMTTMMMK', '.KKKKKKKK.'],
-  ow: ['..........', '...KKKK...', '..K....K..', '.K......K.'],
+  smile: ['..........', '..K....K..', '...KKKK...', '..........'],
+  sing: ['...KKKK...', '..KMMMMK..', '...KMMK...', '....KK....'],
+  belt: ['..KKKKKK..', '.KMMMMMMK.', '..KMMMMK..', '...KKKK...'],
+  ow: ['..........', '.K..KK..K.', '..KK..KK..', '..........'],
 };
 
 // ---------------------------------------------------------------- the model
@@ -234,8 +242,10 @@ export const def = {
       B(-7, 2.2, -10.4, 7, 10.8, 4.4, bodyP),
       B(-7.6, 3.2, -9.4, 7.6, 9.8, 3.6, bodyP),
       B(-5.6, 1.6, -8.8, 5.6, 2.2, 3, bodyP),
-      // the band-jacket collar (the pronotum), with its gold frogging
+      // the band-jacket collar (the pronotum), with gold frogging and little gold epaulettes
       B(-6.4, 4.0, 2.4, 6.4, 10.6, 6.4, collarP),
+      B(-7.8, 9.8, 2.8, -5.6, 10.9, 5.8, goldP), B(5.6, 9.8, 2.8, 7.8, 10.9, 5.8, goldP, { mirror: true }),
+      B(-7.82, 8.6, 2.8, -7.82, 9.8, 5.8, tasselP, { plane: 'x' }), B(7.82, 8.6, 2.8, 7.82, 9.8, 5.8, tasselP, { plane: 'x' }),
     ] },
     ...both(RIGHT.elytra, RIGHT.arm, RIGHT.fore, RIGHT.mid, RIGHT.hind),
     { name: 'head', parent: 'body', pivot: [0, 9.6, 6], cubes: [
@@ -249,6 +259,9 @@ export const def = {
       B(-3.8, 22.6, 5.0, 3.8, 23.2, 8.4, mopP),
       B(-6.4, 10.6, 2.6, 6.4, 12.6, 6.4, mopP),
       ...eyeParts(), ...eyeParts().map(flipC), ...mouthParts(),
+      // little mandibles at the corners of the mouth, hooking inward
+      B(-2.8, 8.5, 10.6, -1.8, 9.5, 12.6, mandP, { pivot: [-2.3, 9, 10.6], rot: [0, 22, 0] }),
+      B(1.8, 8.5, 10.6, 2.8, 9.5, 12.6, mandP, { pivot: [2.3, 9, 10.6], rot: [0, -22, 0], mirror: true }),
     ] },
     { name: 'fringe', parent: 'head', pivot: [0, 19.6, 10.8], cubes: [B(-7, 14.8, 10.4, 7, 19.6, 11.9, fringeP)] },
     { name: 'horn', parent: 'head', pivot: [0, 23.0, 6.6], rot: [8, 0, 0], cubes: [

@@ -1,6 +1,6 @@
 // Trashcoon — the AC/DC homage, stage 1. A scrappy little alley raccoon who cut himself a
-// schoolboy cap out of a cardboard box (taped seams, a torn brim, ear slots, a bottle-cap button)
-// and picked up a forked stick that he plays like a horned guitar — power chords on a rubber-band
+// schoolboy cap out of a cardboard box (taped seams, a torn brim, ear slots, a bottle-cap button),
+// knotted a flattened soda can on as a tie, and picked up a forked stick that he plays like a horned guitar — power chords on a rubber-band
 // string. He can't stand still: he headbangs on every beat, his walk is a one-legged hopping
 // duck-walk, and when the riff takes him he drops and spins on the floor. Big glossy kawaii eyes in
 // the bandit mask, a snaggle fang, little bolt-shaped notches in his tail rings. Homage, never a
@@ -8,7 +8,7 @@
 import { E, seg, bump, wob, wave, key, bounce, hop } from '../anim.js';
 import {
   PAL, J, P, mirrorCube, aimX, furP, bellyP, tuftP, skullP, muzzleP, noseP, jawP, mouthP, tongueP, toothP, whiskerP,
-  earPlaneP, kawaiiEyes, tailP, handP, footP, cardP, tapeP, bottleCapP, barkP, leafP, rig, shift, ramp,
+  earPlaneP, kawaiiEyes, tailP, handP, footP, cardP, tapeP, bottleCapP, barkP, leafP, tieP, tabP, rig, shift, ramp,
 } from './raccoon_parts.js';
 
 const F = PAL.trash;
@@ -125,7 +125,10 @@ export const def = {
       P([-3.833, 10.667, -2.5], [7.667, 0.667, 5.333], fur),
       P([-4.0, 7.667, -3.667], [8.0, 3.0, 1.0], furBack),
       P([-2.333, 8.667, 3.36], [4.667, 2.333, 0], tuftP(F, { cream: true }), { plane: 'z', pivot: [0, 10, 3.36], rot: [0, 0, -90] }),
+      P([-0.667, 9.167, 3.167], [1.333, 1.333, 0.667], tabP),
     ] },
+    // a flattened soda can worn as a schoolboy tie, its pull tab for the knot
+    { name: 'tie', parent: 'body', pivot: [0, 9.4, 3.6], rot: [-14, 0, 0], cubes: [P([-1.333, 4.9, 3.65], [2.667, 4.5, 0], tieP, { plane: 'z' })] },
     { name: 'tail1', parent: 'body', pivot: [0.6, 4.0, -3.0], rot: [14, -28, 0], cubes: tailSeg(0.6, 4.0, -2.4, 5.6, 3.667, 3.667, 6) },
     { name: 'tail2', parent: 'tail1', pivot: [0.6, 4.0, -7.6], rot: [22, -8, 0], cubes: tailSeg(0.6, 4.0, -6.9, 6.0, 4.333, 4.333, 19) },
     { name: 'tail3', parent: 'tail2', pivot: [0.6, 4.0, -12.6], rot: [24, 0, 0], cubes: tailSeg(0.6, 4.0, -11.9, 5.4, 3.667, 3.667, 34) },
@@ -228,6 +231,7 @@ export const anim = {
     { bone: 'tail2', tip: [0, 0, -5], k: 110, d: 8, gain: 0.8, max: 20 },
     { bone: 'tail3', tip: [0, 0, -5], k: 95, d: 7, gain: 1.0, max: 24 },
     { bone: 'tail4', tip: [0, 0, -4], k: 85, d: 6.5, gain: 1.1, max: 26 },
+    { bone: 'tie', tip: [0, -4.5, 0], k: 80, d: 6, gain: 1.1, max: 30, axes: [1, 0.3, 1] },
     { bone: 'cap', tip: [0, 3, 0], k: 260, d: 9, gain: 0.35, max: 10 },
     { bone: 'flap', tip: [0, 0, 1.333], k: 70, d: 4.5, gain: 1.4, max: 40 },
     { bone: 'earR', tip: [-0.5, 3, 0], k: 170, d: 8, gain: 0.6, max: 18 },
@@ -353,7 +357,7 @@ export const anim = {
       const dizzy = seg(t, 0, 0.25) * (1 - seg(t, 0.85, 1.0)), fall = seg(t, 0.9, 1.35, E.bounce), slip = seg(t, 0.4, 1.0, E.in);
       P.rot('body', wave(t, 1.4) * 8 * dizzy, wave(t, 1.6) * 16 * dizzy, wave(t, 2.1) * 10 * dizzy).rot('head', 0, 0, wave(t, 2.1, 1) * 16 * dizzy);
       const dy = -1.2 * dizzy; P.pos('body', 0, dy, 0); plant(P, dy);
-      P.rot('root', 0, 0, -84 * fall).pos('root', 6.2 * fall, 3.4 * fall, 0);
+      P.rot('root', 0, 0, -84 * fall).pos('root', -7.6 * fall, 3.8 * fall, 0);
       P.rot('legR', 20 * fall, 0, 18 * fall).rot('legL', -26 * fall, 0, 30 * fall);
       aimStick(P, nlerp(REST_DIR, [1, -0.5, 0.3], slip)); P.pos('stick', 0, -3 * slip, 1 * slip);
       play(P, { wL: 1 - slip * 0.8, wR: 1 - slip });
@@ -363,7 +367,7 @@ export const anim = {
       P.burst(1.32, 'dust', 'root', [0, 1, 0], { n: 7, spread: 1 }).burst(0.3, 'star', 'head', [0, 23, 0], { n: 5 }).burst(1.34, 'cardbit', 'cap', CAP_TOP, { n: 3 });
     } },
     down: { len: 2.4, loop: true, f(P, t) {
-      P.rot('root', 0, 0, -84).pos('root', 6.2, 3.4, 0);
+      P.rot('root', 0, 0, -84).pos('root', -7.6, 3.8, 0);
       P.rot('legR', 20 + wave(t, 0.42) * 4, 0, 18).rot('legL', -26, 0, 30);
       aimStick(P, [1, -0.5, 0.3]); P.pos('stick', 0, -3, 1);
       play(P, { wL: 0.2, wR: 0 });
@@ -392,14 +396,14 @@ export const anim = {
     // asleep sitting up, hugging the stick like a teddy, the cap slid down over its eyes
     sleep: { len: 3.4, loop: true, f(P, t) {
       const br = Math.sin((t / 3.4) * Math.PI * 2), dy = -3.0 + br * 0.2;
-      P.pos('body', 0, dy, 0.6).rot('body', 10 + br * 2, 0, 0).sq('body', -0.04 + br * 0.03);
+      P.pos('body', 0, dy, 0.6).rot('body', 2 + br * 2, 0, 0).sq('body', -0.04 + br * 0.03);
       P.pos('legR', 0, -2.4, 1.6).rot('legR', -70, 10, 0).pos('legL', 0, -2.4, 1.6).rot('legL', -70, -10, 0);
       P.pos('footR', -0.4, 1.2, 3.4).rot('footR', -60, 0, 0).pos('footL', 0.4, 1.2, 3.4).rot('footL', -60, 0, 0);
       aimStick(P, [0.15, 1, 0.1], [0, 0, 1]); P.pos('stick', 3.4, 1.4, -1.0);
       R.reach(P, 'armR', 'foreR', R.at(P, 'stick', s(6.5, 0, 0.4)), { pole: [-1, -0.6, -0.2] });
       R.reach(P, 'armL', 'foreL', R.at(P, 'stick', s(4.5, 0, 0.6)), { pole: [1, -0.6, -0.2] });
-      P.rot('head', 22 + br * 3, 0, 10).rot('jaw', 3 + Math.max(0, br) * 5);
-      P.pos('cap', 0, -1.3, 0.5).rot('cap', 16, 0, -4);
+      P.rot('head', 12 + br * 3, 0, 10).rot('jaw', 3 + Math.max(0, br) * 5);
+      P.pos('cap', 0, -0.8, 0.4).rot('cap', 12, 0, -4);
       P.rot('tail1', -20, -30, 0).rot('tail2', -10, -30, 0).rot('tail3', 0, -20, 0);
       P.face('eyes', 'closed'); P.blinkOK = false; P.lookW = 0; P.breathW = 0;
       P.burst(0.4, 'z', 'head', [4, 22, 4], {}).burst(1.9, 'z', 'head', [4, 22, 4], {});
@@ -408,7 +412,9 @@ export const anim = {
     spin: { len: 2.8, next: 'idle', f(P, t) {
       const down = seg(t, 0.1, 0.4, E.in) * (1 - seg(t, 2.25, 2.55, E.back));
       const spin = seg(t, 0.45, 2.2, E.inout);
-      P.rot('root', 0, 720 * spin, -78 * down).pos('root', 5.6 * down, 3.4 * down, 0);
+      // lie on the side, then spin in place round the middle of the body (not round the feet)
+      const phi = 720 * spin * Math.PI / 180, c = 7.6 * down;
+      P.rot('root', 0, 720 * spin, -78 * down).pos('root', -c * Math.cos(phi), 3.6 * down, c * Math.sin(phi));
       const kick = t > 0.4 && t < 2.3 ? 1 : 0;
       P.rot('legR', (-30 + 40 * Math.sin(t * 22)) * kick, 0, 0).rot('legL', (-30 - 40 * Math.sin(t * 22)) * kick, 0, 0);
       P.pos('footR', 0, 2 * kick + 2 * Math.max(0, Math.sin(t * 22)) * kick, 3 * kick).pos('footL', 0, 2 * kick + 2 * Math.max(0, -Math.sin(t * 22)) * kick, 3 * kick);

@@ -1,20 +1,31 @@
 // Pidgun ♂ — a cocky street pigeon that runs the Tenderloin (homage: Guns N' Roses). Classic blue-bar
 // plumage — slate grey, two black wing bars, a neck that flashes green and violet — big dark kawaii eyes
 // that sit at a permanent unimpressed glare, and in its right wing an oversized antique six-shooter
-// (nickel, engraved, ivory grips with a little red rose inlaid — the only gear it needs). It struts with
+// (nickel, engraved, ivory grips with a little red rose inlaid). Its quirk: a black bandana printed with
+// tiny red rose buds, knotted at the back, with a rose tucked into the band. It struts with
 // the classic pigeon head-bob, spins the revolver when it's bored and pecks at crumbs when it thinks
 // nobody's looking.
 import { E, seg, bump, wob, wave, key } from '../anim.js';
-import { C, P, S1, MORPH, stage1, wingSegP, tipsP, kawaiiEyes, eyeFaces, revolver, muzzle, plant, strut, peck, ATTACH_S1 } from './pigeon_parts.js';
+import { C, P, S1, MORPH, stage1, wingSegP, tipsP, kawaiiEyes, eyeFaces, revolver, muzzle, rose, roseBandanaP, plant, strut, peck, ATTACH_S1 } from './pigeon_parts.js';
 
 const EYES = kawaiiEyes();
 const G = [-8.9, 6.0, 6.8], TRIG = [-8.9, 4.8, 7.6], MZ = muzzle(G), BEAK = S1.mouth;
+const BAND = roseBandanaP(), BAND2 = roseBandanaP({ phase: 3 });
 const HAND = wingSegP({ base: [-6.8, 8.4, 1.2], dir: [0, 0, 1], len: 7.0, cdir: [0, -1, 0], chord: 4.4, kind: 'hand' });
 
 export const def = {
   name: 'pidgun', ppu: 3, scale: 0.32, outline: { color: C.ink, px: 1.4 },
   bones: [
-    ...stage1({ M: MORPH.blue, eyes: EYES, eyeDef: 'glare', wingR: false }),
+    ...stage1({ M: MORPH.blue, eyes: EYES, eyeDef: 'glare', wingR: false, headExtra: [
+      // the bandana: a band round the brow, the crown covered, a knot at the back
+      P([-4.15, 23.95, 6.75], [8.3, 1.4, 0.42], BAND), P([-4.15, 23.95, -0.85], [8.3, 1.4, 0.42], BAND2),
+      P([-4.15, 23.95, -0.45], [0.42, 1.4, 7.2], BAND2), P([3.73, 23.95, -0.45], [0.42, 1.4, 7.2], BAND),
+      P([-3.95, 24.8, -0.8], [7.9, 0.9, 7.55], BAND), P([-3.0, 25.7, 0.0], [6.0, 0.4, 6.0], BAND),
+      P([-1.1, 23.4, -1.8], [2.2, 2.0, 1.0], BAND),
+    ] }),
+    { name: 'bud', parent: 'head', pivot: [4.0, 24.7, 2.6], rot: [0, 0, -62], cubes: rose([4.0, 25.6, 2.6], 0.64, { stem: 0, leaves: false }) },
+    { name: 'bandR', parent: 'head', pivot: [-0.5, 24.0, -1.8], rot: [-30, -12, 0], cubes: [P([-0.5, 22.4, -5.8], [0, 2.0, 4.0], BAND, { plane: 'x' })] },
+    { name: 'bandL', parent: 'head', pivot: [0.5, 23.6, -1.8], rot: [-44, 14, 0], cubes: [P([0.5, 22.2, -5.2], [0, 1.8, 3.4], BAND2, { plane: 'x' })] },
     // the gun wing, held like an arm: the coverts hang from the shoulder, the primaries close round the grip
     { name: 'wingR', parent: 'body', pivot: [-6.0, 14.6, 3.6], rot: [-22, 0, -10], cubes: [
       P([-7.3, 6.6, -0.6], [1.3, 8.6, 4.8], wingSegP({ base: [-6.0, 15.2, 4.2], dir: [0, -1, 0], len: 8.6, cdir: [0, 0, -1], chord: 4.8, kind: 'arm', bar1: 0.46, bar2: 0.66, barW: 0.08 })),
@@ -28,10 +39,11 @@ export const def = {
     { name: 'gun', parent: 'twirl', pivot: G, cubes: revolver(G, 1) },
   ],
 };
-def.attach = ATTACH_S1;
+def.attach = { ...ATTACH_S1, head: { bone: 'head', at: [0, 26.1, 2.8], size: 8.3 } };
 
 // ---------------------------------------------------------------- animation
-const AIM = (P, k) => P.rot('wingR', -64 * k, 0, 8 * k).rot('handR', -14 * k, 0, 0).rot('twirl', -42 * k, 0, 0);
+// level the revolver at the target: the arm swings forward, the hand and the twirl bring the barrel level
+const AIM = (P, k) => P.rot('wingR', -64 * k, 0, 8 * k).rot('handR', 12 * k, 0, 0).rot('twirl', 22 * k, 0, 0);
 const snap = (keys, t) => key(keys, t);
 export const anim = {
   start: 'idle', seed: 5,
@@ -39,6 +51,8 @@ export const anim = {
   blink: { slot: 'eyes', closed: 'closed', every: [2.0, 4.6], dur: 0.1 },
   look: { bone: 'head', yaw: 30, pitch: 14, speed: 9 },
   springs: [
+    { bone: 'bandR', tip: [0, -1, -4], k: 110, d: 8, gain: 0.9, max: 30 },
+    { bone: 'bandL', tip: [0, -1, -3.5], k: 120, d: 8, gain: 0.9, max: 30 },
     { bone: 'tail', tip: [0, 0, -9], k: 220, d: 12, gain: 0.45, max: 12 },
     { bone: 'handL', tip: [0, 0, -9], k: 260, d: 13, gain: 0.3, max: 8 },
   ],
@@ -60,7 +74,7 @@ export const anim = {
       P.rot('tail', 12 * bump(t, 1.42, 1.6), sw * 4, 0).rot('wingL', 0, 0, 1.5 + b);
     } },
     // the strut: the head thrusts forward and holds while the body catches up, chest out, the gun arm
-    // swinging against the step, the folded wing jostling
+    // swinging against the step, the bandana tails flapping on their springs
     walk: { len: 0.8, loop: true, f(P, t) {
       const r = strut(P, t, 0.8, { Z: 2.2, H: 1.5, A: 1.6, roll: 4, yaw: 6, bounce: 0.7, tilt: -3 });
       P.rot('wingR', -r.s * 12, 0, -2 - Math.abs(r.s) * 3).rot('handR', r.s * 8, 0, 0).rot('twirl', -r.s * 6, 0, 0);

@@ -16,16 +16,16 @@ export const PAL = {
   trash: {
     c: '#928b8c', hi: '#bdb5b2', lo: '#6b6367', deep: '#463f47', tip: '#d8d0cc',
     cream: '#ece6db', creamHi: '#fffbf3', creamLo: '#bdb3a8',
-    mask: '#2f2934', maskHi: '#48414f', maskLo: '#1d1922',
+    mask: '#564c5a', maskHi: '#6a6170', maskLo: '#433a48',
     belly: '#c2b8b2', bellyHi: '#ddd4cc', bellyLo: '#9a8f8c',
     paw: '#4a434c', pawHi: '#6c646e', pawLo: '#2e2930',
     ringD: '#2e282e', ringL: '#c2bab6', bolt: '#e8c870',
     nose: '#1d1921', noseHi: '#6c6476', ink: '#17121b',
   },
   dyna: {
-    c: '#6f6a78', hi: '#959099', lo: '#4c4756', deep: '#302c38', tip: '#b8b2bc',
+    c: '#857d86', hi: '#aaa2a8', lo: '#605865', deep: '#40394a', tip: '#c4bcc0',
     cream: '#ddd4c6', creamHi: '#f4ecdf', creamLo: '#a89c90',
-    mask: '#1d1922', maskHi: '#35303c', maskLo: '#0f0c12',
+    mask: '#463d4c', maskHi: '#5a5162', maskLo: '#342c3a',
     belly: '#9a929a', bellyHi: '#b8b0b6', bellyLo: '#726a74',
     paw: '#2a2530', pawHi: '#4a4352', pawLo: '#16131a',
     ringD: '#211d26', ringL: '#9e979f', bolt: '#f0c84a',
@@ -33,9 +33,9 @@ export const PAL = {
     scar: '#c98c8e', scarLo: '#8e5058',
   },
   hell: {
-    c: '#4d4956', hi: '#726c7c', lo: '#34303c', deep: '#201d26', tip: '#a8a2b0',
+    c: '#5e5866', hi: '#837c8a', lo: '#433d4b', deep: '#2c2733', tip: '#b4aebc',
     cream: '#cfc6ba', creamHi: '#e8e0d4', creamLo: '#988e84',
-    mask: '#131016', maskHi: '#2a2530', maskLo: '#08060a',
+    mask: '#3c3442', maskHi: '#504656', maskLo: '#2a2330',
     belly: '#6e6872', bellyHi: '#8a848e', bellyLo: '#4e4854',
     paw: '#1f1b24', pawHi: '#3c3644', pawLo: '#0f0c12',
     ringD: '#16121a', ringL: '#8a8490', bolt: '#ff9a3a',
@@ -237,12 +237,13 @@ export const earP = (F, part) => (p, w, h, face) => {
   else if (face === 'east' || face === 'west') fill(p, w, h, (x, y) => (y === 0 && part === 'tip' ? F.creamHi : x === 0 || x === w - 1 ? F.cream : F.c));
 };
 // ear planes: a rounded triangle, rimmed in white; the front is dark inside, the back grey fur
-export const earPlaneP = (F, back) => (p, w, h) => {
+export const earPlaneP = (F, back, torn) => (p, w, h) => {
   const cx = (w - 1) / 2;
   for (let y = 0; y < h; y++) {
     const v = y / Math.max(1, h - 1), hw = (Math.sqrt(v) * 0.85 + 0.18) * (w / 2);
     for (let x = 0; x < w; x++) {
       const dx = Math.abs(x - cx); if (dx > hw) continue;
+      if (torn && x > cx + hw - 2.5 - Math.abs(y - h * 0.4) && Math.abs(y - h * 0.4) < 2) continue;   // a V bitten out of the rim
       const rim = dx > hw - 1.25 || y < 1;
       p.px(x, y, rim ? (back ? F.cream : F.creamHi) : back ? ramp([F.c, F.c, F.lo], v, x, y) : dx < hw * 0.55 && v > 0.25 ? F.mask : F.maskHi);
     }
@@ -308,7 +309,7 @@ export function tailP(F, s0 = 0, o = {}) {
       const [a, c] = map(x, y), s = s0 + a, zz = (c % 3 === 1) ? 1 : 0;
       const v = face === 'up' ? 0 : face === 'down' ? 1 : c / Math.max(1, across - 1);
       let col;
-      if (s >= tipAt) col = ramp([F.maskHi, F.mask, F.mask, F.maskLo], v, x, y);
+      if (s >= tipAt) col = o.singe ? (s > tipAt + 3 && (x * 3 + y * 5) % 7 === 0 ? (s > tipAt + 5 ? '#ffb040' : '#e05a20') : ramp(['#3a3236', '#241e24', '#18131a'], v, x, y)) : ramp([F.maskHi, F.mask, F.mask, F.maskLo], v, x, y);
       else {
         const k = (((s + zz) % per) + per) % per, dark = k < dk;
         col = dark ? ramp([F.maskHi, F.ringD, F.ringD, F.maskLo], v, x, y) : ramp([F.tip, F.ringL, F.ringL, shift(F.ringL, -0.2)], v, x, y);
@@ -423,6 +424,108 @@ export const leafP = (p, w, h) => {
   for (let y = 0; y < h; y++) { const hw = Math.sin(((y + 0.5) / h) * Math.PI) * (w / 2); for (let x = 0; x < w; x++) { const dx = x - cx; if (Math.abs(dx) > hw) continue; p.px(x, y, Math.abs(dx) < 0.6 ? J.leafLo : dx < 0 ? J.leafHi : J.leaf); } }
 };
 
+// ---------------------------------------------------------------- TNT, teeth, claws
+// a stick of TNT standing along local y: red paper, pale end wraps, a stencilled "TNT" running down the front
+const GLYPH = { T: ['###', '.#.', '.#.'], N: ['#.#', '###', '#.#'] };
+export const tntP = (o = {}) => (p, w, h, face) => {
+  if (face === 'up' || face === 'down') { const cx = (w - 1) / 2, cy = (h - 1) / 2; for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, Math.hypot(x - cx, y - cy) < 0.9 ? J.tntDeep : J.paper); return; }
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const end = y < 2 || y >= h - 2; p.px(x, y, end ? (y === 0 || y === h - 1 ? J.paperLo : J.paper) : ramp([J.tntHi, J.tnt, J.tnt, J.tntLo], x / Math.max(1, w - 1), x, y)); }
+  if (face === 'south' && w >= 3 && h >= 13 && o.text !== false) {
+    const x0 = Math.floor((w - 3) / 2); let y0 = Math.floor((h - 11) / 2);
+    for (const ch of 'TNT') { GLYPH[ch].forEach((r, j) => [...r].forEach((c, i) => { if (c === '#') p.px(x0 + i, y0 + j, J.stencil); })); y0 += 4; }
+  } else if (face === 'south' || face === 'east' || face === 'west') for (let y = 3; y < h - 3; y += 4) p.px(Math.floor(w / 2), y, J.tntLo);
+};
+// a bent fuse (plane): a dark cord with lighter twists
+export const fuseP = (p, w, h) => { let x = Math.floor(w / 2); for (let y = h - 1; y >= 0; y--) { p.px(x, y, y % 2 ? J.fuse : J.fuseHi); if (y % 3 === 0) x += (y % 6 === 0 ? 1 : -1); x = Math.max(0, Math.min(w - 1, x)); } };
+// the burning tip of a fuse (glowing plane), three flicker frames
+export const fuseSparkP = (f) => (p, w, h) => {
+  const cx = (w - 1) / 2, cy = (h - 1) / 2;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const dx = x - cx, dy = y - cy, a = Math.atan2(dy, dx) + f * 0.7, r = Math.hypot(dx, dy), R = (w / 2) * (0.45 + 0.55 * Math.abs(Math.cos(a * 2)) ** 4);
+    if (r > R) continue;
+    p.px(x, y, r < 0.9 ? '#ffffff' : r < R * 0.55 ? '#fff2a0' : r < R * 0.8 ? '#ffc040' : '#ff7020');
+  }
+};
+// a row of sharp teeth (plane): points hang down (or up for the lower jaw)
+export const teethP = (up = false, o = {}) => (p, w, h) => {
+  for (let x = 0; x < w; x++) {
+    const k = (x + (o.off || 0)) % 3, l = k === 1 ? h : Math.max(1, h - 2);
+    for (let j = 0; j < l; j++) { const y = up ? h - 1 - j : j; p.px(x, y, k === 2 ? '#c9bea8' : j === l - 1 && k === 1 ? '#e8dcc6' : '#f8f2e4'); }
+  }
+};
+// three curved claws (plane), pale horn tipped darker
+export const clawP = (p, w, h) => { for (let k = 0; k < 3; k++) { const x0 = Math.round((k + 0.5) * w / 3) - 1; for (let y = 0; y < h; y++) { const x = x0 + (y > h * 0.6 ? 1 : 0); p.px(x, y, y === h - 1 ? '#8c8070' : '#efe6d4'); if (y < h * 0.5) p.px(x + 1, y, '#d4c8b2'); } } };
+
+// ---------------------------------------------------------------- iron, rust, galvanised steel, bronze (the bike and the helmet)
+const sideF = (f) => f === 'south' || f === 'north' || f === 'east' || f === 'west';
+// rusty pipe: banded, rust blooms, a lit seam
+export const pipeP = (p, w, h, face) => {
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const r = h2(x >> 1, y >> 1, 11); p.px(x, y, r < 0.18 ? J.rustLo : r > 0.85 ? J.rustHi : face === 'up' ? J.rustHi : ramp([J.rustHi, J.rust, J.rustLo], h > 1 ? y / (h - 1) : 0.5, x, y)); }
+  if (sideF(face) && w > 2) for (let y = 0; y < h; y++) p.px(1, y, J.rustHi);
+};
+// dull iron with rivets and a little rust
+export const ironP = (o = {}) => (p, w, h, face) => {
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, face === 'up' ? J.ironHi : face === 'down' ? J.ironDeep : ramp([J.ironHi, J.iron, J.iron, J.ironLo], h > 1 ? y / (h - 1) : 0.5, x, y));
+  if (!sideF(face) && face !== 'up') return;
+  if (o.rivets) for (let x = 2; x < w - 1; x += 4) { const y = face === 'up' ? 1 : Math.min(h - 2, 1); p.px(x, y, '#c4cad4'); p.px(x + 1, y + 1, J.ironDeep); }
+  if (o.rust && sideF(face)) for (let x = 3; x < w; x += 7) for (let y = 2; y < h; y++) if (h2(x, y, 3) < 0.55) p.px(x, y, y % 2 ? J.rust : J.rustLo);
+  if (sideF(face)) for (let x = 0; x < w; x++) p.px(x, 0, J.ironHi);
+};
+// galvanised steel (trash-can metal): bright, ridged
+export const galvP = (o = {}) => (p, w, h, face) => {
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, face === 'up' ? J.galvHi : face === 'down' ? J.galvDeep : ramp([J.galvHi, J.galv, J.galv, J.galvLo], h > 1 ? y / (h - 1) : 0.5, x, y));
+  if (o.ridges && sideF(face)) for (let y = 1; y < h; y += 3) for (let x = 0; x < w; x++) { p.px(x, y, J.galvLo); p.px(x, y - 1, J.galvHi); }
+  if (o.dents) for (const [u, v] of [[0.3, 0.4], [0.75, 0.7]]) p.px(Math.round(u * w), Math.round(v * h), J.galvDeep);
+};
+// a trash-can lid seen face-on (plane): concentric pressed rings, a dent, a rust spot; transparent outside the disc
+export const lidP = (o = {}) => (p, w, h) => {
+  const cx = (w - 1) / 2, cy = (h - 1) / 2, R = Math.min(w, h) / 2;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const d = Math.hypot(x - cx, y - cy); if (d > R) continue;
+    const ring = Math.floor((d / R) * 6), lit = (x - cx) + (y - cy) < 0;
+    let c = d > R - 1.2 ? J.galvDeep : ring % 2 ? (lit ? J.galvHi : J.galv) : (lit ? J.galv : J.galvLo);
+    if (Math.abs(d - R * 0.55) < 0.6) c = J.galvDeep;
+    if (Math.hypot(x - cx - R * 0.42, y - cy + R * 0.2) < R * 0.13) c = (x + y) % 2 ? J.rust : J.rustLo;
+    if (o.spoke && Math.abs(x - cx) < 0.8 && d < R - 1) c = J.galvDeep;
+    p.px(x, y, c);
+  }
+};
+// the red jerry-can fuel tank: an embossed X, a pale cap
+export const jerryP = (p, w, h, face) => {
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, face === 'up' ? J.tntHi : face === 'down' ? J.tntDeep : ramp([J.tntHi, J.tnt, J.tnt, J.tntLo], h > 1 ? y / (h - 1) : 0.5, x, y));
+  if (face === 'east' || face === 'west') { for (let k = 1; k < Math.min(w, h) - 1; k++) { const x1 = Math.round(1 + (k * (w - 3)) / (h - 2)), y1 = k; p.px(x1, y1, J.tntHi); p.px(w - 1 - x1, y1, J.tntHi); p.px(x1, y1 + 1, J.tntLo); p.px(w - 1 - x1, y1 + 1, J.tntLo); } }
+  if (sideF(face)) for (let x = 0; x < w; x++) { p.px(x, 0, J.tntHi); p.px(x, h - 1, J.tntDeep); }
+};
+// a duct-taped seat: black with crossing strips of silver tape
+export const seatP = (p, w, h, face) => {
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, face === 'up' ? ((x + y) % 9 < 2 ? '#9aa0aa' : (x * 3 + y) % 5 === 0 ? '#2e2c34' : '#232128') : sideF(face) ? (y === 0 ? '#3a3842' : '#1a1820') : '#141218');
+  if (face === 'up') for (let y = 0; y < h; y++) for (let x = Math.round(w * 0.4); x < Math.round(w * 0.55); x++) p.px(x, y, (x + y) % 4 ? '#b8bcc4' : '#8a8e98');
+};
+// a dented paint can for an engine block: a faded label band, rust at the seams
+export const canEngineP = (p, w, h, face) => {
+  galvP({ ridges: false })(p, w, h, face);
+  if (!sideF(face)) return;
+  for (let y = Math.round(h * 0.3); y < Math.round(h * 0.7); y++) for (let x = 0; x < w; x++) p.px(x, y, y === Math.round(h * 0.3) || y === Math.round(h * 0.7) - 1 ? '#7a2a22' : (x + y) % 11 === 0 ? '#c8b070' : '#a8382c');
+  for (let x = 0; x < w; x += 5) for (let y = h - 3; y < h; y++) p.px(x, y, J.rustLo);
+};
+// cooling fins
+export const finsP = (p, w, h, face) => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, face === 'up' ? J.ironHi : sideF(face) ? (y % 2 ? J.ironDeep : J.ironHi) : J.ironLo); };
+// bronze (the bell): warm, glossy highlight, dark lip
+export const bronzeP = (p, w, h, face) => {
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, face === 'up' ? J.bronzeHi : face === 'down' ? J.bronzeDeep : ramp([J.bronzeHi, J.bronze, J.bronze, J.bronzeLo], h > 1 ? y / (h - 1) : 0.5, x, y));
+  if (sideF(face) && w > 2) for (let y = 1; y < h - 1; y++) p.px(1, y, '#ffe0a0');
+};
+// a lit lens (glow plane): a round warm light
+export const lensP = (p, w, h) => { const c = (w - 1) / 2; for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const d = Math.hypot(x - c, y - c); if (d <= c + 0.3) p.px(x, y, d < c * 0.45 ? '#ffffff' : d < c * 0.8 ? '#fff2b0' : '#ffd060'); } };
+// an exhaust flame (glow plane) pointing along +x of the texture; three flicker frames
+export const jetP = (f) => (p, w, h) => {
+  const cy = (h - 1) / 2;
+  for (let x = 0; x < w; x++) {
+    const u = x / (w - 1), half = (1 - u) ** 0.7 * (h / 2) * (0.8 + 0.2 * Math.sin(f * 2.3 + u * 7)), sway = Math.sin(u * 5 + f * 1.7) * u * 1.4;
+    for (let y = 0; y < h; y++) { const d = Math.abs(y - cy - sway) / Math.max(0.5, half); if (d > 1) continue; p.px(x, y, d < 0.35 && u < 0.5 ? '#fff6c8' : d < 0.7 && u < 0.75 ? '#ffd040' : u > 0.7 ? '#ff5a1e' : '#ff9a2a'); }
+  }
+};
+
 // ---------------------------------------------------------------- FK / IK rig
 // rig(def) gives a clip the model-space frame of any bone (from the rest pose + this frame's
 // offsets in P), and a two-bone arm solver: arm bones hang along −y at rest, the forearm bone
@@ -497,6 +600,27 @@ defineFx('thunder', {
 defineFx('riff', {
   w: 8, h: 11, frames: ['#ffe24a', '#fff2a8'].map((c) => (p, w, h) => { p.rect(0, h - 4, 4, 3, c); p.px(4, h - 3, c); p.vl(3, 1, h - 4, c); p.rect(4, 1, 2, 2, c); p.px(6, 3, c); p.px(6, 4, c); p.px(1, h - 4, '#ffffff'); }),
   glow: true, life: [0.8, 1.2], size: [0.12, 0.1], speed: [1.6, 2.6], grav: -0.2, drag: 1.4, spread: 0.5, wob: 1.2, fade: true, tint: [[1, 1, 1], [1, 0.9, 0.6]],
+});
+// fuse sparks: tiny white-hot specks that spit out and fall
+defineFx('fusespark', { w: 3, h: 3, paint: (p) => { p.px(1, 0, '#fff2a0'); p.px(0, 1, '#ffd040'); p.px(1, 1, '#ffffff'); p.px(2, 1, '#ffb040'); p.px(1, 2, '#ff8020'); }, glow: true, life: [0.15, 0.35], size: [0.035, 0.015], speed: [1.2, 2.6], grav: 5, drag: 1, spread: 0.8, tint: [[1, 1, 1], [1, 0.8, 0.4], [1, 0.4, 0.1]] });
+// the explosion's core flash: a round blast that pops and fades
+defineFx('boom', {
+  w: 32, h: 32, frames: [0, 1].map((f) => (p, w, h) => {
+    const c = (w - 1) / 2;
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const a = Math.atan2(y - c, x - c), r = Math.hypot(x - c, y - c), R = c * (0.78 + 0.22 * Math.abs(Math.sin(a * 5 + f))) ;
+      if (r > R) continue;
+      p.px(x, y, r < R * 0.35 ? '#ffffff' : r < R * 0.6 ? '#fff0a0' : r < R * 0.82 ? '#ffb030' : '#ff5a18');
+    }
+  }),
+  glow: true, life: [0.32, 0.4], size: [0.2, 1.6], speed: [0, 0], grav: 0, fps: 10, pop: true,
+});
+// shreds of red TNT paper
+defineFx('tntbit', { w: 3, h: 4, frames: [(p) => { p.rect(0, 0, 3, 3, J.tnt); p.px(0, 0, J.tntHi); p.px(2, 3, J.tntLo); }, (p) => { p.rect(0, 1, 2, 3, J.paper); p.px(2, 0, J.tnt); }], life: [0.8, 1.3], size: [0.05, 0.05], speed: [1.5, 3], grav: 3, drag: 1.6, spread: 1, flutter: true });
+// a claw slash: three pale arcs
+defineFx('slash', {
+  w: 24, h: 24, paint: (p, w, h) => { for (let k = 0; k < 3; k++) for (let a = 0.15; a < 1.45; a += 0.02) { const r = 8 + k * 4, x = Math.round(2 + Math.cos(a) * r), y = Math.round(h - 3 - Math.sin(a) * r); p.px(x, y, a > 0.4 && a < 1.2 ? '#ffffff' : '#ffe8a0'); p.px(x + 1, y, '#fff4c8'); } },
+  glow: true, life: [0.16, 0.2], size: [0.5, 0.6], speed: [0, 0], grav: 0, fade: true,
 });
 // a shockwave ring with little zig-zag teeth
 defineFx('shockring', {

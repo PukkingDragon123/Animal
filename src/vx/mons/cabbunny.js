@@ -3,9 +3,9 @@
 // top, with a soft cream bunny face peeking out between them. Its ears are the two tallest outer
 // leaves, veined and floppy at the tips. Half-lidded, sly and sleepy.
 //
-// Music homage (Bad Bunny, original): its one signature item — heart-shaped shades worn low on the
-// nose so the eyes peer over them (pushed up for its game face) — painted claw tips, a summer burst of
-// petals in its specials, and a dembow swagger in its idle.
+// Music homage (Bad Bunny, original): its signature heart-shaped shades worn low on the nose so the
+// eyes peer over them (pushed up for its game face), painted claw tips, a tropical flower tucked by
+// one ear, summer bursts of petals in its specials, and a dembow swagger in its idle.
 //
 // Build notes: the ball is a stepped sphere painted as one sphere in model space (heart whorl on
 // top, two shingled rows of wrap leaves below). Each cupping leaf hangs on two bones — a yaw
@@ -318,6 +318,12 @@ export const def = {
     { name: 'pawL', parent: 'body', pivot: [1.7, 4.4, 5.8], cubes: [P([0.8, 2.7, 5.8], [1.8, 1.6, 2.0], pawP), ...nails(0.9, 2.7, 7.75, 3, 1)] },
     { name: 'tail', parent: 'body', pivot: [0, 6.6, -6.4], cubes: [P([-1.6, 5.6, -9.0], [3.2, 2.8, 2.2], tailP), P([-1.2, 5.2, -8.6], [2.4, 3.6, 2.0], tailP), P([-1.2, 5.8, -9.6], [2.4, 2.4, 1.0], tailP)] },
     ...ear(-1), ...ear(1),
+    // a quirk: a tropical flower over a palm frond, tucked behind its left ear
+    { name: 'flower', parent: 'earL', pivot: [3.4, 14.4, 0.6], rot: [0, -24, -14], cubes: [
+      P([2.4, 14.2, 0.0], [6.0, 2.333, 0], palmP, { plane: 'z' }),
+      P([1.4, 12.6, 0.8], [4.0, 4.0, 0], flowerP, { plane: 'z' }),
+      P([1.4, 14.6, -1.2], [4.0, 0, 4.0], flowerP, { plane: 'y' }),
+    ] },
   ],
 };
 // gear anchors (model units)
@@ -370,6 +376,7 @@ export const anim = {
     { bone: 'earR', tip: [0, 5, 0], k: 190, d: 10, gain: 0.6, max: 14 },
     { bone: 'earL', tip: [0, 5, 0], k: 195, d: 10, gain: 0.6, max: 14 },
     { bone: 'tail', tip: [0, 0, -2.4], k: 220, d: 10, gain: 0.8, max: 20 },
+    { bone: 'flower', tip: [0, 2, 0], k: 240, d: 11, gain: 0.6, max: 16 },
     ...CUPN.map((n, k) => ({ bone: 'leaf' + n, tip: [0, 7, 0], k: 200 + k * 9, d: 10, gain: 0.45, max: 12, axes: [1, 0, 0.4] })),
   ],
   faces: {

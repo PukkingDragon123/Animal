@@ -114,6 +114,9 @@ const innerEar = (p, w, h) => {
 const tailP = (cols) => (p, w, h, face) => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { let c = furCol(cols, face, x, y, h); if ((face === 'east' || face === 'west' || face === 'up' || face === 'down') && (x + 2 * y) % 7 === 0) c = shift(c, -0.14); p.px(x, y, c); } };
 const rustT = tailP(COAT), ringT = tailP(RING), tipT = tailP([C.coatLo, C.coatDeep, '#3e1a20', '#2a1218']);
 const glowRing = (col) => (p, w, h, face) => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const e = x === 0 || y === 0 || x === w - 1 || y === h - 1, mid = Math.abs(x - (w - 1) / 2) < w * 0.18 || Math.abs(y - (h - 1) / 2) < h * 0.18; p.px(x, y, e ? shift(col, -0.22) : (x * 7 + y * 13) % 23 === 0 ? '#ffffff' : mid ? shift(col, 0.4) : col); } };
+// the scarf: black knit with a band of spectrum across it (a little prism-light homage)
+const scarfP = (p, w, h, face) => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const knit = (x + (y & 1)) % 3 === 0; let c = face === 'up' ? '#3a3040' : y === 0 ? '#4a4050' : knit ? '#1a1620' : '#2a2430'; const k = Math.floor(((face === 'south' || face === 'north') ? y : y) * 6 / Math.max(1, h)); if (face !== 'up' && face !== 'down' && y > 0 && y < h - 1 && (x % 8 === 3 || x % 8 === 4)) c = C.spec[Math.min(5, k)]; p.px(x, y, c); } };
+const scarfEnd = (p, w, h, face) => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { let c = y >= h - 1 ? (x % 2 ? '#2a2430' : 0) : (x + (y & 1)) % 3 === 0 ? '#1a1620' : '#2a2430'; if (face !== 'up' && face !== 'down' && y < h - 1) { const k = Math.floor(y * 6 / (h - 1)); if (y % 2 === 0 || y > h * 0.6) c = c; if (y >= 1 && y <= 6) c = C.spec[Math.min(5, y - 1)]; } p.px(x, y, c); } };
 const tongueP = (p, w, h) => { p.rect(0, 0, w, h, C.tongue); for (let x = 0; x < w; x++) p.px(x, 0, '#ff9aaa'); p.px(Math.floor(w / 2), 1, '#c84060'); };
 const mouthIn = (p, w, h) => { p.rect(0, 0, w, h, C.mouth); p.rect(1, 1, w - 2, h - 2, '#6a1c2c'); };
 const fangP = (p, w, h) => { p.rect(0, 0, w, h, '#fffaf0'); p.px(w - 1, h - 1, '#d8ccc4'); };
@@ -246,6 +249,9 @@ export const def = {
       B(-2.6, 11.9, 12, 2.6, 13.1, 14.9, whiteP),
       B(-1.4, 12.8, 12.4, 1.4, 13.2, 14.4, tongueP, { outline: false }),
     ] },
+    // the scarf round its neck, the loose end hanging over one shoulder
+    { name: 'scarf', parent: 'body', pivot: [0, 11.6, 4], cubes: [B(-5.8, 10.2, 1.2, 5.8, 12.2, 6.6, scarfP)] },
+    { name: 'scarfEnd', parent: 'scarf', pivot: [3.0, 10.8, 6.4], rot: [-8, 0, 6], cubes: [B(1.8, 5.4, 5.9, 4.2, 10.8, 6.9, scarfEnd)] },
     ...both(RIGHT.ear, RIGHT.brow).map((b) => (b.name === 'browL' ? { ...b, rot: [0, 0, -4] } : b)),
     ...tailBones,
   ],
@@ -293,6 +299,7 @@ export const anim = {
   look: { bone: 'head', yaw: 30, pitch: 14, speed: 6 },
   springs: [
     { bone: 'earR', tip: [0, 4, 0], k: 220, d: 10, gain: 0.7, max: 22 },
+    { bone: 'scarfEnd', tip: [0, -5, 0.5], k: 150, d: 8, gain: 0.9, max: 30 },
     { bone: 'earL', tip: [0, 4, 0], k: 230, d: 10, gain: 0.7, max: 22 },
     { bone: 'tail1', tip: [0, 0, -4.6], k: 190, d: 12, gain: 0.32, max: 9 },
     { bone: 'tail2', tip: [0, 0, -4.6], k: 170, d: 11, gain: 0.36, max: 10 },

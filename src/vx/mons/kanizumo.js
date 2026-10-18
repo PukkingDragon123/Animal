@@ -16,6 +16,7 @@ const C = {
   belly: '#ffd8a6', bellyHi: '#fff0d2', bellyLo: '#e2a274', bellyLine: '#c8886a',
   palm: '#ffd4b4', palmHi: '#fff0de', palmLo: '#eaa286', palmLine: '#c87668',
   belt: '#ffcc2e', beltHi: '#fff07a', beltLo: '#d8941a', beltDeep: '#9a5e12',
+  ribbon: '#e42a48', ribbonHi: '#ff7a86', ribbonLo: '#981432', rose: '#ff5a8a', roseHi: '#ffb0c8', roseLo: '#b82a5a', leaf: '#4aa83e', leafLo: '#2a6a2c',
   turq: '#28bcc0', turqHi: '#86f0e6', turqLo: '#167c8c',
   cord: '#f6f6fc', cordLo: '#c6cae2', cordDeep: '#8e94bc',
   hair: '#282038', hairHi: '#6c62a8', hairLo: '#100c1c', hairGl: '#b0a8e8',
@@ -169,6 +170,10 @@ function hiveP(p, w, h, face) {
     p.px(x, y, c);
   }
 }
+const ribbonP = (p, w, h, face) => { shade(C.ribbon, { top: C.ribbonHi, bottom: C.ribbonLo, grain: 0 })(p, w, h, face); if (face !== 'up' && face !== 'down') for (let x = 0; x < w; x += 3) p.px(x, Math.floor(h / 2), C.ribbonHi); };
+// a little rose: a spiral of petals
+const roseP = (p, w, h, face) => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const a = Math.atan2(y - (h - 1) / 2, x - (w - 1) / 2), r = Math.hypot(x - (w - 1) / 2, y - (h - 1) / 2); p.px(x, y, face === 'down' ? C.roseLo : Math.floor(r * 1.4 + a * 0.6 + 8) % 2 ? C.rose : r < 1 ? C.roseLo : C.roseHi); } };
+const leafQ = (p, w, h) => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const v = Math.abs(y - (h - 1) / 2) / (h / 2), u = x / (w - 1); if (v < Math.sin(u * Math.PI) * 1.05) p.px(x, y, Math.abs(y - (h - 1) / 2) < 0.6 ? C.leafLo : C.leaf); } };
 // the knob at the top of each stalk: smooth shell, lit on top (the eye is painted on its front)
 const eyeballP = (p, w, h, face) => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, face === 'up' ? C.shellHi : face === 'down' ? C.shellLo : y === 0 ? C.shellHi : y >= h - 2 ? C.shellLo : C.shell); };
 const stalkP = (p, w, h, face) => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, face === 'up' || face === 'down' ? C.shell : (y % 4 === 3 ? C.shellLo : x === 0 ? C.shellHi : C.shell)); };
@@ -351,11 +356,17 @@ export const def = {
     ] },
     { name: 'crack', parent: 'root', pivot: [13.6, 0.15, 3], cubes: [B(-2.4, 0.15, -13, 29.6, 0.15, 19, crackP, { plane: 'y', id: 'crack', hide: true, shadow: false })] },
     ...both(RIGHT.stalk),
-    // the towering beehive: two springy tiers of lacquered hair
+    // the towering beehive (two springy tiers of lacquered hair), tied with a red ribbon and a bow, a rose tucked in
     { name: 'hive', parent: 'torso', pivot: [0, 25.8, -1.6], cubes: [
       B(-4, 25.4, -5.4, 4, 28.6, 1.8, hiveP),
+      B(-4.3, 25.8, -5.7, 4.3, 27.2, 2.1, ribbonP),
+      B(0.4, 25.4, 2.0, 3.0, 27.6, 3.0, ribbonP, { pivot: [0, 26.5, 2.5], rot: [0, 0, -16] }),
+      B(-3.0, 25.4, 2.0, -0.4, 27.6, 3.0, ribbonP, { pivot: [0, 26.5, 2.5], rot: [0, 0, 16], mirror: true }),
+      B(-0.7, 25.9, 2.2, 0.7, 27.1, 3.3, ribbonP),
     ] },
     { name: 'hiveTop', parent: 'hive', pivot: [0, 28.4, -1.6], cubes: [
+      B(-5.4, 32.6, -1.8, -3.6, 34.4, 0.0, roseP),
+      B(-6.8, 32.4, -1.4, -4.8, 32.4, 0.2, leafQ, { plane: 'y', outline: false }),
       B(-4.6, 28.4, -6, 4.6, 32.4, 2.4, hiveP),
       B(-4.4, 32.4, -5.8, 4.4, 35.4, 2.2, hiveP),
       B(-3.6, 35.4, -5, 3.6, 37.2, 1.4, hiveP),

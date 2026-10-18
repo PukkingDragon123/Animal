@@ -12,7 +12,7 @@
 //  · motion: planted feet, the head-bob (thrust and hold) and the strut,
 //  · gear attach points (def.attach) for the buyable accessories.
 import { defineFx } from '../fx.js';
-import { E, seg, bump, wave } from '../anim.js';
+import { E, seg, bump, wave, wob, key, bounce } from '../anim.js';
 import { poly, dith, shift, mix, h2 } from './kit.js';
 
 export const D2R = Math.PI / 180;
@@ -298,6 +298,10 @@ export function tailP(o = {}) {
       if ((face === 'up' || face === 'plane') && fx % 4 === 1) col = cols[Math.max(0, k - 1)];
       if (along < 0.26 && along > 0.08) col = BAR[Math.min(3, (face === 'down' ? 2 : 1) + (fx % 4 === 0 ? 1 : 0))];
       if (along <= 0.08) col = cols[face === 'down' ? 3 : 2];
+      if (o.petals && (face === 'up' || face === 'plane') && along > 0.05 && along < 0.32) {     // rose petals along the band
+        const v = (along - 0.05) * c.s[2] * 3, u = ((fx % 6) + 6) % 6, d = ((u - 2.5) / 2.4) ** 2 + ((v - 3.2) / 3.0) ** 2;
+        if (d < 1) col = d < 0.3 && u < 3 ? C.rose[0] : v > 4.4 ? C.rose[3] : C.rose[2];
+      }
       if (o.fan && (face === 'up' || face === 'plane' || face === 'down')) {
         const cx = c.o[0] + c.s[0] / 2, rx = c.s[0] / 2, dx = (q[0] - cx) / rx, tip = 0.08 + dx * dx * 0.12;
         if (along < tip - 0.04) col = 0; else if (along < tip + 0.03 && fx % 4 === 2) col = 0;
@@ -358,27 +362,28 @@ export const tongueP = (p, w, h) => { for (let y = 0; y < h; y++) for (let x = 0
 // (closed), > < (hurt), swirls or X (faint). Canvas W × H, outer corner at x = 0. o.flick: one tiny lash flick
 export function kawaiiEyes(o = {}) {
   const W = o.w || 7, H = o.h || 8, ink = o.ink || C.ink;
-  const fill = o.fill || ['#2c1218', '#3c181e'], acc = o.accent || ['#6e2418', '#c4481e', '#ff9a3c'];
+  const fill = o.fill || ['#2a1218', '#3a181e'], acc = o.accent || ['#5a1c14', '#a43c1c', '#f07a30'];
   const inM = (x, y) => { if (x < 0 || y < 0 || x >= W || y >= H) return false; const X = (x + 0.5 - W / 2) / (W / 2), Y = (y + 0.5 - H / 2) / (H / 2); return X * X + Y * Y <= 1.12; };
+  // the full eye's rows (the accent gradient and the catchlight belong to the eye, a lid only trims its top)
+  let T0 = H, B0 = 0; for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (inM(x, y)) { T0 = Math.min(T0, y); B0 = Math.max(B0, y); }
   const eye = (lid, flick) => (p) => {
     const vis = (x, y) => inM(x, y) && (!lid || y + 0.5 >= lid(x + 0.5));
-    let top = H, bot = 0;
-    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (vis(x, y)) { top = Math.min(top, y); bot = Math.max(bot, y); }
-    const inner = [];
+    let top = H; for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (vis(x, y)) top = Math.min(top, y);
+    const inner = new Set();
     for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
       if (!vis(x, y)) continue;
       if (!vis(x - 1, y) || !vis(x + 1, y) || !vis(x, y - 1) || !vis(x, y + 1)) { p.px(x, y, ink); continue; }
-      const t = (y - top - 1) / Math.max(1, bot - top - 2);
-      p.px(x, y, t >= 0.95 ? acc[2] : t >= 0.7 ? acc[1] : t >= 0.5 ? acc[0] : y - top <= 1 ? fill[1] : fill[0]);
-      inner.push([x, y]);
+      const t = (y - T0 - 1) / Math.max(1, B0 - T0 - 2);
+      p.px(x, y, t >= 0.95 ? acc[2] : t >= 0.75 ? acc[1] : t >= 0.6 ? acc[0] : y - T0 <= 1 ? fill[1] : fill[0]);
+      inner.add(x + ',' + y);
     }
-    if (lid) for (let x = 0; x < W; x++) { let y0 = -1; for (let y = 0; y < H; y++) if (vis(x, y)) { y0 = y; break; } if (y0 >= 0 && y0 + 1 < H && vis(x, y0 + 1) && x > 0 && x < W - 1) p.px(x, y0 + 1, ink); }
-    // the catchlight: up to 2 × 2 high on the outer side, under any lid; the glint low on the inner side
-    const free = (x, y) => inner.some(([a, b]) => a === x && b === y) && !(lid && y <= lid(x + 0.5) + 1);
-    let cy = -1; for (let y = 0; y < H && cy < 0; y++) if (free(1, y) && free(2, y)) cy = y;
-    if (cy >= 0) { p.px(1, cy, '#ffffff'); p.px(2, cy, '#ffffff'); if (free(1, cy + 1)) p.px(1, cy + 1, '#ffffff'); if (free(2, cy + 1) && !lid) p.px(2, cy + 1, '#ffffff'); }
-    for (let y = H - 1; y >= 0; y--) if (free(W - 2, y)) { p.px(W - 2, y - 1 >= 0 && free(W - 2, y - 1) ? y - 1 : y, '#ffffff'); break; }
-    if (flick) { p.px(0, Math.max(0, top - 0) , ink); }
+    if (lid) for (let x = 1; x < W - 1; x++) { let y0 = -1; for (let y = 0; y < H; y++) if (vis(x, y)) { y0 = y; break; } if (y0 >= 0 && y0 + 1 < H && vis(x, y0 + 1)) p.px(x, y0 + 1, ink); }
+    // the catchlight: 2 × 2 high on the outer side (a lid trims it); the glint low on the inner side
+    const free = (x, y) => inner.has(x + ',' + y) && !(lid && y <= lid(x + 0.5) + 1);
+    let cy = T0 + 1; while (cy < B0 - 2 && !(free(1, cy) && free(2, cy))) cy++;
+    for (const [x, y] of [[1, cy], [2, cy], [1, cy + 1], [2, cy + 1]]) if (free(x, y) && (!lid || y < B0 - 2)) p.px(x, y, '#ffffff');
+    if (!lid) { for (let y = B0 - 1; y > T0; y--) if (free(W - 2, y)) { p.px(W - 2, y, '#ffffff'); break; } }
+    if (flick) p.px(0, Math.max(0, top), ink);
   };
   const line = (p, pts) => { for (const [x, y] of pts) p.px(x, y, ink); };
   const c = (W - 1) / 2;
@@ -421,6 +426,26 @@ export function metalP(cols, o = {}) {
       for (let x = 0; x < w; x++) p.px(x, y, (face === 'east' || face === 'north') && t > 0.18 ? sh(col, -0.25) : col);
     }
     if (o.after) o.after(p, w, h, face, c);
+  };
+}
+
+// a bandana in black cotton printed with tiny red rose buds (bud: two petals, a dark heart, a green leaf),
+// a thin red rule along the edges of the narrow strips
+const BUD = ['.rr.', 'rRrr', '.rr.', '..g.'];
+export function roseBandanaP(o = {}) {
+  const K = o.cols || ['#5a5268', '#3a3446', '#28232f', '#1c1822', '#121016'], R = o.bud || C.rose;
+  const put = (p, x, y) => BUD.forEach((row, j) => [...row].forEach((ch, i) => { if (ch === 'r') p.px(x + i, y + j, j === 0 && i === 1 ? R[1] : R[2]); else if (ch === 'R') p.px(x + i, y + j, R[4]); else if (ch === 'g') p.px(x + i, y + j, C.leaf[2]); }));
+  return (p, w, h, face) => {
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const t = h > 1 ? y / (h - 1) : 0.5;
+      let k = face === 'up' ? 1 : face === 'down' ? 4 : t < 0.3 ? 1 : t < 0.8 ? 2 : 3;
+      if (face === 'east' || face === 'north') k = Math.min(4, k + 1);
+      p.px(x, y, K[k]);
+    }
+    if (h >= 8 && w >= 8) { for (let gy = 1, r = 0; gy < h - 3; gy += 6, r++) for (let gx = 1 + (r & 1) * 3; gx < w - 3; gx += 6) put(p, gx, gy); return; }
+    if (face === 'up' || face === 'down') return;
+    if (h >= 3) for (let x = 0; x < w; x++) p.px(x, h - 1, R[3]);
+    if (h >= 4) for (let x = 1 + (o.phase || 0); x + 3 < w; x += 6) put(p, x, 0);
   };
 }
 
@@ -659,12 +684,11 @@ export function stage1(o = {}) {
       eggBox([-6.3, 5.6, -7.6], [12.6, 8.4, 12.8], bodyP),
       eggBox([-4.7, 4.0, -6.6], [9.4, 11.6, 10.8], bodyP),
       eggBox([-5.6, 4.8, -5.0], [11.2, 10.0, 7.6], bodyP),
-      eggBox([-3.4, 7.2, 8.4], [6.8, 5.2, 0.9], bodyP),
       eggBox([-3.4, 7.0, -12.4], [6.8, 5.6, 1.6], bodyP),
       ...(o.bodyExtra || []),
     ] },
     { name: 'tail', parent: 'body', pivot: [0, 7.8, -10.2], rot: [-12, 0, 0], cubes: [
-      P([-2.8, 7.3, -19.6], [5.6, 1.0, 9.4], tailP({ fan: true, cols: M.slate, bar: M.bar })),
+      P([-2.8, 7.3, -19.6], [5.6, 1.0, 9.4], tailP({ fan: true, cols: M.slate, bar: M.bar, petals: o.tailPetals })),
       P([-2.2, 6.9, -15.6], [4.4, 0.5, 5.2], tailP({ cols: M.belly, bar: M.bar })),
     ] },
     { name: 'neck', parent: 'body', pivot: S1.neck.pivot, cubes: [
@@ -694,4 +718,300 @@ export function stage1(o = {}) {
     bones.push({ name: 'hand' + nm, parent: 'wing' + nm, pivot: W.wrist, cubes: W.hand });
   }
   return bones;
+}
+
+// ---------------------------------------------------------------- stage 2: the punk (Jungeon ♂ / ♀)
+// Taller and upright on long legs: the egg stands at nearly 50°, a long iridescent neck, a spiky crest. It
+// wears a black tee printed with a white skeleton (ribcage on the front, spine on the back), its sleeves
+// on the arm-wings, and carries its prop in its bill. Prints are laid out in world space so they sit
+// square on the chest however the egg is tilted.
+export const S2 = {
+  EC: [0, 15.2, -0.4], R: [6.2, 6.4, 9.0], pitch: -48,
+  neck: { pivot: [0, 20.8, 3.8], O: [0, 23.2, 4.2], R: [4.6, 4.4, 4.0], yTop: 26.6, yBot: 19.6 },
+  head: { pivot: [0, 26.2, 4.4], O: [0, 28.9, 4.4], R: [4.6, 4.2, 4.2] },
+  eyes: { x0: 1.35, y: 28.0, z: 8.0, w: 7 / 3, h: 8 / 3 },
+  mouth: [0, 26.9, 11.0], bill: [0, 27.0, 10.2], shoulder: [6.0, 20.6, 2.8],
+};
+const eggToWorld = (q, EC, pitch) => { const a = pitch * D2R, y = q[1] - EC[1], z = q[2] - EC[2]; return [q[0], EC[1] + y * Math.cos(a) - z * Math.sin(a), EC[2] + y * Math.sin(a) + z * Math.cos(a)]; };
+const nToWorld = (n, pitch) => { const a = pitch * D2R; return [n[0], n[1] * Math.cos(a) - n[2] * Math.sin(a), n[1] * Math.sin(a) + n[2] * Math.cos(a)]; };
+// stepped boxes approximating an ellipsoid (radii R about EC), each tilted by `pitch` about EC
+export function eggBoxes(EC, R, pitch, tex) {
+  const [a, b, c] = R, B = (rx, ry, rz) => P([EC[0] - rx, EC[1] - ry, EC[2] - rz], [2 * rx, 2 * ry, 2 * rz], tex, { pivot: EC, rot: [pitch, 0, 0] });
+  return [B(0.76 * a, 0.76 * b, c), B(a, 0.72 * b, 0.65 * c), B(0.75 * a, b, 0.55 * c), B(0.89 * a, 0.86 * b, 0.39 * c)];
+}
+const TEE = ['#5c566c', '#3e3a4c', '#2c2836', '#201c28', '#15121a'], BONE = ['#ffffff', '#f2eee4', '#d4ccbe', '#a89e92'];
+// the skeleton print in world coordinates (x, y) on the chest: collarbones, sternum, five pairs of ribs
+function ribPrint(x, y) {
+  const ax = Math.abs(x);
+  if (y > 19.6 || y < 10.8) return 0;
+  if (y > 18.6 && ax > 0.5 && ax < 4.8 && Math.abs(y - (19.0 + ax * 0.1)) < 0.4) return 1;            // collarbones
+  if (ax < 0.6 && y > 12.0 && y < 18.8) return y > 18.2 ? 1 : 2;                                        // sternum
+  for (let k = 0; k < 5; k++) {
+    const y0 = 17.8 - k * 1.4, len = 4.6 - Math.abs(k - 1.5) * 0.35;
+    if (ax > 0.8 && ax < len && Math.abs(y - (y0 - 0.15 * ax * ax + 0.1 * ax)) < 0.4) return ax > len - 0.6 ? 2 : 1;
+  }
+  return 0;
+}
+function spinePrint(x, y) {
+  const ax = Math.abs(x);
+  if (y > 21.0 || y < 11.6) return 0;
+  if (ax < 0.6) return (y * 1.3) % 1 < 0.62 ? 1 : 0;
+  if (y > 16.4 && y < 20.0 && ax > 1.4 && ax < 4.0 && ax < 1.4 + (20.0 - y) * 0.9) return 2;            // shoulder blades
+  return 0;
+}
+// the tee over the egg: black cotton, a ripped hem, the bones printed white. o.hem: world y of the hem
+export function teeRegion(o = {}) {
+  const EC = o.EC || S2.EC, pitch = o.pitch ?? S2.pitch, hem = o.hem ?? 11.2, base = o.below;
+  return (q, face, n, l, A, B) => {
+    const w = eggToWorld(q, EC, pitch), nw = nToWorld(n, pitch);
+    const rip = ((A * 7 + 3) % 5 < 2 ? 0.35 : 0) + ((A * 3) % 4 === 0 ? 0.3 : 0);
+    if (w[1] < hem + rip) return base ? base(q, face, n, l, A, B) : undefined;
+    const k = l > 0.72 ? 0 : l > 0.3 ? 1 : l > -0.22 ? 2 : l > -0.62 ? 3 : 4;
+    if (w[1] < hem + rip + 0.36) return TEE[Math.min(4, k + 1)];
+    if (face !== 'down') {
+      const pr = nw[2] > 0.3 ? ribPrint(w[0], w[1]) : nw[2] < -0.3 ? spinePrint(w[0], w[1]) : 0;
+      if (pr) return BONE[Math.min(3, pr + (k > 2 ? 1 : 0))];
+    }
+    return (A + B * 3) % 11 === 0 && k < 3 ? TEE[Math.max(0, k - 1)] : TEE[k];
+  };
+}
+// a sleeve of the tee on an arm-wing: fabric down to `to` (0..1 along the arm), a white rolled hem
+export const teeSleeve = (to = 0.4) => (along, across, face) => {
+  if (along > to + 0.08) return undefined;
+  if (along > to) return BONE[face === 'east' || face === 'north' ? 2 : 1];
+  return TEE[face === 'up' ? 1 : face === 'east' || face === 'north' ? 3 : 2];
+};
+// a spike of the crest: a tapered feather, dark at the root, its sheen colour at the tip
+export const spikeP = (ir) => (p, w, h) => {
+  const cx = (w - 1) / 2;
+  for (let y = 0; y < h; y++) {
+    const v = y / Math.max(1, h - 1), half = (0.15 + 0.85 * v) * (w / 2);
+    for (let x = 0; x < w; x++) {
+      const dx = x - cx; if (Math.abs(dx) > half) continue;
+      const edge = Math.abs(dx) > half - 0.9, H = ir[v < 0.4 ? 0 : v < 0.75 ? 1 : 2];
+      p.px(x, y, edge ? (dx < 0 ? H[0] : H[2]) : v > 0.82 ? '#3a3448' : dx < 0 ? H[1] : mx(H[1], H[2], 0.5));
+    }
+  }
+};
+export function crestBones(ir, o = {}) {
+  const Z = o.z || [6.6, 5.2, 3.8, 2.4, 1.0], Hs = o.h || [3.0, 4.4, 5.4, 4.8, 3.6], y = o.y ?? 31.9, tex = spikeP(ir);
+  return Z.map((z, i) => ({ name: 'crest' + i, parent: 'head', pivot: [0, y, z], rot: [-8 - 13 * i, 0, 0], cubes: [
+    P([-1.2, y - 0.4, z], [2.4, Hs[i], 0], tex, { plane: 'z' }),
+    P([0, y - 0.4, z - 1.0], [0, Hs[i], 2.0], tex, { plane: 'x' }),
+  ] }));
+}
+export const ATTACH_S2 = {
+  head: { bone: 'head', at: [0, 32.0, 3.6], size: 8.0 },
+  face: { bone: 'head', at: [0, 29.4, 8.1], size: 8.0 },
+  neck: { bone: 'neck', at: [0, 22.6, 7.4], size: 8.4 },
+  back: { bone: 'body', at: [0, 17.6, -5.4], size: 12.4 },
+};
+export function stage2(o = {}) {
+  const M = o.M || MORPH.blue, EC = S2.EC, R = S2.R;
+  const below = (q, face, n, l, A, B) => {
+    const w = eggToWorld(q, EC, S2.pitch);
+    return featherCol(w[1] < 10.2 && w[2] < -3 ? M.pale : M.belly, l, A, B, 8, 5, face);
+  };
+  const bodyP = plumage({ O: EC, R, cols: M.slate, region: teeRegion({ below }) });
+  const neckPt = neckP({ ...S2.neck, cols: M.head, below: M.slate, ir: M.ir });
+  const headPt = plumage({ O: S2.head.O, R: S2.head.R, cols: M.head, S: 6, RH: 4 });
+  const EYES = o.eyes || kawaiiEyes();
+  const leg = (s) => [P([s * 3.0 - 0.65, 0.3, 1.0], [1.3, 6.4, 1.3], legP), P([s * 3.0 - 1.7, 5.8, -0.2], [3.4, 3.2, 3.2], thighP(M.belly))];
+  const arm = (s) => {
+    const x = s * 6.0, seg = wingSegP({ ...M, base: [x, 21.0, 5.2], dir: [0, -1, 0], len: 9.4, cdir: [0, 0, -1], chord: 5.0, kind: 'arm', sleeve: teeSleeve(0.38), bar1: 0.56, bar2: 0.74, barW: 0.08 });
+    return [P([s < 0 ? x - 1.4 : x, 11.6, 0.2], [1.4, 9.4, 5.0], seg), P([s * 6.7, 12.4, -1.6], [0, 7.8, 2.0], tipsP({ n: 4, cols: M.slate, dir: 'back' }), { plane: 'x' })];
+  };
+  const hand = (s) => {
+    const x = s * 6.0, seg = wingSegP({ ...M, base: [x, 12.4, 4.8], dir: [0, -1, 0], len: 6.0, cdir: [0, 0, -1], chord: 4.2, kind: 'hand' });
+    return [P([s < 0 ? x - 1.2 : x, 6.4, 0.6], [1.2, 6.0, 4.2], seg), P([s * 6.6, 3.8, 0.8], [0, 3.0, 3.8], tipsP({ n: 3, long: true, cols: M.prim }), { plane: 'x' })];
+  };
+  return [
+    { name: 'root', pivot: [0, 0, 0], cubes: [] },
+    { name: 'footR', parent: 'root', pivot: [-3.0, 0, 1.6], cubes: footCubes(-3.0, 1.6, 1.25) },
+    { name: 'footL', parent: 'root', pivot: [3.0, 0, 1.6], cubes: footCubes(3.0, 1.6, 1.25) },
+    { name: 'legR', parent: 'root', pivot: [-3.0, 8.4, 1.6], cubes: leg(-1) },
+    { name: 'legL', parent: 'root', pivot: [3.0, 8.4, 1.6], cubes: leg(1) },
+    { name: 'body', parent: 'root', pivot: [0, 13.0, 0], cubes: [...eggBoxes(EC, R, S2.pitch, bodyP), ...(o.bodyExtra || [])] },
+    { name: 'tail', parent: 'body', pivot: [0, 9.8, -5.6], rot: [-36, 0, 0], cubes: [
+      P([-2.4, 9.3, -13.8], [4.8, 0.9, 8.2], tailP({ fan: true, cols: M.slate, bar: M.bar, petals: o.tailPetals })),
+      P([-1.9, 8.95, -10.4], [3.8, 0.5, 4.6], tailP({ cols: M.belly, bar: M.bar })),
+    ] },
+    { name: 'neck', parent: 'body', pivot: S2.neck.pivot, cubes: [
+      P([-4.3, 19.0, 0.4], [8.6, 5.4, 7.4], neckPt),
+      P([-3.8, 22.4, 1.0], [7.6, 4.4, 6.4], neckPt),
+      ...(o.neckExtra || []),
+    ] },
+    { name: 'head', parent: 'neck', pivot: S2.head.pivot, cubes: [
+      P([-4.0, 25.4, 1.0], [8.0, 6.0, 7.0], headPt),
+      P([-3.3, 25.8, 0.4], [6.6, 6.4, 7.0], headPt),
+      P([-4.3, 25.5, 1.6], [8.6, 1.9, 5.8], headPt),
+      P([-0.85, 27.6, 7.9], [1.7, 0.95, 1.6], cereP),
+      P([-0.75, 26.9, 8.0], [1.5, 1.0, 3.1], beakP(8.0, 11.1)),
+      P([-0.6, 26.55, 10.5], [1.2, 0.9, 0.9], beakP(8.0, 11.1), { pivot: [0, 27.3, 10.8], rot: [18, 0, 0] }),
+      ...eyeCubes(EYES, { ...S2.eyes, def: o.eyeDef || 'glare' }),
+      ...(o.headExtra || []),
+    ] },
+    { name: 'jaw', parent: 'head', pivot: [0, 26.9, 8.1], cubes: [
+      P([-0.65, 26.2, 8.0], [1.3, 0.7, 2.7], beakP(8.0, 10.7)),
+      P([-0.7, 26.75, 7.9], [1.4, 0.2, 2.3], mouthP, { outline: false }),
+    ] },
+    ...crestBones(M.ir, o.crest || {}),
+    { name: 'wingR', parent: 'body', pivot: [-6.0, 20.6, 2.8], rot: [-6, 0, -8], cubes: arm(-1) },
+    { name: 'handR', parent: 'wingR', pivot: [-6.6, 12.2, 2.6], rot: [-8, 0, 0], cubes: hand(-1) },
+    { name: 'wingL', parent: 'body', pivot: [6.0, 20.6, 2.8], rot: [-6, 0, 8], cubes: arm(1) },
+    { name: 'handL', parent: 'wingL', pivot: [6.6, 12.2, 2.6], rot: [-8, 0, 0], cubes: hand(1) },
+  ];
+}
+
+// ---------------------------------------------------------------- stage 2 clips (shared by Jungeon ♂ / ♀)
+// o: { prop: 'gun' | 'rose', MZ (muzzle, gun frame), BLOOM (bloom centre, rose frame), sway (♀ swings her hips more) }
+const CRESTS = ['crest0', 'crest1', 'crest2', 'crest3', 'crest4'];
+const flare = (P, k) => CRESTS.forEach((c, i) => P.rot(c, -10 * k * (1 + i * 0.2), 0, 0).scl(c, 1, 1 + 0.25 * k, 1));
+export function jungeonClips(o) {
+  const gun = o.prop === 'gun', PB = gun ? 'gun' : 'rose', TIP = gun ? o.MZ : o.BLOOM, sw = o.sway ?? 1;
+  const L = 8.0, pl = (P, dy) => plant(P, dy, L);
+  const prop = gun
+    ? (P, t, k = 1) => P.rot('gun', wave(t, 1.3) * 3 * k, wave(t, 0.9, 1) * 4 * k, 0)          // chewing it like a cigar
+    : (P, t, k = 1) => P.rot('rose', wave(t, 0.7) * 8 * k, 0, wave(t, 1.1) * 4 * k);
+  return {
+    // a punk bounce to a beat only it can hear: two beats a loop, the head nodding hard on each, shoulders
+    // shrugging in turn, a foot tapping the off-beat, the prop chewed at the corner of the bill
+    idle: { len: 1.6, loop: true, f(P, t) {
+      const b = bounce(t, 0.8, { squash: 0.06, stretch: 0.03 }), dy = b.u * 1.0 - 0.5, ph = (t / 0.8) % 1;
+      const s = wave(t, 1 / 1.6);
+      P.pos('body', s * 0.4 * sw, dy, 0).sq('body', b.sq).rot('body', 0, s * 4 * sw, -s * 3 * sw); pl(P, dy);
+      const nod = Math.max(0, Math.sin(ph * Math.PI * 2 - 0.6)) ** 2;
+      P.rot('head', 12 * nod - 3, s * 6, s * 4 * sw).pos('neck', 0, -0.4 * nod, 0.6 * nod);
+      P.rot('wingR', 0, 0, -3 - 4 * Math.max(0, s)).rot('wingL', 0, 0, 3 + 4 * Math.max(0, -s)).rot('handR', 4 * nod, 0, 0).rot('handL', 4 * nod, 0, 0);
+      P.pos('footR', 0, 0.9 * bump(ph, 0.45, 0.75), 0).rot('footR', -14 * bump(ph, 0.45, 0.75), 0, 0);
+      P.rot('tail', 0, -s * 10 * sw, 0); prop(P, t);
+      if (gun) P.rot('jaw', 3 + 3 * Math.max(0, wave(t, 1.3)));
+    } },
+    // the swagger: a loose head-bob strut, shoulders rolling, wings swinging like arms
+    walk: { len: 0.72, loop: true, f(P, t) {
+      const r = strut(P, t, 0.72, { Z: 2.6, H: 2.0, A: 1.8, roll: 5 * sw, yaw: 8 * sw, bounce: 0.9, tilt: -2 });
+      plant(P, 0, L);
+      P.rot('wingR', -r.s * 14, 0, -2).rot('wingL', r.s * 14, 0, 2).rot('handR', -8 - r.s * 6, 0, 0).rot('handL', -8 + r.s * 6, 0, 0);
+      prop(P, t, 0.6);
+    } },
+    // battle cry: a crouch, then three headbangs with the crest flaring, wings flung wide, a scream round the prop
+    cry: { len: 2.0, next: 'idle', f(P, t) {
+      const crouch = seg(t, 0, 0.3, E.inout) * (1 - seg(t, 0.3, 0.4, E.out)), up = seg(t, 0.36, 0.5, E.back) * (1 - seg(t, 1.45, 1.85, E.inout));
+      let bang = 0; for (const b0 of [0.55, 0.85, 1.15]) bang += bump(t, b0, b0 + 0.26);
+      const dy = -2.0 * crouch + 0.8 * up - 0.6 * bang; P.pos('body', 0, dy, 0).sq('body', -0.1 * crouch + wob(t, 1.8, 0.04, 3, 5)); pl(P, dy);
+      P.rot('head', 18 * crouch - 18 * up + 34 * bang, 0, 0).rot('body', 10 * crouch - 8 * up + 10 * bang, 0, 0).pos('neck', 0, 0, 0.8 * bang);
+      P.rot('wingR', -30 * up, 0, -70 * up).rot('wingL', -30 * up, 0, 70 * up).rot('handR', 0, 0, -20 * up).rot('handL', 0, 0, 20 * up);
+      P.rot('jaw', 6 * crouch + 26 * up); flare(P, up);
+      P.face('eyes', up > 0.3 ? 'glare' : undefined); P.lookW = 1 - up;
+      P.burst(0.5, 'anger', 'head', [5, 34, 4], {}).burst(0.55, 'sparkle', 'head', [0, 36, 3], { n: 6 }).burst(0.86, 'note', 'head', [-5, 34, 3], {}).burst(1.16, 'note', 'head', [5, 34, 3], {});
+      if (!gun) P.burst(0.6, 'pg_petal', 'rose', TIP, { n: 10 });
+    } },
+    // attack: winds the head back, lunges and whips the prop across — a pistol-whip with the revolver in its
+    // bill, a thorny lash with the rose
+    attack: { len: 1.0, next: 'idle', f(P, t) {
+      const wind = seg(t, 0, 0.3, E.out) * (1 - seg(t, 0.3, 0.38, E.in)), hit = seg(t, 0.3, 0.42, E.in3) * (1 - seg(t, 0.56, 0.95, E.inout));
+      P.pos('root', 0, 0, key([[0, 0], [0.3, -1.4], [0.42, 6, 'out'], [0.6, 5.2], [1.0, 0]], t));
+      P.rot('head', -12 * wind + 18 * hit, 42 * wind - 52 * hit, 10 * wind - 14 * hit).rot('body', -8 * wind + 14 * hit, 22 * wind - 26 * hit, 0);
+      P.rot('wingR', -20 * wind, 0, -26 * wind + 10 * hit).rot('wingL', 20 * hit, 0, 26 * hit);
+      const dy = -1.2 * wind + wob(t, 0.42, -0.9, 3, 6); P.pos('body', 0, dy, 0).sq('body', -0.06 * wind + wob(t, 0.42, 0.06, 4, 7)); pl(P, dy);
+      flare(P, hit); P.face('eyes', t > 0.05 && t < 0.8 ? 'squint' : undefined);
+      P.burst(0.42, 'spark', PB, TIP, { scale: 1.3 }).burst(0.42, 'star', PB, TIP, { n: 5 });
+      if (!gun) P.burst(0.42, 'pg_petal', 'rose', TIP, { n: 8, speed: 1.6 });
+    } },
+    special: gun ? {
+      // the shot: it levels the revolver with its whole head, squints… BANG — flash, shockwave, sparks; the
+      // recoil snaps its head back, and it lets the smoke curl out of the corner of its bill
+      len: 2.0, next: 'idle', f(P, t) {
+        const aim = seg(t, 0.05, 0.4, E.back) * (1 - seg(t, 1.5, 1.9, E.inout));
+        P.rot('head', 6 * aim, 18 * aim, -6 * aim).rot('body', 0, 10 * aim, 0).rot('wingR', -10 * aim, 0, -16 * aim);
+        P.face('eyes', t > 0.3 && t < 0.76 ? 'squint' : undefined);
+        const kick = seg(t, 0.74, 0.78, E.out) * (1 - seg(t, 0.78, 1.2, E.inout));
+        P.rot('head', -30 * kick, 0, 0).rot('body', -8 * kick, 0, 0).pos('body', 0, 0.4 * kick, -1.6 * kick).sq('body', wob(t, 0.76, 0.05, 4, 6)); flare(P, kick);
+        P.burst(0.75, 'pg_flash', 'gun', TIP, {}).burst(0.75, 'ring', 'gun', TIP, { scale: 1.4 }).burst(0.75, 'spark', 'gun', TIP, { scale: 1.6 });
+        P.burst(0.75, 'ember', 'gun', TIP, { n: 14, dir: [0, 0.15, 1], speed: 2.2, spread: 0.35 });
+        if (t > 0.8 && t < 1.6) P.stream('pg_smoke', 'gun', TIP, { rate: 12, dir: [0, 1, 0.2] });
+        P.burst(1.4, 'pg_smoke', 'head', S2.mouth, { n: 6, dir: [1, 0.3, 0.6], speed: 1.0, spread: 0.3 }).rot('jaw', 8 * bump(t, 1.3, 1.6));
+      } } : {
+      // petal storm: it whirls on one foot, petals pouring off the rose in its bill into a spiralling column,
+      // then whips its head forward and the storm tears across at the target
+      len: 2.2, next: 'idle', f(P, t) {
+        const whirl = seg(t, 0.15, 1.25, E.inout); P.rot('root', 0, 720 * whirl, 0).pos('root', 0, 1.4 * Math.sin(whirl * Math.PI), 0);
+        const out = seg(t, 0, 0.2, E.out) * (1 - seg(t, 1.25, 1.4)); P.rot('wingR', 0, 0, -60 * out).rot('wingL', 0, 0, 60 * out).pos('footL', 0, 1.6 * out, 0);
+        const fling = seg(t, 1.25, 1.36, E.out) * (1 - seg(t, 1.6, 2.0, E.inout));
+        P.rot('head', 22 * fling, 0, 0).rot('body', 10 * fling, 0, 0).pos('root', 0, 0, 2 * fling); flare(P, out + fling);
+        P.face('eyes', whirl > 0.05 && whirl < 0.95 ? 'closed' : fling > 0.3 ? 'glare' : undefined); P.lookW = 1 - out;
+        if (t > 0.2 && t < 1.3) P.stream('pg_petal', 'root', [0, 8, 0], { rate: 80, dir: [0, 1, 0], speed: 2.4, spread: 1 }).stream('pg_petal', 'rose', TIP, { rate: 30, speed: 1.2 });
+        P.burst(1.3, 'pg_petal', 'rose', TIP, { n: 44, dir: [0, 0.2, 1], speed: 3.4, spread: 0.45 }).burst(1.3, 'sparkle', 'rose', TIP, { n: 8, dir: [0, 0, 1], speed: 2 }).burst(1.32, 'ring', 'rose', TIP, { scale: 1.2 });
+      } },
+    hurt: { len: 0.65, next: 'idle', f(P, t) {
+      const k = seg(t, 0, 0.07, E.out) * (1 - seg(t, 0.2, 0.65, E.inout));
+      P.pos('root', 0, 0, -2.6 * k).rot('body', -14 * k + wob(t, 0.2, 4, 3, 6), 0, wave(t, 16) * 4 * k).sq('body', -0.12 * k);
+      P.rot('head', -20 * k, 0, 10 * k).scl('neck', 1 + 0.14 * k).rot('wingR', -20 * k, 0, -30 * k).rot('wingL', -20 * k, 0, 30 * k).rot('tail', 16 * k, 0, 0); flare(P, k);
+      P.face('eyes', t < 0.42 ? 'hurt' : undefined);
+      P.burst(0.02, 'pg_feather', 'body', [0, 16, 2], { n: 8, speed: 1.6 }).burst(0.02, 'spark', 'body', [0, 18, 7], {});
+    } },
+    // staggers like the end of a long night, knees go, and it topples onto its back-side, legs in the air
+    faint: { len: 2.2, next: 'down', f(P, t) {
+      const dizzy = seg(t, 0, 0.3) * (1 - seg(t, 0.95, 1.05)), fall = seg(t, 0.95, 1.45, E.bounce);
+      P.rot('body', wave(t, 1.5) * 8 * dizzy, wave(t, 1.8) * 14 * dizzy, wave(t, 2.2) * 8 * dizzy).rot('head', 0, wave(t, 2.2, 1) * 22 * dizzy, wave(t, 1.6) * 14 * dizzy);
+      const dy = -2.4 * dizzy; P.pos('body', 0, dy, 0); pl(P, dy);
+      P.rot('root', 0, 0, -84 * fall).pos('root', 6.8 * fall, 6.4 * fall, 0);
+      P.rot('legR', -24 * fall, 0, 10 * fall).rot('legL', 20 * fall, 0, 16 * fall).rot('wingL', 0, 0, -20 * fall).rot('wingR', -30 * fall, 0, -30 * fall).rot('head', 0, 0, -16 * fall).rot('jaw', 22 * fall);
+      CRESTS.forEach((c, i) => P.rot(c, 20 * fall, 0, 0));
+      P.face('eyes', 'swirl'); P.blinkOK = false; P.lookW = 0;
+      P.burst(0.25, 'star', 'head', [0, 35, 2], { n: 5 }).burst(1.45, 'dust', 'root', [8, 1, 0], { n: 8, spread: 1 }).burst(1.45, 'pg_feather', 'body', [0, 16, 0], { n: 5, speed: 1 });
+    } },
+    down: { len: 2.4, loop: true, f(P, t) {
+      P.rot('root', 0, 0, -84).pos('root', 6.8, 6.4, 0);
+      P.rot('legR', -24 + wave(t, 0.42) * 6, 0, 10).rot('legL', 20, 0, 16).rot('footR', wave(t, 0.84) * 10 * bump(t, 1.2, 1.7), 0, 0);
+      P.rot('wingL', 0, 0, -20).rot('wingR', -30, 0, -30).rot('head', 0, 0, -16).rot('jaw', 22 + wave(t, 0.42, 1) * 4);
+      CRESTS.forEach((c) => P.rot(c, 20, 0, 0));
+      P.face('eyes', 'swirl'); P.blinkOK = false; P.lookW = 0; P.breathW = 0.5;
+      P.burst(0.5, 'star', 'head', [0, 35, 2], { n: 2 });
+    } },
+    // victory: air guitar — one wing holds the neck high, the other strums, the head bangs, notes fly
+    win: { len: 2.2, next: 'idle', f(P, t) {
+      const pose = seg(t, 0, 0.25, E.back) * (1 - seg(t, 1.85, 2.2, E.inout)), strum = Math.sin(t * Math.PI * 2 * 4) * pose;
+      P.rot('wingL', -70 * pose, -20 * pose, 40 * pose).rot('handL', -30 * pose, 0, 0);
+      P.rot('wingR', -40 * pose + strum * 12, 0, 20 * pose).rot('handR', -40 * pose, 0, strum * 10);
+      const bang = Math.max(0, Math.sin(t * Math.PI * 2 * 2)) * pose; P.rot('head', 22 * bang - 6 * pose, 0, 10 * pose).rot('body', 6 * bang, 0, -6 * pose);
+      const dy = -0.8 * bang; P.pos('body', 0, dy, 0); pl(P, dy); P.pos('footR', 0, 1.2 * bump(t, 0.3, 0.6) + 1.2 * bump(t, 1.1, 1.4), 0); flare(P, pose);
+      P.face('eyes', pose > 0.4 ? 'happy' : undefined);
+      P.burst(0.3, 'note', 'head', [5, 34, 4], {}).burst(0.7, 'note', 'head', [-5, 34, 4], {}).burst(1.1, 'note', 'head', [4, 35, 3], {}).burst(1.5, 'sparkle', PB, TIP, { n: 4 });
+    } },
+    // asleep on its feet: slumped, the head lolling onto its chest, the prop drooping, Zzz
+    sleep: { len: 3.4, loop: true, f(P, t) {
+      const br = Math.sin((t / 3.4) * Math.PI * 2), dy = -2.4 + br * 0.3;
+      P.pos('body', 0, dy, 0).rot('body', 8 + br * 2, 0, 0); pl(P, dy);
+      P.rot('head', 34 + br * 3, 0, 14).pos('neck', 0, -1.0, 0.6).rot('wingR', 10, 0, 6).rot('wingL', 10, 0, -6).rot('handR', 10, 0, 0).rot('handL', 10, 0, 0);
+      P.rot(PB, gun ? 20 : 30, 0, 0); CRESTS.forEach((c) => P.rot(c, 14, 0, 0));
+      P.face('eyes', 'closed'); P.blinkOK = false; P.lookW = 0; P.breathW = 0;
+      P.burst(0.5, 'z', 'head', [3, 33, 6], {}).burst(2.0, 'z', 'head', [3, 33, 6], {});
+    } },
+    // fidget: shifts the revolver to the other corner of its bill like a cigar / twirls the rose by its stem
+    chew: { len: 2.2, next: 'idle', f(P, t) {
+      if (gun) { const sl = seg(t, 0.3, 0.7, E.inout) * (1 - seg(t, 1.5, 1.9, E.inout)); P.pos('gun', 2.2 * sl, 0, 0).rot('gun', 0, 50 * sl, 0); }
+      else P.rot('rose', 360 * seg(t, 0.3, 1.5, E.inout), 0, 0);
+      const ch = Math.max(0, Math.sin(t * Math.PI * 2 * 3)) * bump(t, 0.2, 2.0); P.rot('jaw', 8 * ch).rot('head', -4 * ch, 6 * wave(t, 0.5), 0);
+      P.face('eyes', t > 0.8 && t < 1.6 ? 'cool' : undefined);
+      if (!gun) P.burst(0.9, 'pg_petal', 'rose', TIP, { n: 2, speed: 0.5 });
+    } },
+    // fidget: three punk stomps, dust kicked up, the crest shaking
+    stomp: { len: 1.5, next: 'idle', f(P, t) {
+      for (const [t0, s] of [[0.15, 'R'], [0.55, 'L'], [0.95, 'R']]) {
+        const k = bump(t, t0, t0 + 0.26);
+        P.pos('foot' + s, 0, 2.6 * k, 0).pos('leg' + s, 0, 2.0 * k, 0).rot('body', 0, 0, (s === 'R' ? 6 : -6) * k);
+        P.burst(t0 + 0.27, 'dust', 'foot' + s, [s === 'R' ? -3 : 3, 0.5, 2], { n: 4, dir: [0, 0.3, 1], spread: 1, speed: 0.6, scale: 0.7 });
+        P.sq('body', -0.06 * bump(t, t0 + 0.24, t0 + 0.36)); flare(P, bump(t, t0 + 0.24, t0 + 0.4) * 0.6);
+      }
+      P.rot('head', 8 + 8 * Math.max(0, wave(t, 2.5)), 0, 0); P.face('eyes', 'glare');
+    } },
+    // fidget: a bow down for a crumb (the prop never leaves its bill)
+    peck: { len: 2.0, next: 'idle', f(P, t) {
+      const look = seg(t, 0, 0.3, E.out) * (1 - seg(t, 1.45, 1.9, E.inout)), pk = peck(t, 0.55, 0.3) + peck(t, 0.95, 0.3);
+      P.rot('body', 34 * look + 8 * pk, 0, 0).rot('head', 26 * look + 20 * pk, 0, 0).pos('neck', 0, -1.6 * look - 1.6 * pk, 1.8 * look + 2 * pk);
+      const dy = -1.2 * look; P.pos('body', 0, dy, 0); pl(P, dy); P.rot('tail', -14 * look, 0, 0);
+      P.burst(0.68, 'pg_crumb', 'root', [0, 0.4, 13], { n: 6, dir: [0, 1, 0.4] }).burst(1.08, 'pg_crumb', 'root', [0, 0.4, 13], { n: 6, dir: [0, 1, 0.4] });
+    } },
+  };
 }

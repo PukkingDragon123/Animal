@@ -4,9 +4,9 @@
 // glossy leaves makes its ears. Squeeze one and you get a jolt of juice and a sour look you will
 // never forget.
 //
-// Music homage (Lemonade, original): a glossy golden peel, its one signature item — a tiny baseball
-// bat it carries on its shoulder and swings through glass ('Hold Up') — honeycomb cells pressed into
-// its back and branded on the bat, and a buzzing hive of little bees that orbit it.
+// Music homage (Lemonade, original): a glossy golden peel, a tiny baseball bat it carries on its
+// shoulder and swings through glass ('Hold Up'), a bee hair-clip, honeycomb cells pressed into its back
+// and branded on the bat, and a buzzing hive of little bees that orbit it.
 //
 // Build notes: the peel is one ideal ellipsoid painted across the stepped boxes that approximate
 // it (orb()), so the light bands flow over every step. The electrodes sit on one sprung 'rig'
@@ -63,12 +63,12 @@ function stamp(p, rows, map, x0 = 0, y0 = 0) { rows.forEach((r, j) => { for (let
 const hsh = (n) => { const s = Math.sin(n * 127.1 + 311.7) * 43758.5453; return s - Math.floor(s); };
 
 // ---------------------------------------------------------------- the peel
-const O = [0, 8.6, 0], R = [10.4, 6.1, 6.1];
+const O = [0, 8.8, 0], R = [8.8, 6.7, 6.7];
 const PEEL = [C.hi, C.lite, C.peel, C.shd, C.deep];
 // pores: a few dimples spread over the peel (a Fibonacci sphere), kept off the face
 const PORES = [];
-for (let k = 0; k < 46; k++) {
-  const y = 1 - (2 * (k + 0.5)) / 46, r = Math.sqrt(1 - y * y), a = k * 2.39996 + 0.7, v = [Math.cos(a) * r, y, Math.sin(a) * r];
+for (let k = 0; k < 30; k++) {
+  const y = 1 - (2 * (k + 0.5)) / 30, r = Math.sqrt(1 - y * y), a = k * 2.39996 + 0.7, v = [Math.cos(a) * r, y, Math.sin(a) * r];
   if (v[2] > 0.55 && Math.abs(v[0]) < 0.62 && v[1] > -0.75) continue;
   PORES.push(v);
 }
@@ -80,19 +80,19 @@ function poreAt(q) {
 const peel = orb(O, R, (l, q, n, i, j) => {
   let col = band(PEEL, [0.97, 0.42, -0.2, -0.74], l);
   // the stem end (−x) keeps a faint green flush, dithered in
-  const g = (-q[0] - 8.2) / 2.2;
+  const g = (-q[0] - 6.6) / 2.4;
   if (g > 0) { const B = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5][(i & 3) + (j & 3) * 4]; if (g * 16 > B) col = l > 0.42 ? C.green[0] : l > -0.2 ? C.green[1] : C.green[2]; }
   if (l > 0.982) col = '#ffffff';
   if (poreAt(q)) col = l > 0.42 ? C.pore[0] : l > -0.2 ? C.pore[1] : C.pore[2];
   return col;
 });
 // the face: the peel plus little pucker creases bracketing the pout
-const FACE_O = [-4.4, 13.2];          // top-left (model x, y) of the face box's front
+const FACE_O = [-5.4, 13.0];          // top-left (model x, y) of the face box's front
 const face = (p, w, h, f, c) => {
   peel(p, w, h, f, c);
   if (f !== 'south') return;
   const T = (x, y) => [Math.round((x - FACE_O[0]) * 3), Math.round((FACE_O[1] - y) * 3)];
-  for (const s of [-1, 1]) { const [a, b] = T(s * 1.6, 7.75); p.px(a, b, C.shd); p.px(a + s, b - 1, C.shd); const [a2, b2] = T(s * 1.6, 6.0); p.px(a2, b2, C.shd); p.px(a2 + s, b2 + 1, C.shd); }
+  for (const s of [-1, 1]) { const [a, b] = T(s * 1.6, 7.2); p.px(a, b, C.shd); p.px(a + s, b - 1, C.shd); const [a2, b2] = T(s * 1.6, 5.4); p.px(a2, b2, C.shd); p.px(a2 + s, b2 + 1, C.shd); }
 };
 // the back: battery polarity marks pressed into the peel under each electrode (+ copper, − zinc)
 const backFace = (p, w, h, f, c) => {
@@ -263,18 +263,18 @@ const eyeX = (W, H, K) => (p) => { for (let k = 0; k < W - 2; k++) { const y = M
 const eyeSwirl = (W, H, K) => (p) => { const cx = (W - 1) / 2, cy = (H - 1) / 2; for (let a = 0; a < 15; a += 0.2) { const r = a * (Math.min(W, H) / 2 - 0.5) / 15; p.px(Math.round(cx + Math.cos(a) * r), Math.round(cy + Math.sin(a) * r), K.line); } };
 
 // ---------------------------------------------------------------- face: eyes and mouth
-// eyes: 9 × 9 texels, outer corner at x = 0 (the left eye is the mirrored plane)
+// eyes: 10 × 11 texels, outer corner at x = 0 (the left eye is the mirrored plane)
 const EM = { k: C.lid, W: '#ffffff' };
-const EK = { line: '#170a06', dark: '#2b1a12', acc: ['#9a5a1a', '#f2b234'] }, EW = 9, EH = 9;
+const EK = { line: '#170a06', dark: '#2b1a12', acc: ['#9a5a1a', '#f2b234'] }, EW = 10, EH = 11;
 const EYES = {
-  sour: eyeOpen(EW, EH, EK, [0.3, 0.2]),                 // its everyday look: a flat lid cutting in, tilted toward the nose
-  fierce: eyeOpen(EW, EH, EK, [0.38, 0.42]),
+  sour: eyeOpen(EW, EH, EK, [0.12, 0.16]),               // its everyday look: big and round, just a sour little tilt to the lid
+  fierce: eyeOpen(EW, EH, EK, [0.28, 0.42]),
   wide: eyeOpen(EW, EH, EK),
   squeeze: eyeHurt(EW, EH, EK),
   closed: eyeArc(EW, EH, EK, false),
   happy: eyeArc(EW, EH, EK, true),
-  smug: eyeOpen(EW, EH, EK, [0.46, 0.05]),
-  sad: eyeOpen(EW, EH, EK, [0.3, -0.22]),
+  smug: eyeOpen(EW, EH, EK, [0.4, 0.05]),
+  sad: eyeOpen(EW, EH, EK, [0.2, -0.24]),
   x: eyeX(EW, EH, EK),
   swirl: eyeSwirl(EW, EH, EK),
 };
@@ -297,8 +297,8 @@ const mouthP = (rows) => (p) => stamp(p, rows, MM);
 // ---------------------------------------------------------------- geometry
 const P = (o, s, tex, x = {}) => ({ o, s, tex, ...x });
 // electrodes: pivot, length to the tip, rest lean (degrees about z; + leans toward −x)
-const CU = { piv: [-2.3, 14.4, 1.4], len: 6.2, ang: 17 };
-const ZN = { piv: [2.4, 14.4, 1.4], len: 6.2, ang: -14 };
+const CU = { piv: [-2.3, 15.2, 1.4], len: 6.2, ang: 17 };
+const ZN = { piv: [2.4, 15.2, 1.4], len: 6.2, ang: -14 };
 const tipOf = (e, a = 0) => { const r = (e.ang + a) * D2R; return [e.piv[0] - Math.sin(r) * e.len, e.piv[1] + Math.cos(r) * e.len, e.piv[2]]; };
 const T0 = tipOf(CU), T1 = tipOf(ZN), ARC_LEN = Math.hypot(T1[0] - T0[0], T1[1] - T0[1]), ARC_ANG = Math.atan2(T1[1] - T0[1], T1[0] - T0[0]) / D2R;
 const ABC = ['a', 'b', 'c'];
@@ -306,9 +306,9 @@ const arcPlanes = (big) => ABC.flatMap((f, k) => [
   P([T0[0], T0[1] - (big ? 2.2 : 1.6), T0[2]], [ARC_LEN, big ? 4.4 : 3.2, 0], bolt(k + (big ? 10 : 0), big, false), { plane: 'z', glow: true, id: 'arc-' + (big ? 'big' : '') + f, hide: true }),
   P([T0[0], T0[1], T0[2] - (big ? 1.8 : 1.3)], [ARC_LEN, 0, big ? 3.6 : 2.6], bolt(k + 5 + (big ? 10 : 0), big, true), { plane: 'y', glow: true, id: 'arc-' + (big ? 'big' : '') + f, hide: true }),
 ]);
-const FZ = 6.05;      // the face plane (front of the face box + a hair)
-const eyeStates = (side) => Object.entries(EYES).map(([k, fn]) => P(side < 0 ? [-3.7, 9.2, FZ] : [0.7, 9.2, FZ], [3, 3, 0], fn, { plane: 'z', mirror: side > 0, id: 'eye-' + k, hide: k !== 'sour' }));
-const LEAF_Y = 15.3, LEAF_Z = -2.6;
+const FZ = 6.35;      // the face plane (front of the face box + a hair)
+const eyeStates = (side) => Object.entries(EYES).map(([k, fn]) => P(side < 0 ? [-4.4, 8.5, FZ] : [1.067, 8.5, FZ], [3.333, 3.667, 0], fn, { plane: 'z', mirror: side > 0, id: 'eye-' + k, hide: k !== 'sour' }));
+const LEAF_Y = 16.1, LEAF_Z = -2.6;
 // the bat (held at the grip, BAT_P), drawn standing up from the hand; BAT_REST leans it back over the shoulder
 const BAT_P = [-6.6, 5.6, 4.0], BAT_REST = [-16, 0, 46], BAT_TIP = [-6.6, 14.0, 4.0];
 const batCubes = [
@@ -322,30 +322,32 @@ const leaf = (side) => [
   P([0, LEAF_Y, LEAF_Z], [2, 8.333, 0], halfLeaf(side < 0), { plane: 'z', pivot: [0, LEAF_Y, LEAF_Z], rot: [0, -26, 0], mirror: true }),
 ];
 
+// the lemon's six boxes (half-extents about O): long core, body, tall, deep face, deep-tall, wide-deep
+const LEMON = [[8.2, 3.0, 3.0], [6.8, 4.6, 4.6], [4.4, 6.6, 4.2], [5.4, 4.2, 6.3], [3.6, 5.6, 5.6], [6.0, 3.4, 5.4]];
+// the bee clip: a striped body and two glassy wings
+const clipBodyP = (p, w, h, face) => { for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) p.px(i, j, face === 'down' ? '#8a6a10' : (i >> 1) % 2 ? C.bee.k : j === 0 || face === 'up' ? '#ffe878' : C.bee.y); };
+const wingP = (p, w, h) => { const cx = (w - 1) / 2, cy = (h - 1) / 2; for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const d = ((x - cx) / (w / 2)) ** 2 + ((y - cy) / (h / 2)) ** 2; if (d <= 1) p.px(x, y, d > 0.6 ? '#9ad4f0' : '#eaf8ff'); } };
+
 export const def = {
-  name: 'lemmo', ppu: 3, scale: 0.35, outline: { color: C.ink, px: 1.4 },
+  name: 'lemmo', ppu: 3, scale: 0.33, outline: { color: C.ink, px: 1.4 },
   bones: [
     { name: 'root', pivot: [0, 0, 0], cubes: [] },
     // stubby feet (pivot at the heel, so a tap lifts the toes)
     { name: 'footR', parent: 'root', pivot: [-3.1, 0, -1.6], cubes: [P([-4.8, 0, -1.6], [3.4, 2.8, 3.4], footP(false)), P([-4.633, 0, 1.8], [3.067, 1.8, 1.333], footP(true))] },
     { name: 'footL', parent: 'root', pivot: [3.1, 0, -1.6], cubes: [P([1.4, 0, -1.6], [3.4, 2.8, 3.4], footP(false)), P([1.567, 0, 1.8], [3.067, 1.8, 1.333], footP(true))] },
-    // the lemon: an ellipsoid of nested boxes (plus-shaped in section), tipped onto its stem end
-    { name: 'body', parent: 'root', pivot: [0, 2.6, 0], rot: [0, 0, -3], cubes: [
-      P([-4.2, 2.6, -4.6], [8.4, 12, 9.2], peel),                   // middle: tall
-      P([-4.4, 4.0, -6.0], [8.8, 9.2, 12], backFace),               // middle: deep — the face (and the back's battery marks)
-      P([-6.4, 3.6, -4.0], [12.8, 10, 8], peel),                    // shoulders
-      P([-6.6, 4.6, -5.0], [13.2, 8, 10], peel),
-      P([-8.4, 5.2, -3.4], [16.8, 6.8, 6.8], peel),                 // haunches
-      P([-9.6, 6.4, -2.2], [19.2, 4.4, 4.4], peel),                 // the long core through both ends
-      P([-10.8, 7.4, -1.2], [1.2, 2.4, 2.4], stemNub),              // stem-end nub
-      P([9.6, 7.4, -1.2], [1.4, 2.4, 2.4], peel),                   // tip nub
-      P([11.0, 8.0, -0.6], [0.8, 1.2, 1.2], peel),
+    // the lemon: a plump, chunky ellipsoid of six nested boxes (distinct extents on every axis so no
+    // faces coincide), the deep one a big flat face; a nub at either end
+    { name: 'body', parent: 'root', pivot: [0, 2.2, 0], rot: [0, 0, -3], cubes: [
+      ...LEMON.map(([a, b, c], k) => P([O[0] - a, O[1] - b, O[2] - c], [2 * a, 2 * b, 2 * c], k === 3 ? backFace : peel)),
+      P([-9.4, 7.6, -1.2], [1.2, 2.4, 2.4], stemNub),               // stem-end nub
+      P([8.2, 7.6, -1.2], [1.4, 2.4, 2.4], peel),                   // tip nub
+      P([9.6, 8.2, -0.6], [0.8, 1.2, 1.2], peel),
       ...eyeStates(-1), ...eyeStates(1),
-      ...Object.entries(MOUTHS).map(([k, rows]) => P([-2, 5.6, FZ], [4, 2.667, 0], mouthP(rows), { plane: 'z', id: 'm-' + k, hide: true })),
+      ...Object.entries(MOUTHS).map(([k, rows]) => P([-2, 5.0, FZ], [4, 2.667, 0], mouthP(rows), { plane: 'z', id: 'm-' + k, hide: true })),
     ] },
-    { name: 'mouth', parent: 'body', pivot: [0, 6.9, 6.0], cubes: [P([-1.167, 6.067, 5.85], [2.333, 1.667, 0.667], lipsP, { id: 'm-lips' })] },
+    { name: 'mouth', parent: 'body', pivot: [0, 6.3, 6.3], cubes: [P([-1.167, 5.467, 6.15], [2.333, 1.667, 0.6], lipsP, { id: 'm-lips' })] },
     // the electrodes ride one sprung rig so the arc between them always lands on both tips
-    { name: 'rig', parent: 'body', pivot: [0, 14.6, 1.4], cubes: [] },
+    { name: 'rig', parent: 'body', pivot: [0, 15.4, 1.4], cubes: [] },
     { name: 'copper', parent: 'rig', pivot: CU.piv, rot: [0, 0, CU.ang], cubes: [P([CU.piv[0] - 0.75, CU.piv[1] - 1.2, CU.piv[2] - 0.25], [1.5, CU.len + 1.2, 0.5], copper)] },
     { name: 'zinc', parent: 'rig', pivot: ZN.piv, rot: [0, 0, ZN.ang], cubes: [
       P([ZN.piv[0] - 0.333, ZN.piv[1] - 1.2, ZN.piv[2] - 0.333], [0.667, ZN.len + 0.8, 0.667], nail),
@@ -353,7 +355,7 @@ export const def = {
     ] },
     { name: 'arc', parent: 'rig', pivot: T0, rot: [0, 0, ARC_ANG], cubes: [...arcPlanes(false), ...arcPlanes(true)] },
     // the sprig: a short twig and two folded leaves for ears
-    { name: 'sprig', parent: 'body', pivot: [0, 14.6, LEAF_Z], cubes: [P([-0.333, 14.0, LEAF_Z - 0.333], [0.667, 1.8, 0.667], stemP)] },
+    { name: 'sprig', parent: 'body', pivot: [0, 15.4, LEAF_Z], cubes: [P([-0.333, 14.8, LEAF_Z - 0.333], [0.667, 1.8, 0.667], stemP)] },
     { name: 'leafR', parent: 'sprig', pivot: [0, LEAF_Y, LEAF_Z], rot: [-16, -14, 58], cubes: leaf(-1) },
     { name: 'leafL', parent: 'sprig', pivot: [0, LEAF_Y, LEAF_Z], rot: [-16, 14, -58], cubes: leaf(1) },
     // stubby nub hands; the right one carries the bat
@@ -361,14 +363,20 @@ export const def = {
     { name: 'bat', parent: 'armR', pivot: BAT_P, rot: BAT_REST, cubes: batCubes },
     { name: 'armL', parent: 'body', pivot: [6.2, 5.6, 4.0], cubes: [P([5.6, 4.6, 3.0], [2.0, 2.0, 2.0], handP)] },
     { name: 'bees', parent: 'root', pivot: [0, 11, 0], cubes: beeCubes },
+    // a quirk: a little bee hair-clip pinned on its shoulder (a nod to its hive)
+    { name: 'clip', parent: 'body', pivot: [4.8, 13.4, 2.2], rot: [0, -18, 14], cubes: [
+      P([3.6, 13.4, 1.4], [2.4, 1.4, 1.6], clipBodyP), P([6.0, 13.5, 1.6], [0.8, 1.2, 1.2], C.bee.k),
+      P([3.8, 14.8, 2.2], [1.4, 1.333, 0], wingP, { plane: 'z', pivot: [4.5, 14.8, 2.2], rot: [0, 0, 18] }),
+      P([4.9, 14.8, 2.2], [1.4, 1.333, 0], wingP, { plane: 'z', pivot: [5.6, 14.8, 2.2], rot: [0, 0, -12] }),
+    ] },
   ],
 };
 // gear anchors (model units): the lemon is its own head, so everything rides the body bone
 def.attach = {
-  head: { bone: 'body', at: [0, 14.6, -0.6], size: 8.4 },
-  face: { bone: 'body', at: [0, 10.7, 6.0], size: 8.8 },
-  neck: { bone: 'body', at: [0, 4.6, 5.4], size: 6.0 },
-  back: { bone: 'body', at: [0, 8.6, -6.0], size: 8.8 },
+  head: { bone: 'body', at: [0, 15.5, -0.6], size: 8.8 },
+  face: { bone: 'body', at: [0, 10.3, 6.35], size: 10.8 },
+  neck: { bone: 'body', at: [0, 4.4, 5.6], size: 6.0 },
+  back: { bone: 'body', at: [0, 8.8, -6.3], size: 10.8 },
 };
 
 // ---------------------------------------------------------------- effects of its own
@@ -387,7 +395,7 @@ defineFx('lemmojuice', {
 // ---------------------------------------------------------------- animation
 const TIPS = [[T0[0], T0[1] + 0.4, T0[2]], [T1[0], T1[1] + 0.4, T1[2]]];
 const MID = [(T0[0] + T1[0]) / 2, (T0[1] + T1[1]) / 2 + 0.8, T0[2]];
-const MOUTH = [0, 6.9, 7.0];
+const MOUTH = [0, 6.3, 7.0];
 // keep the feet on the ground while the lemon rises or sinks by dy units (they stretch / squash)
 function feet(P, dy, lift = [0, 0]) {
   ['footR', 'footL'].forEach((s, k) => { const l = lift[k]; P.pos(s, 0, l, 0).scl(s, 1, Math.max(0.35, (2.8 + dy - l) / 2.8), 1); });
@@ -409,7 +417,7 @@ function splay(P, a) {
 // roll back onto its round back by a degrees (faint / down), turning about the lemon's long axis;
 // the centre glides from its standing height down to resting on its back, a little behind
 function rollBack(P, a, A = 72) {
-  const r = -a * D2R, cy = O[1], rest = 5.7, s = Math.min(1, a / A);
+  const r = -a * D2R, cy = O[1], rest = 6.6, s = Math.min(1, a / A);
   return P.rot('root', -a, 0, 0).pos('root', 0, rest + (cy - rest) * (1 - s) - cy * Math.cos(r), -cy * Math.sin(r) - 1.2 * s);
 }
 const ears = (P, a) => P.rot('leafR', 0, 0, a).rot('leafL', 0, 0, -a);   // + droops the leaves, − lifts them
@@ -431,6 +439,7 @@ export const anim = {
     { bone: 'sprig', tip: [0, 2, 0], k: 260, d: 12, gain: 0.5, max: 12 },
     { bone: 'armR', tip: [-1.6, 0, 0], k: 230, d: 11, gain: 0.5, max: 9 },
     { bone: 'armL', tip: [1.6, 0, 0], k: 230, d: 11, gain: 0.6, max: 12 },
+    { bone: 'clip', tip: [0, 1.5, 0], k: 260, d: 10, gain: 0.6, max: 14 },
   ],
   faces: {
     eyes: { default: 'sour', states: Object.fromEntries(Object.keys(EYES).map((k) => [k, ['eye-' + k]])) },
