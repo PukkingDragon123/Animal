@@ -118,6 +118,76 @@ export const SPECIES = {
     gimmick: { id: 'lit_windows', name: 'Lit Windows', desc: 'Every window lights up: a shield, +20% defense, +15% elemental damage, heals +20%.', shield: 0.25, mods: { defMul: 1.2, elmMul: 1.15, healMul: 1.2 } },
     evolve: [], temper: 'shy', catch: 0.15, bond: 50, exp: 170, personality: 'A red double-decker-bus whale with gladioli sprouting from its blowhole. Its windows never go dark — it will drive you anywhere, as long as it\'s with you.',
   },
+  // ---- opening story cast
+  wheezowl: {
+    name: 'Wheezowl', elem: ['aero', 'echo'], family: 'Bird', stage: 2, gift: true, role: 'Family support — sunny healing patches, sweater-thread snares, shields',
+    base: B(6, 12, 9, 9, 12), radius: 0.55,
+    basic: { type: 'ranged', power: 10, range: 7, rate: 0.7, speed: 14 },
+    start: ['island_in_the_sun', 'sweater_song'],
+    moves: [
+      { id: 'say_it_aint_so', how: { friendship: 150 }, hint: 'Grow close — say it ain\'t so.' },
+      { id: 'buddy_holly', how: { level: 10 }, hint: 'Reach Lv.10.' },
+      { id: 'surf_wax_america', how: { battle: { ev: 'perfect_dodge', n: 5 } }, hint: 'Perfectly dodge 5 attacks.' },
+    ],
+    passives: [
+      { id: 'blue_album', how: { battle: { ev: 'heal', n: 600 } }, hint: 'Heal 600 HP for the family.' },
+      { id: 'big_heart', how: { activity: { id: 'hangout', n: 3 } }, hint: 'Hang out together 3 times.' },
+    ],
+    ult: 'only_in_dreams', ...ULT,
+    gimmick: { id: 'cardigan_wings', name: 'Cardigan Wings', desc: 'Wraps everyone in its hand-knit cardigan: a shield, heals +30%, +10% elemental damage.', shield: 0.2, mods: { healMul: 1.3, elmMul: 1.1 } },
+    evolve: [], temper: 'shy', catch: 0, bond: 120, exp: 150, personality: 'The family\'s owl — Mom. Round thick-rimmed glasses, a hand-knit cardigan with one loose thread, and a soft hoot like a guitar hook. Gentle, a little nerdy, always there.',
+  },
+  mopzart: {
+    name: 'Mopzart', elem: 'echo', family: 'Beast', stage: 2, npc: true, role: 'Sleepy maestro — lullabies, marches and laments that buff friends and sap foes',
+    base: B(5, 13, 8, 4, 12), radius: 0.55,
+    basic: { type: 'ranged', power: 10, range: 7, rate: 0.9, speed: 12 },
+    start: ['little_night_music', 'rondo_alla_turca'],
+    moves: [
+      { id: 'magic_flute', how: { level: 8 }, hint: 'Reach Lv.8.' },
+      { id: 'lacrimosa', how: { level: 14 }, hint: 'Reach Lv.14.' },
+      { id: 'twinkle_variations', how: { battle: { ev: 'on_beat', n: 30 } }, hint: 'Land 30 on-beat hits.' },
+    ],
+    passives: [
+      { id: 'corded_coat', how: { level: 6 }, hint: 'Reach Lv.6.' },
+      { id: 'maestro', how: { battle: { ev: 'on_beat', n: 40 } }, hint: 'Land 40 on-beat hits.' },
+    ],
+    ult: 'requiem', ...ULT,
+    gimmick: { id: 'powdered_periwig', name: 'Powdered Periwig', desc: 'Its corded coat puffs up like a periwig: +20% elemental damage, on-beat hits +35%, longer sleeps.', mods: { elmMul: 1.2, beatMul: 1.35, sleepDur: 1 } },
+    evolve: [], temper: 'shy', catch: 0, bond: 60, exp: 150, personality: 'A very old mop dog whose corded coat curls like a powdered periwig. Sleeps through everything except a wrong note.',
+  },
+  dreadrake: {
+    name: 'Dreadrake', elem: ['hydro', 'ferro'], family: 'Bird', stage: 2, role: 'Bruiser — humbling stomps, heavy hooks, iron-feathered charges',
+    base: B(13, 8, 10, 9, 10), radius: 0.6,
+    basic: { type: 'melee', power: 13, range: 1.6, rate: 0.55 },
+    start: ['humble_stomp', 'duckworth_hook'],
+    moves: [
+      { id: 'swimming_pools', how: { battle: { ev: 'drown_foe', n: 5 } }, hint: 'Soak foes until they nearly drown, 5 times.' },
+      { id: 'dna_rush', how: { level: 12 }, hint: 'Reach Lv.12.' },
+      { id: 'alright', how: { battle: { ev: 'low_hp_win', n: 1 } }, hint: 'Win from below 40% HP — we gon\' be alright.' },
+      { id: 'squabble_up', how: { battle: { ev: 'ko', n: 10 } }, hint: 'Knock out 10 foes.' },
+    ],
+    passives: [
+      { id: 'loyalty', how: { friendship: 180 }, hint: 'Earn its loyalty (deep friendship).' },
+      { id: 'pride', how: { battle: { ev: 'low_hp_win', n: 2 } }, hint: 'Win 2 battles from below 40% HP.' },
+    ],
+    ult: 'maad_city', ...ULT,
+    gimmick: { id: 'dread_crown', name: 'Dread Crown', desc: 'Dreadlocks swing like a crown: +20% physical damage, −10% damage taken, immune to knockback.', mods: { physMul: 1.2, takenMul: 0.9, knockImmune: true } },
+    evolve: [], temper: 'aggressive', catch: 0.08, bond: 35, exp: 160, personality: 'A muscle-bound mallard with heavy dreadlocks and iron-grey feathers — the street punk Spike\'s partner. Talks little, hits hard, stays humble.',
+  },
+  barkorious_forced: {
+    name: 'Barkorious', elem: ['hydro', 'echo'], family: 'Aquatic', stage: 3, boss: true, revertsTo: 'barkorious', role: 'BOSS — forced-bond rampage: fish cannon, belly-flop quakes',
+    base: B(12, 10, 11, 5, 22), radius: 1.4,
+    basic: { type: 'melee', power: 18, range: 2.3, rate: 0.85 },
+    start: ['fish_cannon', 'big_poppa'],
+    moves: [
+      { id: 'red_eyed_roar', how: { level: 1 }, hint: 'Forced.' },
+      { id: 'kick_in_the_door', how: { level: 1 }, hint: 'Forced.' },
+    ],
+    passives: [{ id: 'forced_bond', how: { start: true }, hint: 'The forced bond.' }, { id: 'king_of_the_pier', how: { start: true }, hint: 'Still the king.' }],
+    ult: 'notorious', ...ULT,
+    gimmick: { id: 'red_eyes', name: 'Red Eyes', desc: 'The forced bond flares: a shield and +20% damage.', shield: 0.2, mods: { dmgMul: 1.2 } },
+    evolve: [], temper: 'beast', catch: 0, bond: 0, exp: 420, personality: 'Barkorious under a forced bond: giant, furious and red-eyed, a rigged fish cannon strapped to its back. It isn\'t itself — it reverts to Barkorious once the bond is broken.',
+  },
   // ---- the Fab Four (with mccarapace + harrisun in src/data/species.js) and Yokat
   johnlemon: {
     name: 'Johnlemon', elem: ['volto', 'echo'], family: 'Plant', stage: 2, role: 'Peace-pop caster — imagine, karma bolts, come-together pulls',

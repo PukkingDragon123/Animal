@@ -204,4 +204,68 @@ export const PRISMOON = L('prismoon', [
   { id: 'dark_side', kind: 'passive', name: 'Dark Side', elem: 'astro', desc: 'All of it is dark: +20% elemental damage, cooldowns 10% shorter.', mods: { elmMul: 1.2, cdMul: 0.9 } },
 ]);
 
-export const MOVES = [...BARKORIOUS, ...SANDMANDER, ...JUSTATUE, ...WEIRDFIN, ...ROLLICK, ...NEVERDECKER, ...JOHNLEMON, ...STARRFISH, ...YOKAT, ...BLACKVOLT, ...PRISMOON];
+// ===================================================================== Wheezowl (Weezer) — the player's family Tokon ("Mom")
+export const WHEEZOWL = L('wheezowl', [
+  { id: 'island_in_the_sun', name: 'Island in the Sun', elem: 'aero', desc: 'Hip hip! A warm, breezy patch of sunshine: allies inside heal, foes drift slower.', cost: 20, cd: 10, aim: 'self', range: 0, anim: 'cast', fx: 'sunrise', sfx: 'bio_heal', windup: 0.3,
+    eff: [{ t: 'zone', at: 'self', kind: 'groove', r: 2.8, dur: 6, tick: { heal: 0.04, status: { s: 'slow', dur: 0.6, k: 0.25 } } }], tags: ['zone', 'heal'] },
+  { id: 'sweater_song', name: 'Undone – The Sweater Song', elem: 'aero', desc: 'Pulls the loose thread of its cardigan: the yarn wraps a foe and roots it while it unravels.', cost: 14, cd: 7, aim: 'target', range: 7, anim: 'cast', fx: 'strings', sfx: 'aero',
+    eff: [{ t: 'status', who: 'target', s: 'root', dur: 1.6 }, { t: 'status', who: 'target', s: 'weaken', dur: 4, k: 0.15 }, { t: 'melee', power: 12, reach: 8, arc: 30, aura: 1 }], tags: ['debuff'] },
+  { id: 'say_it_aint_so', name: "Say It Ain't So", elem: 'echo', desc: 'A soft hoot that says everything will be fine: the team is cleansed and gets a feathery shield.', cost: 18, cd: 12, aim: 'self', range: 0, anim: 'cast', fx: 'shield', sfx: 'echo',
+    eff: [{ t: 'buff', who: 'team', s: 'cleanse' }, { t: 'buff', who: 'team', s: 'shield', k: 0.18, dur: 6 }], tags: ['buff', 'shield'] },
+  { id: 'buddy_holly', name: 'Buddy Holly', elem: 'echo', desc: 'Oo-ee-oo: a flash off its thick-rimmed glasses blinds the foes in front of it.', cost: 12, cd: 7, aim: 'dir', range: 5, anim: 'roar', fx: 'glare', sfx: 'echo',
+    eff: [{ t: 'cone', range: 5, arc: 60, power: 14, aura: 1, status: { s: 'blind', dur: 2 } }], tags: ['cone'] },
+  { id: 'surf_wax_america', name: 'Surf Wax America', elem: 'aero', desc: 'Rides a gust like a surfboard and glides out of trouble.', cost: 10, cd: 6, aim: 'dir', range: 5, anim: 'dodge', fx: 'gust', sfx: 'aero', windup: 0.04,
+    eff: [{ t: 'dash', dist: 5, speed: 18, power: 10, r: 0.8, knock: 2, aura: 1, iframe: true }], tags: ['dash'] },
+  { id: 'only_in_dreams', kind: 'ultimate', name: 'Only in Dreams', elem: 'echo', desc: 'ULTIMATE: a long, dreamy guitar build — the whole team heals 35% while every foe drifts off to sleep.', cost: 0, cd: 0, aim: 'self', range: 0, anim: 'cast', fx: 'ult_sakura', sfx: 'ult_start', telegraph: 'circle', qte: { type: 'rhythm', beats: 4 },
+    eff: [{ t: 'heal', who: 'team', k: 0.35, over: 4 }, { t: 'zone', at: 'self', kind: 'pollen', r: 5, dur: 4, tick: { status: { s: 'drowsy', dur: 0.8 } }, enemy: true }], tags: ['ult'] },
+  { id: 'blue_album', kind: 'passive', name: 'Blue Album', elem: 'echo', desc: 'Plain, kind and perfectly in tune: its heals are 25% stronger and its shields 15% stronger.', mods: { healMul: 1.25, shieldMul: 1.15 } },
+]);
+
+// ===================================================================== Mopzart (Mozart)
+export const MOPZART = L('mopzart', [
+  { id: 'little_night_music', name: 'A Little Night Music', elem: 'echo', desc: 'Eine kleine Nachtmusik: a gentle serenade that lulls the foes in an area to sleep.', cost: 18, cd: 10, aim: 'point', range: 8, anim: 'cast', fx: 'pollen', sfx: 'sleep', telegraph: 'circle',
+    eff: [{ t: 'zone', kind: 'pollen', r: 2.4, dur: 4, tick: { status: { s: 'drowsy', dur: 0.55 } }, enemy: true }], tags: ['zone', 'sleep'] },
+  { id: 'rondo_alla_turca', name: 'Rondo alla Turca', elem: 'echo', desc: 'A brisk little march: the team moves 20% faster and hits 15% harder for 8 s.', cost: 15, cd: 14, aim: 'self', range: 0, anim: 'headbang', fx: 'buff_echo', sfx: 'echo',
+    eff: [{ t: 'buff', who: 'team', s: 'spd', k: 0.2, dur: 8 }, { t: 'buff', who: 'team', s: 'dmg', k: 0.15, dur: 8 }, { t: 'buff', who: 'team', s: 'elm', k: 0.15, dur: 8 }], tags: ['buff'] },
+  { id: 'magic_flute', name: 'The Magic Flute', elem: 'echo', desc: 'A bewitching flute melody: the foes in front of it dance about, confused.', cost: 15, cd: 8, aim: 'dir', range: 5, anim: 'cast', fx: 'soundwave', sfx: 'echo',
+    eff: [{ t: 'cone', range: 5, arc: 70, power: 14, aura: 1, status: { s: 'confuse', dur: 2 } }], tags: ['cone'] },
+  { id: 'lacrimosa', name: 'Lacrimosa', elem: 'echo', desc: 'A day of tears: every foe nearby is weakened and cursed.', cost: 20, cd: 12, aim: 'self', range: 0, anim: 'cast', fx: 'screech', sfx: 'echo',
+    eff: [{ t: 'status', who: 'aoe', r: 5, s: 'weaken', dur: 5, k: 0.25 }, { t: 'status', who: 'aoe', r: 5, s: 'curse', dur: 5, k: 0.15 }], tags: ['debuff'] },
+  { id: 'twinkle_variations', name: 'Twelve Variations', elem: 'echo', desc: 'Ah, vous dirai-je, Maman: twinkling little star-notes that home in on foes.', cost: 14, cd: 4, aim: 'dir', range: 10, anim: 'shoot', fx: 'star_beam', sfx: 'echo', beat: true,
+    eff: [{ t: 'proj', count: 4, spread: 40, power: 10, speed: 12, r: 0.25, aura: 0.6, homing: 2.5 }], tags: ['projectile', 'beat'] },
+  { id: 'requiem', kind: 'ultimate', name: 'Requiem', elem: 'echo', desc: 'ULTIMATE: the unfinished masterpiece — a swelling choir curses every foe, then four chords crash down, the last unbearably loud.', cost: 0, cd: 0, aim: 'self', range: 0, anim: 'cast', fx: 'ult_encore', sfx: 'ult_start', telegraph: 'circle', qte: { type: 'rhythm', beats: 4 },
+    eff: [{ t: 'status', who: 'aoe', r: 6, s: 'curse', dur: 6, k: 0.25 }, { t: 'aoe', at: 'self', r: 4.4, power: 26, knock: 2, aura: 1.5, count: 4, interval: 0.5, lastMul: 2.2 }], tags: ['ult'] },
+  { id: 'corded_coat', kind: 'passive', name: 'Corded Periwig Coat', elem: 'echo', desc: 'Its mop of cords soaks up blows: takes 12% less damage.', mods: { takenMul: 0.88 } },
+  { id: 'maestro', kind: 'passive', name: 'Maestro', elem: 'echo', desc: 'Never misses a beat (even half asleep): wider beat window, on-beat hits +40%.', mods: { beatWindow: 0.16, beatMul: 1.4 } },
+]);
+
+// ===================================================================== Dreadrake (Kendrick Lamar) — Spike's partner
+export const DREADRAKE = L('dreadrake', [
+  { id: 'humble_stomp', name: 'HUMBLE.', elem: 'ferro', desc: 'Sit down. Be humble. An iron-webbed stomp that knocks foes flat and cracks their guard.', cost: 18, cd: 7, aim: 'self', range: 0, anim: 'stomp', fx: 'stomp', sfx: 'slam', scale: 'phys', windup: 0.35, telegraph: 'circle', beat: true,
+    eff: [{ t: 'aoe', at: 'self', r: 2.5, power: 30, knock: 3, up: 2, aura: 1, status: { s: 'defdown', dur: 4, k: 0.25 }, crack: true }], tags: ['aoe', 'beat'] },
+  { id: 'duckworth_hook', name: 'DUCKWORTH.', elem: 'hydro', desc: 'A heavy, wet wing-hook thrown with its whole muscled body.', cost: 10, cd: 2.4, aim: 'target', range: 2.8, anim: 'attack', fx: 'slap', sfx: 'hit_heavy', scale: 'phys', windup: 0.15,
+    eff: [{ t: 'melee', power: 24, reach: 1.5, arc: 90, knock: 2, lunge: 2, aura: 1 }], tags: ['melee'] },
+  { id: 'swimming_pools', name: 'Swimming Pools', elem: 'hydro', desc: 'Dives in: a whole pool splashes up around it, soaking and slowing foes.', cost: 18, cd: 10, aim: 'self', range: 0, anim: 'slam', fx: 'water_spin', sfx: 'hydro_splash', windup: 0.2,
+    eff: [{ t: 'aoe', at: 'self', r: 2.4, power: 18, knock: 2, aura: 2 }, { t: 'zone', at: 'self', kind: 'wet', r: 2.6, dur: 4, tick: { status: { s: 'slow', dur: 0.6, k: 0.3 } } }], tags: ['aoe', 'zone'] },
+  { id: 'dna_rush', name: 'DNA.', elem: 'ferro', desc: 'Loyalty, royalty inside its DNA: an iron-feathered charge through the foes.', cost: 18, cd: 6, aim: 'dir', range: 7, anim: 'attack3', fx: 'charge_dash', sfx: 'ferro', scale: 'phys', windup: 0.2, telegraph: 'line',
+    eff: [{ t: 'dash', dist: 7, speed: 17, power: 32, r: 1.0, knock: 4, aura: 1 }], tags: ['dash'] },
+  { id: 'alright', name: 'Alright', elem: 'hydro', desc: 'We gon\' be alright: shakes off ailments and heals 20%.', cost: 16, cd: 13, aim: 'self', range: 0, anim: 'flex', fx: 'heal', sfx: 'hydro',
+    eff: [{ t: 'buff', s: 'cleanse' }, { t: 'heal', k: 0.2 }], tags: ['heal'] },
+  { id: 'squabble_up', name: 'Squabble Up', elem: 'ferro', desc: 'Squares up: a four-hit flurry of iron wing-jabs.', cost: 18, cd: 6, aim: 'target', range: 2.8, anim: 'attack2', fx: 'bash', sfx: 'hit_light', scale: 'phys', windup: 0.12,
+    eff: [{ t: 'melee', power: 11, reach: 1.5, arc: 100, knock: 0.8, lunge: 1.8, count: 4, interval: 0.11, aura: 0.5 }], tags: ['melee'] },
+  { id: 'maad_city', kind: 'ultimate', name: 'm.A.A.d city', elem: 'ferro', desc: 'ULTIMATE: the beat switches and it goes off — a storm of iron-feathered blows, then a tidal stomp.', cost: 0, cd: 0, aim: 'target', range: 3, anim: 'attack2', fx: 'bash', sfx: 'ult_start', scale: 'phys', qte: { type: 'mash', n: 12 },
+    eff: [{ t: 'melee', power: 20, reach: 1.9, arc: 120, knock: 1, lunge: 2.4, count: 5, interval: 0.14, aura: 1 }, { t: 'aoe', at: 'self', r: 3.2, power: 50, knock: 5, up: 3, aura: 2, delay: 0.9, crack: true }], tags: ['ult'] },
+  { id: 'loyalty', kind: 'passive', name: 'LOYALTY.', elem: 'ferro', desc: 'While bonded it fights for you: +15% damage, −10% damage taken.', when: { bonded: true }, mods: { dmgMul: 1.15, takenMul: 0.9 } },
+  { id: 'pride', kind: 'passive', name: 'PRIDE.', elem: 'ferro', desc: 'Below 40% HP its pride kicks in: +25% damage.', mods: { lowHpDmg: 0.25 } },
+]);
+
+// ===================================================================== Barkorious (forced bond) — story boss, reverts to Barkorious
+export const BARKORIOUS_FORCED = L('barkorious_forced', [
+  { id: 'fish_cannon', name: 'Fish Cannon', elem: 'hydro', desc: 'The rigged harness cannon fires three whole fish that burst on landing.', cost: 16, cd: 4, aim: 'point', range: 9, anim: 'shoot', fx: 'water_bolt', sfx: 'hydro_splash', windup: 0.35, telegraph: 'circle',
+    eff: [{ t: 'proj', count: 3, spread: 30, power: 20, speed: 12, r: 0.4, aura: 1, arc: true, explode: { r: 1.3, k: 1 } }], tags: ['projectile'] },
+  { id: 'red_eyed_roar', name: 'Red-Eyed Roar', elem: 'echo', desc: 'The forced bond burns in its eyes: a furious roar that knocks everyone back and stokes its rage (+25% power).', cost: 18, cd: 12, aim: 'self', range: 0, anim: 'roar', fx: 'screech', sfx: 'beast_roar', windup: 0.4, telegraph: 'circle',
+    eff: [{ t: 'aoe', at: 'self', r: 3.2, power: 16, knock: 6, aura: 1 }, { t: 'buff', s: 'dmg', k: 0.25, dur: 6 }, { t: 'buff', s: 'elm', k: 0.25, dur: 6 }], tags: ['aoe', 'buff'] },
+  { id: 'forced_bond', kind: 'passive', name: 'Forced Bond', elem: 'ecto', desc: 'Red-eyed fury: +10% damage, immune to sleep and confusion — but it takes 10% more damage.', mods: { dmgMul: 1.1, immune: ['sleep', 'drowsy', 'confuse'], takenMul: 1.1 } },
+]);
+
+export const MOVES = [...WHEEZOWL, ...MOPZART, ...DREADRAKE, ...BARKORIOUS_FORCED, ...BARKORIOUS, ...SANDMANDER, ...JUSTATUE, ...WEIRDFIN, ...ROLLICK, ...NEVERDECKER, ...JOHNLEMON, ...STARRFISH, ...YOKAT, ...BLACKVOLT, ...PRISMOON];

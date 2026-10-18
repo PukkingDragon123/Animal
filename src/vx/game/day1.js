@@ -171,7 +171,7 @@ export async function day1(story) {
   w.emote('boss', 'anger', 2);
   await say('', 'The king of Pier 39 looms over the docks — swollen to twice his size, eyes burning red, a fish cannon strapped to his back.', 'Tourists scatter. Somewhere a seagull drops its fries.');
   await say('Coach Gonda', 'A forced bond… whoever did this ought to be ashamed.', 'Kanizumo, Creepetal, and you, rookie — all together. Break the bond without hurting him more than we have to!');
-  const res2 = await app.startBattle({ foes: [{ name: 'Barkorious (forced)', team: [[SPECIES.barkorious_forced ? 'barkorious_forced' : 'barkorious', SPECIES.barkorious_forced ? 9 : 14]] }], allies: [{ name: 'Coach Gonda', team: [['kanizumo', 8]] }, { name: 'Yumi', team: [[SPECIES.creepetal ? 'creepetal' : 'cabbunny', 6]] }], partySize: 1, title: 'BOSS: BAROKING UNLEASHED', subtitle: '3 vs 1 · Pier 39', canLose: true });
+  const res2 = await app.startBattle({ foes: [{ name: 'Barkorious (forced)', team: [[SPECIES.barkorious_forced ? 'barkorious_forced' : 'barkorious', SPECIES.barkorious_forced ? 8 : 12]] }], allies: [{ name: 'Coach Gonda', team: [['kanizumo', 8]] }, { name: 'Yumi', team: [[SPECIES.creepetal ? 'creepetal' : 'cabbunny', 6]] }], partySize: 1, title: 'BOSS: BAROKING UNLEASHED', subtitle: '3 vs 1 · Pier 39', canLose: true });
   await app.fade(0, 400);
   boss.play('hurt'); await app.wait(700);
   w.burst('sparkle', [boss.g.position.x, boss.g.position.y + 1.4, boss.g.position.z], { n: 30 }); w.burst('ring', [boss.g.position.x, boss.g.position.y + 0.2, boss.g.position.z], {});

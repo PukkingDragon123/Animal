@@ -21,7 +21,7 @@ globalThis.localStorage = { getItem: (k) => store.get(k) ?? null, setItem: (k, v
 const NEW = ['pidgun', 'jungeon', 'paradove', 'trashcoon', 'dynacoon', 'hellcoon', 'gradcub', 'bearbreak', 'yeezilla', 'polobruin', 'foopod', 'everpunch', 'barkorious',
   'woodbub', 'hartbox', 'utero', 'grillfin', 'astroshark', 'sandmander', 'justatue', 'creepetal', 'plastree', 'weirdfin', 'snarlpup', 'wonderwoof', 'supernoir', 'coolpillar',
   'pupalace', 'killaqueen', 'bohemonarch', 'zapkit', 'thundersabre', 'zeppra', 'stairgasus', 'rollick', 'neverdecker', 'johnlemon', 'starrfish', 'yokat', 'blackvolt', 'prismoon',
-  'beatlet', 'pepperhorn', 'abbeyhorn', 'walrusk'];
+  'beatlet', 'pepperhorn', 'abbeyhorn', 'walrusk', 'wheezowl', 'mopzart', 'dreadrake', 'barkorious_forced'];
 const COND_KEYS = new Set(['level', 'wins', 'friendship', 'precise', 'healed', 'blocked', 'beats', 'charged', 'teamCombos', 'dojo', 'foods', 'location', 'hours', 'defeat', 'battle', 'activity', 'more', 'weather', 'holding']);
 const snap = (sp, lv = 10, extra = {}, opts = {}) => { const m = createElemon(sp, Object.assign({ level: lv, form: 'm', look: 1 }, opts)); Object.assign(m.skills, extra); return battleSnapshot(m); };
 const duel = (a, b, rules = {}, more = {}) => createBattle({ seed: more.seed ?? 5, rules: Object.assign({ orders: false, switchTime: 0, bond: false }, rules),
@@ -50,6 +50,9 @@ for (const mod of MODS) for (const [id, sp] of Object.entries(mod)) {
   }
 }
 ok('legendaries are strong and rare', ['blackvolt', 'prismoon'].every((id) => SPECIES[id].legendary && Object.values(SPECIES[id].base).reduce((a, b) => a + b, 0) >= 80 && SPECIES[id].catch <= 0.05));
+ok('story cast: wheezowl (gift) and mopzart (NPC) are not catchable, dreadrake is', SPECIES.wheezowl.catch === 0 && SPECIES.mopzart.catch === 0 && SPECIES.dreadrake.catch > 0);
+{ const f = SPECIES.barkorious_forced, sum = (sp) => Object.values(sp.base).reduce((a, b) => a + b, 0);
+  ok('barkorious_forced: uncatchable boss, reverts to barkorious, boss-tier stats', f.boss && f.catch === 0 && f.revertsTo === 'barkorious' && !!SPECIES[f.revertsTo] && sum(f) >= 60 && sum(f) > sum(SPECIES.barkorious)); }
 const NEWSK = [...M1, ...M2];
 ok('signature skills are unique ids', new Set(NEWSK.map((s) => s.id)).size === NEWSK.length);
 for (const s of NEWSK) ok(`${s.id} well-formed`, s.kind === 'passive' ? !!s.mods : Array.isArray(s.eff) && s.eff.length > 0 && (s.kind !== 'ultimate' || !!s.qte));
@@ -80,6 +83,18 @@ for (const [i, id] of NEW.entries()) {
 }
 console.log('   avg duel', (durs.reduce((a, b) => a + b, 0) / durs.length).toFixed(1) + 's');
 ok('every new species finishes a duel', unfinished.length === 0, unfinished);
+
+{
+  // story boss: 3 rookie trainers (Lv.6–8) vs the forced-bond Barkorious at Lv.8 (normal HP: AI-only allies win ~half the seeds)
+  const bs = battleSnapshot(createElemon('barkorious_forced', { level: 8, npc: true }));
+  const team = (sp, lv) => [snap(sp, lv)];
+  const st = createBattle({ seed: 11, rules: { orders: false, bond: true }, sides: [
+    { trainers: [{ id: 'p', ai: 'ally', team: team('chilichick', 7) }, { id: 'mika', ai: 'ally', team: team('zapanda', 8) }, { id: 'spike', ai: 'ally', team: team('dreadrake', 6) }] },
+    { trainers: [{ id: 'boss', ai: 'boss', team: [bs] }] }] });
+  run(st, 240);
+  ok('3-vs-1 boss fight vs Lv.6–8 teams resolves', st.over, [st.t, st.result && st.result.winner]);
+  console.log('   boss fight', st.t.toFixed(1) + 's, winner side', st.result && st.result.winner);
+}
 
 section('Jungeon → Paradove: fainting from a burn while bonded');
 function bondedFaint(species, burn, killer) {
