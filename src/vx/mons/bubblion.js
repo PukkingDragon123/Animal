@@ -739,7 +739,6 @@ def.anim = anim;
 def.attach = {
   head: { bone: 'head', at: [0, 18.8, 3.9], size: 7.4 },
   face: { bone: 'head', at: [0, 16.1, 6.5], size: 7.4 },
-  neck: { bone: 'fish', at: [0, 11.2, 4.4], size: 5.8 },
+  neck: { bone: 'fish', at: [0, 11.0, 5.0], size: 5.8 },
   back: { bone: 'fish', at: [0, 18.6, -0.6], size: 5.2 },
 };
-if (typeof location !== 'undefined' && location.search.includes('dbg=attach')) for (const [k, a] of Object.entries(def.attach)) def.bones.find((b) => b.name === a.bone).cubes.push(P(a.at.map((v) => v - 0.5), [1, 1, 1], { head: '#ff2020', face: '#20ff20', neck: '#2060ff', back: '#ff20ff' }[k], { glow: true }), P([a.at[0] - a.size / 2, a.at[1] - 0.1, a.at[2] - 0.1], [a.size, 0.2, 0.2], '#ffff00', { glow: true }));
