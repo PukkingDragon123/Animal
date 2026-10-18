@@ -10,6 +10,7 @@
 import { createBattle, step, DT, order, trainerCommand, unitById, playerTrainer, cooldownFrac, skillCost, skillName, switchLeft, EMOTES, ARENA_TYPES, resumeMatch, setArenaType } from '../../battle/sim.js';
 import { Actor } from '../scene2d.js';
 import { MonSprite, bank } from './mon.js';
+import { Pix } from '../pixmon.js';
 import { T } from './ui.js';
 import { SKILLS } from '../../data/skills.js';
 import { SPECIES, elemsOf } from '../../data/species.js';
@@ -62,6 +63,16 @@ export class Battle2D {
         this.sc.actors.add(rec.a);
         this.units.set(u.id, rec);
       }
+      // stadium surface: hand-pixel rocks, grass tufts or shimmering puddles, standing in the scene like any prop
+      { const R = this.st.arena.r;
+        for (let k = 0; k < 30; k++) {
+          const h = ((k * 2654435761) >>> 0) / 4294967296, h2 = ((k * 40503 + 977) % 1000) / 1000, a = h * 6.283, rr = (0.32 + Math.sqrt(h2) * 0.64) * R;
+          this.sc.actors.add(new Actor({ x: Math.round(this.ox + Math.cos(a) * rr * SX), y: Math.round(this.oy + Math.sin(a) * rr * SZ), shadow: false, src: () => {
+            if (!this.st || !this.st.arena.type) return null;
+            const set = arenaDecor(this.st.arena.type), v = set[k % set.length], cv = Array.isArray(v) ? v[Math.floor(this.t * 2 + k * 0.37) % v.length] : v;
+            return { surf: cv, ax: cv.width >> 1, ay: cv.height - 2 };
+          } }));
+        } }
       this.fx = []; this.pops = []; this.callouts = []; this.acc = 0; this.t = 0; this.ending = false; this.frozen = true; this.camX = null;
       this.sc.fx.push(this.fxPainter = (ctx, cam) => this.paintFx(ctx, cam));
       this.active = true;
@@ -219,16 +230,7 @@ export class Battle2D {
     const ox = this.ox - cam.x, oy = this.oy - cam.y, R = st.arena.r;
     ctx.fillStyle = 'rgba(95,216,232,0.55)';
     for (let a = 0; a < 360; a += 3) { const r = a * Math.PI / 180; ctx.fillRect(Math.round(ox + Math.cos(r) * R * SX), Math.round(oy + Math.sin(r) * R * SZ), (a / 3) % 2 ? 1 : 2, 1); }
-    // stadium surface: rocks, tufts or puddles scattered inside the ring (stable per position)
-    if (st.arena.type) {
-      const T2 = st.arena.type;
-      for (let k = 0; k < 46; k++) {
-        const a = (k * 2.399) % 6.283, rr = Math.sqrt((k * 0.618) % 1) * R * 0.92, X = Math.round(ox + Math.cos(a) * rr * SX), Y = Math.round(oy + Math.sin(a) * rr * SZ);
-        if (T2 === 'rocky') { ctx.fillStyle = '#6e6458'; ctx.fillRect(X - 2, Y - 1, 5, 3); ctx.fillStyle = '#a8987e'; ctx.fillRect(X - 1, Y - 2, 3, 2); ctx.fillStyle = '#3e362e'; ctx.fillRect(X - 2, Y + 2, 5, 1); }
-        else if (T2 === 'grassy') { ctx.fillStyle = '#4e8a3a'; ctx.fillRect(X, Y - 3, 1, 3); ctx.fillRect(X + 2, Y - 2, 1, 2); ctx.fillStyle = '#8ad060'; ctx.fillRect(X + 1, Y - 4, 1, 4); }
-        else if (T2 === 'water') { const sh = Math.sin(this.t * 2 + k) > 0.6; ctx.fillStyle = 'rgba(70,140,220,0.45)'; ctx.fillRect(X - 4, Y - 1, 9, 3); ctx.fillStyle = sh ? '#d8f4ff' : 'rgba(150,210,255,0.7)'; ctx.fillRect(X - 2, Y - 1, 3, 1); }
-      }
-    }
+
     // zones, projectiles, order timers
     for (const z of st.zones) { const [X, Y] = this.W(z.x, z.z); const c = ELC(z.elem); ctx.fillStyle = hexA(c, 0.3); for (let a = 0; a < 360; a += 6) { const r = a * Math.PI / 180; ctx.fillRect(Math.round(X - cam.x + Math.cos(r) * z.r * SX), Math.round(Y - cam.y + Math.sin(r) * z.r * SZ), 2, 1); } }
     for (const p of st.proj) {
@@ -382,3 +384,47 @@ export class Battle2D {
   }
 }
 function hexA(h, a) { const v = parseInt(String(h).slice(1, 7), 16); return `rgba(${(v >> 16) & 255},${(v >> 8) & 255},${v & 255},${Math.max(0, Math.min(1, a))})`; }
+
+// ------------------------------------------------------------------ arena surface decor (drawn once with the creature painter)
+const DECOR = {};
+function arenaDecor(type) {
+  if (DECOR[type]) return DECOR[type];
+  const pal = {
+    rock: { ramp: ['#e2d6c0', '#b0a088', '#7e705e', '#544a40'], line: '#2e2620', lineLit: '#5a4e44' },
+    moss: { ramp: ['#c8e070', '#8ab84a', '#5a8a3a', '#3a5e2e'], line: '#203a1c' },
+    grass: { ramp: ['#d8f080', '#8cd05a', '#4e9a3c', '#2e6a32'], line: '#173a1c', lineLit: '#2e5a26' },
+    pond: { ramp: ['#d8f6ff', '#8ad4f4', '#4a9ee0', '#2e6ac0'], line: '#16305e', lineLit: '#2a5aa0', flat: true },
+  };
+  const out = [];
+  const cvOf = (P) => P.finish().canvas();
+  if (type === 'rocky') for (let v = 0; v < 5; v++) {
+    const w = 9 + v * 3, h = 7 + v * 2, P = new Pix(w + 4, h + 4, pal), cx = (w + 4) / 2, cy = (h + 4) / 2 + 1, pts = [];
+    for (let k = 0; k < 9; k++) { const a = (k / 9) * Math.PI * 2, j = 0.78 + (((k * 7 + v * 3) % 5) / 5) * 0.3; pts.push([cx + Math.cos(a) * (w / 2) * j, cy + Math.sin(a) * (h / 2) * j * (a > Math.PI ? 1.15 : 0.85)]); }
+    P.poly(pts, 'rock', { round: 3, grp: 'r' });
+    if (v % 2) P.ell(cx - 1, cy - h / 2 + 2, w / 4, 1.6, 'moss', { paint: true, grp: 'r' });
+    P.line(cx - 1, cy - 1, cx + 1, cy + 2, '#5a4e44');
+    if (v > 1) P.circ(cx + w / 2, cy + h / 2 - 1, 1.6, 'rock', { grp: 'p' });
+    out.push(cvOf(P));
+  }
+  else if (type === 'grassy') for (let v = 0; v < 5; v++) {
+    const W = 18, H = 16, P = new Pix(W, H, pal), base = H - 3, G = ['#2e6a32', '#4e9a3c', '#8cd05a', '#d8f080'];
+    P.ell(W / 2, base, 5 + (v % 2), 2, 'grass', { grp: 'g' });
+    for (let k = 0; k < 9 + v; k++) {
+      const x = W / 2 + (((k * 7 + v * 3) % 11) - 5), hh = 3 + ((k * 5 + v) % 7), lean = (((k * 3 + v) % 5) - 2) * 0.6;
+      for (let j = 0; j <= hh; j++) P.dot(x + lean * j / 2, base - j, G[Math.min(3, Math.floor((j / hh) * 3.2))], 'grass');
+    }
+    if (v % 2 === 0) P.stamp(W / 2 + v - 3, 2, ['.y.', 'yoy', '.y.'], { y: v % 4 ? '#ffffff' : '#ffd84a', o: '#ff9a3a' }, { mat: 'grass', grp: 'f' });
+    out.push(cvOf(P));
+  }
+  else if (type === 'water') for (let v = 0; v < 4; v++) {
+    const frames = [];
+    for (let f = 0; f < 2; f++) {
+      const w = 12 + v * 4, h = 5 + v, P = new Pix(w + 4, h + 4, pal), cx = (w + 4) / 2, cy = (h + 4) / 2;
+      P.ell(cx, cy, w / 2, h / 2, 'pond', { grp: 'w', light: 0.5 });
+      P.line(cx - w / 4 + f, cy - 1, cx + f, cy - 1, '#ffffff'); P.px(cx + w / 4 - f, cy + 1, '#d8f6ff'); P.px(cx - w / 3, cy + (f ? 1 : 0), '#b8ecff');
+      frames.push(cvOf(P));
+    }
+    out.push(frames);
+  }
+  return (DECOR[type] = out);
+}
