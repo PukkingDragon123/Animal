@@ -7,7 +7,7 @@
 // the delay), ATTACK, DODGE, BOND, SWITCH, EMOTE, ITEM; tap the ground to move,
 // tap a foe to target. Keys: 1-4 skills, Space attack, Shift dodge, B bond,
 // Tab switch, E emote, Q item.
-import { createBattle, step, DT, order, trainerCommand, unitById, playerTrainer, cooldownFrac, skillCost, skillName, switchLeft, EMOTES } from '../../battle/sim.js';
+import { createBattle, step, DT, order, trainerCommand, unitById, playerTrainer, cooldownFrac, skillCost, skillName, switchLeft, EMOTES, ARENA_TYPES, resumeMatch, setArenaType } from '../../battle/sim.js';
 import { Actor } from '../scene2d.js';
 import { MonSprite, bank } from './mon.js';
 import { T } from './ui.js';
@@ -50,6 +50,7 @@ export class Battle2D {
           { trainers: foes.map((f, i) => ({ id: 'foe' + i, name: f.name, ai: f.ai || 'normal', team: f.team.map(npcSnap) })) },
         ],
         rules: Object.assign({ items: true }, spec.wild ? { wild: true, capture: !!s.flags.license, flee: true } : {}, spec.rules || {}),
+        clock: spec.clock || null,
       });
       this.ptr = playerTrainer(this.st);
       // sprites
@@ -70,6 +71,19 @@ export class Battle2D {
     });
   }
   me() { return this.ptr && unitById(this.st, this.ptr.active); }
+  // stadium: choose the arena surface (kickoff and halftime)
+  arenaChoice(ui, title) {
+    const W = ui.w, H = ui.h, bw = 96, gap = 6, x0 = Math.round(W / 2 - (bw * 3 + gap * 2) / 2), y = Math.round(H * 0.5);
+    ui.fade(0.45, '#0c0814');
+    ui.text(title, W >> 1, y - 44, T.amber, { align: 'center', scale: 2, outline: true });
+    ui.text('pick the arena surface', W >> 1, y - 24, T.text, { align: 'center', outline: true });
+    const cols = { rocky: '#c8a070', grassy: T.green, water: '#5ab8f0' }, icons = { rocky: 'shield', grassy: 'leaf', water: 'drop' };
+    Object.entries(ARENA_TYPES).forEach(([id, A], i) => {
+      const x = x0 + i * (bw + gap);
+      if (ui.button(x, y, bw, 22, A.name, { icon: icons[id], color: cols[id], hotkey: String(i + 1) })) { this.app.audio.sfx('crowd_cheer'); if (this.st.paused) resumeMatch(this.st, { arena: id }); else setArenaType(this.st, id); this.choosing = false; this.frozen = false; this.callout(A.name.toUpperCase() + ' ARENA', A.desc, cols[id], 2); }
+      ui.wrap(A.desc, bw - 4).slice(0, 3).forEach((l, k) => ui.text(l, x + 2, y + 26 + k * 9, T.dim, { mini: true }));
+    });
+  }
   foe() { return this.st.units.find((u) => u.side === 1 && u.onField && u.state !== 'faint'); }
 
   async intro() {
@@ -79,7 +93,7 @@ export class Battle2D {
     app.audio.sfx('whoosh');
     await app.wait(1500);
     this.callout('GO!', '', T.cyan, 0.8, true);
-    this.frozen = false;
+    if (this.spec.chooseArena) this.choosing = true; else this.frozen = false;
     if (this.spec.tutorial) this.tutorial();
   }
   async tutorial() {
@@ -169,7 +183,8 @@ export class Battle2D {
         case 'combo': this.callout(String(e.name).toUpperCase(), 'combo!', T.pink, 0.9); break;
         case 'burst': { const [X, Y] = this.W(e.x, e.z); this.burst(X, Y - 6, ELC(e.elem), e.small ? 10 : 20, e.r * SX); break; }
         case 'line': { const [X, Y] = this.W(e.x, e.z); for (let i = 0; i < 10; i++) { const t = i / 10; this.fx.push({ kind: 'dot', x: X + e.dx * e.range * SX * t, y: Y - 12 + e.dz * e.range * SZ * t, t: 0, life: 0.35 + t * 0.1, c: ELC(e.elem), r: 2 }); } break; }
-        case 'faint': { const u = U(e.u); if (!u) break; this.playOnce(u, 'faint', 9); if (u.side === 1) this.callout('KNOCKED OUT!', u.name, T.pink, 1.1); app.audio.sfx('ko'); break; }
+        case 'halftime': this.callout('HALFTIME!', 'the crowd roars', T.amber, 1.5, true); app.audio.sfx('crowd_cheer'); break;
+        case 'faint': { const u = U(e.u); if (!u) break; this.playOnce(u, 'faint', 9); if (this.spec.stadium) app.audio.sfx(u.side === 1 ? 'crowd_cheer' : 'crowd_gasp'); if (u.side === 1) this.callout('KNOCKED OUT!', u.name, T.pink, 1.1); app.audio.sfx('ko'); break; }
         case 'switch': { const inn = U(e.in); if (inn) { this.callout(inn.name + '!', 'switch in', ELC(inn.elem), 0.8); app.audio.sfx('switch'); this.playOnce(inn, 'happy', 0.8); } break; }
         case 'bond': { const u = U(e.u); if (u) { this.callout('BOND!', e.name ? e.name : 'soul stones in sync', T.cyan, 1.2, true); app.audio.sfx('evolve_burst'); const [X, Y] = this.W(u.x, u.z); this.burst(X, Y - 14, T.cyan, 28, 30); this.playOnce(u, 'buff', 1); } break; }
         case 'unbond': { const u = U(e.u); if (u && u.side === 0) app.ui.toast(e.reason === 'ult' ? 'The ultimate burned out the bond' : 'Bond released', { icon: 'link', color: T.dim }); break; }
@@ -204,7 +219,17 @@ export class Battle2D {
     const ox = this.ox - cam.x, oy = this.oy - cam.y, R = st.arena.r;
     ctx.fillStyle = 'rgba(95,216,232,0.55)';
     for (let a = 0; a < 360; a += 3) { const r = a * Math.PI / 180; ctx.fillRect(Math.round(ox + Math.cos(r) * R * SX), Math.round(oy + Math.sin(r) * R * SZ), (a / 3) % 2 ? 1 : 2, 1); }
-    // shadows of units sitting on zones etc. are in the scene; here: zones, projectiles, order timers
+    // stadium surface: rocks, tufts or puddles scattered inside the ring (stable per position)
+    if (st.arena.type) {
+      const T2 = st.arena.type;
+      for (let k = 0; k < 46; k++) {
+        const a = (k * 2.399) % 6.283, rr = Math.sqrt((k * 0.618) % 1) * R * 0.92, X = Math.round(ox + Math.cos(a) * rr * SX), Y = Math.round(oy + Math.sin(a) * rr * SZ);
+        if (T2 === 'rocky') { ctx.fillStyle = '#6e6458'; ctx.fillRect(X - 2, Y - 1, 5, 3); ctx.fillStyle = '#a8987e'; ctx.fillRect(X - 1, Y - 2, 3, 2); ctx.fillStyle = '#3e362e'; ctx.fillRect(X - 2, Y + 2, 5, 1); }
+        else if (T2 === 'grassy') { ctx.fillStyle = '#4e8a3a'; ctx.fillRect(X, Y - 3, 1, 3); ctx.fillRect(X + 2, Y - 2, 1, 2); ctx.fillStyle = '#8ad060'; ctx.fillRect(X + 1, Y - 4, 1, 4); }
+        else if (T2 === 'water') { const sh = Math.sin(this.t * 2 + k) > 0.6; ctx.fillStyle = 'rgba(70,140,220,0.45)'; ctx.fillRect(X - 4, Y - 1, 9, 3); ctx.fillStyle = sh ? '#d8f4ff' : 'rgba(150,210,255,0.7)'; ctx.fillRect(X - 2, Y - 1, 3, 1); }
+      }
+    }
+    // zones, projectiles, order timers
     for (const z of st.zones) { const [X, Y] = this.W(z.x, z.z); const c = ELC(z.elem); ctx.fillStyle = hexA(c, 0.3); for (let a = 0; a < 360; a += 6) { const r = a * Math.PI / 180; ctx.fillRect(Math.round(X - cam.x + Math.cos(r) * z.r * SX), Math.round(Y - cam.y + Math.sin(r) * z.r * SZ), 2, 1); } }
     for (const p of st.proj) {
       const [X, Y] = this.W(p.x, p.z), c = ELC(p.elem), y = Y - 14;
@@ -254,7 +279,10 @@ export class Battle2D {
     if (me) panel(me, 4, 4, false);
     const foe = this.foe(); if (foe) panel(foe, W - 4, 4, true);
     // controls
-    if (me && !this.ending && !this.frozen) this.controls(ui, me);
+    if (me && !this.ending && !this.frozen && !st.paused) this.controls(ui, me);
+    if (st.clock) { const left = Math.max(0, st.clock.len - st.clock.t), mm = Math.floor(left / 60), ss = Math.floor(left % 60); ui.panel((W >> 1) - 26, 3, 52, 16, {}); ui.text(`${mm}:${String(ss).padStart(2, '0')}`, W >> 1, 8, left < 20 ? T.red : T.text, { align: 'center', shadow: T.ink }); if (st.clock.half === 2) ui.text('2ND', (W >> 1) + 30, 8, T.dim, { mini: true }); }
+    if (st.paused === 'halftime' && !this.ending) this.arenaChoice(ui, 'HALFTIME');
+    else if (this.choosing) this.arenaChoice(ui, 'KICKOFF');
     // callouts
     for (const c of this.callouts) {
       const a = Math.min(1, c.t * 8, (c.dur - c.t) * 5), y = Math.round(H * (c.big ? 0.36 : 0.26) - (1 - a) * 6);

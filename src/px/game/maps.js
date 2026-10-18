@@ -49,6 +49,6 @@ export { say };
 export async function loadMaps() {
   const extra = [['dotonbori', '../../data/scenes/dotonbori.js', 'DOTONBORI_MAP'], ['castle_park', '../../data/scenes/castle_park.js', 'CASTLE_PARK_MAP']];
   for (const [id, path, key] of extra) {
-    try { const m = await import(path); if (m[key]) MAPS[id] = Object.assign({ night: id === 'dotonbori' }, m[key], { music: id === 'dotonbori' ? 'dotonbori' : 'park', ambience: id === 'dotonbori' ? 'canal_night' : 'park' }); } catch (e) { /* not painted yet */ }
+    try { const m = await import(path); if (m[key]) MAPS[id] = Object.assign({ night: id === 'dotonbori', ambientFx: id === 'castle_park' ? 'petals' : id === 'dotonbori' ? 'embers' : null }, m[key], { music: id === 'dotonbori' ? 'dotonbori' : 'park', ambience: id === 'dotonbori' ? 'canal_night' : 'park' }); } catch (e) { /* not painted yet */ }
   }
 }

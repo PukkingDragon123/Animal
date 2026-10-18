@@ -6,6 +6,7 @@ import { MonSprite, bank, hasDesign } from './mon.js';
 const DESIGNS_HAS = (id) => hasDesign(id);
 import { buildPlaza } from '../../data/scenes/plaza.js';
 import { SPECIES } from '../../data/species.js';
+import { ambient } from '../ambient.js';
 import * as S from '../../game/state.js';
 
 const STARTERS = [
@@ -160,6 +161,7 @@ class TitleScreen {
     this.app = app; this.can = canContinue; this.t = 0;
     this.sc = buildPlaza({ viewW: app.vw, viewH: app.vh, night: true });
     this.sc.cam.x = 40; this.sc.cam.y = 60;
+    this.sc.fx.push(ambient('fireflies'));
     app.attachStage(this.sc, { terrain: this.sc.terrain, night: true });
     app.post.opts.night = 0.25; app.post.opts.bloom = 0.7; app.post.opts.threshold = 0.72; app.post.opts.rays = 0;
     this.choice = new Promise((r) => { this.resolve = r; });

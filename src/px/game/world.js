@@ -6,6 +6,7 @@ import { Actor } from '../scene2d.js';
 import { MonSprite, yawOf, bank, hasDesign } from './mon.js';
 import { T } from './ui.js';
 import { MAPS } from './maps.js';
+import { ambient } from '../ambient.js';
 
 const CELL = 6;
 
@@ -41,6 +42,9 @@ export class World2D {
     }
     this.cam(true);
     this.path = null; this.hotNear = null;
+    // ambient particles: map default, or by time of day
+    const amb = M.ambientFx || (o.night ? 'fireflies' : 'dust');
+    if (amb) this.sc.fx.push(ambient(amb));
     if (M.music && app.audio.music) app.audio.music(M.music, { fade: 1.2 });
     if (M.ambience && app.audio.ambience) app.audio.ambience(M.ambience);
     if (M.onEnter) M.onEnter(this);
