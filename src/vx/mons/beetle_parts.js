@@ -83,6 +83,22 @@ export function fur(cols, o = {}) {
   };
 }
 // satin cloth: smooth bands with soft diagonal sheen
+// long hair and beards: smooth vertical strands, a soft sheen band near the top, a gently uneven tip row
+export function locks(cols, o = {}) {
+  return (p, w, h, face) => {
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      if (face === 'up') { p.px(x, y, (x * 3 + y) % 5 ? cols[1] : cols[0]); continue; }
+      if (face === 'down') { p.px(x, y, cols[3]); continue; }
+      const v = h > 1 ? y / (h - 1) : 0.5, part = (x + Math.floor(jit(Math.floor(x / 3)) * 2)) % 3 === 0;
+      let c = v < 0.3 ? cols[0] : v < 0.75 ? cols[1] : cols[2];
+      if (part) c = shift(c, -0.1);
+      const sh = Math.round(h * (o.sheen ?? 0.18) + Math.sin(x * 0.6) * 0.5);
+      if (y === sh) c = o.gloss || shift(cols[0], 0.12); else if (Math.abs(y - sh) === 1 && !part) c = shift(cols[0], 0.05);
+      if (o.tips !== false && y === h - 1 && (x + Math.floor(jit(x) * 2)) % 3 === 1) c = 0;
+      p.px(x, y, c);
+    }
+  };
+}
 export function satin(cols) {
   return (p, w, h, face) => {
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
@@ -236,11 +252,13 @@ const hsl = (hex) => { const n = parseInt(hex.slice(1, 7), 16), r = ((n >> 16) &
 const hex = (h, s, l) => { const c = (1 - Math.abs(2 * l - 1)) * s, x = c * (1 - Math.abs(((h / 60) % 2) - 1)), m = l - c / 2, [r, g, b] = h < 60 ? [c, x, 0] : h < 120 ? [x, c, 0] : h < 180 ? [0, c, x] : h < 240 ? [0, x, c] : h < 300 ? [x, 0, c] : [c, 0, x];
   return '#' + [r, g, b].map((v) => Math.round(Math.max(0, Math.min(1, v + m)) * 255).toString(16).padStart(2, '0')).join(''); };
 const inH = (h, [a, b]) => (a <= b ? h >= a && h < b : h >= a || h < b);
-// a species' drip mapping: hue ranges that turn to black lacquer or to gold, colours to keep (eyes), and whether greys go black
+// a species' drip mapping: hue ranges that turn to black lacquer or to gold, colours to keep (eyes), exact colour swaps
+// (swap: { "#hex": "#hex" }, e.g. piping that should turn gold), and whether greys go black
 export function dripMap(o = {}) {
-  const keep = new Set((o.keep || []).map((c) => c.toLowerCase()));
+  const keep = new Set((o.keep || []).map((c) => c.toLowerCase())), swap = Object.fromEntries(Object.entries(o.swap || {}).map(([k, v]) => [k.toLowerCase(), v]));
   return { map(c, glow) {
     if (typeof c !== 'string' || c[0] !== '#' || c.length < 7 || keep.has(c.toLowerCase())) return c;
+    if (swap[c.toLowerCase()]) return swap[c.toLowerCase()];
     if (glow) return blackGold(c, glow);
     const { h, s, l } = hsl(c);
     if (s < 0.08) return o.greys && l > 0.12 && l < 0.86 ? hex(255, 0.12, 0.05 + l * 0.22) : c;
@@ -249,4 +267,43 @@ export function dripMap(o = {}) {
     return blackGold(c, glow);
   } };
 }
+// ---------------------------------------------------------------- full-res eye states
+// Hand-pixelled eyes (eyeRig style 'pix', chunk 1) only carry an 'open' map; eyes.js derives the
+// other states with 1-px lids, which read thin at full resolution. pixStates(open) draws the
+// expressive ones properly: 2-px lid lines for angry / sad / sleepy / smug, a closed lid line, a
+// cheek-push squint for happy (not anime ^^), tear pools, and a shrunken pupil for shock / wide.
+//   o.lid: lid thickness in px (2) · o.fill: what a lowered lid shows ('.' clear, or a palette
+//   char such as 'c' for eyes whose open map already carries a painted lid) · o.top: the first row
+//   of the visible eye (lids are placed between it and the bottom)
+export function pixStates(open, o = {}) {
+  const H = open.length, W = open[0].length, T = o.lid ?? 2, fill = o.fill ?? '.', y0 = o.top ?? 0;
+  const g = open.map((r) => [...r]), on = (x, y) => y >= 0 && y < H && x >= 0 && x < W && g[y][x] !== '.';
+  const cols = [...Array(W)].map((_, x) => { let a = -1, b = -1; for (let y = 0; y < H; y++) if (on(x, y)) { if (a < 0) a = y; b = y; } return [a, b]; });
+  const map = (fn) => g.map((r, y) => r.map((ch, x) => (ch === '.' ? '.' : fn(ch, x, y) ?? ch)).join(''));
+  const hide = (ch) => (fill === '.' ? '.' : ch === 'l' ? 'l' : fill);
+  const U = (x) => (x + 0.5) / W, span = H - 1 - y0;
+  // an upper lid along y = y0 + span·f(u): hidden above, a T-px lid line on it
+  const lid = (f) => map((ch, x, y) => { const [a, b] = cols[x], yl = Math.max(a, Math.min(b, Math.round(y0 + span * f(U(x))))); return y < yl ? hide(ch) : y < yl + T ? 'l' : undefined; });
+  // iris centre and size (for the shock / wide pupils)
+  let n = 0, sx = 0, sy = 0; g.forEach((r, y) => r.forEach((ch, x) => { if ('iIkh'.includes(ch)) { n++; sx += x; sy += y; } }));
+  const cx = n ? Math.round(sx / n) : W >> 1, cy = n ? Math.round(sy / n) : H >> 1, whites = open.some((r) => r.includes('w'));
+  const arch = (u) => 1 - (2 * u - 1) ** 2;
+  return {
+    angry: lid((u) => 0.08 + 0.52 * u),
+    sad: lid((u) => 0.5 - 0.42 * u),
+    sleepy: lid(() => 0.5),
+    smug: lid((u) => 0.36 + 0.08 * u),
+    // a lid line sagging across the lower half, lashes flicked at the outer corner
+    closed: map((ch, x, y) => { const yl = Math.round(y0 + span * (0.5 + 0.22 * arch(U(x)))); return y >= yl && y < yl + T && cols[x][0] >= 0 ? 'l' : x === 0 && y === yl - 1 ? 'l' : hide(ch); }),
+    // the lower lid pushed up into an arch by a grin; the top of the eye keeps its iris and shine
+    happy: map((ch, x, y) => { const yb = Math.round(y0 + span * (1.0 - 0.32 * arch(U(x)))); return y > yb ? '.' : y > yb - T ? 'l' : undefined; }),
+    // tears pooling along the bottom two rows
+    teary: map((ch, x, y) => (ch !== 'l' && y >= cols[x][1] - 2 ? 'b' : ch === 'h' || ch === 'l' ? ch : undefined)),
+    // shock: whites with a pinprick (eyes with whites), or the iris with a pinprick pupil (bead eyes)
+    shock: map((ch, x, y) => { if (ch === 'l') return 'l'; if (Math.abs(x - cx) <= 0 && Math.abs(y - cy) <= 0) return 'k'; return whites ? (ch === 's' ? 's' : 'w') : ch === 'k' || ch === 'h' ? 'i' : ch; }),
+    // wide: a small, sharp iris ringed by white
+    wide: map((ch, x, y) => { if (ch === 'l') return 'l'; const d = Math.hypot(x - cx, y - cy); if (d < 1) return x < cx || y < cy ? 'h' : 'k'; if (d < 1.6) return 'k'; if (d < 2.6) return 'i'; return whites ? 'w' : ch === 'k' || ch === 'h' ? 'i' : ch; }),
+  };
+}
+
 export { E, seg, bump, wob, wave };

@@ -1,6 +1,7 @@
 // Dynacoon — the AC/DC homage, stage 2 ("T.N.T." / "Dirty Deeds"). Trashcoon grown into a hunched,
 // scarred alley brute: a bandolier of red TNT sticks strapped across his chest with fuse cord, one
-// more stick always in his fist, fizzing. His old cardboard cap now has devil horns cut into it and
+// more stick always in his fist, fizzing. He still wears the schoolboy uniform, gone feral: the
+// bottle-green velvet blazer, ripped open, and his old cardboard cap with devil horns cut into it and
 // coloured in with red marker; his ears stick out through holes in the sides (one torn); his mask is
 // a straight black bar like a censor strip; a crooked grin full of sharp teeth; sharp glowing slit eyes
 // under a hard angry lid; his tail tip is singed and still smoking. He lights fuses by snapping his
@@ -33,7 +34,7 @@ const cheekP = (p, w, h, face) => {
   if (face === 'east' || face === 'west') for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const front = face === 'east' ? x : w - 1 - x, edge = h * 0.45 + (front < w * 0.4 ? 0 : (front - w * 0.4) * 0.5) + (x % 3 === 1 ? 1 : 0); if (y < edge) p.px(x, y, y === 0 ? F.hi : (x + y) % 6 === 0 ? F.lo : F.c); }
 };
 // eyes at x = ±2.75, y = 20.3 on a 8.667-unit skull: texels ex 8.25, ey 10.6; the mask is a censor bar
-const skull = skullP(F, { ex: 8.25, ey: 10.6, mh: 5.8, mask: 'bar', scar: true });
+const skull = skullP(F, { ex: 8.25, ey: 10.9, mh: 6.0, mask: 'bar', scar: true });
 const muzzle = muzzleP(F, { bw: 2.0, bt: 1.4 });
 const snout = muzzleP(F, { mouth: true, bridge: false });
 const nose = noseP(F);
@@ -69,12 +70,39 @@ const hornP = (p, w, h, face) => {
   if (face === 'south') for (let y = 1; y < h; y += 2) p.px((y * 2) % Math.max(1, w), y, J.devilLo);   // marker strokes
   if (face === 'east' || face === 'west') for (let y = 0; y < h; y++) p.px(0, y, J.cardIn);         // the cut cardboard edge
 };
-// hand-pixelled eyes: sharp slanted yellow eyes, a slit pupil, one glint — and they glow
-const EYES = maskEyes({ style: 'pix', chunk: 2, iris: '#f2b414', accent: '#fff27a', at: [-2.85, 20.2, 5.05], map: { open: [
-  'ih...',
-  'iiiki',
-  '.ccci',
-] } }, '#e2dad0', true);
+// hand-pixelled eyes (full texture resolution): sharp blade-shaped eyes, the top lid slashing down
+// toward the nose, no whites, a glowing yellow iris dark under the lid and pale-hot along the bottom,
+// a small dark pupil with one glint — they glow
+const EYES = maskEyes({ style: 'pix', chunk: 1, iris: '#f2b414', irisDark: '#8a5a08', accent: '#fff27a', at: [-2.85, 20.2, 5.05], map: {
+  open: [
+    'll..........',
+    'lIlll.......',
+    'lIIIIllll...',
+    'liiIIIIIIll.',
+    'liiiihkkiIIl',
+    '.iiiikkkkiil',
+    '.lcciikkccil',
+    '..lllccccll.',
+  ],
+  closed: ['............', '............', '............', 'll..........', 'llll........', '.lllllll....', '...llllllll.', '.......lllll'],
+  happy: ['............', '............', '....llll....', '..llllllll..', '.lll....lll.', 'll........ll', '............', '............'],
+} }, '#e2dad0', true);
+// a devil's spade cut from cardboard and coloured in with red marker, taped to his tail tip (tier 1)
+const spadeP = (p, w, h) => {
+  const cx = (w - 1) / 2;
+  for (let y = 0; y < h; y++) { const v = y / (h - 1), hw = v < 0.65 ? (v / 0.65) * (w / 2) : (1 - (v - 0.65) / 0.35) * (w / 2) * 0.9 + 1; for (let x = 0; x < w; x++) { const dx = Math.abs(x - cx); if (dx > hw) continue; p.px(x, y, dx > hw - 1 ? J.cardIn : (x + 2 * y) % 5 === 0 ? J.devilLo : x < cx ? J.devilHi : J.devil); } }
+};
+// a lightning bolt cut from a tin can, painted yellow, riveted to the blazer sleeve (tier 2)
+const BOLT9 = ['....#####', '...#####.', '...####..', '..####...', '..####...', '.########', '.#######.', '....####.', '...####..', '...###...', '..###....', '..##.....', '.##......', '.#.......'];
+const boltBadgeP = (p, w, h) => {
+  const on = (x, y) => BOLT9[y] && BOLT9[y][x] === '#';
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    if (!on(x, y)) continue;
+    const edge = !on(x - 1, y) || !on(x + 1, y) || !on(x, y - 1) || !on(x, y + 1);
+    p.px(x, y, edge ? '#4a3410' : ramp(['#fff08a', '#ffd23a', '#ffd23a', '#e09a18'], y / (h - 1), x, y));
+  }
+  p.px(5, 1, '#d8dce4').px(4, 9, '#d8dce4');
+};
 // wild rock hair: a shaggy mane bursting out from under the horned cap
 const WILD = { c: '#6e4c36', hi: '#a07656', lo: '#3c281e', tip: '#c49a6e' };
 const hairCubes = [
@@ -91,7 +119,7 @@ const earCubes = (torn) => [
   P([-7.0, 22.0, -0.42], [4.0, 4.667, 0], earPlaneP(F, true, torn), { plane: 'z' }),
 ];
 const armCubes = [P([-8.1, 9.5, -0.3], [3.0, 5.333, 3.0], fur), P([-8.433, 12.333, -0.633], [3.667, 3.0, 3.667], fur),
-  P([-8.6, 11.6, -0.8], [4.0, 3.9, 4.0], velvetP(), { id: 'dc-blazer', hide: true }), P([-8.6, 10.6, 3.21], [4.0, 1.0, 0], tornHemP(J.vel, J.velDeep), { plane: 'z', id: 'dc-blazer', hide: true })];
+  P([-8.6, 11.6, -0.8], [4.0, 3.9, 4.0], velvetP()), P([-8.6, 10.6, 3.21], [4.0, 1.0, 0], tornHemP(J.vel, J.velDeep), { plane: 'z' })];
 const foreCubes = [P([-7.933, 5.5, -0.133], [2.667, 5.0, 2.667], sock(0.55)), P([-8.1, 3.333, -0.3], [3.0, 2.167, 3.0], hand), P([-8.1, 2.0, 2.75], [3.0, 1.333, 0], clawP, { plane: 'z' })];
 const legCubes = [
   P([-6.6, 2.0, -3.6], [5.333, 5.667, 6.0], fur, { faces: { north: furBack } }),
@@ -145,10 +173,12 @@ export const def = {
       P([-5.333, 16.0, -3.333], [10.667, 1.333, 6.0], fur),
       P([0, 13.0, -5.6], [0, 3.333, 3.333], hackleP, { plane: 'x', pivot: [0, 14, -4.2], rot: [-30, 0, 0] }),
       P([0, 9.5, -6.2], [0, 3.0, 3.0], hackleP, { plane: 'x', pivot: [0, 10.5, -4.6], rot: [-50, 0, 0] }),
-      // tier 2: his old school blazer, ripped open — or a belt studded with bottle caps
-      P([-8.0, 9.4, -4.4], [16.0, 7.2, 9.0], velvetP({ open: true, patch: true }), { id: 'dc-blazer', hide: true }),
-      P([-8.0, 8.2, 4.62], [16.0, 1.4, 0], tornHemP(J.vel, J.velDeep), { plane: 'z', id: 'dc-blazer', hide: true }),
-      P([-8.0, 8.2, -4.42], [16.0, 1.4, 0], tornHemP(J.vel, J.velDeep), { plane: 'z', id: 'dc-blazer', hide: true }),
+      // his old school blazer, ripped open (always worn); tier 2: two tin lightning bolts riveted to its front — or a belt studded with bottle caps
+      P([-8.0, 9.4, -4.4], [16.0, 7.2, 9.0], velvetP({ open: true, patch: true })),
+      P([-8.0, 8.2, 4.62], [16.0, 1.4, 0], tornHemP(J.vel, J.velDeep), { plane: 'z' }),
+      P([-8.0, 8.2, -4.42], [16.0, 1.4, 0], tornHemP(J.vel, J.velDeep), { plane: 'z' }),
+      P([-7.6, 9.3, 4.63], [3.0, 4.667, 0], boltBadgeP, { plane: 'z', pivot: [-6.1, 11.6, 4.63], rot: [0, 0, 6], id: 'dc-bolts', hide: true }),
+      mirrorCube(P([-7.6, 9.3, 4.63], [3.0, 4.667, 0], boltBadgeP, { plane: 'z', pivot: [-6.1, 11.6, 4.63], rot: [0, 0, 6], id: 'dc-bolts', hide: true })),
       P([-7.25, 4.6, 4.33], [14.5, 1.3, 0.5], leatherP({ c: '#2a2026', hi: '#4a3c44', lo: '#18121a', studs: true }), { id: 'dc-belt', hide: true }),
       P([-7.25, 4.6, -4.83], [14.5, 1.3, 0.5], leatherP({ c: '#2a2026', hi: '#4a3c44', lo: '#18121a', studs: true }), { id: 'dc-belt', hide: true }),
       P([-7.25, 4.6, -4.4], [0.5, 1.3, 8.8], leatherP({ c: '#2a2026', hi: '#4a3c44', lo: '#18121a', studs: true }), { id: 'dc-belt', hide: true }), P([6.75, 4.6, -4.4], [0.5, 1.3, 8.8], leatherP({ c: '#2a2026', hi: '#4a3c44', lo: '#18121a', studs: true }), { id: 'dc-belt', hide: true }),
@@ -164,7 +194,12 @@ export const def = {
     { name: 'tail1', parent: 'body', pivot: [0.8, 5.0, -4.2], rot: [12, -30, 0], cubes: tailSeg(0.8, 5.0, -3.6, 7.0, 4.667, 4.667, 6) },
     { name: 'tail2', parent: 'tail1', pivot: [0.8, 5.0, -10.0], rot: [22, -8, 0], cubes: tailSeg(0.8, 5.0, -9.3, 7.5, 5.333, 5.333, 21) },
     { name: 'tail3', parent: 'tail2', pivot: [0.8, 5.0, -16.2], rot: [24, 0, 0], cubes: tailSeg(0.8, 5.0, -15.5, 6.5, 4.667, 4.667, 40) },
-    { name: 'tail4', parent: 'tail3', pivot: [0.8, 5.0, -21.4], rot: [16, 0, 0], cubes: tailSeg(0.8, 5.0, -20.7, 5.5, 3.667, 3.667, 55, { tipAt: 63, singe: true }) },
+    { name: 'tail4', parent: 'tail3', pivot: [0.8, 5.0, -21.4], rot: [16, 0, 0], cubes: [...tailSeg(0.8, 5.0, -20.7, 5.5, 3.667, 3.667, 55, { tipAt: 63, singe: true }),
+      // tier 1: a cardboard devil's spade taped over the singed tip
+      P([-1.25, 2.95, -25.6], [4.1, 4.1, 1.2], tapeP, { id: 'dc-spade', hide: true }),
+      P([-1.9, 5.0, -31.6], [5.4, 0, 5.8], spadeP, { plane: 'y', id: 'dc-spade', hide: true }),
+      P([0.8, 2.1, -31.4], [0, 5.8, 5.4], spadeP, { plane: 'x', pivot: [0.8, 5.0, -28.7], rot: [-90, 0, 0], id: 'dc-spade', hide: true }),
+    ] },
     { name: 'armR', parent: 'body', pivot: [-6.6, 14.6, 1.2], rot: [-18, 0, 10], cubes: armCubes },
     { name: 'foreR', parent: 'armR', pivot: [-6.6, 10.0, 1.2], rot: [-34, 0, 0], hand: [-6.6, 3.9, 1.2], cubes: foreCubes },
     { name: 'held', parent: 'foreR', pivot: HELD_C, rot: [0, 0, -20], cubes: tntStick(HELD_C, 0, { stick: 'held', spark: 'hsp-' }) },
@@ -186,12 +221,6 @@ export const def = {
       P([-2.1, 14.4, 7.6], [0.6, 1.267, 0.5], toothP),
       P([1.5, 14.8, 7.6], [0.6, 0.867, 0.5], toothP),
       ...hairCubes,
-      // tier 1 (or): blast goggles pushed up on the brow, an iron-rimmed pair on a leather strap
-      P([-4.3, 22.2, 5.0], [3.2, 2.6, 0.9], ironP({ rivets: true }), { id: 'dc-goggles', hide: true }), P([1.1, 22.2, 5.0], [3.2, 2.6, 0.9], ironP({ rivets: true }), { id: 'dc-goggles', hide: true }),
-      P([-3.9, 22.55, 5.92], [2.4, 1.9, 0], glassP, { plane: 'z', id: 'dc-goggles', hide: true }), P([1.5, 22.55, 5.92], [2.4, 1.9, 0], glassP, { plane: 'z', id: 'dc-goggles', hide: true }),
-      P([-1.1, 22.9, 5.1], [2.2, 0.9, 0.6], ironP(), { id: 'dc-goggles', hide: true }),
-      P([-5.95, 22.6, -2.6], [0.5, 1.2, 7.8], leatherP({ c: '#3a2a22', hi: '#5a4234', lo: '#24180f' }), { id: 'dc-goggles', hide: true }), P([5.45, 22.6, -2.6], [0.5, 1.2, 7.8], leatherP({ c: '#3a2a22', hi: '#5a4234', lo: '#24180f' }), { id: 'dc-goggles', hide: true }),
-      P([-5.3, 22.6, -3.65], [10.6, 1.2, 0.5], leatherP({ c: '#3a2a22', hi: '#5a4234', lo: '#24180f' }), { id: 'dc-goggles', hide: true }),
     ] },
     ...EYES.bones,
     { name: 'jaw', parent: 'head', pivot: [0, 15.667, 4.667], rot: [8, 0, 3], cubes: [
@@ -202,17 +231,22 @@ export const def = {
     ] },
     { name: 'earR', parent: 'head', pivot: [-5.0, 22.0, -0.5], rot: [-6, 18, 64], cubes: earCubes(false) },
     { name: 'earL', parent: 'head', pivot: [5.0, 22.0, -0.5], rot: [-6, -18, -64], cubes: earCubes(true).map(mirrorCube) },
-    // tier 1: the horned cardboard cap — or blast goggles pushed up on the brow (on the head, below)
+    // the horned cardboard cap (always worn); tier 1 (or): blast goggles pushed up onto it
     { name: 'cap', parent: 'head', pivot: [0, 23.6, 0.6], rot: [-10, 0, -5], cubes: [
-      P([-5.833, 23.0, -3.5], [11.667, 2.333, 8.833], bandP, { id: 'dc-cap', hide: true }),
-      P([-6.167, 25.0, -3.833], [12.333, 1.667, 9.5], puffP, { id: 'dc-cap', hide: true }),
-      P([-5.333, 26.667, -3.0], [10.667, 0.5, 7.833], cardP({ upFlat: true }), { id: 'dc-cap', hide: true }),
-      P([-0.667, 27.167, 0.5], [1.333, 0.5, 1.333], bottleCapP(), { id: 'dc-cap', hide: true }),
-      P([-5.0, 23.0, 5.333], [10.0, 0.5, 3.667], brimP, { pivot: [0, 23.25, 5.333], rot: [14, 0, 0], id: 'dc-cap', hide: true }),
+      P([-5.833, 23.0, -3.5], [11.667, 2.333, 8.833], bandP),
+      P([-6.167, 25.0, -3.833], [12.333, 1.667, 9.5], puffP),
+      P([-5.333, 26.667, -3.0], [10.667, 0.5, 7.833], cardP({ upFlat: true })),
+      P([-0.667, 27.167, 0.5], [1.333, 0.5, 1.333], bottleCapP()),
+      P([-5.0, 23.0, 5.333], [10.0, 0.5, 3.667], brimP, { pivot: [0, 23.25, 5.333], rot: [14, 0, 0] }),
       // horns cut from the crown and folded up, leaning outward like a devil's
       ...[-1, 1].flatMap((sd) => [[2.333, 1.667, 0], [1.667, 1.5, 0.45], [1.0, 1.333, 0.85]].map(([w, h, out], i) => P(
-        [sd * (3.8 + out) - w / 2, 26.3 + [0, 1.667, 3.167][i], 1.7], [w, h, 0.833], hornP, { pivot: [sd * 3.8, 26.3, 2.1], rot: [0, 0, -sd * 14], mirror: sd > 0, id: 'dc-cap', hide: true }))),
-      P([-4.6, 26.3, 1.7], [2.0, 0.7, 1.3], tapeP, { id: 'dc-cap', hide: true }),
+        [sd * (3.8 + out) - w / 2, 26.3 + [0, 1.667, 3.167][i], 1.7], [w, h, 0.833], hornP, { pivot: [sd * 3.8, 26.3, 2.1], rot: [0, 0, -sd * 14], mirror: sd > 0 }))),
+      P([-4.6, 26.3, 1.7], [2.0, 0.7, 1.3], tapeP),
+      P([-4.3, 24.0, 5.45], [3.2, 2.5, 0.9], ironP({ rivets: true }), { id: 'dc-goggles', hide: true }), P([1.1, 24.0, 5.45], [3.2, 2.5, 0.9], ironP({ rivets: true }), { id: 'dc-goggles', hide: true }),
+      P([-3.9, 24.3, 6.37], [2.4, 1.9, 0], glassP, { plane: 'z', id: 'dc-goggles', hide: true }), P([1.5, 24.3, 6.37], [2.4, 1.9, 0], glassP, { plane: 'z', id: 'dc-goggles', hide: true }),
+      P([-1.1, 24.7, 5.5], [2.2, 0.9, 0.6], ironP(), { id: 'dc-goggles', hide: true }),
+      P([-6.05, 23.9, -3.6], [0.4, 1.0, 9.1], leatherP({ c: '#3a2a22', hi: '#5a4234', lo: '#24180f' }), { id: 'dc-goggles', hide: true }), P([5.65, 23.9, -3.6], [0.4, 1.0, 9.1], leatherP({ c: '#3a2a22', hi: '#5a4234', lo: '#24180f' }), { id: 'dc-goggles', hide: true }),
+      P([-5.65, 23.9, -3.85], [11.3, 1.0, 0.3], leatherP({ c: '#3a2a22', hi: '#5a4234', lo: '#24180f' }), { id: 'dc-goggles', hide: true }),
     ] },
     // tier 3: a blasting crate strapped to his back, plunger up, a fuse cord running to the bandolier
     { name: 'pack', parent: 'body', pivot: [0, 11, -4.4], cubes: [
@@ -227,15 +261,16 @@ export const def = {
 };
 // the TNT (bandolier + the stick in his fist) is what this stage gains, so it is always worn; the
 // tiers add one choice each
+// (the horned cardboard cap and the ripped velvet school blazer are his uniform, always worn)
 def.drip = [
-  [{ id: 'dc-cap', name: 'Horned cardboard cap' }, { id: 'dc-goggles', name: 'Blast goggles' }],
-  [{ id: 'dc-blazer', name: 'Ripped school blazer' }, { id: 'dc-belt', name: 'Bottle-cap belt' }],
+  [{ id: 'dc-spade', name: 'Cardboard devil tail' }, { id: 'dc-goggles', name: 'Blast goggles' }],
+  [{ id: 'dc-bolts', name: 'Tin lightning bolts' }, { id: 'dc-belt', name: 'Bottle-cap belt' }],
   [{ id: 'dc-crate', name: 'Blasting-crate pack' }, { id: 'dc-rocket', name: 'Shoulder firework rocket' }],
 ];
 // the ultra-drip form: black-lacquered fur and dynamite, gold paper, gold tail bands, blue fire and sparks
 def.dripForm = { map: raccoonDrip([F.ringL, F.tip, F.bolt]), fx: DRIP_FX };
 def.attach = {
-  head: { bone: 'head', at: [0, 24.0, 1.3], size: 11.333 },
+  head: { bone: 'head', at: [0, 27.2, 1.0], size: 11.333 },
   face: { bone: 'head', at: [0, 20.3, 5.05], size: 11.333 },
   neck: { bone: 'body', at: [0, 15.6, 4.3], size: 9 },
   back: { bone: 'body', at: [0, 11.0, -4.0], size: 12 },

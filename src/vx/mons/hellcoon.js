@@ -2,9 +2,11 @@
 // demon riding a scrap motorbike he welded out of junk: trash-can-lid wheels, a paint-can engine
 // with twin finned cylinders, a red jerry-can tank, a duct-taped seat, rusty pipe exhausts that
 // belch fire, ape-hanger bars with a bronze bell hanging between them ("Hells Bells") and a little
-// cannon bolted over the front wheel ("For Those About to Rock"). He wears a riveted devil iron
-// helmet with red horns, a long black scarf that streams in the wind ("Back in Black"), and his
-// ringed tail ends in a devil's spade. Slit eyes glow red-hot under the iron brim. Homage only.
+// cannon bolted over the front wheel ("For Those About to Rock"), a yellow lightning bolt painted on
+// the tank. He has grown real red devil horns and his ringed tail ends in a devil's spade; the tiers
+// add a riveted iron helmet (or a studded biker cap) the horns punch through, a long black scarf
+// that streams in the wind ("Back in Black") and iron pauldrons or a studded vest. Devil-slit eyes
+// glow red-hot under the brim. Homage only.
 import { E, seg, bump, wob, wave, key } from '../anim.js';
 import {
   PAL, J, P, mirrorCube, rod, furP, bellyP, tuftP, skullP, muzzleP, noseP, jawP, mouthP, tongueP, toothP,
@@ -30,7 +32,7 @@ const cheekP = (p, w, h, face) => {
   if (face === 'east' || face === 'west') for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const front = face === 'east' ? x : w - 1 - x, edge = h * 0.45 + (front < w * 0.4 ? 0 : (front - w * 0.4) * 0.5) + (x % 3 === 1 ? 1 : 0); if (y < edge) p.px(x, y, y === 0 ? F.hi : (x + y) % 6 === 0 ? F.lo : F.c); }
 };
 // eyes at x = ±3.0, y = 33.2 on a 9-unit skull: texels ex 9, ey 13.9
-const skull = skullP(F, { ex: 9, ey: 13.9, mh: 5.4, scar: true });
+const skull = skullP(F, { ex: 9.6, ey: 13.3, mh: 5.4, scar: true });
 const muzzle = muzzleP(F, { bw: 2.2, bt: 1.6 });
 const snout = muzzleP(F, { mouth: true, bridge: false });
 const nose = noseP(F), jaw = jawP(F), hand = handP(F), foot = footP(F);
@@ -51,12 +53,33 @@ const fringeP = (p, w, h) => { for (let x = 0; x < w; x++) { const l = h - (x % 
 const spadeP = (p, w, h) => { const cx = (w - 1) / 2; for (let y = 0; y < h; y++) { const v = y / (h - 1), hw = v < 0.65 ? (v / 0.65) * (w / 2) : (1 - (v - 0.65) / 0.35) * (w / 2) * 0.9 + 1; for (let x = 0; x < w; x++) { const dx = Math.abs(x - cx); if (dx > hw) continue; p.px(x, y, dx > hw - 1 ? J.devilDeep : x < cx ? J.devilHi : J.devil); } } };
 const gripP = (p, w, h, face) => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, face === 'up' ? '#3a3842' : (x % 3 === 0) ? '#8a8e98' : '#1c1a20'); };
 const holeP = (p, w, h) => { const c = (w - 1) / 2; for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const d = Math.hypot(x - c, y - c); if (d <= c + 0.3) p.px(x, y, d > c - 0.8 ? J.ironLo : '#08070a'); } };
-// hand-pixelled eyes: glowing red-hot slits under the iron brim, no pupil, one glint
-const EYES = maskEyes({ style: 'pix', chunk: 2, iris: '#ff4a14', accent: '#ffc040', at: [-3.0, 33.0, 0.05], map: { open: [
-  'ii...',
-  'iiih.',
-  '.cccc',
-] } }, '#e2dad0', true);
+// hand-pixelled eyes (full texture resolution): narrow devil slits under the iron brim, the outer
+// corner flicking up like a horn, red-hot glowing irises with a yellow core, a black vertical slit
+// pupil and no whites
+const EYES = maskEyes({ style: 'pix', chunk: 1, iris: '#ff4a14', irisDark: '#8c1a08', accent: '#ffc040', at: [-3.2, 33.4, 0.05], map: {
+  open: [
+    'll............',
+    'lIlll.........',
+    '.liIIIlllll...',
+    '..liicIIkIIlll',
+    '...liccckcciil',
+    '....llcckccill',
+    '......lllllll.',
+  ],
+  closed: ['..............', '..............', 'll............', 'lllll.........', '..lllllllll...', '......llllllll', '..............'],
+  happy: ['..............', '..............', '.....llll.....', '..llllllllll..', '.lll......lll.', 'll..........ll', '..............'],
+} }, '#e2dad0', true);
+// the jerry-can tank with a big yellow lightning bolt painted down each side
+const TANK_BOLT = ['......####', '.....####.', '....####..', '...####...', '..#######.', '.#######..', '....###...', '...###....', '..###.....', '..##......', '.##.......', '.#........'];
+const tankP = (p, w, h, face, cube) => {
+  jerryP(p, w, h, face, cube);
+  if (face !== 'east' && face !== 'west' && face !== 'up') return;
+  const x0 = Math.round(w / 2) - 5, y0 = Math.round(h / 2) - 6, on = (x, y) => TANK_BOLT[y] && TANK_BOLT[y][face === 'west' ? 9 - x : x] === '#';
+  for (let y = -1; y < 13; y++) for (let x = -1; x < 11; x++) {
+    if (on(x, y)) p.px(x0 + x, y0 + y, (x + y) < 7 ? '#fff08a' : '#ffd23a');
+    else if (on(x - 1, y) || on(x + 1, y) || on(x, y - 1) || on(x, y + 1)) p.px(x0 + x, y0 + y, '#2a1410');
+  }
+};
 // long rock hair spilling from under the helmet: side locks and a mane that streams in the wind
 const MANE = { c: '#5a3e2c', hi: '#8c6648', lo: '#30201a', tip: '#b08a64' };
 
@@ -82,7 +105,7 @@ const bikeCubes = [
   P([-3.4, 11.4, -6.2], [2.8, 3.0, 3.0], finsP, { pivot: [-2.0, 11.4, -4.7], rot: [0, 0, 14] }),
   P([0.6, 11.4, -6.2], [2.8, 3.0, 3.0], finsP, { pivot: [2.0, 11.4, -4.7], rot: [0, 0, -14] }),
   // the jerry-can tank and its cap, the duct-taped seat on its pan
-  P([-3.5, 13.5, -2.5], [7, 5.5, 9], jerryP),
+  P([-3.5, 13.5, -2.5], [7, 5.5, 9], tankP),
   P([-1, 19.0, 3.6], [2, 0.8, 2], galv),
   P([-4.5, 14.0, -12.5], [9, 1.8, 10], seatP),
   P([-4, 13.0, -12], [8, 1.0, 9], ironRust),
@@ -214,6 +237,8 @@ export const def = {
       P([-2.3, 28.2, 3.2], [0.7, 1.4, 0.6], toothP), P([1.6, 28.4, 3.2], [0.7, 1.2, 0.6], toothP),
       P([-6.25, 29.6, -8.0], [0, 6.2, 7.0], hairP(MANE, { seed: 2, min: 0.45, tips: true }), { plane: 'x', pivot: [-6.1, 35.6, -4], rot: [0, 0, -14] }),
       P([6.25, 29.6, -8.0], [0, 6.2, 7.0], hairP(MANE, { seed: 3, min: 0.45, tips: true }), { plane: 'x', pivot: [6.1, 35.6, -4], rot: [0, 0, 14] }),
+      // his own devil horns, curling up and out of the sides of his skull (they punch through any hat)
+      ...horn(-1), ...horn(1),
     ] },
     ...EYES.bones,
     { name: 'mane1', parent: 'head', pivot: [0, 35.0, -9.4], rot: [-36, 0, 0], cubes: [P([-5.4, 28.0, -9.5], [10.8, 7.0, 0], hairP(MANE, { seed: 4, min: 0.6, tips: true }), { plane: 'z' })] },
@@ -224,25 +249,23 @@ export const def = {
       P([-2.0, 29.3, -0.2], [4.0, 0.3, 3.6], mouthP, { outline: false }),
       P([-1.3, 29.35, 0.3], [2.6, 0.3, 2.8], tongueP, { outline: false }),
     ] },
-    // the devil iron helmet: riveted rim, dome, crest ridge, a short brim, red horns
+    // tier 1: a riveted iron helmet (rim, dome, crest ridge, a short brim), his horns through holes in its sides
     { name: 'helmet', parent: 'head', pivot: [0, 36, -4], cubes: [
       P([-6.6, 34.6, -9.1], [13.2, 1.8, 9.8], ironRust, { id: 'hc-helmet', hide: true }),
       P([-6.2, 36.4, -8.7], [12.4, 2.8, 9.0], ironRiv, { id: 'hc-helmet', hide: true }),
       P([-5.0, 39.2, -7.6], [10.0, 1.4, 6.8], iron, { id: 'hc-helmet', hide: true }),
       P([-0.7, 36.8, -9.3], [1.4, 4.0, 10.0], ironRiv, { id: 'hc-helmet', hide: true }),
       P([-6.2, 34.6, 0.6], [12.4, 0.8, 1.6], iron, { id: 'hc-helmet', hide: true }),
-      ...horn(-1).map((c) => ({ ...c, id: 'hc-helmet', hide: true })), ...horn(1).map((c) => ({ ...c, id: 'hc-helmet', hide: true })),
-      // tier 1 (or): a black leather biker cap with a chain across the peak and two little red horns
+      // tier 1 (or): a black leather biker cap with a chain across the peak
       P([-6.4, 34.5, -9.0], [12.8, 2.0, 9.6], leatherP({ c: '#22202a', hi: '#4a4656', lo: '#141218' }), { id: 'hc-bikercap', hide: true }),
       P([-6.9, 36.4, -9.6], [13.8, 1.5, 10.8], leatherP({ c: '#26242e', hi: '#5a5668', lo: '#161420', studs: true }), { id: 'hc-bikercap', hide: true }),
       P([-6.0, 34.3, 0.4], [12.0, 0.6, 2.6], leatherP({ c: '#16141a', hi: '#6a6878', lo: '#0c0b10' }), { pivot: [0, 34.6, 0.6], rot: [12, 0, 0], id: 'hc-bikercap', hide: true }),
       P([-5.0, 35.0, 0.62], [10.0, 0.6, 0.3], chainP, { id: 'hc-bikercap', hide: true }),
-      ...[-1, 1].flatMap((sd) => [P([sd * 4.4 - 0.8, 37.8, -4.6], [1.6, 1.4, 1.6], hornP(1), { pivot: [sd * 4.4, 37.8, -3.8], rot: [0, 0, -sd * 18], id: 'hc-bikercap', hide: true }), P([sd * 4.9 - 0.5, 39.1, -4.3], [1.0, 1.3, 1.0], hornP(3), { pivot: [sd * 4.4, 37.8, -3.8], rot: [0, 0, -sd * 18], id: 'hc-bikercap', hide: true })]),
     ] },
   ],
 };
 def.drip = [
-  [{ id: 'hc-helmet', name: 'Devil iron helmet' }, { id: 'hc-bikercap', name: 'Horned biker cap' }],
+  [{ id: 'hc-helmet', name: 'Riveted iron helmet' }, { id: 'hc-bikercap', name: 'Studded biker cap' }],
   [{ id: 'hc-scarf', name: 'Back-in-black scarf' }, { id: 'hc-chain', name: 'Bell chain' }],
   [{ id: 'hc-pauldrons', name: 'Spiked iron pauldrons' }, { id: 'hc-vest', name: 'Studded leather vest' }],
 ];
@@ -250,7 +273,7 @@ def.drip = [
 def.dripForm = { map: raccoonDrip([F.ringL, F.tip, J.bronze, J.bronzeHi, J.bronzeLo, ({ h, s, l }) => (h < 12 || h > 340) && s > 0.45 && l > 0.2]), fx: DRIP_FX };
 def.attach = {
   head: { bone: 'head', at: [0, 40.6, -4.2], size: 12.4 },
-  face: { bone: 'head', at: [0, 33.2, 0.1], size: 12 },
+  face: { bone: 'head', at: [0, 33.4, 0.1], size: 12 },
   neck: { bone: 'body', at: [0, 27.0, -1.4], size: 11 },
   back: { bone: 'body', at: [0, 22.0, -11.5], size: 15 },
 };

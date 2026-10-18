@@ -1,22 +1,22 @@
 // Jungeon ♀ — stage 2, female form ("Welcome to the Jungle"; homage: Guns N' Roses). The same lanky punk
 // build, in the ash-red plumage: rosy cream, wine-red bars, a pink-and-violet mohawk of spiky crest feathers,
-// the black skeleton-print tee, and her signature: a long-stemmed red rose clenched sideways in her bill like a
-// tango dancer. White almond eyes round a small rose iris, with a lash flick. Drip (one choice per tier): a rose
+// the black skeleton-print tee under an open studded leather jacket, and her signature: a long-stemmed red rose clenched sideways in her bill like a
+// tango dancer. Heavy-lidded rose-red eyes in pink eye-skin, with a lash flick. Drip (one choice per tier): a rose
 // tucked into the foot of her mohawk or a ripped rose-bud kerchief; red heart shades pushed up on her head or a
 // studded choker with a rose pendant; a cherry guitar on her back or spiked shoulder pads. Rose petals are
 // painted along her tail. A bigger hip-swing on the beat, a thorny lash for an attack, a whirling petal storm.
-import { C, P, S2, MORPH, stage2, jungeonClips, pigeonEyeRig, shadesCubes, guitarCubes, chokerCubes, padCubes, kerchiefS2, rose, leafP, ATTACH_S2 } from './pigeon_parts.js';
+import { C, P, S2, MORPH, stage2, jungeonClips, pigeonEyeRig, shadesCubes, guitarCubes, chokerCubes, padCubes, kerchiefS2, rose, leafP, ATTACH_S2, pigeonDrip } from './pigeon_parts.js';
 
 const M = MORPH.ash;
-// her own low-res eyes: white almond eyes round a small rose iris, a lash flick
-const EYES = pigeonEyeRig({ grid: [5, 5], ring: ['#ff4a6a', '#c8244a'], sclera: true, pupil: 'dot', shape: 'almond', lash: true, at: S2.eyeAt, size: [10 / 3, 10 / 3] });
+// her own eyes (full res): a heavy lid over rose-red irises, pink eye-skin, a lash flick
+const EYES = pigeonEyeRig({ ring: ['#ff4a6a', '#b8204a'], skin: ['#f2ccd4', '#c48c9c'], pupil: 'round', shape: 'heavy', lash: true, at: S2.eyeAt, size: [10 / 3, 10 / 3] });
 // the rose crosses the bill, its bloom out past the right cheek, the stem's end poking out the left
 const CL = [0, 27.0, 10.1], RB = [0, 32.6, 10.1], BLOOM = RB;
 const KER = kerchiefS2('jr-kerchief');
 export const def = {
   name: 'jungeon_rose', ppu: 3, scale: 0.33, outline: { color: C.ink, px: 1.4 },
   bones: [
-    ...stage2({ M, tailPetals: true, neckExtra: [...KER.neck, ...chokerCubes({ xs: 4.3, y: 21.0, z0: 0.4, z1: 7.8, id: 'jr-choker', hide: true })] }),
+    ...stage2({ M, tailPetals: true, jacket: true, neckExtra: [...KER.neck, ...chokerCubes({ xs: 4.3, y: 21.0, z0: 0.4, z1: 7.8, id: 'jr-choker', hide: true })] }),
     ...EYES.bones, ...KER.bones,
     { name: 'rose', parent: 'head', pivot: CL, rot: [0, 20, 90], cubes: rose(RB, 0.9, { stem: 6.4 }) },
     { name: 'crestRose', parent: 'head', pivot: [2.6, 31.6, 2.6], rot: [-10, 20, -40], cubes: [
@@ -34,6 +34,8 @@ def.drip = [
   [{ id: 'jr-shades', name: 'Heart shades' }, { id: 'jr-choker', name: 'Rose-pendant choker' }],
   [{ id: 'jr-guitar', name: 'Cherry guitar' }, { id: 'jr-pads', name: 'Spiked shoulder pads' }],
 ];
+// the ultra-drip form (&drip=3): gold plumage, black leather jacket, a gold skeleton print, garnet-lacquer rose and mohawk (pigeon_parts → pigeonDrip)
+def.dripForm = { map: pigeonDrip({ M, plumage: 'gold' }) };
 def.attach = ATTACH_S2;
 
 export const anim = {

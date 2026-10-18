@@ -359,60 +359,95 @@ export const tongueP = (p, w, h) => { for (let y = 0; y < h; y++) for (let x = 0
 // in its model file at the positions below. Hair: a little curled quiff of feathers (stage 1).
 import { eyeArt, chunky } from './eyes.js';
 export { eyeRig } from './eyes.js';
-// Pigeon eyes, Cobblemon-style: a few chunky face pixels — a small round coloured ring round a dark pupil, one
-// white glint — varied per form. o: { grid: [w, h] face pixels, ring: [main, lower], sclera (a white eye round a
-// small iris), pupil: 'round' (2×2) | 'slit' | 'dot' | 'none', shape: 'round' | 'sharp' (outer top corner cut,
-// fierce) | 'heavy' (a flat lid across the top) | 'almond', lash, core (the centre colour when there's no pupil) }
+// Pigeon eyes at full texture resolution (W×H texels; the right eye, outer side at x = 0, the left eye is its
+// mirror): an ink rim, the bare orbital skin ring every pigeon has, an iris shaded darker under the lid with a
+// bright lower crescent and a pale inner ring, a defined pupil, a big catchlight and a small glint. Lids are
+// skin-coloured caps with an ink edge, so the eye keeps its round Pokémon silhouette. o: { ring: [iris, iris
+// dark], skin: [light, dark], sclera (a white eye round a small iris), pupil: 'round' | 'slit' | 'dot' | 'none',
+// shape: 'round' | 'sharp' (the inner side cut low, fierce) | 'heavy' (a flat lid) | 'almond', lash, core (the
+// centre when there's no pupil), socket (a burning eye in a dark bone socket), px / py (pupil offset) }
 const INK2 = '#1a0c14';
 function pgEye(o, mode) {
-  const [W, H] = o.grid || [5, 5], ring = o.ring || ['#ff8a26', '#e0601c'], sh = o.shape || 'round';
-  return (p) => {
-    const cx = (W - 1) / 2, cy = (H - 1) / 2;
-    const inE = (x, y) => {
-      if (x < 0 || y < 0 || x >= W || y >= H) return false;
-      const corner = (x === 0 || x === W - 1) && (y === 0 || y === H - 1);
-      if (corner) return false;
-      if (sh === 'sharp' && y === 0 && x < Math.ceil(W / 2)) return false;
-      if (sh === 'almond' && (y === 0 || y === H - 1) && (x <= 1 || x >= W - 2)) return false;
-      return true;
+  const ring = o.ring || ['#ff8a26', '#e0601c'], shp = o.shape || 'round', skin = o.skin || ['#d4ccd6', '#a89cac'];
+  const pu0 = o.pupil || 'round', soft = o.socket ? '#120606' : '#3e2430';
+  return (p, W, H) => {
+    const cx = W / 2, cy = H / 2, R = Math.min(W, H) / 2, ry = shp === 'almond' ? R * 0.84 : R;
+    const r = (x, y) => Math.hypot((x + 0.5 - cx) / R, (y + 0.5 - cy) / ry) * R;     // texels from the centre
+    const u = (x) => (x + 0.5) / W;                                                  // 0 outer → 1 inner
+    const clr = mode === 'closed' || mode === 'happy';
+    if (clr) {                                       // a lid line: ∪ asleep, ∩ happy; a skin crease above it
+      const k = mode === 'closed' ? 1 : -1;
+      for (let x = 1; x < W - 1; x++) {
+        const v = (x + 0.5 - cx) / (R - 0.6), y = Math.round(cy - 0.5 + k * (1.6 * (1 - v * v) - 0.6));
+        if (Math.abs(v) > 1.05) continue;
+        p.px(x, y, INK2); if (Math.abs(v) < 0.6) p.px(x, y + k, INK2);
+        if (mode === 'closed' && y - 1 >= 0) p.px(x, y - 1, skin[1]);
+      }
+      if (o.lash || mode === 'closed') { const y0 = Math.round(cy - 0.5 + (mode === 'closed' ? -0.6 : 0.6)); p.px(0, y0 + (mode === 'closed' ? 1 : -1), INK2); }
+      return;
+    }
+    let lid = null;                                  // y of the upper lid edge at column x
+    if (mode === 'angry') lid = (x) => cy - R * 0.7 + u(x) * R * 0.85;
+    else if (mode === 'sad') lid = (x) => cy - R * 0.1 - u(x) * R * 0.65;
+    else if (mode === 'sleepy') lid = () => cy - R * 0.08;
+    else if (mode === 'smug') lid = (x) => cy - R * 0.3 + u(x) * R * 0.15;
+    else if (mode !== 'wide' && mode !== 'shock') {
+      if (shp === 'heavy') lid = () => cy - R * 0.4;
+      else if (shp === 'sharp') lid = (x) => cy - R * 1.05 + u(x) * R * 0.75;
+    }
+    const low = mode === 'smug' ? cy + R * 0.5 : null;
+    const ri = o.sclera ? R * 0.52 : o.socket ? R - 2 : R - 1;                    // iris radius
+    const pcx = cx + (o.px ?? 0.35) + (mode === 'smug' ? 0.9 : 0), pcy = cy + (o.py ?? 0.15) + (mode === 'sleepy' ? 0.7 : 0) + (mode === 'sad' ? 0.4 : 0);
+    const icx = o.sclera ? pcx : cx, icy = o.sclera ? pcy : cy;
+    const rp = mode === 'shock' ? 0.7 : mode === 'wide' ? ri * 0.3 : pu0 === 'dot' ? Math.max(1.0, ri * 0.3) : ri * 0.42;
+    const pupil = (x, y) => {
+      const dx = x + 0.5 - pcx, dy = y + 0.5 - pcy;
+      if (pu0 === 'none') return false;
+      if (pu0 === 'slit' && mode !== 'shock' && mode !== 'wide') return Math.abs(dx) < 0.55 && Math.abs(dy) < ri * 0.8 || Math.abs(dx) < 1.0 && Math.abs(dy) < ri * 0.35;
+      return dx * dx + dy * dy <= rp * rp;
     };
-    // lids (rows above the line are hidden; the topmost visible pixel of each column is drawn as the lid line)
-    const lidY = (x) => {
-      const u = x / Math.max(1, W - 1);                 // 0 outer → 1 inner
-      if (mode === 'angry') return 0.6 + u * H * 0.45;
-      if (mode === 'sad') return 0.6 + (1 - u) * H * 0.45;
-      if (mode === 'sleepy' || mode === 'smug') return H * 0.42;
-      if (sh === 'heavy') return 1;
-      return -1;
-    };
-    const vis = (x, y) => inE(x, y) && y >= Math.floor(lidY(x));
-    const pupX = Math.round(cx + (o.px ?? 0.5) + (mode === 'smug' ? 0.6 : 0)), pupY = Math.round(cy + (o.py ?? 0));
+    const vis = (x, y) => x >= 0 && y >= 0 && x < W && y < H && r(x, y) <= R && !(lid && y + 0.5 < lid(x)) && !(low && y + 0.5 > low);
     for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
-      if (!vis(x, y)) continue;
-      let c = y > cy + 0.6 ? ring[1] : ring[0];
-      if (o.sclera) { const d = Math.max(Math.abs(x - pupX + 0.5), Math.abs(y - pupY + 0.5)); c = d <= 1.0 ? (y > pupY ? ring[1] : ring[0]) : '#ffffff'; }
-      const pu = o.pupil || 'round';
-      if (pu === 'round' && (x === pupX || x === pupX - 1) && (y === pupY || y === pupY - 1)) c = INK2;
-      if (pu === 'dot' && x === pupX && y === pupY) c = INK2;
-      if (pu === 'slit' && x === pupX && Math.abs(y - pupY) <= 1) c = INK2;
-      if (pu === 'none' && o.core && Math.abs(x - cx) <= 0.6 && Math.abs(y - cy) <= 0.6) c = o.core;
-      if (mode === 'teary' && y === H - 2) c = '#8ad8ff';
+      const d = r(x, y); if (d > R) continue;
+      if (d > R - 1) { p.px(x, y, y + 0.5 < cy - R * 0.3 || o.socket ? INK2 : y + 0.5 < cy + R * 0.45 ? skin[1] : skin[0]); continue; }   // ink lid line over the bare skin ring
+      if (lid && y + 0.5 < lid(x)) { p.px(x, y, y + 0.5 < lid(x) - 1.5 ? skin[1] : skin[0]); continue; }      // upper lid
+      if (low && y + 0.5 > low) { p.px(x, y, skin[0]); continue; }                                           // lower lid
+      if (o.socket && d > ri) { p.px(x, y, y + 0.5 < cy ? skin[1] : skin[0]); continue; }
+      const di = Math.hypot(x + 0.5 - icx, y + 0.5 - icy);
+      if (o.sclera && di > ri) { p.px(x, y, y + 0.5 < cy - R * 0.3 ? '#d6cad8' : '#f6f0f2'); continue; }        // white of the eye
+      const under = lid && y + 0.5 < lid(x) + 1.2, top = y + 0.5 < icy - ri * 0.35, dp = Math.hypot(x + 0.5 - pcx, y + 0.5 - pcy);
+      let c;
+      if (o.socket || pu0 === 'none') c = di < ri * 0.38 ? (o.core || '#fff6c8') : di < ri * 0.72 && !top ? ring[0] : top || under ? sh(ring[1], -0.18) : ring[1];
+      else {
+        c = ring[0];
+        if (di > ri - 0.8 || top) c = ring[1];                                    // limbal ring, darker top
+        else if (y + 0.5 > icy + ri * 0.3) c = sh(ring[0], 0.28);                // bright lower crescent
+        if (dp < rp + 1.0 && !top && pu0 !== 'slit') c = sh(ring[0], 0.16);      // pale inner ring
+        if (under) c = sh(ring[1], -0.22);                                       // lid shadow
+        if (mode === 'shock') c = sh(c, 0.18);
+      }
+      if (pupil(x, y)) c = INK2;
+      if (mode === 'teary' && y + 0.5 > icy + ri * 0.4) c = (x + y) % 3 ? '#8ad8ff' : '#d8f4ff';
       p.px(x, y, c);
     }
-    // the lid line on the top edge of what shows
-    if (sh === 'heavy' || mode === 'angry' || mode === 'sad' || mode === 'sleepy' || mode === 'smug' || sh === 'sharp')
-      for (let x = 0; x < W; x++) for (let y = 0; y < H; y++) if (vis(x, y)) { p.px(x, y, INK2); break; }
-    // one glint, top-outer of the pupil
-    const gx = (o.pupil || 'round') === 'none' ? Math.round(cx) - 1 : pupX - 2, gy = pupY - 1;
-    if (vis(gx, gy) && !(sh === 'heavy' && gy <= 1)) p.px(gx, gy, '#ffffff');
-    if (o.lash) { for (let y = 0; y < H; y++) if (vis(0, y)) { p.px(0, Math.max(0, y - 1), INK2); break; } }
+    // the lid edges
+    if (lid) for (let x = 0; x < W; x++) for (let y = 0; y < H; y++) if (r(x, y) <= R - 1 && vis(x, y)) { p.px(x, y, INK2); break; }
+    if (low) for (let x = 0; x < W; x++) for (let y = H - 1; y >= 0; y--) if (r(x, y) <= R - 1 && vis(x, y)) { p.px(x, y, INK2); break; }
+    // highlights: a 2×2 catchlight high on the outer side of the pupil, a small warm glint low on the inner side
+    const hs = mode === 'teary' || mode === 'wide' ? 2 : W >= 9 ? 2 : 1, hx = Math.floor(pcx - rp * 0.7) - 1, hy = Math.floor(pcy - rp * 0.7) - 1;
+    if (mode !== 'shock') for (let a = 0; a < hs; a++) for (let b = 0; b < hs; b++) if (vis(hx + a, hy + b) && r(hx + a, hy + b) <= R - 1.2) p.px(hx + a, hy + b, '#ffffff');
+    const gx = Math.round(icx + ri * 0.55 - 0.5), gy = Math.round(icy + ri * 0.5 - 0.5);
+    if (vis(gx, gy) && r(gx, gy) <= R - 1.2 && !pupil(gx, gy) && mode !== 'teary') p.px(gx, gy, o.socket ? '#ffffff' : '#fff2d8');
+    if (mode === 'wide' && vis(gx - 1, gy - 2)) p.px(gx - 1, gy - 2, '#ffffff');
+    // a lash flick off the outer top corner
+    if (o.lash) { for (let y = 0; y < H; y++) if (r(1, y) <= R) { p.px(1, y, INK2); p.px(0, Math.max(0, y - 1), INK2); if (y - 2 >= 0) p.px(0, y - 2, INK2); break; } }
   };
 }
-const PG_OWN = ['open', 'angry', 'sad', 'sleepy', 'smug', 'teary'];
-const PG_KIT = ['closed', 'happy', 'shut', 'x', 'swirl', 'shock', 'wide', 'heart', 'star'];
+const PG_OWN = ['open', 'angry', 'sad', 'sleepy', 'smug', 'teary', 'closed', 'happy', 'wide', 'shock'];
+const PG_KIT = ['shut', 'x', 'swirl', 'heart', 'star'];
 // the rig: bones eyeR / eyeL (pivots at the eye centres, for squash, stretch and darts) and the face slot
 export function pigeonEyeRig(o) {
-  const { at, size, parent = 'head', chunk = 2 } = o, [x, y, z] = at, [w, h] = size, states = [...PG_OWN, ...PG_KIT];
+  const { at, size, parent = 'head', chunk = 1 } = o, [x, y, z] = at, [w, h] = size, states = [...PG_OWN, ...PG_KIT];
   const tex = (s) => (PG_OWN.includes(s) ? chunky(pgEye(o, s), chunk) : eyeArt(s, { style: 'gen9', chunk, line: INK2 }));
   const mk = (side) => states.map((s) => ({ o: side < 0 ? [x - w / 2, y - h / 2, z] : [-x - w / 2, y - h / 2, z], s: [w, h, 0], plane: 'z', mirror: side > 0, tex: tex(s), glow: !!o.glow || s === 'heart' || s === 'star', id: (side < 0 ? 'eR-' : 'eL-') + s, hide: s !== 'open', outline: false }));
   const slot = { default: 'open', states: Object.fromEntries(states.map((s) => [s, ['eR-' + s, 'eL-' + s]])) };
@@ -828,12 +863,12 @@ export function stage2(o = {}) {
     const w = eggToWorld(q, EC, S2.pitch);
     return featherCol(w[1] < 10.2 && w[2] < -3 ? M.pale : M.belly, l, A, B, 8, 5, face);
   };
-  const bodyP = plumage({ O: EC, R, cols: M.slate, region: teeRegion({ below }) });
+  const tee = teeRegion({ below }), bodyP = plumage({ O: EC, R, cols: M.slate, region: o.jacket ? leatherRegion({ EC, pitch: S2.pitch, hem: 12.6, open: 0.3, base: tee }) : tee });
   const neckPt = neckP({ ...S2.neck, cols: M.head, below: M.slate, ir: M.ir });
   const headPt = plumage({ O: S2.head.O, R: S2.head.R, cols: M.head, S: 6, RH: 4 });
   const leg = (s) => [P([s * 3.0 - 0.65, 0.3, 1.0], [1.3, 6.4, 1.3], legP), P([s * 3.0 - 1.7, 5.8, -0.2], [3.4, 3.2, 3.2], thighP(M.belly))];
   const arm = (s) => {
-    const x = s * 6.0, seg = wingSegP({ ...M, base: [x, 21.0, 5.2], dir: [0, -1, 0], len: 9.4, cdir: [0, 0, -1], chord: 5.0, kind: 'arm', sleeve: teeSleeve(0.38), bar1: 0.56, bar2: 0.74, barW: 0.08 });
+    const x = s * 6.0, seg = wingSegP({ ...M, base: [x, 21.0, 5.2], dir: [0, -1, 0], len: 9.4, cdir: [0, 0, -1], chord: 5.0, kind: 'arm', sleeve: o.jacket ? leatherSleeve(0.5) : teeSleeve(0.38), bar1: 0.56, bar2: 0.74, barW: 0.08 });
     return [P([s < 0 ? x - 1.4 : x, 11.6, 0.2], [1.4, 9.4, 5.0], seg), P([s * 6.7, 12.4, -1.6], [0, 7.8, 2.0], tipsP({ n: 4, cols: M.slate, dir: 'back' }), { plane: 'x' })];
   };
   const hand = (s) => {
@@ -1168,10 +1203,113 @@ export function padCubes(s, sh, o = {}) {
   for (const dz of [-1.2, 0.2, 1.6]) for (const a of [0, 90]) out.push(P([x + s * 0.7 * k - 0.5 * k, y + 0.5 * k, z + dz * k], [1.0 * k, 1.5 * k, 0], spike, { plane: 'z', pivot: [x + s * 0.7 * k, y + 0.5 * k, z + dz * k], rot: [0, a, s * -20], ...tag }));
   return out;
 }
+// ---------------------------------------------------------------- the ultra-drip form (&drip=3)
+// The engine's black-and-gold map keys on hue, which turns slate pigeons gold and leaves ash ones as they are,
+// and splits a plumage palette in two (patchy). The pigeons use their own map instead (def.dripForm.map =
+// pigeonDrip({ M, plumage })): the plumage palette goes all one way — 'black' lacquer (the blue birds) or 'gold'
+// (the ash birds) — ink, leather, felt and the tee go black, pure whites stay (catchlights), and every other
+// colour takes the opposite of the plumage: gold on the black birds; a deep garnet lacquer on the gold birds, so
+// irises and roses still read against the gold. Fire still burns blue.
+const hsl3 = (hex) => {
+  const n = parseInt(hex.slice(1, 7), 16), r = ((n >> 16) & 255) / 255, g = ((n >> 8) & 255) / 255, b = (n & 255) / 255;
+  const M = Math.max(r, g, b), m = Math.min(r, g, b), l = (M + m) / 2, d = M - m;
+  if (!d) return [0, 0, l];
+  let h = M === r ? ((g - b) / d) % 6 : M === g ? (b - r) / d + 2 : (r - g) / d + 4; h *= 60; if (h < 0) h += 360;
+  return [h, d / (1 - Math.abs(2 * l - 1)), l];
+};
+const hex3 = (h, s, l) => {
+  const c = (1 - Math.abs(2 * l - 1)) * s, x = c * (1 - Math.abs(((h / 60) % 2) - 1)), m = l - c / 2;
+  const [r, g, b] = h < 60 ? [c, x, 0] : h < 120 ? [x, c, 0] : h < 180 ? [0, c, x] : h < 240 ? [0, x, c] : h < 300 ? [x, 0, c] : [c, 0, x];
+  return '#' + [r, g, b].map((v) => Math.round(Math.max(0, Math.min(1, v + m)) * 255).toString(16).padStart(2, '0')).join('');
+};
+export function pigeonDrip(o = {}) {
+  const M = o.M || MORPH.blue, gold = o.plumage === 'gold', PL = new Set(), STUDS = new Set(STUD.map((c) => c.toLowerCase()));
+  for (const k of ['slate', 'belly', 'pale', 'covert', 'bar', 'prim', 'head']) for (const c of [...(M[k] || []), ...(C[k] || [])]) if (typeof c === 'string') PL.add(c.toLowerCase());
+  const G = (l) => hex3(44, 0.86, Math.min(0.9, 0.16 + l * 0.66)), K = (l) => hex3(250, 0.12, 0.04 + l * 0.3);
+  return (c, glow) => {
+    if (typeof c !== 'string' || c[0] !== '#' || c.length < 7) return c;
+    const [h, s, l] = hsl3(c);
+    if (glow) return s > 0.2 && (h < 75 || h > 320) ? hex3(200 + (h < 75 ? h * 0.35 : 0), Math.min(1, s * 1.05), Math.min(0.97, l * 1.02)) : c;
+    // the plumage, all one way: its palette, and the shades the painters mix from it (the morph's hue family)
+    const fam = gold ? s < 0.5 && (h >= 315 || h <= 25) : s < 0.4 && h >= 195 && h <= 290;
+    if (PL.has(c.toLowerCase()) || (fam && l >= 0.2 && !STUDS.has(c.toLowerCase()))) return gold ? G(l) : K(l);
+    if (l > 0.95 && (s < 0.3 || l > 0.985)) return c;                     // catchlights, white glints
+    if (l < 0.2 || (s < 0.2 && l < 0.5)) return K(l);                     // ink, pupils, leather, felt, the tee
+    if (!gold) return G(l);                                               // black birds: everything else gold
+    return s < 0.45 ? G(l) : hex3(350, 0.5, 0.08 + l * 0.25);             // gold birds: pale things gold, colours garnet
+  };
+}
+
+// ---------------------------------------------------------------- the band's uniform: leather, top hats, curls
+// black leather in five tones by light, a pale crease now and then, silver studs and zips
+export const LEATHER = ['#686078', '#443e52', '#2e2938', '#1f1b26', '#141118'];
+export const STUD = ['#ffffff', '#c8c8d6', '#7c7c8e'];
+const lk5 = (l) => (l > 0.72 ? 0 : l > 0.3 ? 1 : l > -0.22 ? 2 : l > -0.62 ? 3 : 4);
+// a leather-jacket sleeve on a wing (a wingSegP sleeve): leather from the shoulder to `to` (0..1 along the
+// span), a row of studs across the shoulder, a crease down the arm and a dark cuff with a silver zip
+export const leatherSleeve = (to = 0.5) => (along, across, face) => {
+  if (along > to + 0.07) return undefined;
+  const fl = faceLit(face), k = fl > 0.6 ? 1 : fl > 0.15 ? 2 : fl > -0.25 ? 3 : 4;
+  if (along > to) return Math.abs(across - 0.5) < 0.06 && face !== 'up' && face !== 'down' ? STUD[1] : LEATHER[4];
+  if (face !== 'down' && Math.abs(along - 0.1) < 0.035 && Math.floor(across * 15) % 3 === 1) return STUD[k < 3 ? 0 : 1];
+  if (Math.abs(across - 0.3 - along * 0.15) < 0.035 && face !== 'up') return LEATHER[Math.max(0, k - 1)];
+  return LEATHER[k];
+};
+// a leather jacket on an egg body (a plumage region): leather over the back, sides and shoulders down to the
+// hem (world y), open in a V down the front where `base` paints what's under it, the lapel edge studded
+export function leatherRegion(o) {
+  const { EC, pitch, hem, open = 0.45, base } = o;
+  return (q, face, n, l, A, B) => {
+    const w = eggToWorld(q, EC, pitch), nw = nToWorld(n, pitch), front = nw[2] - Math.abs(nw[0]) * 0.3 + (w[1] - hem) * 0.02;
+    if (w[1] < hem || front > open || face === 'down') return base ? base(q, face, n, l, A, B) : undefined;
+    const k = lk5(l);
+    if (front > open - 0.1) return (A + B) % 3 === 0 ? STUD[k < 2 ? 0 : 1] : LEATHER[Math.max(0, k - 1)];   // the lapel, studded
+    if (w[1] < hem + 0.45) return LEATHER[4];                                                                  // the waistband
+    return (A * 5 + B * 3) % 13 === 0 && k < 3 ? LEATHER[Math.max(0, k - 1)] : LEATHER[Math.min(4, k + 1)];
+  };
+}
+// a black felt top hat sitting at c (the bottom centre of the crown): a tall crown that flares a touch at the
+// top, a curled brim, a band of silver conchos; o.rose adds a red rose tucked in the band on the left
+export function topHatCubes(c, o = {}) {
+  const k = o.k || 1, [cx, cy, cz] = c, Q = (x, y, z) => [cx + x * k, cy + y * k, cz + z * k], S = (a, b, d) => [a * k, b * k, d * k], tag = { id: o.id, hide: !!o.hide };
+  const felt = (p, w, h, face) => {
+    for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) {
+      const lit = face === 'up' ? 0 : face === 'down' ? 4 : face === 'east' || face === 'north' ? 3 : 2;
+      p.px(i, j, lit === 0 ? (i === 0 || j === 0 ? '#5a5468' : '#3a3546') : lit === 4 ? '#0c0a10' : (i + j * 3) % 11 === 0 ? '#3a3546' : lit === 3 ? '#16131c' : i < 2 && face === 'south' ? '#3a3546' : '#24202c');
+    }
+  };
+  const band = (p, w, h, face) => {
+    for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) p.px(i, j, j === 0 ? '#3a1820' : '#5a1a26');
+    if (face !== 'up' && face !== 'down') for (let i = 1; i < w - 1; i += 4) { p.px(i, 1, STUD[0]); p.px(i + 1, 1, STUD[1]); p.px(i, 2, STUD[1]); p.px(i + 1, 2, STUD[2]); }
+  };
+  const out = [
+    P(Q(-4.3, 0, -4.1), S(8.6, 0.5, 8.2), felt, tag),
+    P(Q(-5.8, 0.25, -3.3), S(1.6, 0.45, 6.6), felt, { ...tag, pivot: Q(-4.3, 0.3, 0), rot: [0, 0, -24] }),
+    P(Q(4.2, 0.25, -3.3), S(1.6, 0.45, 6.6), felt, { ...tag, pivot: Q(4.3, 0.3, 0), rot: [0, 0, 24] }),
+    P(Q(-2.6, 0.4, -2.5), S(5.2, 3.6, 5.0), felt, tag),
+    P(Q(-2.8, 3.8, -2.7), S(5.6, 2.6, 5.4), felt, tag),
+    P(Q(-2.65, 0.45, -2.55), S(5.3, 1.3, 5.1), band, tag),
+  ];
+  if (o.rose) out.push(...rose([cx + 2.75 * k, cy + 1.5 * k, cz + 1.2 * k], 0.5 * k, { stem: 0, leaves: false, ...tag }));
+  return out;
+}
+// ringlet curls: thin boxes hanging from their tops, painted as a twisting helix of light and dark bands.
+// list: [[x, yTop, z, len, w?], ...]
+export function curlsCubes(list, cols = ['#7a5a5a', '#563a3e', '#3a2428', '#24141a'], o = {}) {
+  const ring = (ph) => (p, w, h, face) => {
+    for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) {
+      const lit = face === 'up' ? 0 : face === 'east' || face === 'north' ? 2 : face === 'down' ? 3 : 1;
+      const turn = Math.floor((j + i * 0.6 + ph) / 2) % 2;
+      p.px(i, j, cols[Math.min(3, lit + turn)]);
+    }
+    if (face !== 'up' && face !== 'down') for (let j = (ph & 1); j < h; j += 4) p.px(0, j, cols[0]);
+  };
+  return list.map(([x, y, z, len, w = 1.4], i) => P([x - w / 2, y - len, z - w / 2], [w, len, w], ring(i * 3), { id: o.id, hide: !!o.hide }));
+}
 // the stage-1 bandana: black cotton with rose buds round the brow and over the crown, a knot at the back (on the
 // head bone), plus its two tails as spring bones and a tucked rose on another
 export function bandanaS1(id, o = {}) {
-  const B = roseBandanaP(o), B2 = roseBandanaP({ ...o, phase: 3 }), t = { id, hide: true };
+  const B = roseBandanaP(o), B2 = roseBandanaP({ ...o, phase: 3 }), t = { id, hide: !o.show };
   return {
     head: [
       P([-4.15, 23.95, 6.75], [8.3, 1.4, 0.42], B, t), P([-4.15, 23.95, -0.85], [8.3, 1.4, 0.42], B2, t),
@@ -1182,7 +1320,7 @@ export function bandanaS1(id, o = {}) {
     bones: [
       { name: 'bandR', parent: 'head', pivot: [-0.5, 24.0, -1.8], rot: [-30, -12, 0], cubes: [P([-0.5, 22.4, -5.8], [0, 2.0, 4.0], B, { plane: 'x', ...t })] },
       { name: 'bandL', parent: 'head', pivot: [0.5, 23.6, -1.8], rot: [-44, 14, 0], cubes: [P([0.5, 22.2, -5.2], [0, 1.8, 3.4], B2, { plane: 'x', ...t })] },
-      { name: 'bud', parent: 'head', pivot: [4.0, 24.7, 2.6], rot: [0, 0, -62], cubes: rose([4.0, 25.6, 2.6], 0.64, { stem: 0, leaves: false, id, hide: true }) },
+      { name: 'bud', parent: 'head', pivot: [4.0, 24.7, 2.6], rot: [0, 0, -62], cubes: rose([4.0, 25.6, 2.6], 0.64, { stem: 0, leaves: false, id, hide: !o.show }) },
     ],
   };
 }

@@ -513,7 +513,7 @@ export const anim = {
     bubble: { default: 'off', states: { on: ['snot'], off: [] } },
     crack: { default: 'off', states: { on: ['crack'], off: [] } },
   },
-  fidget: { every: [6, 10], clips: ['salt', 'shimmy', 'slap', 'shimmy'] },
+  fidget: { every: [3.5, 7], clips: ['dance', 'dance', 'salt', 'slap'] },
   clips: {
     // the sumo crouch: a slow, heavy weight shift from leg to leg, pincers clacking, bubbles at the jaw
     idle: { len: 2.4, loop: true, f(P, t) {
@@ -734,6 +734,8 @@ export const anim = {
     } },
   },
 };
+// dance: its party shimmy (the Twist, crab style) is its signature dance
+anim.clips.dance = { ...anim.clips.shimmy };
 def.anim = anim;
 
 // the ultra-drip form: the eyes keep their own colours, and pale creams that blackGold would lacquer black turn

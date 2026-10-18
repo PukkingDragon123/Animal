@@ -3,13 +3,14 @@
 // burning from the inside — bone legs on taloned feet, a ribcage with a heart of fire, an S-curved neck of
 // vertebrae, a pigeon skull with a long bone beak and big round glowing eyes deep in its sockets, and bone
 // wings whose feathers are flames. It wears a huge curly black wig and a tall black top hat with a crimson
-// band. Drip (one choice per tier): a rose in the hat band or, on its keel, a charred plaque with a cross
-// ringed by five little skulls; a gold chain with a skull or aviators parked on the brim; a black guitar slung
-// across its burning back or spiked bone pauldrons.
-// Menacing, unhurried, theatrical: it stalks, it tips its hat, and it sweeps a wall of fire across the field.
+// band. Drip (one choice per tier): a rose in the hat band or, on its keel, a charred medallion — a revolver
+// cylinder with a rose set in its centre; a gold chain with a skull or aviators parked on the brim; a black
+// guitar slung across its burning back or spiked bone pauldrons. Ultra drip (&drip=3) burns blue.
+// Menacing, unhurried, theatrical: it stalks, it tips its hat, it stomp-dances on a heavy beat, flings the top
+// hat spinning up through its own flames and catches it on the wig, and sweeps a wall of fire across the field.
 import { E, seg, bump, wob, wave, key } from '../anim.js';
 import { defineFx } from '../fx.js';
-import { C, P, pigeonEyeRig, rose, guitarCubes, chainCubes, shadesCubes, padCubes, at, strut, plant, clamp } from './pigeon_parts.js';
+import { C, P, pigeonEyeRig, rose, guitarCubes, chainCubes, shadesCubes, padCubes, at, strut, plant, clamp, pigeonDrip } from './pigeon_parts.js';
 import { h2 } from './kit.js';
 
 // ---------------------------------------------------------------- painters
@@ -75,17 +76,31 @@ const feltP = (p, w, h, face) => {
   if (face === 'up') for (let x = 0; x < w; x++) { p.px(x, 0, FELT[0]); }
 };
 const bandP = (p, w, h, face) => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, face === 'up' || face === 'down' ? C.rose[4] : y === 0 ? C.rose[1] : y === h - 1 ? C.rose[4] : C.rose[2 + ((x + y) % 5 === 0 ? 1 : 0)]); };
-// the plaque on the keel: charred iron, a ring of five little skulls round the crossing of a raised cross
+// the medallion on the keel: charred iron, a polished six-shot revolver cylinder seen end-on (fluted rim, six
+// dark chambers), and a red rose bloom set in its centre (a raised boss)
 const plaqueP = (p, w, h, face) => {
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, face === 'south' ? (h2(x >> 1, y >> 1, 9) > 0.8 ? '#3a302e' : '#2a2224') : '#1e1818');
   if (face !== 'south') return;
   for (let x = 0; x < w; x++) { p.px(x, 0, '#5a4a44'); p.px(x, h - 1, '#120e10'); }
   for (let y = 0; y < h; y++) { p.px(0, y, '#5a4a44'); p.px(w - 1, y, '#120e10'); }
-  const cx = (w - 1) / 2, cy = h * 0.42, R = Math.min(w, h) * 0.34;
-  for (let k = 0; k < 5; k++) {
-    const a = -Math.PI / 2 + (k / 5) * Math.PI * 2 + Math.PI / 5, sx = Math.round(cx + Math.cos(a) * R) - 1, sy = Math.round(cy + Math.sin(a) * R) - 1;
-    const SK = ['.ww.', 'wwww', 'kwwk', '.ww.', '.ww.'];
-    SK.forEach((row, j) => [...row].forEach((ch, i) => { if (ch === 'w') p.px(sx + i, sy + j, j === 0 ? '#ffffff' : BN[1]); else if (ch === 'k') p.px(sx + i, sy + j, '#14060a'); }));
+  const cx = w / 2, cy = h / 2, R = Math.min(w, h) * 0.42;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const dx = x + 0.5 - cx, dy = y + 0.5 - cy, d = Math.hypot(dx, dy), a = Math.atan2(dy, dx);
+    if (d > R) continue;
+    const lit = -dx - dy > 0, flute = d > R - 1.2 && Math.floor(((a + Math.PI) / (Math.PI * 2)) * 12) % 2 === 0;
+    p.px(x, y, d > R - 0.8 ? (lit ? '#e8ecf4' : '#5a5e70') : flute ? '#8a8ea0' : lit ? '#c8ccd8' : '#9aa0b4');
+  }
+  for (let k = 0; k < 6; k++) {
+    const a = (k / 6) * Math.PI * 2 - Math.PI / 2, hx = cx + Math.cos(a) * R * 0.58, hy = cy + Math.sin(a) * R * 0.58;
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const d = Math.hypot(x + 0.5 - hx, y + 0.5 - hy); if (d < 1.5) p.px(x, y, d < 0.9 ? '#0c0a10' : '#2a2a36'); }
+  }
+};
+// the rose boss in the middle of the cylinder: a tight spiral of red petals
+const roseBossP = (p, w, h, face) => {
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const dx = x + 0.5 - w / 2, dy = y + 0.5 - h / 2, d = Math.hypot(dx, dy) / (w / 2), a = Math.atan2(dy, dx);
+    const sp = ((a / (Math.PI * 2) + d * 1.4) % 1 + 1) % 1;
+    p.px(x, y, face !== 'south' ? C.rose[3] : d > 0.95 ? C.rose[4] : sp < 0.18 ? C.rose[4] : dx + dy < 0 ? C.rose[1] : C.rose[2]);
   }
 };
 // fire: n tongues rising, three frames that flicker (glow planes)
@@ -131,8 +146,8 @@ defineFx('pg_bone', { w: 3, h: 2, frames: [chipSpr(BN[1]), chipSpr(BN[2])], life
 const ABC = ['a', 'b', 'c'], PL = { id: 'pd-plaque', hide: true };
 // a bone of flames: every plane in three flickering frames (slot 'fire')
 const flameBone = (name, parent, pivot, planes, rot) => ({ name, parent, pivot, rot, cubes: planes.flatMap(([o, s, plane, n, hs]) => ABC.map((f, i) => P(o, s, fireP(i * 2 + o[0] * 0.3, n, { hs }), { plane, glow: true, shadow: false, id: 'fire-' + f, hide: i > 0 }))) });
-// its own low-res eyes: glowing embers deep in the sockets — round, no pupils, a white-hot core and one glint
-const EYES = pigeonEyeRig({ grid: [5, 5], ring: ['#ffd04a', '#ff9a2a'], pupil: 'none', core: '#fff6c8', glow: true, at: [-2.62, 36.07, 7.1], size: [10 / 3, 10 / 3] });
+// its own eyes (full res): glowing embers deep in dark bone sockets — no pupils, a white-hot core, one glint
+const EYES = pigeonEyeRig({ ring: ['#ffd04a', '#ff8a24'], skin: ['#3a1a1c', '#200c0e'], socket: true, pupil: 'none', core: '#fff6c8', glow: true, at: [-2.62, 36.07, 7.1], size: [10 / 3, 10 / 3] });
 const ribs = [];
 for (let k = 0; k < 5; k++) {
   const y = 24.4 - k * 1.85, len = 4.3 - Math.abs(k - 1.5) * 0.3, tex = [bone, bone2, bone3][k % 3];
@@ -186,7 +201,7 @@ export const def = {
       P([-3.8, 12.4, -4.6], [7.6, 3.0, 5.0], bone), P([-5.0, 12.5, -0.5], [1.8, 1.8, 1.8], knob), P([3.2, 12.5, -0.5], [1.8, 1.8, 1.8], knob),
       ...spine, ...ribs,
       P([-3.2, 16.4, 3.3], [6.4, 9.0, 0.6], bone2), P([-0.8, 15.6, 3.6], [1.6, 10.0, 1.8], bone),
-      P([-2.9, 17.0, 5.3], [5.8, 8.0, 0.35], plaqueP, PL), P([-0.4, 17.6, 5.62], [0.8, 6.8, 0.4], knob, PL), P([-2.0, 21.4, 5.62], [4.0, 0.8, 0.4], knob, PL),
+      P([-3.0, 17.6, 5.3], [6.0, 6.0, 0.35], plaqueP, PL), P([-0.8, 19.8, 5.62], [1.6, 1.6, 0.45], roseBossP, PL),
       P([-4.4, 25.2, -3.0], [8.8, 1.2, 1.4], bone3),
     ] },
     flameBone('fxCore', 'body', [0, 16, 0], [[[-3.4, 15.2, 0.2], [6.8, 9.6, 0], 'z', 3], [[0, 15.2, -2.8], [0, 9.6, 5.6], 'x', 2]]),
@@ -229,7 +244,7 @@ export const def = {
 };
 // appearance tiers (the top hat, the wig and the fire are always worn): one choice per tier
 def.drip = [
-  [{ id: 'pd-rose', name: 'Rose in the hat band' }, { id: 'pd-plaque', name: 'Cross of five skulls' }],
+  [{ id: 'pd-rose', name: 'Rose in the hat band' }, { id: 'pd-plaque', name: 'Rose-and-cylinder medallion' }],
   [{ id: 'pd-chain', name: 'Gold skull chain' }, { id: 'pd-shades', name: 'Aviators on the brim' }],
   [{ id: 'pd-guitar', name: 'Black guitar' }, { id: 'pd-pads', name: 'Spiked bone pauldrons' }],
 ];
@@ -384,7 +399,6 @@ export const anim = {
       const spin = seg(t, 2.1, 2.75, E.inout), fin = seg(t, 2.7, 2.95, E.back) * (1 - seg(t, 3.15, 3.4, E.inout));
       const dy = -1.6 * drop + 0.6 * lift + 1.0 * fin; P.pos('body', 0, dy, 0).sq('body', -0.05 * drop + 0.03 * fin); plant(P, dy, 13);
       P.rot('root', 0, 360 * spin, 0).rot('body', 6 * drop - 8 * fin, 12 * side * lift * (1 - spin), 6 * side * lift);
-      P.rot('legR', side < 0 ? -26 * lift : 0, 0, 0).rot('legL', side > 0 ? -26 * lift : 0, 0, 0);
       P.rot('head', 10 * drop - 14 * fin, -14 * side * lift, -10 * side * lift).rot('jaw', 10 * drop + 30 * fin);
       const fr = side < 0 ? lift : 0.3 * lift, fl = side > 0 ? lift : 0.3 * lift;
       P.rot('wingR', -30 * fr - 40 * fin, 10 * fr + 20 * fin, -40 * fr - 50 * fin).rot('foreR', 0, 0, -30 * fr - 40 * fin).rot('handR', 0, 0, 20 * fr);
@@ -439,5 +453,5 @@ export const anim = {
   },
 };
 def.anim = anim;
-// the ultra-drip form (&drip=3): the automatic black-and-gold map; flames, embers and the blaze sprites burn blue
-def.dripForm = { fx: { pg_blaze: 'pg_blueblaze' } };
+// the ultra-drip form (&drip=3): gold bones, a black lacquer wig and hat; flames, embers and blaze sprites burn blue
+def.dripForm = { map: pigeonDrip({ M: {} }), fx: { pg_blaze: 'pg_blueblaze' } };

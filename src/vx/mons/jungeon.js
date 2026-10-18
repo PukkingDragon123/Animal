@@ -1,22 +1,23 @@
 // Jungeon ♂ — stage 2 of the street-pigeon line ("Welcome to the Jungle"; homage: Guns N' Roses). Pidgun
 // grown up and gone punk: taller and lankier on long coral legs, an iridescent mohawk of spiky crest
-// feathers, a black tee printed with a white skeleton ribcage (the spine on the back), and its signature: the
+// feathers, a black tee printed with a white skeleton ribcage under a studded black leather jacket worn open (leather
+// sleeves on both arm-wings, studs along the lapels and shoulders), and its signature: the
 // old six-shooter clenched in the corner of its bill like a cigar. Heavy-lidded yellow eyes with slit pupils —
 // the bored punk stare. Drip (one choice per tier): a ripped red kerchief with cream rose buds or a studded
 // choker; mirrored aviators pushed up at the foot of the mohawk or a gold chain with a little skull; a black
 // guitar slung on its back or spiked leather shoulder pads. It bounces to a beat nobody else can hear, chews
 // the revolver from one corner to the other, and fires it straight from its bill.
-import { C, P, S2, MORPH, stage2, jungeonClips, pigeonEyeRig, shadesCubes, guitarCubes, chainCubes, chokerCubes, padCubes, kerchiefS2, revolver, muzzle, ATTACH_S2 } from './pigeon_parts.js';
+import { C, P, S2, MORPH, stage2, jungeonClips, pigeonEyeRig, shadesCubes, guitarCubes, chainCubes, chokerCubes, padCubes, kerchiefS2, revolver, muzzle, ATTACH_S2, pigeonDrip } from './pigeon_parts.js';
 
-// its own low-res eyes: a heavy flat lid over yellow-orange rings with slit pupils
-const EYES = pigeonEyeRig({ grid: [5, 5], ring: ['#ffc23a', '#ff9a26'], pupil: 'slit', shape: 'heavy', at: S2.eyeAt, size: [10 / 3, 10 / 3] });
+// its own eyes (full res): a heavy flat lid over yellow-orange irises with slit pupils, in red-rimmed eye-skin
+const EYES = pigeonEyeRig({ ring: ['#ffc23a', '#f08a1e'], skin: ['#e89090', '#b0505c'], pupil: 'slit', shape: 'heavy', at: S2.eyeAt, size: [10 / 3, 10 / 3] });
 // the revolver: grip clenched crosswise in the bill, the barrel sticking out of the corner, forward and down
 const CL = [-1.1, 27.0, 10.0], K = 0.64, G = [CL[0], CL[1] + 1.1, CL[2] + 0.5], MZ = muzzle(G, K);
 const KER = kerchiefS2('jg-kerchief');
 export const def = {
   name: 'jungeon', ppu: 3, scale: 0.34, outline: { color: C.ink, px: 1.4 },
   bones: [
-    ...stage2({ M: MORPH.blue, neckExtra: [
+    ...stage2({ M: MORPH.blue, jacket: true, neckExtra: [
       ...KER.neck,
       ...chokerCubes({ xs: 4.3, y: 21.2, z0: 0.4, z1: 7.8, id: 'jg-choker', hide: true }),
       ...chainCubes({ xs: 4.35, y: 19.0, z0: 0.4, z1: 7.8, at: [0, 15.2, 9.0], id: 'jg-chain', kind: 'skull' }),
@@ -37,6 +38,8 @@ def.drip = [
   [{ id: 'jg-shades', name: 'Mirror aviators' }, { id: 'jg-chain', name: 'Gold skull chain' }],
   [{ id: 'jg-guitar', name: 'Black guitar' }, { id: 'jg-pads', name: 'Spiked shoulder pads' }],
 ];
+// the ultra-drip form (&drip=3): black lacquer plumage and leather, a gold skeleton print, gold everything else (pigeon_parts → pigeonDrip)
+def.dripForm = { map: pigeonDrip({ M: MORPH.blue }) };
 def.attach = ATTACH_S2;
 
 export const anim = {

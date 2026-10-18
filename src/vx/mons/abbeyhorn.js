@@ -9,22 +9,22 @@
 import { eyeRig } from './eyes.js';
 import { shift } from './kit.js';
 import { dripMap } from './beetle_parts.js';
-import { B, both, chitin, segs, fur, tipP, band, at, GOLD, goldP, legs, arm, arms, emote, mand, darts, walkCycle, sharedClips, onBack, E, seg, bump, wob, wave, TAU } from './beetle_parts.js';
+import { B, both, chitin, segs, fur, locks, tipP, band, at, GOLD, goldP, pixStates, legs, arm, arms, emote, mand, darts, walkCycle, sharedClips, onBack, E, seg, bump, wob, wave, TAU } from './beetle_parts.js';
 
 const C = {
-  white: ['#ffffff', '#e8ecf2', '#b8c0cc', '#868ea0'], grey: ['#a8b0c0', '#6a7284', '#4a5062', '#2e3240'], visor: ['#3a3e4c', '#1c1e28', '#121218', '#0a0a0e'],
+  white: ['#fcfdff', '#e8ecf2', '#b8c0cc', '#868ea0'], grey: ['#a8b0c0', '#6a7284', '#4a5062', '#2e3240'], visor: ['#3a3e4c', '#1c1e28', '#121218', '#0a0a0e'],
   hair: ['#c8885a', '#8a5230', '#5a3018', '#341a0c'], hairGl: '#f0c088', ivory: ['#fffaf0', '#f0e2c8', '#d0b890', '#a08458'],
   claw: ['#5a6070', '#2a2e38', '#181a22', '#0c0e12'], denim: ['#8ab4e8', '#4a78b8', '#2e5088', '#1c3260'],
 };
 // ---------------------------------------------------------------- painters
-const whiteP = chitin(C.white, { gloss: '#ffffff' });
+const whiteP = chitin(C.white, { gloss: '#fdfeff' });
 const plateP = segs(C.white, { every: 1.5 });
 const greyP = chitin(C.grey);
 const visorP = chitin(C.visor, { gloss: '#6a7088', streakAt: 0.12 });
 const clawP = tipP(C.claw);
-const hairP = fur(C.hair, { gloss: C.hairGl, shine: 0.18 });
+const hairP = locks(C.hair, { gloss: C.hairGl, sheen: 0.12 });
 const capP = (p, w, h, face, cube) => { hairP(p, w, h, face, cube); if (face === 'up') for (let y = 0; y < h; y++) p.px(Math.floor(w / 2), y, C.hair[3]); if (face === 'south') for (let y = 0; y < h; y++) p.px(Math.floor(w / 2), y, C.hair[3]); };
-const beardP = fur(C.hair, { gloss: C.hairGl, shine: 0.12 });
+const beardP = locks(C.hair, { gloss: C.hairGl, sheen: 0.08 });
 const hornP = tipP(C.ivory, { up: true });
 // the chest: white armour cut like a suit — two lapel lines in a narrow V, a pocket square of grey
 function suitP(p, w, h, face, cube) {
@@ -48,9 +48,19 @@ const wireP = (p, w, h) => p.rect(0, 0, w, h, GOLD[2]);
 
 // ---------------------------------------------------------------- the model
 const R = { hipX: 2.8, hipY: 15.8, ankleY: 1.8, L1: 6.8, L2: 7.2 };
-// sharp gold slit eyes with an upturned outer flick, set in a dark visor
-const EYES = eyeRig({ style: 'pix', chunk: 2, at: [-1.85, 29.8, 3.42], line: '#080a10', iris: '#ffc43a', irisDark: '#a86a10',
-  map: { open: ['l....', '.llll', '.ihkl', '..ll.'] } });
+// sharp gold slit eyes glowing in the dark visor: the top lid slopes down to the inner corner, an
+// upturned flick at the outer one, a vertical slit pupil, a pale-gold glow along the bottom
+const EYE_OPEN = [
+  'l.........',
+  'lllllll...',
+  '.lIIIkIll.',
+  '.lhikkiiIl',
+  '.liikkihil',
+  '..lcckccl.',
+  '...lllll..',
+];
+const EYES = eyeRig({ style: 'pix', chunk: 1, at: [-2.0, 29.8, 3.42], line: '#4a2808', pupilColor: '#080a10', iris: '#ffc43a', irisDark: '#a86a10', accent: '#fff0a0',
+  map: { open: EYE_OPEN, ...pixStates(EYE_OPEN) } });
 const RIGHT = [
   { name: 'thighR', parent: 'root', pivot: [-2.8, 15.8, 0], cubes: [B(-4.0, 8.6, -1.3, -1.6, 16.6, 1.3, whiteP)] },
   { name: 'shinR', parent: 'thighR', pivot: [-2.8, 9.0, 0], cubes: [B(-3.9, 1.6, -1.1, -1.7, 9.4, 1.1, whiteP), B(-4.0, 8.4, 0.4, -1.6, 9.8, 1.4, greyP)] },
@@ -65,9 +75,9 @@ const RIGHT = [
   // a gold coin for the coin-flip fidget
   { name: 'coinR', parent: 'handR', pivot: [-6.2, 12.6, 0.6], cubes: [B(-6.9, 12.5, -0.1, -5.5, 12.75, 1.3, goldP, { id: 'coin', hide: true })] },
   // beard: the mandibles, furred, hanging below the jaw
-  { name: 'mandR', parent: 'head', pivot: [-0.9, 28.2, 3.4], cubes: [B(-2.3, 25.0, 2.6, -0.05, 28.4, 4.3, beardP)] },
-  // long side locks framing the face
-  { name: 'lockR', parent: 'head', pivot: [-3.3, 31.8, 0.6], cubes: [B(-3.9, 25.2, -1.6, -3.0, 32.0, 2.8, hairP)] },
+  { name: 'mandR', parent: 'head', pivot: [-0.9, 28.2, 3.4], cubes: [B(-3.4, 24.6, 2.6, -0.05, 28.5, 4.4, beardP)] },
+  // long, centre-parted side locks framing the face and falling over the shoulders
+  { name: 'lockR', parent: 'head', pivot: [-4.1, 32.0, 0.8], cubes: [B(-4.6, 24.4, -1.8, -3.65, 32.4, 3.5, hairP)] },
 ];
 export const def = {
   name: 'abbeyhorn', ppu: 3, scale: 0.62, outline: { color: '#14161e', px: 1.4 },
@@ -87,21 +97,21 @@ export const def = {
     // ultra dripped: a long white cape, gold-hemmed
     { name: 'cape', parent: 'torso', pivot: [0, 27.4, -5.4], cubes: [B(-5.8, 11.0, -5.9, 5.8, 27.4, -5.3, capeP, { id: 'acc-cape', hide: true })] },
     { name: 'head', parent: 'torso', pivot: [0, 27.4, 0.6], cubes: [
-      B(-3.2, 27.2, -2.4, 3.2, 32.0, 3.2, whiteP),
-      B(-3.5, 28.8, 2.8, 3.5, 30.8, 3.4, visorP),
+      B(-3.7, 27.2, -2.4, 3.7, 32.0, 3.2, whiteP),
+      B(-3.8, 28.5, 2.8, 3.8, 31.1, 3.4, visorP),
       B(-1.8, 27.0, 3.0, 1.8, 28.6, 4.2, whiteP),
-      B(-3.4, 31.6, -2.7, 3.4, 32.8, 3.1, capP),                                     // middle-parted hair on the crown
+      B(-3.95, 31.5, -2.9, 3.95, 32.9, 3.3, capP),                                   // middle-parted hair on the crown
       // normal (or): round wire specs pushed up into its hair
       B(-2.9, 31.5, 3.1, -0.6, 32.6, 3.55, lensP, { id: 'acc-specs', hide: true }), B(0.6, 31.5, 3.1, 2.9, 32.6, 3.55, lensP, { id: 'acc-specs', hide: true, mirror: true }),
       B(-0.6, 31.95, 3.15, 0.6, 32.2, 3.4, wireP, { id: 'acc-specs', hide: true }),
       // dripped (or): a denim headband
-      B(-3.55, 30.9, -2.75, 3.55, 31.6, 3.45, denimP, { id: 'acc-band', hide: true }),
+      B(-3.8, 31.1, -2.75, 3.8, 31.7, 3.45, denimP, { id: 'acc-band', hide: true }),
       // ultra (or): a crown of daisies
       ...[[-3.2, 0.6], [-2.6, 2.6], [0, 3.0], [2.6, 2.6], [3.2, 0.6], [2.4, -1.8], [-2.4, -1.8], [0, -2.4]].map(([x, z]) => B(x - 0.6, 32.5, z - 0.6, x + 0.6, 33.3, z + 0.6, daisyP, { id: 'acc-flowers', hide: true })),
     ] },
     // the long hair down its back
-    { name: 'frill', parent: 'head', pivot: [0, 31.6, -2.6], cubes: [B(-3.4, 25.0, -4.2, 3.4, 32.2, -2.2, hairP)] },
-    { name: 'frill2', parent: 'frill', pivot: [0, 25.2, -3.3], cubes: [B(-3.2, 19.6, -4.5, 3.2, 25.4, -2.6, hairP)] },
+    { name: 'frill', parent: 'head', pivot: [0, 31.6, -2.6], cubes: [B(-3.9, 25.0, -4.4, 3.9, 32.6, -2.2, hairP)] },
+    { name: 'frill2', parent: 'frill', pivot: [0, 25.2, -3.3], cubes: [B(-3.6, 19.4, -4.7, 3.6, 25.4, -2.6, hairP)] },
     // the long elegant horn
     { name: 'horn', parent: 'head', pivot: [0, 32.0, 1.4], rot: [-12, 0, 0], cubes: [B(-0.9, 31.8, 0.6, 0.9, 36.0, 2.2, hornP)] },
     { name: 'horn2', parent: 'horn', pivot: [0, 35.8, 1.4], rot: [14, 0, 0], cubes: [B(-0.7, 35.8, 0.8, 0.7, 40.4, 2.0, hornP)] },
@@ -117,7 +127,7 @@ def.drip = [
 ];
 def.attach = {
   head: { bone: 'head', at: [0, 32.8, 0.2], size: 6.8 },
-  face: { bone: 'head', at: [0, 29.8, 3.45], size: 7 },
+  face: { bone: 'head', at: [0, 29.8, 3.45], size: 7.6 },
   neck: { bone: 'torso', at: [0, 26.8, 3.2], size: 7.2 },
   back: { bone: 'torso', at: [0, 21, -5], size: 10 },
 };
@@ -250,5 +260,6 @@ export const anim = {
 };
 def.anim = anim;
 // the ultra-drip form: white armour turns black lacquer, the ivory horn and the long hair turn gold; gold eyes kept
-def.dripForm = dripMap({ black: [[180, 300]], gold: [[0, 72]], greys: true, keep: ['#ffc43a', '#a86a10'] });
+// (the white suit goes black lacquer all over — its brightest white and gloss are swapped explicitly so no white patches stay)
+def.dripForm = dripMap({ black: [[180, 300]], gold: [[0, 72]], greys: true, keep: ['#ffc43a', '#a86a10', '#fff0a0', '#4a2808'], swap: { '#fcfdff': '#3c3c52', '#fdfeff': '#6a6a88' } });
 

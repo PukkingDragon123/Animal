@@ -128,7 +128,7 @@ const rayP = (ph = 0) => (p, w, h) => {
     }
   }
 };
-// ruffles (the Purple Rain shirt): pleats fanning from a gathered base to a scalloped edge with a
+// ruffles (the Purple Rain shirt, in purple): pleats fanning from a gathered base to a scalloped edge with a
 // black picot trim. ruffleP points up (collar petals round the face); jabotP hangs (under the chin)
 const ruffleP = (p, w, h) => {
   const cx = (w - 1) / 2;
@@ -136,7 +136,7 @@ const ruffleP = (p, w, h) => {
     const v = (j + 0.5) / h, hw = (w / 2) * (1 - 0.42 * v), dx = i - cx; if (Math.abs(dx) > hw + 0.1) continue;
     const sc = 1.5 * Math.abs(Math.sin(((i + 0.5) * Math.PI) / 3)); if (j < sc - 0.5) continue;
     const pl = (dx / hw + 1) * 1.5, fold = pl % 1, trim = j < sc + 0.5;
-    p.px(i, j, trim ? K : fold > 0.72 ? (v > 0.55 ? GRY[0] : WHT[2]) : fold < 0.25 ? '#ffffff' : WHT[1]);
+    p.px(i, j, trim ? K : fold > 0.72 ? (v > 0.55 ? AME[3] : AME[2]) : fold < 0.25 ? AME[0] : AME[1]);
   }
 };
 const jabotP = (p, w, h) => {
@@ -144,7 +144,7 @@ const jabotP = (p, w, h) => {
   for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) {
     const u = (i + 0.5) / w, sc = h - 1 - 1.8 * Math.abs(Math.sin(u * Math.PI * n)); if (j > sc + 0.5) continue;
     const ray = Math.floor(i / 2) % 2 === 0, edge = j > sc - 0.6;                                    // banded fin rays, ruffled edge
-    p.px(i, j, edge ? K : ray ? (j % 3 === 2 ? BLK[1] : '#ffffff') : j % 3 === 2 ? GRY[1] : WHT[1]);
+    p.px(i, j, edge ? K : ray ? (j % 3 === 2 ? AME[3] : AME[0]) : j % 3 === 2 ? AME[2] : AME[1]);
   }
 };
 // a venom spine: a banded needle with a scrap of membrane near the base
@@ -629,7 +629,7 @@ export const anim = {
     contact: { default: 'on', states: { on: ['contact'], off: [] } },
     gum: { default: 'off', states: { off: [], on: ['gum'] } },
   },
-  fidget: { every: [5, 9], clips: ['crown', 'preen', 'blow'] },
+  fidget: { every: [3.5, 7], clips: ['dance', 'dance', 'crown', 'preen', 'blow'] },
   clips: {
     // hovers at the front, chin up, tosses its mane; swims a lap round the inside of the
     // bouncing ball; glides back to the front and poses
@@ -824,6 +824,23 @@ export const anim = {
       eyesScale(P, 1, 0.9 + 0.1 * br); brows(P, -6, -0.15);
       P.burst(0.6, 'bblion-bub', 'head', LIPS, { n: 1, dir: [0, 1, 0.2], speed: 0.3 }).burst(2.6, 'bblion-bub', 'head', LIPS, { n: 2, dir: [0, 1, 0.2], speed: 0.3 });
       P.burst(1.3, 'z', 'head', [3, 21, 5], {}).burst(3.1, 'z', 'head', [3, 21, 5], {});
+    } },
+    // dance: a Purple Rain strut inside the ball — hip-shimmies on the beat, the mane flaring on every hit, a spin, and
+    // a finish with one fin flung high, chin up, eyes half-lidded, while the purple rain starts to fall
+    dance: { len: 3.2, next: 'idle', f(P, t, c) {
+      base(P, c, { k: 1.1, home: 1 });
+      const beat = (t / 0.4) % 1, n = Math.floor(t / 0.4), hit = Math.exp(-beat * 8), side = n % 2 ? 1 : -1, on = seg(t, 0, 0.2) * (1 - seg(t, 2.9, 3.2));
+      const spin = seg(t, 1.2, 1.7, E.inout), fin = seg(t, 2.2, 2.35, E.back) * (1 - seg(t, 2.85, 3.1));
+      lift(P, 1.4 * hit * on); squash(P, -0.06 * hit * on + wob(t, 2.2, -0.06, 3, 5));
+      P.rot('swim', 0, (spin < 1 ? 360 * spin : 0) + side * 14 * on * (1 - fin) - 30 * fin, 0).rot('fish', 0, 0, side * 10 * hit * on - 10 * fin);
+      P.rot('head', -10 * hit * on - 24 * fin, 0, side * 6 * on * (1 - fin));
+      mane(P, 1 + 0.12 * hit * on + 0.2 * fin, 10 * hit * on + 14 * fin); fins(P, 18 * hit * on, 10 * side * on);
+      P.rot('finR1', 30 * fin, 10 * fin, -128 * fin).rot('tail1', 0, side * 18 * on, 0).rot('spines', 10 * hit * on + 14 * fin, 0, 0);
+      P.face('eyes', fin > 0.3 ? 'smug' : spin > 0.05 && spin < 0.95 ? 'happy' : beat < 0.3 ? 'smug' : undefined); P.blinkOK = false;
+      eyesScale(P, 1 + 0.08 * hit * on, 1 - 0.2 * hit * on);
+      for (let k = 0; k < 5; k++) P.burst(0.2 + k * 0.4, 'note', 'head', [k % 2 ? 6 : -6, 21, 4], { n: 1, dir: [k % 2 ? 0.5 : -0.5, 1, 0.3], speed: 1 });
+      P.burst(2.25, 'bblion-glint', 'head', [0.8, 21, 4], { n: 6, spread: 1, speed: 0.7 });
+      if (t > 2.25) for (const [x, z] of RAIN.slice(0, 5)) P.stream('bblion-rain', 'root', [x, 33, z], { rate: 5, dir: [0, -1, 0], key: 'd' + x + z });
     } },
     // fidget: the crown slides down over its eyes; a beat; it shakes its head, then tosses it so the
     // crown hops back into place — and pretends nothing happened

@@ -10,7 +10,7 @@
 import { eyeRig } from './eyes.js';
 import { shift } from './kit.js';
 import { dripMap } from './beetle_parts.js';
-import { B, both, chitin, segs, fur, satin, frogging, goldP, fringeP, tipP, band, at, GOLD, legs, arm, arms, emote, mand, darts, walkCycle, sharedClips, onBack, E, seg, bump, wob, wave, TAU } from './beetle_parts.js';
+import { B, both, chitin, segs, fur, satin, frogging, goldP, fringeP, tipP, band, at, GOLD, pixStates, legs, arm, arms, emote, mand, darts, walkCycle, sharedClips, onBack, E, seg, bump, wob, wave, TAU } from './beetle_parts.js';
 
 const C = {
   shell: ['#4a8a9c', '#1e4a5c', '#12303e', '#0a1c26'], pink: ['#ffa8d0', '#ff4fa3', '#c42a78', '#8a1a56'], teal: ['#7af0e0', '#22b8a8', '#147a72', '#0c4a46'],
@@ -31,7 +31,17 @@ function backP(p, w, h, face, cube) {
   if (face === 'down') return;
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const [X, Y] = at(face, cube, x, y); if ((face === 'north' || face === 'up') && Math.abs(X) < 0.3) p.px(x, y, GOLD[1]); if (face === 'north' && Math.abs(Math.abs(X) - 5.4) < 0.3) p.px(x, y, GOLD[2]); }
 }
-const mustP = fur(C.must, { shine: 0.25, gloss: '#ffd0a0' });
+// the moustache: thick and droopy, combed outward — a sheen along the top, darker underneath
+function mustP(p, w, h, face) {
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    if (face === 'up' || face === 'down') { p.px(x, y, face === 'up' ? C.must[0] : C.must[3]); continue; }
+    const v = h > 1 ? y / (h - 1) : 0.5;
+    let c = v < 0.2 ? C.must[0] : v < 0.65 ? C.must[1] : C.must[2];
+    if ((x + y) % 4 === 0 && v > 0.15) c = shift(c, -0.14);
+    if (y === 1 && x % 5 !== 2) c = '#ffd8a8';
+    p.px(x, y, c);
+  }
+}
 const hornP = chitin(C.shell, { gloss: '#a8e8f0', dots: false });
 const bellRim = (p, w, h, face) => { goldP(p, w, h, face); if (face === 'up') { for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) p.px(x, y, (x + y) % 5 ? '#3a2408' : '#5a3a10'); } };
 // drip painters
@@ -43,9 +53,19 @@ const strapP = (p, w, h) => { for (let y = 0; y < h; y++) for (let x = 0; x < w;
 
 // ---------------------------------------------------------------- the model
 const R = { hipX: 3.0, hipY: 10.0, ankleY: 1.8, L1: 4.0, L2: 4.2 };
-// almond eyes with whites and a teal iris
-const EYES = eyeRig({ style: 'pix', chunk: 2, at: [-2.25, 24.4, 3.82], line: '#0c1a20', iris: '#22c8b8', irisDark: '#0c5a56',
-  map: { open: ['llll.', 'lwhil', 'lwiIl', '.lll.'] } });
+// almond showman's eyes: whites, a teal iris under a heavy lined lid, a lash flick at the outer corner
+const EYE_OPEN = [
+  'll..........',
+  '.lllllllll..',
+  'lllsIIIIslll',
+  'lwwIhiiiIwwl',
+  'lwwIhkkiIwwl',
+  '.lwIikkiIwl.',
+  '..lwicciwl..',
+  '...llllll...',
+];
+const EYES = eyeRig({ style: 'pix', chunk: 1, at: [-2.3, 24.3, 3.82], line: '#0c1a20', pupilColor: '#06100f', iris: '#22c8b8', irisDark: '#0c5a56', accent: '#8af0e0',
+  map: { open: EYE_OPEN, ...pixStates(EYE_OPEN) } });
 const RIGHT = [
   { name: 'thighR', parent: 'root', pivot: [-3.0, 10.0, 0], cubes: [B(-4.3, 5.6, -1.4, -1.7, 10.8, 1.4, shellP)] },
   { name: 'shinR', parent: 'thighR', pivot: [-3.0, 6.0, 0], cubes: [B(-4.1, 1.6, -1.2, -1.9, 6.4, 1.2, shellP), B(-4.3, 5.2, 0.4, -1.7, 6.8, 1.6, orangeP)] },
@@ -88,13 +108,13 @@ export const def = {
     // ultra (or): a satin half-cape, teal over pink lining
     { name: 'cape', parent: 'torso', pivot: [0, 21.4, -5.9], cubes: [B(-6.0, 11.4, -6.3, 6.0, 21.4, -5.7, capeP, { id: 'acc-cape', hide: true })] },
     { name: 'head', parent: 'torso', pivot: [0, 21.0, 0.6], cubes: [
-      B(-4.0, 20.8, -2.6, 4.0, 26.4, 3.8, shellP),
+      B(-4.4, 20.8, -2.6, 4.4, 26.4, 3.8, shellP),
       B(-2.4, 20.6, 3.6, 2.4, 22.8, 5.0, shellP),                                                          // the clypeus
       B(-1.2, 20.7, 4.9, 1.2, 21.3, 5.15, (p, w, h) => p.rect(0, 0, w, h, '#06080a'), { outline: false }),
       // dripped (or): tinted round shades pushed up on its brow
       B(-3.4, 25.7, 3.7, -0.7, 26.9, 4.3, lensP, { id: 'acc-shades', hide: true }), B(0.7, 25.7, 3.7, 3.4, 26.9, 4.3, lensP, { id: 'acc-shades', hide: true, mirror: true }),
       B(-0.7, 26.2, 3.8, 0.7, 26.5, 4.1, goldP, { id: 'acc-shades', hide: true }),
-      B(-4.15, 26.1, -1.0, -3.95, 26.4, 3.9, goldP, { id: 'acc-shades', hide: true }), B(3.95, 26.1, -1.0, 4.15, 26.4, 3.9, goldP, { id: 'acc-shades', hide: true }),
+      B(-4.6, 26.1, -1.0, -4.4, 26.4, 3.9, goldP, { id: 'acc-shades', hide: true }), B(4.4, 26.1, -1.0, 4.6, 26.4, 3.9, goldP, { id: 'acc-shades', hide: true }),
     ] },
     // the horn: up from the brow, curling forward into a flared brass bell
     { name: 'horn', parent: 'head', pivot: [0, 26.0, 1.4], rot: [-6, 0, 0], cubes: [B(-1.4, 25.8, 0.2, 1.4, 29.8, 2.8, hornP)] },
@@ -112,8 +132,8 @@ def.drip = [
   [{ id: 'acc-drum', name: 'Marching snare' }, { id: 'acc-cape', name: 'Satin half-cape' }],
 ];
 def.attach = {
-  head: { bone: 'head', at: [0, 26.4, 0.6], size: 8 },
-  face: { bone: 'head', at: [0, 24.4, 3.85], size: 8 },
+  head: { bone: 'head', at: [0, 26.4, 0.6], size: 8.8 },
+  face: { bone: 'head', at: [0, 24.3, 3.85], size: 8.8 },
   neck: { bone: 'torso', at: [0, 20.6, 3.1], size: 7.6 },
   back: { bone: 'torso', at: [0, 16.6, -5.5], size: 11.6 },
 };
@@ -247,5 +267,5 @@ export const anim = {
 };
 def.anim = anim;
 // the ultra-drip form: black lacquer jacket and shell, gold braid and bell; the eyes keep their teal
-def.dripForm = dripMap({ black: [[150, 300], [300, 345]], gold: [[10, 72]], keep: ['#22c8b8', '#0c5a56'] });
+def.dripForm = dripMap({ black: [[150, 300], [300, 345]], gold: [[10, 72]], keep: ['#22c8b8', '#0c5a56', '#8af0e0'] });
 

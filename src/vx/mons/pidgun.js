@@ -1,27 +1,28 @@
-// Pidgun ♂ — a cocky street pigeon that runs the Tenderloin (homage: Guns N' Roses). Classic blue-bar
-// plumage — slate grey, two black wing bars, a neck that flashes green and violet — a little curled quiff,
-// small fierce orange ring-eyes, and in its right wing its signature: an oversized
-// antique six-shooter (nickel, engraved, ivory grips with a little red rose inlaid). Drip (one choice per
-// tier): a black bandana printed with red rose buds or a rose tucked behind its head; a gold chain with a rose
-// pendant or a studded choker; a sunburst electric guitar slung on its back or a black cowboy hat. It struts
+// Pidgun ♂ — a cocky street pigeon that runs the Tenderloin (homage: Guns N' Roses, the frontman era). Classic
+// blue-bar plumage — slate grey, a neck that flashes green and violet — under a black studded leather jacket
+// (open down the breast, sleeves on both wings), a black rose-bud bandana tied over its crown with the tails
+// flying, fierce orange ring-eyes in pale eye-skin, and in its right wing its
+// signature: an oversized antique six-shooter (nickel, engraved, ivory grips with a little red rose inlaid).
+// Drip (one choice per tier): a rose tucked behind its head or aviator shades pushed up on the bandana; a gold
+// chain with a rose pendant or a studded choker; a sunburst electric guitar slung on its back or a black cowboy hat. It struts
 // with the classic pigeon head-bob, spins the revolver when it's bored and pecks at crumbs when it thinks
 // nobody's looking.
 import { E, seg, bump, wob, wave, key } from '../anim.js';
-import { C, P, S1, MORPH, stage1, wingSegP, tipsP, pigeonEyeRig, quiffCubes, revolver, muzzle, guitarCubes, chainCubes, chokerCubes, cowboyHatCubes, bandanaS1, tuckedRose, plant, strut, peck, ATTACH_S1 } from './pigeon_parts.js';
+import { C, P, S1, MORPH, stage1, wingSegP, tipsP, pigeonEyeRig, revolver, muzzle, guitarCubes, chainCubes, chokerCubes, cowboyHatCubes, shadesCubes, bandanaS1, leatherRegion, leatherSleeve, tuckedRose, plant, strut, peck, ATTACH_S1, pigeonDrip } from './pigeon_parts.js';
 
-// Cobblemon-style low-res eyes, its own design: small orange rings with a dark pupil, the outer top corner cut fierce
-const EYES = pigeonEyeRig({ grid: [5, 5], ring: ['#ffa834', '#ff7a24'], pupil: 'round', shape: 'sharp', at: S1.eyeAt, size: [10 / 3, 10 / 3] });
+// its own eyes (full res): orange irises shaded dark under the lid, a round pupil, pale eye-skin, the inner top cut fierce
+const EYES = pigeonEyeRig({ ring: ['#ffa834', '#ff6a1c'], skin: ['#dcd6e0', '#a096aa'], pupil: 'round', shape: 'sharp', at: S1.eyeAt, size: [10 / 3, 10 / 3] });
 const ES = (P, x, y = x) => P.scl('eyeR', x, y, 1).scl('eyeL', x, y, 1);
 const DART = (P, x) => P.pos('eyeR', x, 0, 0).pos('eyeL', x, 0, 0);
 const G = [-8.9, 6.0, 6.8], TRIG = [-8.9, 4.8, 7.6], MZ = muzzle(G), BEAK = S1.mouth;
 const HAND = wingSegP({ base: [-6.8, 8.4, 1.2], dir: [0, 0, 1], len: 7.0, cdir: [0, -1, 0], chord: 4.4, kind: 'hand' });
-const BANDANA = bandanaS1('pg-bandana');
+const BANDANA = bandanaS1('pg-bandana', { show: true });
 
 export const def = {
   name: 'pidgun', ppu: 3, scale: 0.32, outline: { color: C.ink, px: 1.4 },
   bones: [
-    ...stage1({ M: MORPH.blue, wingR: false,
-      headExtra: [...quiffCubes([0, 25.2, 6.0], MORPH.blue.head, 1), ...BANDANA.head],
+    ...stage1({ M: MORPH.blue, wingR: false, bodyRegion: leatherRegion({ EC: S1.EC, pitch: S1.pitch, hem: 7.6, open: 0.42 }), wingOpts: { sleeve: leatherSleeve(0.6) },
+      headExtra: BANDANA.head,
       neckExtra: [
         ...chainCubes({ xs: 4.45, y: 16.3, z0: -0.6, z1: 6.6, at: [0, 13.9, 9.4], id: 'pg-chain', kind: 'rose' }),
         ...chokerCubes({ xs: 4.4, y: 16.6, z0: -0.6, z1: 6.6, id: 'pg-choker', hide: true }),
@@ -30,7 +31,7 @@ export const def = {
     ...BANDANA.bones, tuckedRose('hairRose', 'pg-rosetuck'),
     // the gun wing, held like an arm: the coverts hang from the shoulder, the primaries close round the grip
     { name: 'wingR', parent: 'body', pivot: [-6.0, 14.6, 3.6], rot: [-22, 0, -10], cubes: [
-      P([-7.3, 6.6, -0.6], [1.3, 8.6, 4.8], wingSegP({ base: [-6.0, 15.2, 4.2], dir: [0, -1, 0], len: 8.6, cdir: [0, 0, -1], chord: 4.8, kind: 'arm', bar1: 0.46, bar2: 0.66, barW: 0.08 })),
+      P([-7.3, 6.6, -0.6], [1.3, 8.6, 4.8], wingSegP({ base: [-6.0, 15.2, 4.2], dir: [0, -1, 0], len: 8.6, cdir: [0, 0, -1], chord: 4.8, kind: 'arm', bar1: 0.46, bar2: 0.66, barW: 0.08, sleeve: leatherSleeve(0.62) })),
       P([-6.65, 7.2, -2.0], [0, 7.4, 2.0], tipsP({ n: 4, cols: C.slate, dir: 'back' }), { plane: 'x' }),
     ] },
     { name: 'handR', parent: 'wingR', pivot: [-6.8, 7.6, 1.2], rot: [22, 0, 0], cubes: [
@@ -41,16 +42,20 @@ export const def = {
     { name: 'gun', parent: 'twirl', pivot: G, cubes: revolver(G, 1) },
     // a sunburst single-cut slung on its back, the neck up over its left shoulder
     { name: 'guitar', parent: 'body', pivot: [0.4, 12.0, -7.9], rot: [-24, 180, 28], cubes: guitarCubes([0.4, 12.0, -7.9], { k: 1.18, id: 'pg-guitar', hide: true }) },
+    // aviator shades pushed up on the bandana
+    { name: 'shades', parent: 'head', pivot: [0, 26.4, 1.0], rot: [-38, 0, 0], cubes: shadesCubes([0, 26.4, 1.0], { k: 0.95, kind: 'aviator', id: 'pg-shades', hide: true }) },
     // a black cowboy hat, tipped back over the quiff
     { name: 'stetson', parent: 'head', pivot: [0, 26.3, 2.4], rot: [-16, 0, 6], cubes: cowboyHatCubes([0, 26.3, 2.4], { k: 1.0, id: 'pg-hat' }) },
   ],
 };
 // appearance tiers: normal wears one of the first list, dripped adds one of the second, ultra dripped the third
 def.drip = [
-  [{ id: 'pg-bandana', name: 'Rose-bud bandana' }, { id: 'pg-rosetuck', name: 'Rose behind the head' }],
+  [{ id: 'pg-rosetuck', name: 'Rose behind the head' }, { id: 'pg-shades', name: 'Aviator shades' }],
   [{ id: 'pg-chain', name: 'Gold rose chain' }, { id: 'pg-choker', name: 'Studded choker' }],
   [{ id: 'pg-guitar', name: 'Sunburst guitar' }, { id: 'pg-hat', name: 'Black cowboy hat' }],
 ];
+// the ultra-drip form (&drip=3): black lacquer plumage and leather, gold everything else (pigeon_parts → pigeonDrip)
+def.dripForm = { map: pigeonDrip({ M: MORPH.blue }) };
 def.attach = { ...ATTACH_S1, head: { bone: 'head', at: [0, 26.1, 2.8], size: 8.3 } };
 
 // ---------------------------------------------------------------- animation

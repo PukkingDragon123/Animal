@@ -1,7 +1,7 @@
 // Barkorious — the king of Pier 39 (Hydro / Echo). A giant, heavyset sea lion who runs
 // the docks: glossy dark-chocolate hide with warm highlights, a broad caramel muzzle with
 // thick whiskers on springs, heavy-lidded eyes that never hurry, a gold crown worn at a jaunty
-// tilt (or a flat cap worn backwards), a heavy gold chain with a scallop-shell medallion, and a
+// tilt, a heavy gold chain with a scallop-shell medallion, and a
 // loud 90s knit sweater across its chest and shoulders. Smooth, unbothered, generous:
 // it is always nodding to a beat, and it raps in barks.
 // An homage to a Brooklyn legend's vibe — an original design, never a likeness. Album
@@ -300,8 +300,7 @@ const EYES = eyeRig({ style: 'pix', chunk: 1, at: [-3.5, 26.1, 8.05], line: C.in
   happy: ['............', '..llllllll..', '.l........l.', 'l..........l', '............', '............'],
   closed: ['............', '............', 'llllllllllll', '.llllllllll.', '............', '............'],
 } });
-// drip painters: a backwards flat cap in herringbone tweed, black-lens shades with gold rims, a mink stole, a gold mic
-const tweedP = (p, w, h, face) => fill(p, w, h, (x, y) => (face === 'down' ? '#141016' : (x + (y % 2 ? 1 : 0)) % 3 === 0 ? '#5a5260' : face === 'up' ? '#3a343e' : '#2a252e'));
+// drip painters: black-lens shades with gold rims, a mink stole, a gold mic
 const shadeP = (p, w, h) => fill(p, w, h, (x, y) => (x === 0 || y === 0 || x === w - 1 || y === h - 1 ? (x + y) % 3 ? C.gold : C.goldHi : y === 1 && x === 1 ? '#8a8aa0' : y < h / 2 ? '#24242e' : '#101016'));
 const minkP = (p, w, h, face) => fill(p, w, h, (x, y) => { const tip = (x * 5 + y * 3) % 7; return face === 'down' ? '#3a2416' : tip === 0 ? '#c8a07a' : tip < 3 ? '#8a5e3c' : face === 'up' ? '#a87a52' : '#6e4a30'; });
 const micP = (p, w, h, face) => fill(p, w, h, (x, y) => (face === 'up' ? C.goldHi : (x + y) % 2 ? '#3a3440' : '#b8bcc8'));
@@ -391,7 +390,11 @@ export const def = {
       B([-14.4, 0.05, 4.33], [5.33, 0.83, 5.33], flipP({ ridges: [0, 9], nails: 0.55 })),
       B([-13.73, 0.05, 9.5], [4, 0.67, 2.67], flipP(), { pivot: [-11.73, 0.4, 9.5], rot: [-8, 0, 0] }),
     ] }),
-    // drip 3 (or): a gold mic gripped upright in the left fore flipper
+    // drip 3 (or): a black cane with a gold knob, planted beside the left fore flipper
+    { name: 'cane', parent: 'flipL', pivot: [12.3, 0.8, 8.6], cubes: [
+      B([11.95, 0.0, 8.3], [0.7, 9.6, 0.7], '#16121a'), B([11.6, 9.4, 7.95], [1.4, 1.4, 1.4], goldP), B([11.85, 0.0, 8.2], [0.9, 0.5, 0.9], goldP),
+    ].map((c) => ({ ...c, id: 'acc-cane', hide: true })) },
+    // drip 3: a gold mic gripped upright in the left fore flipper
     { name: 'mic', parent: 'flipL', pivot: [12.3, 0.8, 7.6], cubes: [
       B([11.75, 0.8, 7.05], [1.1, 5.0, 1.1], goldP), B([11.2, 5.6, 6.5], [2.2, 2.4, 2.2], micP), B([11.45, 5.3, 6.75], [1.7, 0.45, 1.7], goldP),
     ].map((c) => ({ ...c, id: 'acc-mic', hide: true })) },
@@ -411,6 +414,8 @@ export const def = {
       B([6.17, 24.83, 1], [0.5, 1.17, 1.17], goldP), B([6.17, 24.5, 1.33], [0.5, 0.5, 0.5], goldP, { outline: false }),   // a small gold hoop in the left ear
       B([-2.5, 20, 11.67], [0.67, 0.83, 0.67], toothP, { outline: false }),
       B([1.83, 20, 11.67], [0.67, 0.83, 0.67], goldP, { outline: false }),          // one gold fang
+      // drip 2 (or): a full gold grill, diamonds set in it
+      B([-2.75, 19.9, 11.55], [5.5, 0.8, 0.9], goldP, { id: 'acc-grill', hide: true }), B([-1.2, 20.05, 12.4], [0.5, 0.45, 0.1], '#e8fbff', { id: 'acc-grill', hide: true, glow: true }), B([0.7, 20.05, 12.4], [0.5, 0.45, 0.1], '#e8fbff', { id: 'acc-grill', hide: true, glow: true }),
       // the toddler curls, peeking out from under the cocked crown
       B([2, 29.5, 5.67], [1.5, 1.33, 1.5], curlP), B([3.33, 29.5, 4.5], [1.5, 1.5, 1.5], curlP),
       B([0.83, 29.33, 6.83], [1.33, 1.17, 1.17], curlP), B([2.83, 29.17, 7], [1.17, 1.17, 1.17], curlP),
@@ -431,10 +436,7 @@ export const def = {
     ] },
     ...twin({ name: 'whiskR', parent: 'head', pivot: [-4.13, 21.83, 10.5], cubes: [B([-11.13, 19.5, 10.5], [7, 4.67, 0], whiskP, { plane: 'z', pivot: [-4.13, 21.83, 10.5], rot: [0, -22, 0] })] }),
     { name: 'crown', parent: 'head', pivot: [CR.x, CR.y, CR.z], rot: [-4, 0, 13], cubes: [
-      ...CROWN.map((c) => ({ ...c, id: 'acc-crown', hide: true })),
-      // (or) a tweed flat cap worn backwards, the brim over the back of its neck
-      ...[B([CR.x - 4.4, CR.y - 0.2, CR.z - 4.4], [8.8, 1.9, 8.8], tweedP), B([CR.x - 3.8, CR.y + 1.7, CR.z - 3.8], [7.6, 0.6, 7.6], tweedP),
-        B([CR.x - 3.4, CR.y + 0.2, CR.z - 6.6], [6.8, 0.45, 2.4], tweedP), B([CR.x - 0.4, CR.y + 2.3, CR.z - 0.4], [0.8, 0.3, 0.8], goldP)].map((c) => ({ ...c, id: 'acc-cap', hide: true })),
+      ...CROWN,                                                     // the crown is its signature: always worn
     ] },
     // drip 3 (or): a mink stole round the shoulders, the tails hanging down its chest
     { name: 'stole', parent: 'torso', pivot: [0, 14, 1], cubes: [
@@ -542,7 +544,7 @@ export const anim = {
     tongue: { default: 'in', states: { in: [], out: ['tongue-out'] } },
     prop: { default: 'off', states: { off: [], on: ['hood'] } },
   },
-  fidget: { every: [6, 11], clips: ['clap', 'chain', 'photo'] },
+  fidget: { every: [3.5, 7], clips: ['dance', 'dance', 'photo', 'clap', 'chain'] },
   clips: {
     // always on the beat: heavy head-nod, the neck a hair behind, chest pumping, a hind flipper
     // tapping time, lips mouthing the bars, a smug lid — and now and then a lazy flipper wave
@@ -717,6 +719,21 @@ export const anim = {
       P.face('eyes', 'closed'); P.blinkOK = false; P.lookW = 0; P.breathW = 0; eyesScale(P, 1, 0.85 + 0.15 * inh);
       for (const tz of [0.9, 2.1, 3.3]) P.burst(tz, 'z', 'head', [-3, 30, 11], { scale: 1.8 });
     } },
+    // dance: the big-man two-step — a heavy bounce on the beat, shoulders rocking side to side, both fore flippers up
+    // waving in the air on the hook, and a cool lean-back finish with a bling off the crown
+    dance: { len: BEAT * 6, next: 'idle', f(P, t) {
+      const b = t / BEAT, u = b % 1, n = Math.floor(b), hit = nodC(u), side = n % 2 ? 1 : -1, on = seg(b, 0, 0.4) * (1 - seg(b, 5.4, 6));
+      const wave2 = bump(b, 2, 4), fin = seg(b, 4.3, 4.6, E.back) * (1 - seg(b, 5.4, 5.9));
+      P.rot('head', -3 + 12 * hit * on - 10 * fin, side * 8 * on, -side * 5 * on).rot('neck', 5 * hit * on, side * 3 * on, 0);
+      squash(P, -0.05 * hit * on);
+      P.rot('body', 0, side * 6 * on * (1 - fin) + 8 * fin, side * 4 * on * (1 - fin) + 4 * fin).rot('rear', 0, -side * 3 * on, 0);
+      P.rot('armR', -60 * wave2 - 20 * on * Math.max(0, side) * (1 - wave2), 0, -30 * wave2).rot('armL', -60 * wave2 - 20 * on * Math.max(0, -side) * (1 - wave2), 0, 30 * wave2);
+      P.rot('flipR', 0, wave(t, 1.6) * 30 * wave2, 0).rot('flipL', 0, -wave(t, 1.6) * 30 * wave2, 0).rot('jaw', 6 * hit * on);
+      P.face('eyes', fin > 0.3 ? 'smug' : wave2 > 0.5 ? 'happy' : u < 0.3 ? 'happy' : 'smug'); P.blinkOK = false;
+      eyesScale(P, 1, 1 - 0.18 * hit * on);
+      for (let k = 0; k < 5; k++) P.burst(BEAT * (0.4 + k), 'goldnote', 'head', [k % 2 ? 8 : -8, 31, 6], { n: 1, dir: [k % 2 ? 0.5 : -0.5, 1, 0.3], speed: 1.2 });
+      P.burst(BEAT * 4.4, 'bling', 'crown', CROWN_TOP, {}).burst(BEAT * 4.4, 'sparkle', 'crown', [CR.x, CR.y + 2, CR.z], { n: 6 });
+    } },
     // fidget: a smug sea-lion clap — three slaps, a bark on each
     clap: { len: 2.0, next: 'idle', f(P, t) {
       const up = seg(t, 0.05, 0.35, E.back) * (1 - seg(t, 1.5, 1.9, E.inout));
@@ -764,10 +781,11 @@ def.attach = {
   back: { bone: 'torso', at: [0, 13.4, -10], size: 18 },
 };
 // appearance tiers: normal wears one of the first list, dripped adds one of the second, ultra dripped one of the third
+// (the jewelled crown and the loud knit sweater are its signature: always worn)
 def.drip = [
-  [{ id: 'acc-crown', name: 'Jewelled crown' }, { id: 'acc-cap', name: 'Backwards flat cap' }],
   [{ id: 'acc-chain', name: 'Shell-medallion chain' }, { id: 'acc-shades', name: 'Gold-rim shades' }],
-  [{ id: 'acc-mink', name: 'Mink stole' }, { id: 'acc-mic', name: 'Gold mic' }],
+  [{ id: 'acc-mink', name: 'Mink stole' }, { id: 'acc-grill', name: 'Diamond grill' }],
+  [{ id: 'acc-mic', name: 'Gold mic' }, { id: 'acc-cane', name: 'Gold-knob cane' }],
 ];
 
 // the ultra-drip form: the eyes keep their own colours, and pale creams that blackGold would lacquer black turn

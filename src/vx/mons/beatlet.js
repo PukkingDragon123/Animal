@@ -8,18 +8,19 @@
 import { eyeRig } from './eyes.js';
 import { shift } from './kit.js';
 import { dripMap } from './beetle_parts.js';
-import { B, both, chitin, fur, tipP, leafP, at, band, legs, arm, arms, emote, darts, walkCycle, sharedClips, onBack, E, seg, bump, wob, wave, TAU } from './beetle_parts.js';
+import { B, both, chitin, fur, tipP, leafP, at, band, jit, pixStates, legs, arm, arms, emote, darts, walkCycle, sharedClips, onBack, E, seg, bump, wob, wave, TAU } from './beetle_parts.js';
 import { bounce } from '../anim.js';
 
 const C = {
-  suit: ['#9096a8', '#5c6070', '#3a3c4a', '#22232c'], pipe: '#121218', shirt: '#f2eee4', shirtLo: '#cfc8bc',
-  face: ['#6a9ca0', '#2c4c54', '#1a2e36', '#0e181e'], hand: ['#c07a48', '#7e4226', '#542a18', '#361a10'], hair: ['#8a5a4a', '#46281e', '#2a1612', '#180c0a'], hairGl: '#c89880',
+  suit: ['#a8aab2', '#70727c', '#4a4c54', '#2c2d33'], pipe: '#121218', shirt: '#f2eee4', shirtLo: '#cfc8bc',
+  face: ['#86c0c4', '#3e6e78', '#284a54', '#16303a'], hand: ['#c07a48', '#7e4226', '#542a18', '#361a10'], hair: ['#9a6a42', '#6a4228', '#4a2c1a', '#2a180c'], hairGl: '#e0b080',
   boot: ['#5a4a56', '#201820', '#140e14', '#0a060a'], horn: ['#c08a5a', '#8a4e30', '#5a2a1c', '#3a1810'],
   claw: ['#6a3a22', '#3a1c10', '#24100a', '#140806'], leaf: '#7ad04a', leafLo: '#3e9a36',
   satin: ['#ff9ccc', '#ff4fa3', '#c42a78', '#8a1a56'], gold: ['#fff6b0', '#ffd23e', '#d0902a', '#8a561a'],
 };
 // ---------------------------------------------------------------- painters
-const suitP = chitin(C.suit, { gloss: '#c8cede' });
+const suitP0 = chitin(C.suit, { streak: false, dots: false });
+const suitP = (p, w, h, face, cube) => { suitP0(p, w, h, face, cube); if (face !== 'down') for (let y = 1; y < h; y++) for (let x = (y & 1); x < w; x += 2) p.px(x, y, shift(band(C.suit, face, x, y, h), 0.05)); };
 // the chest: a collarless suit front — a round neckline piped in black, shirt and slim tie inside, two buttons below
 function chestP(p, w, h, face, cube) {
   suitP(p, w, h, face, cube);
@@ -28,7 +29,9 @@ function chestP(p, w, h, face, cube) {
     const [X, Y] = at(face, cube, x, y), ax = Math.abs(X), cv = 11.7 - 2.1 * (1 - Math.min(1, (ax / 2.3) ** 2));
     if (ax < 2.3 && Y > cv) p.px(x, y, ax < 0.4 ? C.pipe : Y > 11.3 ? C.shirtLo : C.shirt);
     else if (ax < 2.7 && Y > cv - 0.4) p.px(x, y, C.pipe);
-    if (ax < 0.36 && (Math.abs(Y - 8.7) < 0.36 || Math.abs(Y - 7.7) < 0.36)) p.px(x, y, '#16161c');
+    else if (ax < 0.17) p.px(x, y, C.pipe);                                           // the edge-to-edge front, piped
+    if (ax < 0.5 && (Math.abs(Y - 9.0) < 0.3 || Math.abs(Y - 8.0) < 0.3)) p.px(x, y, '#16161c');                 // covered buttons
+    if (ax > 2.0 && ax < 3.7 && Math.abs(Y - 8.0) < 0.17) p.px(x, y, C.pipe);       // piped pocket flaps
   }
 }
 // the elytra: suit markings — black piping along the outer edge and down the centre vent
@@ -44,24 +47,27 @@ function backP(p, w, h, face, cube) {
 const sleeveP = (p, w, h, face, cube) => { suitP(p, w, h, face, cube); if (face !== 'up' && face !== 'down') for (let x = 0; x < w; x++) p.px(x, h - 1, C.pipe); };
 const cuffP = (p, w, h, face) => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, y === 0 ? '#ffffff' : C.shirtLo); };
 const faceP = chitin(C.face, { gloss: '#ffcfa0', streakAt: 0.2 });
+// the mop-top: smooth, glossy, combed-down hair — a soft gradient (lighter on the crown), faint
+// strands every few texels, and one broad sheen band wrapping the dome
 function mopP(p, w, h, face, cube) {
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
     const [X, Y, Z] = at(face, cube, x, y);
     let c;
-    if (face === 'up') { const a = Math.atan2(Z, X); c = Math.floor(a * 4 + 40) & 1 ? C.hair[1] : shift(C.hair[1], 0.08); if (Math.hypot(X, Z) < 1) c = C.hair[2]; }
+    if (face === 'up') { const r = Math.hypot(X, Z); c = r < 1.2 ? C.hair[1] : Math.floor(Math.atan2(Z, X) * 5 + 40) & 1 ? C.hair[0] : shift(C.hair[0], -0.06); if (Math.abs(r - 2.6) < 0.4) c = C.hairGl; }
     else if (face === 'down') c = C.hair[3];
     else {
-      const part = x % 3 === 0, lit = face === 'south' || face === 'west', sh = 19.9 + Math.sin(x * 0.6) * 0.25;
-      c = Y > 17 ? C.hair[1] : C.hair[2];
-      if (Math.abs(Y - sh) < 0.36) c = part ? C.hair[1] : lit ? C.hairGl : C.hair[0];
-      else if (Math.abs(Y - sh) < 0.75) c = part ? C.hair[1] : C.hair[0];
-      else if (part) c = C.hair[2];
-      if (Y < 15.75 && (x + (y & 1)) % 3 !== 1) c = 0;
+      const part = (x + Math.floor(jit(Math.floor(x / 4)) * 2)) % 4 === 0, lit = face === 'south' || face === 'west', sh = 20.1 + Math.sin(x * 0.5) * 0.2;
+      c = Y > 18.5 ? C.hair[0] : Y > 16 ? C.hair[1] : C.hair[2];
+      if (part) c = shift(c, -0.1);
+      if (Math.abs(Y - sh) < 0.36) c = lit ? C.hairGl : shift(C.hair[0], 0.08);
+      else if (Math.abs(Y - sh) < 0.7) c = shift(C.hair[0], 0.04);
+      if (y === h - 1 && cube.o[1] < 15 && (x + (y & 1)) % 3 !== 1) c = 0;            // a soft, uneven hem where it hangs
     }
     p.px(x, y, c);
   }
 }
-const fringeP2 = (p, w, h, face) => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { let c = face === 'up' ? C.hair[1] : face === 'down' ? C.hair[3] : y < 2 ? C.hair[1] : C.hair[2]; if (face !== 'up' && face !== 'down') { if (x % 3 === 0) c = C.hair[3]; else if (y === 1 && x % 7 !== 3) c = C.hair[0]; if (y >= h - 1 && x % 3 !== 1) c = 0; } p.px(x, y, c); } };
+// the fringe: combed straight down and cut level just over the eyes, a soft sheen across its middle
+const fringeP2 = (p, w, h, face) => { const sh = Math.round(h * 0.3); for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { let c = face === 'up' ? C.hair[0] : face === 'down' ? C.hair[3] : y < sh ? C.hair[0] : y < h * 0.7 ? C.hair[1] : C.hair[2]; if (face !== 'up' && face !== 'down') { const part = (x + Math.floor(jit(Math.floor(x / 4)) * 2)) % 4 === 0; if (part) c = shift(c, -0.12); if (Math.abs(y - sh - Math.round(Math.sin(x * 0.5) * 0.5)) < 1) c = face === 'south' ? C.hairGl : shift(C.hair[0], 0.08); if (y >= h - 1 && x % 4 === 1) c = 0; } p.px(x, y, c); } };
 const bootP = chitin(C.boot, { gloss: '#9a8a96', dots: false });
 const heelP = (p, w, h) => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, y === 0 ? '#6a4a3a' : '#3a2620'); };
 const clawP = tipP(C.claw);
@@ -82,8 +88,20 @@ const mandP = (p, w, h, face) => { for (let y = 0; y < h; y++) for (let x = 0; x
 
 // ---------------------------------------------------------------- the model
 const R = { hipX: 2.4, hipY: 5.8, ankleY: 1.4, L1: 2.2, L2: 2.2 };
-const EYES = eyeRig({ style: 'pix', chunk: 2, at: [-2.45, 15.3, 3.82], line: '#1a0c08', iris: '#ffb030', irisDark: '#b05a10',
-  map: { open: ['.ll.', 'lhil', 'liIl', '.ll.'] } });
+// round amber bead eyes peeking from under the fringe: a shadowed top, a big glossy pupil, a warm glow below
+const EYE_OPEN = [
+  '...llll...',
+  '.llIIIIll.',
+  'liiiiiiiil',
+  'liihhkiiil',
+  'liiikkiiil',
+  'liiikkiiil',
+  'lccckkchcl',
+  '.llccccll.',
+  '...llll...',
+];
+const EYES = eyeRig({ style: 'pix', chunk: 1, at: [-2.15, 15.5, 3.82], line: '#1a0c08', pupilColor: '#160804', iris: '#f0a020', irisDark: '#9a4a10', accent: '#ffd870',
+  map: { open: EYE_OPEN, ...pixStates(EYE_OPEN) } });
 const RIGHT = [
   { name: 'thighR', parent: 'root', pivot: [-2.4, 5.8, 0], cubes: [B(-3.4, 3.4, -1.0, -1.4, 6.4, 1.0, suitP)] },
   { name: 'shinR', parent: 'thighR', pivot: [-2.4, 3.6, 0], cubes: [B(-3.3, 1.2, -0.9, -1.5, 3.8, 0.9, suitP)] },
@@ -128,23 +146,25 @@ export const def = {
       B(-0.6, 15.0, -5.85, 0.6, 16.4, -5.1, violinP, { id: 'acc-violin', hide: true }),
     ] },
     { name: 'head', parent: 'torso', pivot: [0, 12.8, 0.4], cubes: [
-      B(-3.8, 12.6, -2.4, 3.8, 18.6, 3.8, faceP),
-      B(-2.3, 12.3, 3.6, 2.3, 14.5, 5.0, faceP),                                                          // the clypeus: a beetle's muzzle plate
-      B(-1.2, 12.5, 4.9, 1.2, 13.2, 5.15, (p, w, h) => p.rect(0, 0, w, h, '#0a0a0e'), { outline: false }),  // the mouth slot between the mandibles
-      // the mop-top: a glossy bowl over the crown, hanging over the sides and the back of the neck
-      B(-4.8, 15.4, -3.2, 4.8, 19.2, 3.4, mopP), B(-4.6, 19.2, -3.0, 4.6, 20.6, 3.2, mopP), B(-4.0, 20.6, -2.5, 4.0, 21.6, 2.7, mopP),
-      B(-3.0, 21.6, -1.8, 3.0, 22.4, 2.0, mopP), B(-4.4, 13.2, -3.2, 4.4, 15.4, 0.6, mopP),
-      // dripped (or): pink round shades pushed up on the mop-top
-      B(-3.3, 20.2, 3.2, -0.7, 21.6, 3.75, lensP, { id: 'acc-shades', hide: true }), B(0.7, 20.2, 3.2, 3.3, 21.6, 3.75, lensP, { id: 'acc-shades', hide: true, mirror: true }),
-      B(-0.7, 20.8, 3.3, 0.7, 21.1, 3.6, wireP, { id: 'acc-shades', hide: true }),
-      B(-4.65, 20.7, -0.8, -4.45, 21.0, 3.4, wireP, { id: 'acc-shades', hide: true }), B(4.45, 20.7, -0.8, 4.65, 21.0, 3.4, wireP, { id: 'acc-shades', hide: true }),
+      B(-4.4, 12.4, -2.4, 4.4, 18.4, 3.8, faceP),
+      B(-2.0, 12.2, 3.6, 2.0, 14.0, 5.0, faceP),                                                          // the clypeus: a beetle's muzzle plate
+      B(-1.1, 12.45, 4.9, 1.1, 13.1, 5.15, (p, w, h) => p.rect(0, 0, w, h, '#0a0a0e'), { outline: false }), // the mouth slot between the mandibles
+      // the mop-top: a round, glossy helmet of hair — a low dome over the crown, full over the ears,
+      // down to the nape behind, and curtains framing the face; the fringe is its own bone
+      B(-5.0, 15.2, -3.6, 5.0, 19.6, 3.4, mopP), B(-4.7, 19.6, -3.3, 4.7, 20.8, 3.1, mopP), B(-3.7, 20.8, -2.5, 3.7, 21.5, 2.3, mopP),
+      B(-5.0, 12.8, -3.8, 5.0, 15.2, -0.4, mopP),
+      B(-5.25, 13.0, -0.4, -4.0, 17.4, 4.1, mopP), B(4.0, 13.0, -0.4, 5.25, 17.4, 4.1, mopP, { mirror: true }),
+      // dripped (or): pink round shades pushed up on the mop-top, sitting on the fringe
+      B(-3.3, 19.3, 4.85, -0.7, 20.7, 5.4, lensP, { id: 'acc-shades', hide: true }), B(0.7, 19.3, 4.85, 3.3, 20.7, 5.4, lensP, { id: 'acc-shades', hide: true, mirror: true }),
+      B(-0.7, 19.9, 4.95, 0.7, 20.2, 5.25, wireP, { id: 'acc-shades', hide: true }),
+      B(-5.3, 19.9, -0.8, -5.1, 20.2, 5.1, wireP, { id: 'acc-shades', hide: true }), B(5.1, 19.9, -0.8, 5.3, 20.2, 5.1, wireP, { id: 'acc-shades', hide: true }),
     ] },
-    { name: 'fringe', parent: 'head', pivot: [0, 20.0, 4.0], cubes: [B(-4.7, 16.6, 3.6, 4.7, 20.0, 4.8, fringeP2)] },
-    { name: 'horn', parent: 'head', pivot: [0, 22.0, 0.9], rot: [-6, 0, 0], cubes: [B(-0.7, 21.8, 0.2, 0.7, 23.6, 1.6, hornP), B(-0.4, 23.6, 0.5, 0.4, 24.2, 1.3, hornP)] },
-    { name: 'sprout', parent: 'horn', pivot: [0, 24.0, 0.9], cubes: [
-      B(-0.3, 23.8, 0.6, 0.3, 25.8, 1.2, stemP, { outline: false }),
-      B(-2.7, 25.4, 0.65, -0.1, 25.4, 1.15, leafP(C.leaf, C.leafLo), { plane: 'y', pivot: [-0.1, 25.4, 0.9], rot: [0, 0, -24], outline: false }),
-      B(0.1, 25.6, 0.65, 2.5, 25.6, 1.15, leafP(C.leaf, C.leafLo), { plane: 'y', pivot: [0.1, 25.6, 0.9], rot: [0, 0, 28], outline: false }),
+    { name: 'fringe', parent: 'head', pivot: [0, 20.0, 4.0], cubes: [B(-5.0, 17.0, 3.6, 5.0, 20.2, 4.85, fringeP2)] },
+    { name: 'horn', parent: 'head', pivot: [0, 21.4, 0.9], rot: [-6, 0, 0], cubes: [B(-0.7, 21.2, 0.2, 0.7, 23.0, 1.6, hornP), B(-0.4, 23.0, 0.5, 0.4, 23.6, 1.3, hornP)] },
+    { name: 'sprout', parent: 'horn', pivot: [0, 23.4, 0.9], cubes: [
+      B(-0.3, 23.2, 0.6, 0.3, 25.2, 1.2, stemP, { outline: false }),
+      B(-2.7, 24.8, 0.65, -0.1, 24.8, 1.15, leafP(C.leaf, C.leafLo), { plane: 'y', pivot: [-0.1, 24.8, 0.9], rot: [0, 0, -24], outline: false }),
+      B(0.1, 25.0, 0.65, 2.5, 25.0, 1.15, leafP(C.leaf, C.leafLo), { plane: 'y', pivot: [0.1, 25.0, 0.9], rot: [0, 0, 28], outline: false }),
     ] },
     ...both(...RIGHT),
     ...EYES.bones,
@@ -157,14 +177,14 @@ def.drip = [
 ];
 // where bought gear sits (model units; size = the width of that part)
 def.attach = {
-  head: { bone: 'head', at: [0, 22.2, 0.2], size: 6.8 },
-  face: { bone: 'head', at: [0, 15.4, 4.25], size: 8 },
+  head: { bone: 'head', at: [0, 21.6, 0.2], size: 7.4 },
+  face: { bone: 'head', at: [0, 15.7, 4.25], size: 8.8 },
   neck: { bone: 'torso', at: [0, 12.6, 3.7], size: 7 },
   back: { bone: 'torso', at: [0, 10.2, -4.7], size: 9 },
 };
 
 // ---------------------------------------------------------------- animation
-const HEAD = [0, 24, 1], MOUTHP = [0, 12.9, 6.2];
+const HEAD = [0, 23.4, 1], MOUTHP = [0, 12.9, 6.2];
 import { mand } from './beetle_parts.js';
 const mouth = (P, m) => { const k = m === 'o' ? 22 : m === 'grin' ? 30 : m === 'flat' ? -4 : 6; P.rot('mandR', 0, -k, 0).rot('mandL', 0, k, 0); };
 const shake = (P, t, k, hz = 3.4) => P.rot('head', 0, Math.sin(t * TAU * hz) * 24 * k, Math.sin(t * TAU * hz + 0.6) * 8 * k);
@@ -298,5 +318,6 @@ export const anim = {
 };
 def.anim = anim;
 // the ultra-drip form: a black-lacquer suit and shell, gold hair sheen and boots trim, amber eyes kept
-def.dripForm = dripMap({ black: [[150, 300]], gold: [[300, 345]], greys: true, keep: ['#ffb030', '#b05a10'] });
+// (the hair sheen and the suit piping turn gold: a black lacquer suit trimmed in gold)
+def.dripForm = dripMap({ black: [[150, 300]], gold: [[300, 345]], greys: true, keep: ['#f0a020', '#9a4a10', '#ffd870'], swap: { [C.hairGl]: '#ffd23e', [C.pipe]: '#e0a030' } });
 

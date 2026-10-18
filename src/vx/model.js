@@ -285,6 +285,7 @@ export function blackGold(c, glow) {
   const { h, s, l } = _hsl(c);
   if (glow) return s > 0.2 && (h < 75 || h > 320) ? _hex(200 + (h < 75 ? h * 0.35 : 0), Math.min(1, s * 1.05), Math.min(0.97, l * 1.02)) : c;   // fire burns blue
   if (s < 0.14) return c;                                                   // whites, greys, blacks (eyes, outlines) stay
+  if (l > 0.86) return _hex(42, 0.55, Math.min(0.94, l));                   // the palest creams turn champagne, not black
   if (h >= 318 && h < 356 && l > 0.62) return c;                            // pale pinks (tongues) stay
   if (h >= 315 || h < 36) return _hex(255, 0.14, 0.05 + l * 0.24);         // reds, oranges, browns → black lacquer
   if (h < 72) return _hex(44, 0.88, 0.22 + l * 0.58);                       // yellows, creams → gold

@@ -8,11 +8,11 @@
 import { eyeRig } from './eyes.js';
 import { shift } from './kit.js';
 import { dripMap } from './beetle_parts.js';
-import { B, both, chitin, segs, fur, tipP, band, at, GOLD, goldP, legs, arm, arms, emote, mand, darts, walkCycle, sharedClips, onBack, E, seg, bump, wob, wave, TAU } from './beetle_parts.js';
+import { B, both, chitin, segs, fur, tipP, band, at, GOLD, goldP, pixStates, legs, arm, arms, emote, mand, darts, walkCycle, sharedClips, onBack, E, seg, bump, wob, wave, TAU } from './beetle_parts.js';
 
 const C = {
   purple: ['#b080e8', '#6a3aa8', '#45206e', '#2a1044'], yellow: ['#fff4a0', '#ffd23e', '#e0a020', '#9a6410'], lilac: ['#f0e0ff', '#d0b0f0', '#a080c8', '#6a4a8a'],
-  ivory: ['#fffaf0', '#f0e2c8', '#d0b890', '#a08458'], bristle: ['#b89a78', '#8a6e50', '#5e4a36', '#3a2e22'], egg: '#fff8ec', yolk: '#ffb020',
+  ivory: ['#fffaf0', '#f0e2c8', '#d0b890', '#a08458'], pad: ['#f6e0c8', '#e6c4a4', '#cca482', '#8a6248'], whisk: ['#fff6e0', '#e8d6b4', '#b89a78'], bristle: ['#b89a78', '#8a6e50', '#5e4a36', '#3a2e22'], egg: '#fff8ec', yolk: '#ffb020',
 };
 // ---------------------------------------------------------------- painters
 const shellP = chitin(C.purple, { gloss: '#e8d0ff' });
@@ -34,11 +34,16 @@ const bellyP = segs(C.lilac, { every: 1.8 });
 const bandArmP = (p, w, h, face, cube) => { shellP(p, w, h, face, cube); if (face !== 'up' && face !== 'down') for (let x = 0; x < w; x++) { p.px(x, 2, C.yellow[1]); p.px(x, 3, C.yellow[2]); } };
 const ivoryP = tipP(C.ivory);
 const nailP = (p, w, h, face) => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, face === 'up' ? C.ivory[0] : band(C.ivory, face, x, y, h)); };
-// the muzzle: a bristly walrus moustache
-function muzzleP(p, w, h, face, cube) {
+// the walrus muzzle: two big puffy whisker pads, pocked with whisker pores, a bristle fringe below
+function padP(p, w, h, face) {
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-    let c = band(C.bristle, face, x, y, h);
-    if (face === 'south') { c = y < 2 ? C.bristle[1] : (x % 3 === 0 ? C.bristle[2] : C.bristle[1]); if (y >= h - 2 && x % 3 === 1) c = C.bristle[0]; if (y >= h - 1 && x % 2) c = 0; }
+    if (face !== 'south') { p.px(x, y, face === 'up' ? C.pad[0] : face === 'down' ? C.whisk[2] : band(C.pad, face, x, y, h)); continue; }
+    const v = y / (h - 1), edge = x === 0 || x === w - 1;
+    let c = v < 0.3 ? C.pad[0] : v < 0.66 ? C.pad[1] : C.pad[2];
+    if (edge) c = shift(c, -0.08);
+    if (y >= 2 && y < h - 3 && y % 2 === 0 && (x + y) % 3 === 0 && !edge) c = C.pad[3];       // whisker pores in neat rows
+    if (y >= h - 3) c = x % 2 ? C.whisk[1] : C.whisk[0];                                       // the stiff cream bristles
+    if (y === h - 1 && x % 2) c = C.whisk[2];
     p.px(x, y, c);
   }
 }
@@ -55,8 +60,19 @@ const drumHeadP = (p, w, h, face) => { const cx = (w - 1) / 2, cy = (h - 1) / 2;
 // ---------------------------------------------------------------- the model
 const R = { hipX: 5.0, hipY: 9.4, ankleY: 2.2, L1: 3.6, L2: 3.6 };
 // heavy-lidded eyes: a thick double lid over a white eye with a small purple iris
-const EYES = eyeRig({ style: 'pix', chunk: 2, at: [-2.6, 27.4, 7.22], line: '#1a0a22', iris: '#a050e0', irisDark: '#4a1a7a',
-  map: { open: ['.llll.', 'llllll', 'lwhiwl', '.llll.'] } });
+// (a painted lid with a crease over the top half; lowered lids slide over the eye in the lid colour)
+const EYE_OPEN = [
+  '...llllll...',
+  '.llccccccll.',
+  'lcccIIIIcccl',
+  'llllllllllll',
+  'lsssIIIIsssl',
+  'lwwwihkiwwwl',
+  '.lwwiiiiwwl.',
+  '...llllll...',
+];
+const EYES = eyeRig({ style: 'pix', chunk: 1, at: [-2.6, 27.4, 7.22], line: '#1a0a22', pupilColor: '#10061a', iris: '#a050e0', irisDark: '#4a1a7a', accent: '#8a5ac8',
+  map: { open: EYE_OPEN, ...pixStates(EYE_OPEN, { fill: 'c', top: 3 }) } });
 const RIGHT = [
   { name: 'thighR', parent: 'root', pivot: [-5.0, 9.4, 0], cubes: [B(-7.2, 5.4, -2.2, -2.8, 10.6, 2.2, shellP)] },
   { name: 'shinR', parent: 'thighR', pivot: [-5.0, 5.8, 0], cubes: [B(-7.0, 2.0, -2.0, -3.0, 6.2, 2.0, shellP)] },
@@ -98,7 +114,7 @@ export const def = {
     ...[1, 2, 3].map((i) => ({ name: 'jegg' + i, parent: 'torso', pivot: [0, 20, 12], cubes: [B(-0.9, 18.9, 11.3, 0.9, 21.3, 12.7, eggPropP, { id: 'jegg', hide: true })] })),
     { name: 'head', parent: 'torso', pivot: [0, 24.6, 3.4], cubes: [
       B(-5.0, 23.8, 0.8, 5.0, 29.6, 7.2, shellP),
-      B(-3.8, 23.0, 7.0, 3.8, 25.8, 8.6, muzzleP),                                         // the bristly walrus muzzle
+      B(-4.0, 22.6, 7.0, -0.05, 25.9, 9.0, padP), B(0.05, 22.6, 7.0, 4.0, 25.9, 9.0, padP, { mirror: true }),   // the walrus muzzle: two whisker pads
       // dripped (or): swirl-lens shades pushed up on its brow
       B(-4.4, 28.8, 7.0, -0.9, 30.4, 7.6, swirlP, { id: 'acc-swirl', hide: true }), B(0.9, 28.8, 7.0, 4.4, 30.4, 7.6, swirlP, { id: 'acc-swirl', hide: true, mirror: true }),
       B(-0.9, 29.4, 7.1, 0.9, 29.8, 7.4, goldP, { id: 'acc-swirl', hide: true }),

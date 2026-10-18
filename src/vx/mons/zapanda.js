@@ -500,7 +500,6 @@ export const anim = {
       P.burst(0.32, 'sweat', 'head', [6, 25, 9], { n: 1, dir: [1, 1, 0.2] });
       P.burst(0.3, 'zap', 'body', [0, 14, 0], { n: 3 });
     } },
-    // fidget: a look back at its own battery — flick, rings 1-2-3 light, then off — and a smirk at you
     // signature fidget: a look back at its own battery — flick, the rings fill red to violet… overcharge! A jolt
     // puffs its fur out and stands it on end, smoke curls off the tail tip; it smooths itself down and smirks at you
     tailcheck: { len: 2.8, next: 'idle', f(P, t) {

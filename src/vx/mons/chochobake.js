@@ -1,6 +1,7 @@
 // Chochobake — a paper-lantern ghost (Ecto) from Chinatown: a hundred-year-old red paper lantern that
 // tore open and woke up. Red washi glowing from inside, black lacquer caps top and bottom with a wire
-// hanging loop, bamboo ribs that break round one huge violet eye, a torn rib for a mouth with a long
+// hanging loop, one jaunty lacquer-black curl falling over its brow, bamboo ribs that break round one huge, tall
+// white eye with a glowing violet iris and a slit pupil, a torn rib for a mouth with a long
 // pink tongue lolling out. It floats and bobs, and spits violet ghost-fire.
 //
 // Music homage (Thriller, original — no likeness): the red washi is painted like a red jacket with
@@ -12,6 +13,8 @@
 // 'paper' slot when its light goes out (sleep, faint).
 import { E, seg, bump, wob, wave } from '../anim.js';
 import { h2 } from './kit.js';
+import { eyeRig, keepEyes } from './eyes.js';
+import { blackGold } from '../model.js';
 
 const D2R = Math.PI / 180, TAU = Math.PI * 2;
 const C = {
@@ -87,61 +90,49 @@ const sparkleP = (f) => (p, w, h) => { for (let k = 0; k < 9; k++) { const x = M
 const handP = (p, w, h, face) => { for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) p.px(i, j, face === 'up' ? C.dim[0] : face === 'down' ? C.dim[3] : j === Math.floor(h / 2) ? C.dimRib : j < h / 2 ? C.dim[0] : C.dim[1]); };
 const tasselP = (p, w, h, face) => { for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) p.px(i, j, face === 'up' ? C.tassel[0] : i % 2 ? C.tassel[2] : C.tassel[1]); };
 
-// ---------------------------------------------------------------- kawaii eyes
-// Gen 8–9 style eyes: a big soft oval with a 1-texel outline, a dark iris tinted with an accent, a lighter
-// accent gradient in the lower third, a big catchlight high on the outer side (x small) and a 1-texel glint
-// low on the inner side. lid: [y (fraction of the height), slope] cuts the top with a flat lid (angry: slope
-// > 0, tilted in; sad: < 0). Other expressions are single-colour strokes: ^ (happy), ◡ (closed), > (hurt).
-function eyeOpen(W, H, K, lid) {
-  return (p) => {
-    const cx = (W - 1) / 2, cy = (H - 1) / 2, rx = W / 2 - 0.02, ry = H / 2 - 0.02;
-    const lidAt = (x) => (lid ? lid[0] * H + lid[1] * (x - cx) : -9);
-    const inside = (x, y) => ((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2 <= 1 && y >= lidAt(x) - 0.01;
-    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
-      if (!inside(x, y)) continue;
-      const edge = !inside(x - 1, y) || !inside(x + 1, y) || !inside(x, y - 1) || !inside(x, y + 1) || (lid && y < lidAt(x) + 1.2);
-      const t = y / (H - 1);
-      p.px(x, y, edge ? K.line : t > 0.8 ? K.acc[1] : t > 0.62 ? K.acc[0] : K.dark);
-    }
-    const k = W >= 9 && !lid ? 3 : 2, x0 = Math.round(cx - rx * 0.55 + 0.5);
-    const y0 = Math.max(Math.round(cy - ry * 0.55 + 0.5), lid ? Math.ceil(lidAt(x0 + 1) + 1.2) : 0);
-    for (let j = 0; j < k; j++) for (let i = 0; i < k; i++) if (inside(x0 + i, y0 + j) && !(k === 3 && (i === 2 && j === 2))) p.px(x0 + i, y0 + j, '#ffffff');
-    const gx = Math.round(cx + rx * 0.5), gy = Math.round(cy + ry * 0.48);
-    if (inside(gx, gy)) p.px(gx, gy, '#ffffff');
-  };
-}
-// ^ happy (bulging up) or ◡ closed (bulging down): a 2-texel stroke
-const eyeArc = (W, H, K, up) => (p) => {
-  const cx = (W - 1) / 2, rx = W / 2 - 0.5;
-  for (let x = 0; x < W; x++) {
-    const u = (x - cx) / rx; if (Math.abs(u) > 1.02) continue;
-    const s = Math.sqrt(Math.max(0, 1 - u * u)), y = Math.round(up ? H * 0.62 - H * 0.36 * s : H * 0.4 + H * 0.26 * s);
-    p.px(x, y, K.line); p.px(x, y + 1, K.line);
-  }
-};
-// > (hurt): apex on the inner side; the mirrored eye reads <
-const eyeHurt = (W, H, K) => (p) => {
-  for (let k = 0; k <= 10; k++) {
-    const t = k / 10, x = Math.round(1 + t * (W - 3)), a = Math.round(1 + t * ((H - 1) / 2 - 1)), b = Math.round(H - 2 - t * ((H - 1) / 2 - 1));
-    p.px(x, a, K.line); p.px(x, a + 1, K.line); p.px(x, b, K.line); p.px(x, b - 1, K.line);
-  }
-};
-const eyeX = (W, H, K) => (p) => { for (let k = 0; k < W - 2; k++) { const y = Math.round(1 + (k * (H - 3)) / (W - 3)); p.px(1 + k, y, K.line); p.px(W - 2 - k, y, K.line); p.px(1 + k, y + 1, K.line); p.px(W - 2 - k, y + 1, K.line); } };
-const eyeSwirl = (W, H, K) => (p) => { const cx = (W - 1) / 2, cy = (H - 1) / 2; for (let a = 0; a < 15; a += 0.2) { const r = a * (Math.min(W, H) / 2 - 0.5) / 15; p.px(Math.round(cx + Math.cos(a) * r), Math.round(cy + Math.sin(a) * r), K.line); } };
-
 // ---------------------------------------------------------------- face
-// one huge eye: 18 × 15 texels, glowing violet; the outer side (big catchlight) is to its right (x = 0)
-const EK = { line: '#0c0418', dark: '#1e0a34', acc: ['#7a2ac8', '#d488ff'] }, EW = 18, EH = 15;
-const EYES = {
-  open: eyeOpen(EW, EH, EK),
-  glare: eyeOpen(EW, EH, EK, [0.3, 0.3]),
-  sly: eyeOpen(EW, EH, EK, [0.34, 0.06]),
-  happy: eyeArc(EW, EH, EK, true),
-  closed: eyeArc(EW, EH, EK, false),
-  hurt: eyeHurt(EW, EH, EK),
-  x: eyeX(EW, EH, EK),
-  swirl: eyeSwirl(EW, EH, EK),
+// one huge tall eye (hand-pixelled at full texture resolution, Pokémon-style), unlit so it shines with the paper:
+// a white ringed in ink, a glowing violet iris darker under the lid, a cat-slit pupil, one glint high on the left,
+// a pale violet glow pooling low in the iris
+const EYES = eyeRig({ style: 'pix', chunk: 1, single: true, parent: 'body', glow: 'all', at: [0, 16.9, LC[2] + 7.64], line: '#0c0418', iris: '#a050f8', irisDark: '#4a1a8a', pupilColor: '#12041e', accent: '#e4b0ff', extra: ['smug', 'glint'], map: {
+  open: [
+    '....llllll....',
+    '..llwwwwwwll..',
+    '.lwwwwwwwwwwl.',
+    '.lwwwIIIIwwwl.',
+    'lwwwIIkkIIwwwl',
+    'lwwIhhkkiiIwwl',
+    'lwwihhkkiiiwwl',
+    'lwwiiikkiiiwwl',
+    'lwwiiikkiiiwwl',
+    'lwwiiikkiiiwwl',
+    'lwwciikkiicwwl',
+    'lswwcikkicwwsl',
+    'lsswwccccwwssl',
+    '.lsswwwwwwssl.',
+    '..llssssssll..',
+    '....llllll....',
+  ],
+  happy: ['..............', '..............', '..............', '..............', '..............', '..............', '....llllll....', '..ll......ll..', '.l..........l.', 'l............l', '..............', '..............', '..............', '..............', '..............', '..............'],
+  closed: ['..............', '..............', '..............', '..............', '..............', '..............', '..............', '..............', 'l............l', '.l..........l.', '..ll......ll..', '....llllll....', '..............', '..............', '..............', '..............'],
+} });
+// the single eye bone: squash / stretch and shift it in clips
+const eyeS = (P, sx, sy = sx) => P.scl('eye', sx, sy, 1), eyeAt = (P, x, y = 0) => P.pos('eye', x, y, 0);
+// the curl: one glossy lacquer-black lock hooking down over the brow, a blue-violet sheen along it
+const curlP = (p, w, h) => {
+  const stroke = (x, y) => { for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) p.px(Math.round(x + a), Math.round(y + b), '#14101c'); };
+  for (let k = 0; k <= 40; k++) { const t = k / 40; stroke(w * (0.62 - 0.1 * t), h * (0.05 + 0.5 * t)); }                            // the stem
+  for (let a = 0; a < Math.PI * 1.7; a += 0.08) { const r = w * 0.24; stroke(w * 0.42 + Math.cos(a + 0.4) * r, h * 0.72 + Math.sin(a + 0.4) * r * 0.9); }   // the hook
+  for (let k = 0; k <= 12; k++) { const t = k / 12; p.px(Math.round(w * (0.6 - 0.1 * t)), Math.round(h * (0.08 + 0.42 * t)), t < 0.6 ? '#6a5ab0' : '#3a3058'); }
 };
+// drip painters
+const strapP = (p, w, h, f) => { for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) p.px(i, j, f === 'up' ? '#3a3040' : (i % 7 === 3) ? '#8a8aa0' : '#16121c'); };
+const silverP = (p, w, h, f) => { for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) p.px(i, j, f === 'up' || (i === 0 && j === 0) ? '#ffffff' : i === w - 1 || j === h - 1 ? '#8a90a8' : '#d8dce8'); };
+const goldP = (p, w, h, f) => { for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) p.px(i, j, f === 'down' ? '#9a6a10' : f === 'up' || j === 0 ? '#fff0a0' : (i + j) % 3 === 0 ? '#e8a828' : '#ffd23e'); };
+const fringeP = (p, w, h) => { for (let i = 0; i < w; i += 2) for (let j = 0; j < h - (i % 4 ? 1 : 0); j++) p.px(i, j, j === 0 ? '#fff0a0' : '#ffc43a'); };
+const velvetP = (p, w, h, f) => { for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) p.px(i, j, f === 'up' ? '#d83446' : (i + j) % 4 === 0 ? '#c42a3a' : '#a3172b'); };
+const capeP = (p, w, h) => { for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) { const u = i / (w - 1), hem = h - 1 - Math.round(1.2 * Math.abs(Math.sin(u * Math.PI * 4))); if (j > hem) continue; const edge = i === 0 || i === w - 1 || j >= hem - 1; p.px(i, j, edge ? '#ffd23e' : (i * 7 + j * 11) % 13 === 0 ? '#ffffff' : (i * 3 + j * 5) % 17 === 0 ? '#bfe4ff' : j < 2 ? '#c8ccdc' : '#eceef8'); } };
+
 // the torn-rib mouth: k inside dark, f torn paper fibres like little teeth, v violet ghost-light deep inside
 const MM = { k: '#1e0614', f: C.fiber, v: '#9a48e8', V: '#d498ff', l: C.rib };
 const MOUTHS = {
@@ -172,15 +163,40 @@ export const def = {
       P([-5.4, 23.6, -5.4], [10.8, 0.6, 10.8], lacP), P([-4.8, 24.2, -4.8], [9.6, 1.2, 9.6], lacP), P([-1.2, 25.4, -1.2], [2.4, 0.6, 2.4], lacP),
       P([-5.2, 3.8, -5.2], [10.4, 0.6, 10.4], lacP), P([-4.6, 2.8, -4.6], [9.2, 1.0, 9.2], lacP),
       // the eye and the mouth
-      ...Object.entries(EYES).map(([k, fn]) => P([-3, 14.3, FZ], [6, 5, 0], fn, { plane: 'z', glow: true, id: 'eye-' + k, hide: k !== 'open' })),
       ...Object.entries(MOUTHS).map(([k, rows]) => P([-4, 11.6 - rows.length / 3, FZ], [8, rows.length / 3, 0], (p) => stamp(p, rows, MM), { plane: 'z', glow: true, id: 'm-' + k, hide: k !== 'grin' })),
     ] },
     // the wire hanging loop
     { name: 'loop', parent: 'body', pivot: [0, 25.6, 0], cubes: [P([-1.8, 25.6, -0.167], [0.333, 2.0, 0.333], wireP), P([1.467, 25.6, -0.167], [0.333, 2.0, 0.333], wireP), P([-1.8, 27.6, -0.167], [3.6, 0.333, 0.333], wireP)] },
+    ...EYES.bones,
+    // its hair: one jaunty lacquer-black curl falling over the brow from under the top cap (sprung)
+    { name: 'curl', parent: 'body', pivot: [-0.6, 23.8, 6.95], rot: [-20, 0, 8], cubes: [P([-2.6, 18.8, 6.95], [3.8, 5.2, 0], curlP, { plane: 'z' })] },
+    // drip 1 (or): Bad-era buckle straps cinched round the lantern, silver buckles at the front
+    { name: 'straps', parent: 'body', pivot: LC, cubes: [
+      P([-7.2, 20.6, -7.0], [14.4, 0.7, 14.0], strapP), P([-7.2, 7.0, -7.0], [14.4, 0.7, 14.0], strapP),
+      P([1.8, 20.3, 6.9], [1.6, 1.3, 0.5], silverP), P([-3.4, 6.7, 6.9], [1.6, 1.3, 0.5], silverP),
+    ].map((c) => ({ ...c, id: 'acc-straps', hide: true })) },
+    // drip 2: gold military epaulettes on its "shoulders", fringed
+    { name: 'epaul', parent: 'body', pivot: LC, cubes: [
+      P([-7.6, 21.6, -2.6], [3.6, 1.2, 5.2], goldP), P([4.0, 21.6, -2.6], [3.6, 1.2, 5.2], goldP),
+      P([-7.7, 19.4, -2.6], [0, 2.2, 5.2], fringeP, { plane: 'x' }), P([7.7, 19.4, -2.6], [0, 2.2, 5.2], fringeP, { plane: 'x' }),
+    ].map((c) => ({ ...c, id: 'acc-epaulettes', hide: true })) },
+    // drip 2 (or): a stage headset mic — band over the cap, an earpiece, the boom curling round to the mouth
+    { name: 'headset', parent: 'body', pivot: LC, cubes: [
+      P([-7.4, 14.4, -0.8], [0.6, 2.6, 2.4], '#16121c'), P([-7.3, 17.0, -0.2], [0.35, 7.2, 0.35], '#2a2430'), P([-7.3, 24.2, -0.2], [14.6, 0.35, 0.35], '#2a2430'), P([6.95, 17.0, -0.2], [0.35, 7.2, 0.35], '#2a2430'),
+      P([-7.2, 13.4, 1.6], [0.3, 0.3, 6.4], '#2a2430', { pivot: [-7.05, 13.55, 1.6], rot: [0, -34, -18] }), P([-3.6, 10.6, 7.6], [1.0, 1.0, 1.0], '#3a3440'),
+    ].map((c) => ({ ...c, id: 'acc-headset', hide: true })) },
+    // drip 3: the King's crown on the top cap, red velvet inside the gold
+    { name: 'crown', parent: 'body', pivot: [0, 25.4, 0], cubes: [
+      P([-2.8, 25.4, -2.8], [5.6, 1.4, 5.6], goldP), P([-2.2, 25.6, -2.2], [4.4, 2.0, 4.4], velvetP),
+      ...[[-2.8, -2.8], [2.2, -2.8], [-2.8, 2.2], [2.2, 2.2], [-0.3, 2.2], [-0.3, -2.8]].map(([x, z]) => P([x, 26.8, z], [0.6, 1.2, 0.6], goldP)),
+      P([-0.35, 27.6, -0.35], [0.7, 1.0, 0.7], goldP),
+    ].map((c) => ({ ...c, id: 'acc-crown', hide: true })) },
+    // drip 3 (or): a rhinestone cape, white and gold, hanging from the back of the top cap
+    { name: 'cape', parent: 'body', pivot: [0, 23.4, -6.0], rot: [10, 0, 0], cubes: [P([-6.4, 5.4, -6.2], [12.8, 18.0, 0], capeP, { plane: 'z', id: 'acc-cape', hide: true })] },
     // the tongue, three sprung segments lolling out of the torn mouth
     tongue('tongue1', 'body', 8.6, 3.0, 2.4), tongue('tongue2', 'tongue1', 5.6, 2.8, 2.2), tongue('tongue3', 'tongue2', 2.8, 2.4, 1.8),
     // a quirk: a gold tassel under the bottom cap
-    { name: 'tassel', parent: 'body', pivot: [0, 2.8, -1.6], cubes: [P([-0.2, 1.4, -1.8], [0.4, 1.4, 0.4], tasselP), P([-0.8, -1.4, -2.4], [1.6, 2.8, 1.6], tasselP)] },
+    { name: 'tassel', parent: 'body', pivot: [0, 2.8, -1.6], cubes: [P([-0.2, 1.4, -1.8], [0.4, 1.4, 0.4], tasselP), P([-0.8, -1.4, -2.4], [1.6, 2.8, 1.6], tasselP)].map((c) => ({ ...c, id: 'acc-tassel', hide: true })) },
     // little paper hands floating at its sides; the right wears the white sparkly glove
     { name: 'handR', parent: 'body', pivot: [-10.4, 12.6, 2.0], cubes: [
       P([-11.6, 11.2, 1.4], [2.4, 2.4, 1.2], gloveP), ...fingers(-11.6, 1.6, gloveP), P([-9.4, 11.8, 1.6], [0.8, 1.2, 0.8], gloveP),
@@ -190,6 +206,13 @@ export const def = {
     { name: 'handL', parent: 'body', pivot: [10.4, 12.6, 2.0], cubes: [P([9.2, 11.2, 1.4], [2.4, 2.4, 1.2], handP), ...fingers(9.2, 1.6, handP), P([8.4, 11.8, 1.6], [0.8, 1.2, 0.8], handP)] },
   ],
 };
+// appearance tiers: normal wears one of the first list, dripped adds one of the second, ultra dripped one of the third
+// (the red-jacket paper and the one white sparkly glove are its signature: always there)
+def.drip = [
+  [{ id: 'acc-tassel', name: 'Gold tassel' }, { id: 'acc-straps', name: 'Buckle straps' }],
+  [{ id: 'acc-epaulettes', name: 'Gold epaulettes' }, { id: 'acc-headset', name: 'Stage headset mic' }],
+  [{ id: 'acc-crown', name: "King's crown" }, { id: 'acc-cape', name: 'Rhinestone cape' }],
+];
 // gear anchors (model units): the lantern is all head
 def.attach = {
   head: { bone: 'body', at: [0, 25.0, 0], size: 9.6 },
@@ -218,16 +241,18 @@ export const anim = {
     { bone: 'tongue3', tip: [0, -2.4, 0], k: 90, d: 5, gain: 1.2, max: 38 },
     { bone: 'tassel', tip: [0, -4, 0], k: 110, d: 6, gain: 1.0, max: 30 },
     { bone: 'loop', tip: [0, 2, 0], k: 200, d: 9, gain: 0.7, max: 20 },
+    { bone: 'curl', tip: [0, -4, 0.5], k: 150, d: 7, gain: 1.0, max: 26 },
+    { bone: 'cape', tip: [0, -14, -1], k: 60, d: 5, gain: 0.8, max: 18, axes: [1, 0.3, 0.6] },
     { bone: 'handR', tip: [0, 2, 0], k: 160, d: 9, gain: 0.5, max: 14 },
     { bone: 'handL', tip: [0, 2, 0], k: 165, d: 9, gain: 0.5, max: 14 },
   ],
   faces: {
-    eyes: { default: 'open', states: Object.fromEntries(Object.keys(EYES).map((k) => [k, ['eye-' + k]])) },
+    eyes: EYES.slot,
     mouth: { default: 'grin', states: Object.fromEntries(Object.keys(MOUTHS).map((k) => [k, ['m-' + k]])) },
     paper: { default: 'lit', states: { lit: ['lit'], dim: ['dim'] } },
     sparkle: { default: 'a', states: { a: ['sp-0'], b: ['sp-1'], c: ['sp-2'] } },
   },
-  fidget: { every: [5, 9], clips: ['zombie', 'lick'] },
+  fidget: { every: [3.5, 7], clips: ['dance', 'dance', 'lean', 'zombie', 'lick'] },
   clips: {
     // floating and bobbing, swaying as if hung in a breeze, a little zombie shrug to each side, tongue lolling
     idle: { len: 2.4, loop: true, f(P, t) {
@@ -237,7 +262,9 @@ export const anim = {
       claws(P, Math.sign(shrug) || 1, Math.abs(shrug) * 0.6);
       P.pos('handR', 0, wave(t, 0.8) * 0.6, 0).pos('handL', 0, wave(t, 0.8, 1.5) * 0.6, 0);
       twinkle(P, t);
-      P.face('eyes', t > 1.5 && t < 1.95 ? 'sly' : undefined);
+      // the eye roams the room in quick darts, a smug half-lid on the shrug, squashing on each bob
+      const gi = Math.floor(t / 0.6) % 4, dart = [[0, 0], [-0.6, 0.15], [0.5, 0], [0, -0.2]][gi];
+      eyeAt(P, dart[0], dart[1]).face('eyes', t > 1.5 && t < 1.95 ? 'smug' : undefined); eyeS(P, 1 + 0.03 * bob, 1 - 0.05 * bob);
       if (h2(Math.floor(t * 4), 3, 1) < 0.25) P.stream('sparkle', 'handR', GLOVE, { rate: 3 });
     } },
     // the moonwalk: a smooth glide with no bob, leaning back, the gloved hand low, a heel-pop rhythm
@@ -256,7 +283,8 @@ export const anim = {
       hands(P, { p: [-2 * up, 6 * up, 2 * up], r: [-60 * up, 0, -30 * up] }, { p: [2 * up, 6 * up, 2 * up], r: [-60 * up, 0, 30 * up] });
       P.rot('tongue1', -30 * up, 0, 0);
       twinkle(P, t);
-      P.face('eyes', up > 0.3 ? 'glare' : undefined).face('mouth', up > 0.3 ? 'open' : undefined);
+      P.face('eyes', crouch > 0.3 ? 'shut' : up > 0.3 ? 'angry' : t > 1.6 ? 'smug' : undefined).face('mouth', up > 0.3 ? 'open' : undefined);
+      eyeS(P, 1 + 0.15 * up, 1 - 0.3 * crouch + 0.15 * up); P.burst(0.5, 'anger', 'body', [6, 25, 6], {});
       P.burst(0.5, 'ghostfire', 'body', [0, 14, 0], { n: 14, spread: 1, speed: 1.6 }).burst(0.5, 'ring', 'body', [0, 14, 6], { tint: [0.8, 0.5, 1] });
       if (t > 0.5 && t < 1.4) P.stream('ghostfire', 'body', [0, 26, 0], { rate: 10, speed: 0.8 });
     } },
@@ -267,7 +295,8 @@ export const anim = {
       P.rot('tongue1', -100 * lash + 20 * back, 0, 0).rot('tongue2', -30 * lash, 0, 0).rot('tongue3', -20 * lash, 0, 0).scl('tongue1', 1, 1 + 0.5 * lash, 1).scl('tongue2', 1, 1 + 0.4 * lash, 1);
       hands(P, { p: [0, 2 * back, -2 * back], r: [30 * back, 0, 0] }, { p: [0, 2 * back, -2 * back], r: [30 * back, 0, 0] });
       twinkle(P, t);
-      P.face('eyes', t < 0.6 ? 'glare' : 'happy').face('mouth', t > 0.2 && t < 0.7 ? 'open' : undefined);
+      P.face('eyes', t < 0.28 ? 'angry' : t < 0.6 ? 'wide' : 'happy').face('mouth', t > 0.2 && t < 0.7 ? 'open' : undefined);
+      eyeS(P, 1 + 0.2 * lash, 1 - 0.2 * back + 0.25 * lash); eyeAt(P, 0, 0.4 * lash);
       P.burst(0.4, 'spark', 'body', [0, 9, 18], { scale: 1.3 }).burst(0.4, 'star', 'body', [0, 9, 18], { n: 4 }).burst(0.42, 'heart', 'body', [0, 9, 16], { n: 1, tint: [0.8, 0.4, 1] });
     } },
     // special (Ecto): onibi — it draws its ghost-light up, then spits a volley of three violet fireballs
@@ -280,7 +309,8 @@ export const anim = {
       hands(P, { p: [3 * draw, 3 * draw, 3 * draw], r: [-50 * draw, 0, -20 * draw] }, { p: [-3 * draw, 3 * draw, 3 * draw], r: [-50 * draw, 0, 20 * draw] });
       P.rot('tongue1', -40 * Math.min(1, kick), 0, 0);
       twinkle(P, t);
-      P.face('eyes', draw > 0.3 ? 'glare' : undefined).face('mouth', t > 0.7 && t < 1.6 ? 'open' : undefined);
+      P.face('eyes', draw > 0.3 ? (draw > 0.9 ? 'glint' : 'angry') : t > 0.7 && t < 1.6 ? 'angry' : t > 1.7 ? 'smug' : undefined).face('mouth', t > 0.7 && t < 1.6 ? 'open' : undefined);
+      eyeS(P, 1 + 0.1 * draw, 1 + 0.1 * draw - 0.25 * Math.min(1, kick));
       if (draw > 0.2) P.stream('ghostfire', 'body', [0, 14, 0], { rate: 20 * draw, spread: 1, speed: 0.8 });
     } },
     // knocked back, the light flickering out and back
@@ -288,7 +318,9 @@ export const anim = {
       const k = seg(t, 0, 0.07, E.out) * (1 - seg(t, 0.18, 0.6, E.inout));
       P.pos('root', 0, 0, -2.4 * k).pos('body', 0, 1.2, 0).rot('body', -16 * k + wob(t, 0.18, 6, 3, 6), 0, wave(t, 14) * 4 * k).sq('body', -0.12 * k);
       hands(P, { p: [-2 * k, 2 * k, 0], r: [0, 0, -40 * k] }, { p: [2 * k, 2 * k, 0], r: [0, 0, 40 * k] });
-      P.face('paper', t > 0.06 && t < 0.18 ? 'dim' : undefined).face('eyes', t < 0.45 ? 'hurt' : undefined).face('mouth', 'open');
+      P.face('paper', t > 0.06 && t < 0.18 ? 'dim' : undefined).face('eyes', t < 0.08 ? 'shock' : t < 0.45 ? 'shut' : t < 0.62 ? 'teary' : undefined).face('mouth', 'open');
+      eyeS(P, 1 + 0.3 * bump(t, 0, 0.1), 1 + 0.35 * bump(t, 0, 0.1) - 0.3 * bump(t, 0.1, 0.45));
+      P.burst(0.05, 'sweat', 'body', [7, 24, 4], { n: 2, dir: [1, 1, 0.2] });
       P.burst(0.02, 'spark', 'body', [0, 15, 8], {}).burst(0.03, 'ghostfire', 'body', [0, 14, 4], { n: 5, speed: 1 });
     } },
     // the flame gutters, it sinks, and tips over onto its side, dark
@@ -297,7 +329,8 @@ export const anim = {
       P.pos('body', 0, 1.2 - 3.2 * sink, 0).rot('body', 0, wave(t, 1.5) * 12 * (1 - fall), wave(t, 2.2) * 8 * (1 - sink));
       P.rot('root', 0, 0, 84 * fall).pos('root', -10 * fall, 8 * fall, 0);
       hands(P, { p: [0, -4 * sink, 0], r: [0, 0, -60 * fall] }, { p: [0, -4 * sink, 0], r: [0, 0, 60 * fall] });
-      P.face('paper', t > 0.4 && (t > 1.0 || Math.floor(t * 12) % 3 === 0) ? 'dim' : 'lit').face('eyes', t > 0.3 ? 'swirl' : 'hurt').face('mouth', 'open'); P.blinkOK = false; P.lookW = 0;
+      P.face('paper', t > 0.4 && (t > 1.0 || Math.floor(t * 12) % 3 === 0) ? 'dim' : 'lit').face('eyes', t < 0.3 ? 'shut' : t < 1.35 ? 'swirl' : 'x').face('mouth', 'open'); P.blinkOK = false; P.lookW = 0;
+      eyeS(P, 1 + 0.15 * wave(t, 2), 1 - 0.15 * wave(t, 2)); eyeAt(P, 0.4 * wave(t, 1.5) * (1 - fall), 0);
       P.burst(1.35, 'smoke', 'body', [0, 26, 0], { n: 5, spread: 1 }).burst(0.9, 'star', 'body', [0, 26, 0], { n: 5 });
     } },
     down: { len: 2.6, loop: true, f(P, t) {
@@ -313,7 +346,8 @@ export const anim = {
       P.rot('body', -6 * pose, 0, 8 * pose + wave(t, 6) * 2 * pose);
       hands(P, { p: [-2 * pose, 9 * pose, 1 * pose], r: [0, 0, -150 * pose] }, { p: [0, -2 * pose, 2 * pose], r: [0, 0, 20 * pose] });
       twinkle(P, t);
-      P.face('eyes', pose > 0.3 ? 'happy' : undefined).face('mouth', pose > 0.3 ? 'open' : undefined);
+      P.face('eyes', spin > 0.05 && spin < 0.95 ? 'star' : pose > 0.3 ? (t > 1.3 && t < 1.5 ? 'glint' : 'happy') : undefined).face('mouth', pose > 0.3 ? 'open' : undefined);
+      eyeS(P, 1 + 0.15 * pose, 1 + 0.15 * pose);
       if (pose > 0.3) P.stream('sparkle', 'handR', GLOVE, { rate: 14 });
       P.burst(0.72, 'ring', 'root', [0, 2, 0], { tint: [0.8, 0.5, 1] }).burst(0.72, 'ghostfire', 'root', [0, 2, 0], { n: 16, spread: 1, speed: 1.4 });
     } },
@@ -323,7 +357,7 @@ export const anim = {
       P.pos('body', 0, -0.6 + br * 0.4, 0).rot('body', 6, 0, 4).sq('body', br * 0.02);
       hands(P, { p: [1, -2, 1], r: [0, 0, -10] }, { p: [-1, -2, 1], r: [0, 0, 10] });
       P.rot('tongue1', 6, 0, 0);
-      P.face('paper', br > 0.6 ? 'lit' : 'dim').face('eyes', 'closed').face('mouth', 'shut'); P.blinkOK = false; P.lookW = 0; P.breathW = 0;
+      P.face('paper', br > 0.6 ? 'lit' : 'dim').face('eyes', 'closed').face('mouth', 'shut'); P.blinkOK = false; P.lookW = 0; P.breathW = 0; eyeS(P, 1, 0.9 + 0.1 * br);
       P.burst(0.5, 'z', 'body', [4, 25, 4], {}).burst(1.8, 'z', 'body', [4, 25, 4], {});
     } },
     // fidget: a full zombie-dance phrase — claws left, claws right, a head jerk and a shoulder shimmy
@@ -333,16 +367,47 @@ export const anim = {
       P.pos('body', 0, 1.2 - 0.8 * (L + R) + 0.6 * jerk, 0).rot('body', 0, 12 * L - 12 * R, -10 * L + 10 * R + 14 * jerk + wave(t, 9) * 5 * shim);
       P.pos('root', -1.2 * L + 1.2 * R, 0, 0);
       twinkle(P, t);
-      P.face('eyes', jerk > 0.3 ? 'glare' : 'sly').face('mouth', 'grin');
+      P.face('eyes', jerk > 0.3 ? 'angry' : 'smug').face('mouth', 'grin'); eyeAt(P, -0.5 * L + 0.5 * R, 0); eyeS(P, 1 + 0.2 * jerk, 1 + 0.25 * jerk);
       if (shim > 0.3) P.stream('sparkle', 'handR', GLOVE, { rate: 8 });
+    } },
+    // dance: the pop-and-glide — a sharp hip-pop to each side, a moonwalk slide back, a full spin, and a freeze up on
+    // its "toes" (tipped forward), the gloved hand flung high and glittering, a ring of violet ghost-fire
+    dance: { len: 3.2, next: 'idle', f(P, t) {
+      const beat = (t / 0.4) % 1, n = Math.floor(t / 0.4), hit = Math.exp(-beat * 9), side = n % 2 ? 1 : -1, on = seg(t, 0, 0.2) * (1 - seg(t, 2.9, 3.2));
+      const slide = bump(t, 0.8, 1.6), spin = seg(t, 1.6, 2.1, E.inout), fin = seg(t, 2.15, 2.3, E.back) * (1 - seg(t, 2.85, 3.1));
+      P.pos('root', side * 0.6 * on * (1 - slide - fin), 0, -3 * slide + 1.5 * slide * Math.sin(t * 9)).rot('root', 0, (360 * spin) % 360, 0);
+      P.pos('body', 0, 1.2 + 0.8 * hit * on + 1.2 * fin, 0).rot('body', -10 * slide + 22 * fin, 0, side * 10 * hit * on * (1 - fin)).sq('body', -0.06 * hit * on);
+      hands(P, { p: [0, (2 * hit * on) + 9 * fin, 1 + fin], r: [-20 * on, 0, -30 * hit * on - 150 * fin] }, { p: [0, -1 - slide, -1 + 2 * Math.sin(t * 9) * slide], r: [20 * slide, 0, 20 * on] });
+      P.rot('tongue1', 20 * slide, 0, 10 * side * hit);
+      twinkle(P, t);
+      P.face('eyes', fin > 0.3 ? 'glint' : spin > 0.05 && spin < 0.95 ? 'happy' : beat < 0.3 ? 'smug' : undefined).face('mouth', fin > 0.3 ? 'open' : 'grin'); P.blinkOK = false;
+      eyeS(P, 1 + 0.1 * hit * on, 1 - 0.2 * hit * on + 0.12 * fin);
+      for (let k = 0; k < 5; k++) P.burst(0.2 + k * 0.4, 'note', 'body', [k % 2 ? 8 : -8, 24, 2], { n: 1, dir: [k % 2 ? 0.5 : -0.5, 1, 0.3], speed: 1 });
+      if (fin > 0.3) P.stream('sparkle', 'handR', GLOVE, { rate: 16 });
+      P.burst(2.2, 'ring', 'root', [0, 2, 0], { tint: [0.8, 0.5, 1] }).burst(2.2, 'ghostfire', 'root', [0, 2, 0], { n: 12, spread: 1, speed: 1.2 });
+    } },
+    // signature fidget: the lean — it tips slowly forward way past falling (anti-gravity), holds it with a smug eye,
+    // and snaps back upright with a flick of the glove and a burst of sparkle
+    lean: { len: 2.6, next: 'idle', f(P, t) {
+      const go = seg(t, 0.2, 0.9, E.inout) * (1 - seg(t, 1.75, 1.9, E.back)), hold = bump(t, 0.9, 1.75), snap = wob(t, 1.9, 1, 3, 6);
+      P.pos('body', 0, 1.2 - 1.2 * go, 2.4 * go).rot('body', 44 * go - 6 * snap, 0, 0);
+      hands(P, { p: [0, -1 - 2 * go + 4 * bump(t, 1.85, 2.3), 0], r: [30 * go, 0, -100 * bump(t, 1.85, 2.3)] }, { p: [0, -1 - 2 * go, 0], r: [30 * go, 0, 0] });
+      P.rot('tongue1', -30 * go, 0, 0).rot('tassel', -40 * go, 0, 0);
+      twinkle(P, t);
+      P.face('eyes', t < 0.2 ? 'glint' : go > 0.4 ? (hold > 0.5 ? 'smug' : 'open') : t > 1.85 && t < 2.2 ? 'happy' : undefined).face('mouth', hold > 0.3 ? 'grin' : undefined);
+      eyeAt(P, 0, -0.4 * go); eyeS(P, 1 + 0.1 * Math.max(0, snap), 1 - 0.2 * Math.max(0, snap));
+      P.burst(1.9, 'sparkle', 'handR', GLOVE, { n: 12, speed: 1.6 }).burst(1.92, 'star', 'body', [0, 27, 2], { n: 3 });
     } },
     // fidget: a long lick round its torn mouth, and a giggle
     lick: { len: 1.8, next: 'idle', f(P, t) {
       const k = bump(t, 0.1, 1.2), a = t * 9;
       P.pos('body', 0, 1.2, 0).rot('tongue1', -60 * k, Math.sin(a) * 30 * k, 0).rot('tongue2', -50 * k, 0, Math.cos(a) * 25 * k).rot('tongue3', -40 * k, 0, 0);
       const gig = bump(t, 1.2, 1.7); P.rot('body', 0, 0, wave(t, 10) * 4 * gig).pos('body', 0, wave(t, 10) * 0.4 * gig, 0);
-      P.face('eyes', gig > 0.2 ? 'happy' : 'sly').face('mouth', k > 0.2 ? 'open' : undefined);
+      P.face('eyes', gig > 0.2 ? 'happy' : k > 0.3 ? 'glint' : 'smug').face('mouth', k > 0.2 ? 'open' : undefined); eyeAt(P, 0.3 * Math.sin(a) * k, -0.3 * k); eyeS(P, 1 + 0.1 * gig, 1 - 0.2 * gig);
     } },
   },
 };
 def.anim = anim;
+
+// the ultra-drip form: the eyes keep their own colours (the paper burns blue, the lacquer turns black and gold)
+def.dripForm = { map: keepEyes(EYES, blackGold) };

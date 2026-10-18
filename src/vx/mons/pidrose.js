@@ -1,26 +1,28 @@
 // Pidgun ♀ — the same street species, female form (homage: Guns N' Roses). An ash-red pigeon: rosy-cream
 // plumage, wine-red wing bars, a neck that flashes pink and violet, almond rose-red ring eyes with a single
-// lash flick, a little curled quiff on her crown, and a long-stemmed red rose held up in her left wing like she's daring you to
-// take it — her signature. Drip (one choice per tier): a second rose tucked behind her head feathers or a
-// rose-bud headband; a studded choker with a rose pendant or a gold chain with a heart; red heart shades pushed
-// up on her crown or a cherry guitar on her back. Rose petals are painted along her tail; a quiff curls on top.
+// lash flick, a mane of dark frillback ringlets tumbling from under a little black top hat (silver conchos and a
+// rose in the band), and a long-stemmed red rose held up in her left wing like she's daring you to take it —
+// her signature. Drip (one choice per tier): a second rose tucked behind her head feathers or a rose-bud
+// headband; a studded choker with a rose pendant or a gold chain with a heart; red heart shades hooked on the
+// hat band or a cherry guitar on her back. Rose petals are painted along her tail.
 // Sassier than the male: a swaying strut, a hip-roll idle, a slap with the free wing, and a storm
 // of rose petals for a special.
 import { E, seg, bump, wob, wave, key } from '../anim.js';
-import { C, P, S1, MORPH, stage1, wingSegP, tipsP, pigeonEyeRig, quiffCubes, shadesCubes, guitarCubes, chokerCubes, chainCubes, bandanaS1, tuckedRose, rose, leafP, plant, strut, peck, ATTACH_S1 } from './pigeon_parts.js';
+import { C, P, S1, MORPH, stage1, wingSegP, tipsP, pigeonEyeRig, topHatCubes, curlsCubes, shadesCubes, guitarCubes, chokerCubes, chainCubes, bandanaS1, tuckedRose, rose, leafP, plant, strut, peck, ATTACH_S1, pigeonDrip } from './pigeon_parts.js';
 
 const M = MORPH.ash;
-// her own low-res eyes: almond rose-red rings round a dark pupil, one lash flick
-const EYES = pigeonEyeRig({ grid: [5, 5], ring: ['#ff5a74', '#d02c4c'], pupil: 'round', shape: 'almond', lash: true, py: 0.4, at: S1.eyeAt, size: [10 / 3, 10 / 3] });
+// her own eyes (full res): almond rose-red irises round a dark pupil in pink eye-skin, one lash flick
+const EYES = pigeonEyeRig({ ring: ['#ff5a74', '#c42a48'], skin: ['#f2ccd4', '#c48c9c'], pupil: 'round', shape: 'almond', lash: true, py: 0.4, at: S1.eyeAt, size: [10 / 3, 10 / 3] });
 const ES = (P, x, y = x) => P.scl('eyeR', x, y, 1).scl('eyeL', x, y, 1);
 const HAND = wingSegP({ ...M, base: [6.8, 8.4, 1.2], dir: [0, 0, 1], len: 7.0, cdir: [0, -1, 0], chord: 4.4, kind: 'hand' });
 const BANDANA = bandanaS1('pr-band', { headband: true });
+const MANE = ['#6a4a52', '#4a3038', '#321e26', '#1e1018'];
 const RB = [8.4, 15.6, 6.6], BLOOM = [8.4, 15.6, 6.6], BEAK = S1.mouth;
 
 export const def = {
   name: 'pidrose', ppu: 3, scale: 0.31, outline: { color: C.ink, px: 1.4 },
   bones: [
-    ...stage1({ M, wingL: false, tailPetals: true, headExtra: [...quiffCubes([0, 24.9, 4.4], M.head, 0.85), ...BANDANA.head],
+    ...stage1({ M, wingL: false, tailPetals: true, headExtra: [...BANDANA.head, ...curlsCubes([[-2.0, 25.4, -0.7, 5.6], [0, 25.6, -0.9, 6.2], [2.0, 25.4, -0.7, 5.6]], MANE)],
       neckExtra: [
         ...chokerCubes({ xs: 4.4, y: 16.6, z0: -0.6, z1: 6.6, id: 'pr-choker', hide: true }),
         ...chainCubes({ xs: 4.45, y: 16.2, z0: -0.6, z1: 6.6, at: [0, 13.9, 9.4], id: 'pr-chain', kind: 'heart' }),
@@ -37,8 +39,12 @@ export const def = {
     ] },
     { name: 'rose', parent: 'handL', pivot: [8.4, 5.2, 6.6], rot: [18, 0, 8], cubes: rose(RB, 1, { stem: 8 }) },
     tuckedRose('hairRose', 'pr-rosetuck'), ...BANDANA.bones,
-    // red heart shades pushed up on her crown, behind the quiff
-    { name: 'shades', parent: 'head', pivot: [0, 26.2, 1.0], rot: [-38, 0, 0], cubes: shadesCubes([0, 26.2, 1.0], { k: 0.95, kind: 'heart', id: 'pr-shades', hide: true }) },
+    // the top hat, cocked over her right eye, and the side ringlets on springs
+    { name: 'tophat', parent: 'head', pivot: [0, 25.5, 2.4], rot: [-8, 0, -9], cubes: topHatCubes([0, 25.5, 2.4], { k: 0.84, rose: true }) },
+    { name: 'curlR', parent: 'head', pivot: [-3.7, 25.2, 1.6], cubes: curlsCubes([[-4.1, 25.4, 3.0, 4.4], [-4.2, 25.4, 1.4, 5.2], [-3.5, 25.4, -0.1, 5.6]], MANE) },
+    { name: 'curlL', parent: 'head', pivot: [3.7, 25.2, 1.6], cubes: curlsCubes([[4.1, 25.4, 3.0, 4.4], [4.2, 25.4, 1.4, 5.2], [3.5, 25.4, -0.1, 5.6]], MANE) },
+    // red heart shades hooked on the hat band
+    { name: 'shades', parent: 'tophat', pivot: [0, 26.7, 4.7], rot: [-6, 0, 0], cubes: shadesCubes([0, 26.7, 4.7], { k: 0.72, kind: 'heart', id: 'pr-shades', hide: true }) },
     // a cherry single-cut slung on her back, the neck up over her right shoulder
     { name: 'guitar', parent: 'body', pivot: [-0.4, 12.0, -7.9], rot: [-24, 180, -28], cubes: guitarCubes([-0.4, 12.0, -7.9], { k: 1.1, id: 'pr-guitar', hide: true, finish: ['#ff5a5a', '#d0203a', '#8a0c24', '#3a0610'] }) },
   ],
@@ -46,8 +52,10 @@ export const def = {
 def.drip = [
   [{ id: 'pr-rosetuck', name: 'Rose in her feathers' }, { id: 'pr-band', name: 'Rose-bud headband' }],
   [{ id: 'pr-choker', name: 'Rose-pendant choker' }, { id: 'pr-chain', name: 'Gold heart chain' }],
-  [{ id: 'pr-shades', name: 'Heart shades' }, { id: 'pr-guitar', name: 'Cherry guitar' }],
+  [{ id: 'pr-shades', name: 'Heart shades on the hat' }, { id: 'pr-guitar', name: 'Cherry guitar' }],
 ];
+// the ultra-drip form (&drip=3): gold plumage, black leather and hat, garnet-lacquer irises and roses (pigeon_parts → pigeonDrip)
+def.dripForm = { map: pigeonDrip({ M, plumage: 'gold' }) };
 def.attach = ATTACH_S1;
 
 // ---------------------------------------------------------------- animation
@@ -59,6 +67,8 @@ export const anim = {
   blink: { slot: 'eyes', closed: 'closed', every: [2.2, 5.0], dur: 0.11 },
   look: { bone: 'head', yaw: 30, pitch: 14, speed: 8 },
   springs: [
+    { bone: 'tophat', tip: [0, 6, 0], k: 280, d: 13, gain: 0.25, max: 8 },
+    { bone: 'curlR', tip: [0, -5, 0], k: 120, d: 8, gain: 0.9, max: 22 }, { bone: 'curlL', tip: [0, -5, 0], k: 120, d: 8, gain: 0.9, max: 22 },
     { bone: 'tail', tip: [0, 0, -9], k: 200, d: 11, gain: 0.5, max: 14 },
     { bone: 'handR', tip: [0, 0, -9], k: 260, d: 13, gain: 0.3, max: 8 },
     { bone: 'rose', tip: [0, 9, 0], k: 240, d: 10, gain: 0.5, max: 12 },

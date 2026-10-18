@@ -446,7 +446,7 @@ export const anim = {
     vines: { default: 'off', states: { off: [], on: ['vine'] } },
     bloom: { default: 'off', states: { off: [], on: ['bloom'] } },
   },
-  fidget: { every: [4.5, 8], clips: ['baa', 'nod', 'shake'] },
+  fidget: { every: [3.5, 7], clips: ['dance', 'dance', 'shake', 'baa', 'nod'] },
   clips: {
     // a happy little bob on the spot; now and then a curious head tilt with a smile
     idle: { len: 3.2, loop: true, f(P, t) {
@@ -600,6 +600,22 @@ export const anim = {
       P.face('eyes', 'closed').face('mouth', br > 0.3 ? 'o' : 'w'); P.blinkOK = false; P.lookW = 0; P.breathW = 0;
       eyesScale(P, 1, 0.9 + 0.1 * br);
       P.burst(1.2, 'z', 'head', ZZ, {}).burst(2.6, 'z', 'head', ZZ, {});
+    } },
+    // dance: a baby's two-step — hoof stomps left and right on the beat, braids swinging, a little hop-twirl, and a
+    // finish tipping its head (and hat, if it wears one) with a heart
+    dance: { len: 3.0, next: 'idle', f(P, t) {
+      const beat = (t / 0.375) % 1, n = Math.floor(t / 0.375), hit = Math.exp(-beat * 8), side = n % 2 ? 1 : -1, on = seg(t, 0, 0.2) * (1 - seg(t, 2.7, 3.0));
+      const twirl = seg(t, 1.5, 1.95, E.inout), hopY = Math.sin(seg(t, 1.5, 1.95) * Math.PI) * 2.6, fin = seg(t, 2.2, 2.35, E.back) * (1 - seg(t, 2.7, 2.95));
+      P.pos('root', 0, hopY, 0).rot('root', 0, (360 * twirl) % 360, 0);
+      trunk(P, { dy: -0.5 * hit * on, roll: side * 8 * on * (1 - fin), yaw: side * 8 * on * (1 - fin) }); P.sq('trunk', -0.08 * hit * on);
+      for (const [leg, sd] of [['legFR', -1], ['legFL', 1]]) { const up = side === sd ? bump(beat, 0, 0.5) * on : 0; P.rot(leg, -30 * up, 0, 0).pos(leg, 0, 1.2 * up, 0); }
+      tuck(P, hopY > 0.5 ? 0.8 : 0);
+      P.rot('head', -6 * hit * on + 14 * fin, 0, side * 10 * on * (1 - fin) - 16 * fin).rot('tail', 0, 30 * Math.sin(t * 12), 0);
+      P.rot('earR', 0, 0, 12 * hit * on).rot('earL', 0, 0, -12 * hit * on);
+      P.face('eyes', fin > 0.3 ? 'wink' : twirl > 0.05 && twirl < 0.95 ? 'happy' : beat < 0.3 ? 'happy' : undefined).face('mouth', fin > 0.3 ? 'smile' : beat < 0.4 ? 'open' : 'w'); P.blinkOK = false;
+      eyesScale(P, 1 + 0.08 * hit * on, 1 - 0.2 * hit * on);
+      for (let k = 0; k < 6; k++) P.burst(0.2 + k * 0.375, 'note', 'head', [k % 2 ? 7 : -7, 25, 6], { n: 1, dir: [k % 2 ? 0.5 : -0.5, 1, 0.3], speed: 1 });
+      P.burst(1.95, 'dust', 'root', [0, 0.3, 0], { n: 4, speed: 0.6, scale: 0.5 }).burst(2.25, 'heart', 'head', CROWN, { n: 3, speed: 0.9 });
     } },
     // fidget: a little "baa" — squash, then stretch up with the mouth wide open
     baa: { len: 1.3, next: 'idle', f(P, t) {

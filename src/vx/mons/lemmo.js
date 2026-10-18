@@ -4,9 +4,9 @@
 // glossy leaves makes its ears. Squeeze one and you get a jolt of juice and a sour look you will
 // never forget.
 //
-// Music homage (Lemonade, original): a glossy golden peel, a tiny baseball bat it carries on its
-// shoulder and swings through glass ('Hold Up'), a bee hair-clip, honeycomb cells pressed into its back
-// and branded on the bat, and a buzzing hive of little bees that orbit it.
+// Music homage (Lemonade, original): a glossy golden peel, long wavy golden locks of zest framing its face, big
+// round cartoon eyes, a tiny baseball bat it carries on its shoulder and swings through glass ('Hold Up'), a bee
+// hair-clip, honeycomb cells pressed into its back and branded on the bat, and a buzzing hive of little bees.
 //
 // Build notes: the peel is one ideal ellipsoid painted across the stepped boxes that approximate
 // it (orb()), so the light bands flow over every step. The electrodes sit on one sprung 'rig'
@@ -15,6 +15,8 @@
 import { defineFx } from '../fx.js';
 import { E, seg, bump, wob, wave, key, bounce, hop } from '../anim.js';
 import { shift, h2 } from './kit.js';
+import { eyeRig, eyesAt, eyesScale, glance, keepEyes } from './eyes.js';
+import { blackGold } from '../model.js';
 
 const D2R = Math.PI / 180;
 const C = {
@@ -220,65 +222,46 @@ const barrelP = (p, w, h, face) => { woodP(p, w, h, face); if (face !== 'up' && 
 const BEE = ['...ww.ww.', '...wWwWw.', '.ykykykk.', 'kykykykkk', '.ykykykk.', '...ykyk..'];
 const beeP = (p) => stamp(p, BEE, C.bee);
 
-// ---------------------------------------------------------------- kawaii eyes
-// Gen 8–9 style eyes: a big soft oval with a 1-texel outline, a dark iris tinted with an accent, a lighter
-// accent gradient in the lower third, a big catchlight high on the outer side (x small) and a 1-texel glint
-// low on the inner side. lid: [y (fraction of the height), slope] cuts the top with a flat lid (angry: slope
-// > 0, tilted in; sad: < 0). Other expressions are single-colour strokes: ^ (happy), ◡ (closed), > (hurt).
-function eyeOpen(W, H, K, lid) {
-  return (p) => {
-    const cx = (W - 1) / 2, cy = (H - 1) / 2, rx = W / 2 - 0.02, ry = H / 2 - 0.02;
-    const lidAt = (x) => (lid ? lid[0] * H + lid[1] * (x - cx) : -9);
-    const inside = (x, y) => ((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2 <= 1 && y >= lidAt(x) - 0.01;
-    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
-      if (!inside(x, y)) continue;
-      const edge = !inside(x - 1, y) || !inside(x + 1, y) || !inside(x, y - 1) || !inside(x, y + 1) || (lid && y < lidAt(x) + 1.2);
-      const t = y / (H - 1);
-      p.px(x, y, edge ? K.line : t > 0.8 ? K.acc[1] : t > 0.62 ? K.acc[0] : K.dark);
-    }
-    const k = W >= 9 && !lid ? 3 : 2, x0 = Math.round(cx - rx * 0.55 + 0.5);
-    const y0 = Math.max(Math.round(cy - ry * 0.55 + 0.5), lid ? Math.ceil(lidAt(x0 + 1) + 1.2) : 0);
-    for (let j = 0; j < k; j++) for (let i = 0; i < k; i++) if (inside(x0 + i, y0 + j) && !(k === 3 && (i === 2 && j === 2))) p.px(x0 + i, y0 + j, '#ffffff');
-    const gx = Math.round(cx + rx * 0.5), gy = Math.round(cy + ry * 0.48);
-    if (inside(gx, gy)) p.px(gx, gy, '#ffffff');
-  };
-}
-// ^ happy (bulging up) or ◡ closed (bulging down): a 2-texel stroke
-const eyeArc = (W, H, K, up) => (p) => {
-  const cx = (W - 1) / 2, rx = W / 2 - 0.5;
-  for (let x = 0; x < W; x++) {
-    const u = (x - cx) / rx; if (Math.abs(u) > 1.02) continue;
-    const s = Math.sqrt(Math.max(0, 1 - u * u)), y = Math.round(up ? H * 0.62 - H * 0.36 * s : H * 0.4 + H * 0.26 * s);
-    p.px(x, y, K.line); p.px(x, y + 1, K.line);
-  }
-};
-// > (hurt): apex on the inner side; the mirrored eye reads <
-const eyeHurt = (W, H, K) => (p) => {
-  for (let k = 0; k <= 10; k++) {
-    const t = k / 10, x = Math.round(1 + t * (W - 3)), a = Math.round(1 + t * ((H - 1) / 2 - 1)), b = Math.round(H - 2 - t * ((H - 1) / 2 - 1));
-    p.px(x, a, K.line); p.px(x, a + 1, K.line); p.px(x, b, K.line); p.px(x, b - 1, K.line);
-  }
-};
-const eyeX = (W, H, K) => (p) => { for (let k = 0; k < W - 2; k++) { const y = Math.round(1 + (k * (H - 3)) / (W - 3)); p.px(1 + k, y, K.line); p.px(W - 2 - k, y, K.line); p.px(1 + k, y + 1, K.line); p.px(W - 2 - k, y + 1, K.line); } };
-const eyeSwirl = (W, H, K) => (p) => { const cx = (W - 1) / 2, cy = (H - 1) / 2; for (let a = 0; a < 15; a += 0.2) { const r = a * (Math.min(W, H) / 2 - 0.5) / 15; p.px(Math.round(cx + Math.cos(a) * r), Math.round(cy + Math.sin(a) * r), K.line); } };
-
 // ---------------------------------------------------------------- face: eyes and mouth
-// eyes: 10 × 11 texels, outer corner at x = 0 (the left eye is the mirrored plane)
-const EM = { k: C.lid, W: '#ffffff' };
-const EK = { line: '#170a06', dark: '#2b1a12', acc: ['#9a5a1a', '#f2b234'] }, EW = 10, EH = 11;
-const EYES = {
-  sour: eyeOpen(EW, EH, EK, [0.12, 0.16]),               // its everyday look: big and round, just a sour little tilt to the lid
-  fierce: eyeOpen(EW, EH, EK, [0.28, 0.42]),
-  wide: eyeOpen(EW, EH, EK),
-  squeeze: eyeHurt(EW, EH, EK),
-  closed: eyeArc(EW, EH, EK, false),
-  happy: eyeArc(EW, EH, EK, true),
-  smug: eyeOpen(EW, EH, EK, [0.4, 0.05]),
-  sad: eyeOpen(EW, EH, EK, [0.2, -0.24]),
-  x: eyeX(EW, EH, EK),
-  swirl: eyeSwirl(EW, EH, EK),
+// eyes (hand-pixelled at full texture resolution, Pokémon-style): big round cartoon whites ringed in ink, an amber
+// iris with a darker top and a dark pupil, one big glint and one small one, a shaded rim low on the white. Its own:
+// the only Tokonmon with a golden-amber iris on a white this big.
+const EYES = eyeRig({ style: 'pix', chunk: 1, parent: 'body', at: [-2.9, 10.4, 6.36], line: '#1e0c04', iris: '#f2a21e', irisDark: '#a85a0e', pupilColor: '#2a1206', extra: ['smug', 'glint'], map: {
+  open: [
+    '...llllll...',
+    '.llwwwwwwll.',
+    '.lwwwwwwwwl.',
+    'lwwwIIIIwwwl',
+    'lwwIIkkIIwwl',
+    'lwwihhkkiwwl',
+    'lwwihkkkiwwl',
+    'lwwikkkkiwwl',
+    'lswwiiihiwsl',
+    'lsswwiiiwwsl',
+    '.lsswwwwssl.',
+    '..llllllll..',
+  ],
+  happy: ['............', '............', '............', '...llllll...', '.ll......ll.', 'l..........l', 'l..........l', '............', '............', '............', '............', '............'],
+  closed: ['............', '............', '............', '............', '............', '............', 'l..........l', '.ll......ll.', '...llllll...', '............', '............', '............'],
+} });
+// long wavy golden locks of zest: S-waves of gold with darker gold troughs and a lit crest on each wave
+const lockP = (ph) => (p, w, h) => {
+  for (let j = 0; j < h; j++) {
+    const v = j / (h - 1), half = (w / 2) * (0.55 + 0.45 * Math.sin(Math.min(1, v * 1.25) * Math.PI * 0.5)) * (v > 0.9 ? 1 - (v - 0.9) * 6 : 1), sh = Math.sin(v * Math.PI * 3.2 + ph) * w * 0.18;
+    for (let i = 0; i < w; i++) {
+      const u = i + 0.5 - w / 2 - sh; if (Math.abs(u) > half) continue;
+      const wave = Math.sin(v * Math.PI * 6.4 + ph + u * 0.5);
+      p.px(i, j, Math.abs(u) > half - 0.8 ? '#b8740e' : wave > 0.6 ? '#fff4a0' : wave < -0.5 ? '#d89418' : '#ffd23a');
+    }
+  }
 };
-const eyeP = (rows) => (p) => stamp(p, rows, EM);
+// drip painters
+const sashP = (p, w, h, f) => { for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) p.px(i, j, f === 'up' || f === 'down' ? '#e8dcc8' : j === 0 || j === h - 1 ? '#ffd23e' : (i + j) % 7 === 0 ? '#ffe680' : '#fffaf0'); };
+const discoP = (p, w, h, f) => { for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) p.px(i, j, f === 'down' ? '#5a6078' : (i + j) % 2 ? ((i * 3 + j) % 5 === 0 ? '#ffffff' : '#c8d0e4') : '#8a92aa'); };
+const diamondP = (p, w, h, f) => { for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) p.px(i, j, f === 'up' ? '#ffffff' : (i + j) % 2 ? '#bff0ff' : '#e8fbff'); };
+const hatP = (p, w, h, f) => { for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) p.px(i, j, f === 'down' ? '#c8bea8' : f === 'up' ? '#ffffff' : j === 0 ? '#ffffff' : '#f4efe4'); };
+const honeyP = (p, w, h, f) => { for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) { const c = (i + (Math.floor(j / 2) % 2) * 2) % 4 === 0; p.px(i, j, f === 'down' ? C.hive[2] : c ? C.hive[2] : j === 0 ? '#fff0a0' : C.hive[0]); } };
+const crownPts = (p, w, h) => { for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) if (j >= Math.abs((i % 4) - 1.5) * 1.6) p.px(i, j, j === h - 1 ? C.hive[1] : (i % 4 === 1 || i % 4 === 2) && j < 2 ? '#fff6c0' : '#ffd84a'); };
 // the pursed lips: a round pucker, a dark pit in the middle, creases gathering into it
 const lipsP = (p, w, h, face) => {
   const L = C.lip;
@@ -287,6 +270,10 @@ const lipsP = (p, w, h, face) => {
 };
 const MM = { k: C.mouth, t: C.tongue, T: '#ffb49a', l: C.lip[1], L: C.lip[0], d: C.lip[3], w: '#fff6dc', o: C.lip[2] };
 const MOUTHS = {
+  // a little smile, a sulky frown, a startled o (flat mouths drawn on the face)
+  smile: ['............', '............', '.l........l.', '..l......l..', '...llllll...', '............', '............', '............'],
+  frown: ['............', '............', '...llllll...', '..l......l..', '.l........l.', '............', '............', '............'],
+  o: ['............', '....LLLL....', '...lkkkkl...', '...lkkkkl...', '...lkkkkl...', '....dddd....', '............', '............'],
   // shouting: a sour square yell with everted lips
   open: ['...LLLLLL...', '..lkkkkkkl..', '.lkkkkkkkkl.', '.lkkkkkkkkl.', '.lkkttttkkl.', '..lktTTtkl..', '...dllllo...', '............'],
   // gritted teeth: a wide, flat grimace
@@ -307,7 +294,6 @@ const arcPlanes = (big) => ABC.flatMap((f, k) => [
   P([T0[0], T0[1], T0[2] - (big ? 1.8 : 1.3)], [ARC_LEN, 0, big ? 3.6 : 2.6], bolt(k + 5 + (big ? 10 : 0), big, true), { plane: 'y', glow: true, id: 'arc-' + (big ? 'big' : '') + f, hide: true }),
 ]);
 const FZ = 6.35;      // the face plane (front of the face box + a hair)
-const eyeStates = (side) => Object.entries(EYES).map(([k, fn]) => P(side < 0 ? [-4.4, 8.5, FZ] : [1.067, 8.5, FZ], [3.333, 3.667, 0], fn, { plane: 'z', mirror: side > 0, id: 'eye-' + k, hide: k !== 'sour' }));
 const LEAF_Y = 16.1, LEAF_Z = -2.6;
 // the bat (held at the grip, BAT_P), drawn standing up from the hand; BAT_REST leans it back over the shoulder
 const BAT_P = [-6.6, 5.6, 4.0], BAT_REST = [-16, 0, 46], BAT_TIP = [-6.6, 14.0, 4.0];
@@ -342,9 +328,15 @@ export const def = {
       P([-9.4, 7.6, -1.2], [1.2, 2.4, 2.4], stemNub),               // stem-end nub
       P([8.2, 7.6, -1.2], [1.4, 2.4, 2.4], peel),                   // tip nub
       P([9.6, 8.2, -0.6], [0.8, 1.2, 1.2], peel),
-      ...eyeStates(-1), ...eyeStates(1),
       ...Object.entries(MOUTHS).map(([k, rows]) => P([-2, 5.0, FZ], [4, 2.667, 0], mouthP(rows), { plane: 'z', id: 'm-' + k, hide: true })),
     ] },
+    ...EYES.bones,
+    // hair: long wavy golden locks of zest falling either side of the face (front and side planes, sprung)
+    ...[-1, 1].map((sd) => ({ name: sd < 0 ? 'lockR' : 'lockL', parent: 'body', pivot: [sd * 6.2, 14.4, 3.6], cubes: [
+      P([sd * 6.9 - 1.7, 3.0, 4.9], [3.4, 11.6, 0], lockP(sd < 0 ? 0 : 2), { plane: 'z', mirror: sd > 0 }),
+      P([sd * 8.4, 3.6, -3.4], [0, 10.6, 3.4], lockP(1.4), { plane: 'x' }),
+      P([sd * 7.2 - 1.6, 12.2, -2.6], [3.2, 3.4, 0], lockP(3), { plane: 'z' }),
+    ] })),
     { name: 'mouth', parent: 'body', pivot: [0, 6.3, 6.3], cubes: [P([-1.167, 5.467, 6.15], [2.333, 1.667, 0.6], lipsP, { id: 'm-lips' })] },
     // the electrodes ride one sprung rig so the arc between them always lands on both tips
     { name: 'rig', parent: 'body', pivot: [0, 15.4, 1.4], cubes: [] },
@@ -368,9 +360,36 @@ export const def = {
       P([3.6, 13.4, 1.4], [2.4, 1.4, 1.6], clipBodyP), P([6.0, 13.5, 1.6], [0.8, 1.2, 1.2], C.bee.k),
       P([3.8, 14.8, 2.2], [1.4, 1.333, 0], wingP, { plane: 'z', pivot: [4.5, 14.8, 2.2], rot: [0, 0, 18] }),
       P([4.9, 14.8, 2.2], [1.4, 1.333, 0], wingP, { plane: 'z', pivot: [5.6, 14.8, 2.2], rot: [0, 0, -12] }),
-    ] },
+    ].map((c) => ({ ...c, id: 'acc-clip', hide: true })) },
+    // drip 1 (or): a big diamond ring on the free hand — put a ring on it
+    { name: 'ring', parent: 'armL', pivot: [6.6, 5.6, 4], cubes: [
+      P([5.45, 5.3, 4.9], [2.3, 0.6, 0.3], '#ffd23e'), P([6.0, 5.9, 4.85], [1.2, 1.1, 0.8], diamondP, { glow: true }),
+    ].map((c) => ({ ...c, id: 'acc-ring', hide: true })) },
+    // drip 2: a rodeo-queen sash across the body, white and gold
+    { name: 'sash', parent: 'body', pivot: [0, 8.8, 6.4], cubes: [P([-7.8, 8.0, 6.3], [15.6, 1.2, 0.4], sashP, { pivot: [0, 8.6, 6.5], rot: [0, 0, 34], id: 'acc-sash', hide: true })] },
+    // drip 2 (or): a chrome disco ball on a gold chain
+    { name: 'disco', parent: 'body', pivot: [0, 4.4, 6.0], cubes: [
+      P([-2.6, 4.6, 5.8], [5.2, 0.35, 0.35], '#ffd23e'), P([-1.0, 1.9, 5.7], [2.0, 2.0, 2.0], discoP), P([-0.15, 3.9, 6.55], [0.3, 0.7, 0.3], '#ffd23e'),
+    ].map((c) => ({ ...c, id: 'acc-disco', hide: true })) },
+    // drip 3: a honeycomb crown between the electrodes
+    { name: 'crown', parent: 'body', pivot: [0, 15.4, -0.4], cubes: [
+      P([-1.8, 15.2, -2.2], [3.6, 1.2, 3.6], honeyP), P([-1.8, 16.4, 1.45], [3.6, 1.6, 0], crownPts, { plane: 'z' }), P([-1.8, 16.4, -2.25], [3.6, 1.6, 0], crownPts, { plane: 'z' }),
+      P([-0.4, 16.8, 1.3], [0.8, 0.8, 0.4], '#ffffff', { glow: true }),
+    ].map((c) => ({ ...c, id: 'acc-crown', hide: true })) },
+    // drip 3 (or): a white cowboy hat slung on its back by the cord
+    { name: 'hat', parent: 'body', pivot: [0, 13.2, -6.6], rot: [-12, 0, 10], cubes: [
+      P([-4.6, 5.8, -7.6], [9.2, 7.0, 0.5], hatP), P([-2.5, 6.8, -10.4], [5.0, 4.8, 2.8], hatP), P([-2.55, 6.8, -8.0], [5.1, 4.8, 0.5], '#3a2a1e'),
+      P([-5.3, 5.8, -7.4], [0.8, 7.0, 1.4], hatP), P([4.5, 5.8, -7.4], [0.8, 7.0, 1.4], hatP),
+      P([-0.2, 12.6, -7.4], [0.4, 2.4, 0.4], '#3a2a1e', { pivot: [0, 12.8, -7.2], rot: [30, 0, 0] }),
+    ].map((c) => ({ ...c, id: 'acc-hat', hide: true })) },
   ],
 };
+// appearance tiers: normal wears one of the first list, dripped adds one of the second, ultra dripped one of the third
+def.drip = [
+  [{ id: 'acc-clip', name: 'Bee hair-clip' }, { id: 'acc-ring', name: 'Diamond ring' }],
+  [{ id: 'acc-sash', name: 'Rodeo-queen sash' }, { id: 'acc-disco', name: 'Disco-ball chain' }],
+  [{ id: 'acc-crown', name: 'Honeycomb crown' }, { id: 'acc-hat', name: 'White cowboy hat' }],
+];
 // gear anchors (model units): the lemon is its own head, so everything rides the body bone
 def.attach = {
   head: { bone: 'body', at: [0, 15.5, -0.6], size: 8.8 },
@@ -440,14 +459,16 @@ export const anim = {
     { bone: 'armR', tip: [-1.6, 0, 0], k: 230, d: 11, gain: 0.5, max: 9 },
     { bone: 'armL', tip: [1.6, 0, 0], k: 230, d: 11, gain: 0.6, max: 12 },
     { bone: 'clip', tip: [0, 1.5, 0], k: 260, d: 10, gain: 0.6, max: 14 },
+    { bone: 'lockR', tip: [0, -9, 1], k: 120, d: 6, gain: 0.9, max: 18, axes: [1, 0.3, 1] },
+    { bone: 'lockL', tip: [0, -9, 1], k: 125, d: 6, gain: 0.9, max: 18, axes: [1, 0.3, 1] },
   ],
   faces: {
-    eyes: { default: 'sour', states: Object.fromEntries(Object.keys(EYES).map((k) => [k, ['eye-' + k]])) },
-    mouth: { default: 'pout', states: { pout: ['m-lips'], open: ['m-open'], grit: ['m-grit'] } },
+    eyes: EYES.slot,
+    mouth: { default: 'pout', states: { pout: ['m-lips'], open: ['m-open'], grit: ['m-grit'], smile: ['m-smile'], frown: ['m-frown'], o: ['m-o'] } },
     arc: { default: 'a', states: Object.fromEntries([...ABC.map((f) => [f, ['arc-' + f]]), ...ABC.map((f) => ['big' + f, ['arc-big' + f]]), ['off', []]]) },
     bees: { default: 'off', states: { off: [], on: ['bee'] } },
   },
-  fidget: { every: [4.5, 8], clips: ['pucker', 'zap', 'buzz'] },
+  fidget: { every: [3.5, 7], clips: ['dance', 'dance', 'zap', 'pucker', 'buzz'] },
   clips: {
     // grumpy bouncing: two springy bobs on planted feet, a slow sour rock; the bat taps its shoulder
     // in time with an impatient foot, the other hand on its hip
@@ -463,6 +484,9 @@ export const anim = {
       P.rot('rig', 0, 0, wave(t, 1 / 1.6, 0.8) * 2.5);
       ears(P, -b.u * 6 * big);
       crackle(P, t);
+      // eyes: sharp little side-eye darts, a sour smug lid now and then, a squashy blink on each landing
+      const [gx, gy] = glance(t, [[0, 0], [0.4, 0], [0.4, 0], [-0.3, 0.1], [0, 0]], 0.4);
+      eyesAt(P, gx, gy).face('eyes', t > 0.95 && t < 1.35 ? 'smug' : undefined); eyesScale(P, 1 - 0.3 * b.sq, 1 + 0.6 * b.sq);
     } },
     // a strut: rolling over each step, the bat riding its shoulder, the free hand swinging
     walk: { len: 0.64, loop: true, f(P, t) {
@@ -472,7 +496,7 @@ export const anim = {
       feet(P, dy, [lr, ll]); P.pos('footR', 0, 0, s * 1.8).pos('footL', 0, 0, -s * 1.8).rot('footR', -14 * Math.max(0, s), 0, 0).rot('footL', -14 * Math.max(0, -s), 0, 0);
       P.rot('armL', -s * 28, 0, 10).rot('bat', s * 5, 0, -Math.abs(c) * 6);
       P.rot('rig', 0, 0, -s * 4); ears(P, -Math.abs(c) * 8);
-      crackle(P, t);
+      crackle(P, t); P.face('eyes', 'smug'); eyesScale(P, 1, 1 - 0.08 * (1 - Math.abs(c)));
     } },
     // battle cry: crouch, spring up with the bat thrust at the sky, electrodes flung wide, the arc roaring; land and shout
     cry: { len: 1.9, next: 'idle', f(P, t) {
@@ -484,7 +508,8 @@ export const anim = {
       splay(P, 24 * up + wob(t, 0.45, 6, 4, 5));
       ears(P, -28 * up);
       crackle(P, t, up > 0.3 ? 2 : 1);
-      P.face('eyes', t < 0.3 || up > 0.3 ? 'fierce' : undefined).face('mouth', up > 0.3 && t < 1.6 ? 'open' : undefined);
+      P.face('eyes', t < 0.3 ? 'angry' : up > 0.3 ? (shout > 0.3 ? 'shut' : 'angry') : t > 1.6 ? 'smug' : undefined).face('mouth', up > 0.3 && t < 1.6 ? 'open' : t < 0.3 ? 'frown' : undefined);
+      eyesScale(P, 1 + 0.12 * up, 1 - 0.2 * shout + 0.1 * up); P.burst(0.46, 'anger', 'body', [5.6, 16, 5], {});
       P.burst(0.45, 'bolt', 'rig', MID, { n: 4, speed: 4 }).burst(0.45, 'spark', 'bat', BAT_TIP, { scale: 1.3 }).burst(0.47, 'spark', 'rig', TIPS[1], {});
       P.burst(0.72, 'dust', 'root', [0, 0.5, 0], { n: 5, dir: [0, 0.2, 1], spread: 1, speed: 0.7, scale: 0.6 });
       if (t > 0.5 && t < 1.5) P.stream('spark', 'rig', TIPS[(Math.floor(t * 9)) % 2], { rate: 10 }).stream('bolt', 'bat', BAT_TIP, { rate: 8, speed: 3 });
@@ -501,7 +526,8 @@ export const anim = {
       feet(P, -0.8 * wind);
       P.rot('armL', 0, 0, 30 * wind - 20 * fol); ears(P, 10 * wind - 22 * fol);
       crackle(P, t, fol > 0.5 ? 2 : 1);
-      P.face('eyes', t < 0.44 ? 'fierce' : t < 0.72 ? 'squeeze' : 'smug').face('mouth', t > 0.2 && t < 0.44 ? 'grit' : t < 0.72 ? 'open' : undefined);
+      P.face('eyes', t < 0.44 ? 'angry' : t < 0.72 ? 'shut' : 'smug').face('mouth', t > 0.2 && t < 0.44 ? 'grit' : t < 0.72 ? 'open' : 'smile');
+      eyesScale(P, 1 + 0.15 * fol, 1 - 0.15 * wind - 0.3 * bump(t, 0.42, 0.6)); eyesAt(P, -0.3 * wind + 0.3 * fol, 0);
       P.burst(0.44, 'shard', 'bat', BAT_TIP, { n: 14, speed: 1.3, spread: 1 }).burst(0.44, 'spark', 'bat', BAT_TIP, { scale: 1.5 }).burst(0.45, 'star', 'bat', BAT_TIP, { n: 4 }).burst(0.46, 'lemmojuice', 'bat', BAT_TIP, { n: 5, speed: 1.2 });
     } },
     // special (Volto): it raises the bat like a lightning rod until the arc roars, then levels it and
@@ -517,7 +543,8 @@ export const anim = {
       splay(P, 26 * charge + 18 * fire + wave(t, 21) * 3 * shake + wob(t, 0.9, 8, 5, 5));
       ears(P, -40 * charge - 20 * fire); P.rot('armL', 0, 0, 40 * charge);
       crackle(P, t, charge > 0.2 || fire > 0.1 ? 2 : 1);
-      P.face('eyes', charge > 0.15 ? 'fierce' : fire > 0.2 ? 'squeeze' : undefined).face('mouth', charge > 0.4 ? 'grit' : fire > 0.2 ? 'open' : undefined);
+      P.face('eyes', charge > 0.15 ? (charge > 0.8 ? 'glint' : 'angry') : fire > 0.2 ? 'shut' : t > 1.6 ? 'smug' : undefined).face('mouth', charge > 0.4 ? 'grit' : fire > 0.2 ? 'open' : undefined);
+      eyesScale(P, 1 + 0.06 * wave(t, 19) * shake, 1 + 0.06 * wave(t, 17) * shake - 0.3 * fire); eyesAt(P, 0, 0.3 * charge);
       if (charge > 0.2) P.stream('spark', 'bat', BAT_TIP, { rate: 16 * charge }).stream('bolt', 'rig', MID, { rate: 10 * charge, speed: 2 }).stream('bolt', 'bat', BAT_TIP, { rate: 8 * charge, speed: 2 });
       P.burst(0.86, 'ring', 'bat', BAT_TIP, { scale: 1.4 }).burst(0.86, 'spark', 'rig', MID, { scale: 1.8 }).burst(0.86, 'bolt', 'rig', MID, { n: 12, speed: 7, spread: 1 });
       if (t > 0.86 && t < 1.3) P.stream('bolt', 'bat', BAT_TIP, { rate: 60, dir: [0, 1, 0], speed: 11, spread: 0.22 }).stream('spark', 'bat', BAT_TIP, { rate: 14, dir: [0, 1, 0], speed: 5, spread: 0.3 });
@@ -531,7 +558,9 @@ export const anim = {
       P.rot('bat', 0, 0, 24 * k + wob(t, 0.16, -8, 3, 5)).rot('armL', 0, 0, 40 * k);
       splay(P, 18 * k); ears(P, -30 * k);
       crackle(P, t, t < 0.3 ? 0.5 : 1);
-      P.face('eyes', t < 0.42 ? 'squeeze' : undefined).face('mouth', t < 0.42 ? 'open' : undefined);
+      P.face('eyes', t < 0.08 ? 'shock' : t < 0.42 ? 'shut' : t < 0.62 ? 'teary' : undefined).face('mouth', t < 0.42 ? 'open' : t < 0.62 ? 'frown' : undefined);
+      eyesScale(P, 1 + 0.3 * bump(t, 0, 0.1) + 0.25 * k, 1 + 0.35 * bump(t, 0, 0.1) - 0.45 * k);
+      P.burst(0.05, 'sweat', 'body', [-6, 14, 5], { n: 2, dir: [-1, 1, 0.3] }).burst(0.45, 'tear', 'body', [-2.9, 8.2, 6.8], { n: 1, dir: [-0.3, -1, 0.5] });
       P.burst(0.03, 'lemmojuice', 'body', MOUTH, { n: 6, dir: [0, 0.8, 0.6], speed: 1.2 }).burst(0.03, 'spark', 'body', [0, 9, 6.5], {}).burst(0.05, 'bolt', 'rig', MID, { n: 3, speed: 3 });
     } },
     // the arc sputters out, it wobbles, lets the bat drop, and rolls back onto its round back, feet in the air
@@ -543,7 +572,8 @@ export const anim = {
       P.rot('footR', -40 * fall + wob(t, 1.4, 12, 3, 4), 0, -18 * fall).rot('footL', -30 * fall + wob(t, 1.45, -10, 3, 4), 0, 16 * fall);
       splay(P, -10 * fall); ears(P, 30 * fall);
       crackle(P, t, t < 0.9 ? 0.7 - t * 0.6 : 0);
-      P.face('eyes', t > 0.25 ? 'swirl' : 'wide').face('mouth', t > 0.25 ? 'open' : undefined); P.blinkOK = false; P.lookW = 0;
+      P.face('eyes', t < 0.25 ? 'shock' : t < 0.9 ? 'swirl' : t < 1.4 ? 'wide' : 'x').face('mouth', t > 0.25 ? 'open' : 'o'); P.blinkOK = false; P.lookW = 0;
+      eyesScale(P, 1 + 0.3 * bump(t, 0, 0.25) + 0.2 * bump(t, 0.9, 1.4), 1 + 0.35 * bump(t, 0, 0.25) + 0.25 * bump(t, 0.9, 1.4)); eyesAt(P, 0.3 * wave(t, 2.1) * dizzy, 0);
       P.burst(0.2, 'spark', 'rig', TIPS[0], {}).burst(0.5, 'spark', 'rig', TIPS[1], {}).burst(0.75, 'bolt', 'rig', MID, { n: 2 });
       P.burst(1.4, 'smoke', 'rig', MID, { n: 6, spread: 1 }).burst(1.0, 'star', 'body', [0, 16, 0], { n: 5 });
     } },
@@ -553,7 +583,7 @@ export const anim = {
       P.rot('footR', -40 + bump(t, 1.2, 1.36) * -14, 0, -18).rot('footL', -30, 0, 16);
       splay(P, -10); ears(P, 30);
       P.face('arc', t > 1.9 && t < 1.97 ? 'a' : 'off');
-      P.face('eyes', 'swirl').face('mouth', 'open'); P.blinkOK = false; P.lookW = 0; P.breathW = 0.4;
+      P.face('eyes', 'swirl').face('mouth', 'open'); P.blinkOK = false; P.lookW = 0; P.breathW = 0.4; eyesScale(P, 1 + 0.06 * wave(t, 0.8), 1 - 0.06 * wave(t, 0.8));
       P.stream('smoke', 'rig', MID, { rate: 1.4, scale: 0.6 });
     } },
     // victory: a hop with a full spin and a ring of sparks; then it twirls the bat like a baton while
@@ -568,7 +598,9 @@ export const anim = {
       const tw = seg(t, 1.0, 1.15, E.out) * (1 - seg(t, 1.9, 2.15, E.inout));
       batAim(P, 90, 46 - 720 * seg(t, 1.05, 1.9, E.inout), tw).pos('armR', 0, 2 * tw, 1.4 * tw);
       const smug = seg(t, 1.0, 1.15);
-      P.face('eyes', t < 0.9 ? 'fierce' : t < 1.35 ? 'happy' : 'smug').rot('body', -6 * smug + wave(t, 2.2) * 3 * smug, 0, 0).rot('armL', 0, -20 * smug, 24 * smug);
+      P.face('eyes', t < 0.22 ? 'angry' : t < 0.66 ? 'star' : t < 0.9 ? 'happy' : t < 1.35 ? 'glint' : t > 2.0 && t < 2.2 ? 'wink' : 'smug').face('mouth', t < 1.35 ? 'smile' : undefined);
+      eyesScale(P, 1 + 0.2 * bump(t, 0.22, 0.66), 1 + 0.2 * bump(t, 0.22, 0.66) + 0.5 * Math.min(0, h.sq));
+      P.rot('body', -6 * smug + wave(t, 2.2) * 3 * smug, 0, 0).rot('armL', 0, -20 * smug, 24 * smug);
       P.scl('mouth', 1 + 0.2 * smug, 1, 1 + 0.6 * smug);
       if (t > 0.9) hive(P, t, 0.8, 1.5 - 1.5 * seg(t, 0.9, 1.4, E.out));
       P.burst(0.9, 'ring', 'root', [0, 1, 0], {}).burst(0.9, 'spark', 'rig', MID, { scale: 1.5 }).burst(0.92, 'bolt', 'rig', MID, { n: 6, speed: 4 }).burst(0.9, 'dust', 'root', [0, 0.5, 0], { n: 5, spread: 1, speed: 0.8, scale: 0.6 });
@@ -581,8 +613,25 @@ export const anim = {
       splay(P, -6); ears(P, 34 + br * 3); P.rot('rig', 6, 0, 0);
       P.scl('mouth', 0.85 + Math.max(0, br) * 0.2, 0.9, 0.7);
       P.face('arc', t > 2.2 && t < 2.27 ? 'a' : 'off');
-      P.face('eyes', 'closed'); P.blinkOK = false; P.lookW = 0; P.breathW = 0;
+      P.face('eyes', 'closed'); P.blinkOK = false; P.lookW = 0; P.breathW = 0; eyesScale(P, 1, 0.88 + 0.12 * br);
       P.burst(0.5, 'z', 'body', [4, 16, 3], {}).burst(1.7, 'z', 'body', [4, 16, 3], {}).burst(2.24, 'spark', 'rig', MID, { scale: 0.4 });
+    } },
+    // dance: the hand-flip routine — the bat parked on its shoulder, hip pops left-right on the beat, the free hand
+    // flipping and waving to show off the ring, a stomp-turn, and a finish with the hand held high, sparkles
+    dance: { len: 3.2, next: 'idle', f(P, t) {
+      const beat = (t / 0.4) % 1, n = Math.floor(t / 0.4), hit = Math.exp(-beat * 8), side = n % 2 ? 1 : -1;
+      const on = seg(t, 0, 0.2) * (1 - seg(t, 2.9, 3.2)), turn = seg(t, 1.6, 2.0, E.inout), fin = seg(t, 2.4, 2.55, E.back) * (1 - seg(t, 2.95, 3.2));
+      P.pos('body', side * 0.9 * on * (1 - fin), 0.6 * hit * on, 0).sq('body', -0.08 * hit * on).rot('body', 0, side * 10 * on * (1 - fin) + 360 * turn, side * 9 * on * (1 - fin));
+      feet(P, 0, [side < 0 ? 1.2 * hit * on : 0, side > 0 ? 1.2 * hit * on : 0]);
+      const flip = Math.sin(t * Math.PI * 5);
+      P.rot('armL', -50 * on - 70 * fin, 40 * flip * on * (1 - fin), 30 * on + 40 * fin).pos('armL', 0, 2.4 * on + 2 * fin, 1.2 * on);
+      P.rot('bat', 0, 0, 6 * hit * on); ears(P, -10 * hit * on - 20 * fin); splay(P, 8 * hit * on + 14 * fin);
+      crackle(P, t, fin > 0.3 ? 2 : 1);
+      P.face('eyes', fin > 0.3 ? 'glint' : beat < 0.35 ? 'smug' : 'happy').face('mouth', fin > 0.3 ? 'smile' : beat < 0.3 ? 'o' : 'smile'); P.blinkOK = false;
+      eyesScale(P, 1 + 0.1 * hit * on, 1 - 0.2 * hit * on + 0.1 * fin);
+      for (let k = 0; k < 6; k++) P.burst(0.2 + k * 0.4, 'note', 'body', [k % 2 ? 7 : -7, 16, 3], { n: 1, dir: [k % 2 ? 0.5 : -0.5, 1, 0.3], speed: 1 });
+      P.burst(2.45, 'sparkle', 'armL', [6.6, 7, 5], { n: 10, speed: 1.4 }).burst(2.45, 'sparkle', 'body', [0, 16, 4], { n: 6, speed: 1 });
+      if (fin > 0.3) hive(P, t, 1.2, 1);
     } },
     // fidget: the sour hits — a full-body shudder, face squeezed, the pout squirts a drop of juice
     pucker: { len: 1.5, next: 'idle', f(P, t) {
@@ -593,7 +642,8 @@ export const anim = {
       P.rot('bat', 0, 0, wave(t, 13) * 4 * shiv).rot('armL', 0, 0, 30 * k);
       ears(P, -24 * k); splay(P, -6 * k + wave(t, 15) * 3 * shiv);
       crackle(P, t);
-      P.face('eyes', k > 0.4 ? 'squeeze' : undefined); P.blinkOK = k < 0.1;
+      P.face('eyes', k > 0.4 ? 'shut' : t > 1.1 ? 'smug' : undefined).face('mouth', t > 1.1 ? 'frown' : undefined); P.blinkOK = k < 0.1;
+      eyesScale(P, 1 + 0.1 * k, 1 - 0.35 * k + 0.05 * wave(t, 14) * shiv);
       P.burst(0.62, 'lemmojuice', 'mouth', MOUTH, { n: 2, dir: [0, 0.6, 1], speed: 0.9 });
     } },
     // fidget: the arc fizzles, it peers up at its electrodes… and gets zapped for its trouble
@@ -604,7 +654,9 @@ export const anim = {
       P.rot('bat', 0, 0, -20 * jolt).rot('armL', 0, 0, 60 * jolt);
       splay(P, -8 * peer + 30 * jolt); ears(P, -50 * jolt);
       crackle(P, t, t < 0.8 ? (t < 0.3 ? 1 : 0.35) : jolt > 0.2 ? 2 : 1);
-      P.face('eyes', jolt > 0.2 ? 'wide' : peer > 0.4 ? 'fierce' : undefined).face('mouth', jolt > 0.2 ? 'open' : undefined); P.blinkOK = jolt < 0.1;
+      P.face('eyes', jolt > 0.2 ? 'shock' : peer > 0.4 ? 'angry' : t > 1.5 ? 'sad' : undefined).face('mouth', jolt > 0.2 ? 'open' : peer > 0.4 ? 'o' : t > 1.5 ? 'frown' : undefined); P.blinkOK = jolt < 0.1;
+      eyesAt(P, 0, 0.45 * peer); eyesScale(P, 1 + 0.4 * jolt, 1 + 0.5 * jolt);
+      P.burst(0.9, 'sweat', 'body', [6, 15, 5], { n: 2, dir: [1, 1, 0.3] }).burst(1.5, 'anger', 'body', [-6, 16, 5], {});
       P.burst(0.85, 'spark', 'rig', MID, { scale: 1.3 }).burst(0.85, 'bolt', 'rig', MID, { n: 4, speed: 3 }).burst(1.1, 'smoke', 'rig', MID, { n: 3, scale: 0.5 });
     } },
     // fidget: its hive drops by — the bees circle, it follows them round with a sour squint and shoos
@@ -617,10 +669,16 @@ export const anim = {
       P.rot('body', 0, Math.sin(ang) * 10 * (1 - out), Math.cos(ang) * 3);
       const shoo = bump(t, 1.6, 2.1);
       P.rot('bat', 0, 0, -40 * shoo + wave(t, 6) * 10 * shoo).pos('armR', 0, 1.2 * shoo, 0);
-      P.face('eyes', t > 0.4 && t < 1.6 ? 'smug' : shoo > 0.3 ? 'fierce' : undefined);
+      P.face('eyes', t > 0.4 && t < 1.6 ? 'smug' : shoo > 0.3 ? 'angry' : undefined);
+      eyesAt(P, Math.sin(ang) * 0.45 * (1 - out), 0.15);
       ears(P, wave(t, 2) * 6);
       crackle(P, t);
     } },
   },
 };
 def.anim = anim;
+
+// the ultra-drip form: the eyes keep their own colours, and pale creams that blackGold would lacquer black turn
+// champagne gold instead, so the face stays readable in black and gold
+const _lum = (c) => { const n = parseInt(c.slice(1, 7), 16), r = n >> 16, g = (n >> 8) & 255, b = n & 255; return (Math.max(r, g, b) + Math.min(r, g, b)) / 510; };
+def.dripForm = { map: keepEyes(EYES, (c, glow) => { const v = blackGold(c, glow); return !glow && typeof c === 'string' && c[0] === '#' && _lum(c) > 0.8 && _lum(v) < 0.35 ? '#f2dca0' : v; }) };
