@@ -175,12 +175,14 @@ function cubeGeometry(it, comp, pivot) {
   return g;
 }
 
-// an instance: THREE.Group with named bones; .pose(clip, t) animates it
+// an instance: THREE.Group with named bones; an Animator (anim.js) poses it.
+// parts: id → [meshes] (expressions toggle them); outline: inverted-hull edges.
 export class Model {
   constructor(def) {
     const comp = this.comp = compile(def);
-    this.def = def; this.group = new THREE.Group(); this.bones = {}; this.rest = {}; this.parts = {};
-    const byName = {};
+    this.def = def; this.group = new THREE.Group(); this.bones = {}; this.rest = {}; this.parts = {}; this.order = []; this.pivots = {};
+    const byName = {}, ol = def.outline ? Object.assign({ color: '#1c1218', px: 1.6 }, def.outline === true ? {} : def.outline) : null;
+    const olMat = ol ? hullMaterial(ol.color, ol.px) : null;
     for (const b of def.bones) {
       const o = new THREE.Group(); o.name = b.name;
       const parent = b.parent ? byName[b.parent] : null, pp = parent ? parent.def.pivot : [0, 0, 0];
@@ -188,7 +190,7 @@ export class Model {
       if (b.rot) o.rotation.set(b.rot[0] * D2R, b.rot[1] * D2R, b.rot[2] * D2R);
       (parent ? parent.obj : this.group).add(o);
       byName[b.name] = { obj: o, def: b };
-      this.bones[b.name] = o;
+      this.bones[b.name] = o; this.order.push(b.name); this.pivots[b.name] = b.pivot;
       this.rest[b.name] = { p: o.position.clone(), r: o.rotation.clone(), s: o.scale.clone() };
     }
     for (const it of comp.items) {
@@ -196,24 +198,54 @@ export class Model {
       const cp = c.pivot || null;
       const g = cubeGeometry(it, comp, cp || it.b.pivot);
       const mesh = new THREE.Mesh(g, c.glow ? comp.mats.glow : c.plane ? comp.mats.plane : comp.mats.solid);
-      mesh.castShadow = !c.glow; mesh.receiveShadow = !c.glow;
+      mesh.castShadow = !c.glow && c.shadow !== false; mesh.receiveShadow = !c.glow;
+      let host = b.obj;
       if (cp) {   // a cube with its own rotation about its own pivot
         const holder = new THREE.Group(); holder.position.set((cp[0] - it.b.pivot[0]) * U, (cp[1] - it.b.pivot[1]) * U, (cp[2] - it.b.pivot[2]) * U);
         if (c.rot) holder.rotation.set(c.rot[0] * D2R, c.rot[1] * D2R, c.rot[2] * D2R);
-        holder.add(mesh); b.obj.add(holder);
-      } else b.obj.add(mesh);
-      if (c.id) this.parts[c.id] = mesh;
-      if (c.hide) mesh.visible = false;
+        b.obj.add(holder); host = holder;
+      }
+      host.add(mesh);
+      if (olMat && !c.plane && !c.glow && c.outline !== false) {     // inverted hull: a slightly larger back-face box in the line colour
+        const hull = new THREE.Mesh(hullGeometry(c, cp || it.b.pivot), olMat);
+        hull.castShadow = false; hull.receiveShadow = false; host.add(hull); mesh.userData.hull = hull;
+      }
+      if (c.id) (this.parts[c.id] || (this.parts[c.id] = [])).push(mesh);
+      if (c.hide) { mesh.visible = false; if (mesh.userData.hull) mesh.userData.hull.visible = false; }
     }
     this.scale = def.scale || 1;
     this.group.scale.setScalar(this.scale);
   }
-  // reset bones to rest, then let the clip function move them
-  pose(clip, t, ctx = {}) {
-    for (const [n, o] of Object.entries(this.bones)) { const r = this.rest[n]; o.position.copy(r.p); o.rotation.copy(r.r); o.scale.copy(r.s); }
-    for (const p of Object.values(this.parts)) if (p.userData.toggle) p.visible = false;
-    const fn = (this.def.anims && (this.def.anims[clip] || this.def.anims.idle)) || null;
-    if (fn) fn(this.bones, t, Object.assign({ model: this, show: (id, v = true) => { const m = this.parts[id]; if (m) { m.visible = v; m.userData.toggle = true; } } }, ctx));
-  }
+  show(id, v = true) { for (const m of this.parts[id] || []) { m.visible = v; if (m.userData.hull) m.userData.hull.visible = v; } }
+}
+// outline hull: the cube itself, pushed outward in the vertex shader by a constant
+// number of screen pixels (so lines stay crisp at any distance), back faces only
+function hullGeometry(c, pivot) {
+  const inf = c.inflate || 0, [ox, oy, oz] = c.o, [sx, sy, sz] = c.s;
+  const g = new THREE.BoxGeometry((sx + inf * 2) * U, (sy + inf * 2) * U, (sz + inf * 2) * U);
+  const cx = (ox + sx / 2 - pivot[0]) * U, cy = (oy + sy / 2 - pivot[1]) * U, cz = (oz + sz / 2 - pivot[2]) * U;
+  g.translate(cx, cy, cz);
+  const n = g.attributes.position.count, bc = new Float32Array(n * 3); for (let i = 0; i < n; i++) bc.set([cx, cy, cz], i * 3);
+  g.setAttribute('bc', new THREE.BufferAttribute(bc, 3));
+  return g;
+}
+export const OUTLINE = { uK: { value: 0.001 } };     // world size of one pixel at depth 1 (set by the stage each frame)
+const hullMats = new Map();
+function hullMaterial(color, px) {
+  const key = color + px; if (hullMats.has(key)) return hullMats.get(key);
+  const m = new THREE.ShaderMaterial({
+    uniforms: { uK: OUTLINE.uK, uPx: { value: px }, uCol: { value: new THREE.Color(color) } },
+    side: THREE.BackSide,
+    vertexShader: `attribute vec3 bc; uniform float uK; uniform float uPx;
+      void main() {
+        vec4 mv0 = modelViewMatrix * vec4(position, 1.0);
+        float sc = length(vec3(modelMatrix[0][0], modelMatrix[0][1], modelMatrix[0][2]));
+        float e = uPx * uK * max(0.5, -mv0.z) / max(1e-4, sc);
+        vec3 d = sign(position - bc);
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position + d * e, 1.0);
+      }`,
+    fragmentShader: 'uniform vec3 uCol; void main() { gl_FragColor = vec4(uCol, 1.0); }',
+  });
+  hullMats.set(key, m); return m;
 }
 export const rad = (d) => d * D2R;

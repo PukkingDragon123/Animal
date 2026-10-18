@@ -1,0 +1,57 @@
+<!doctype html><html><head><meta charset="utf-8"><title>mon</title>
+<style>html,body{margin:0;background:#101018;overflow:hidden}canvas{display:block}#err{position:fixed;top:0;left:0;color:#f66;font:12px monospace;white-space:pre}</style>
+</head><body><canvas id="c"></canvas><div id="err"></div>
+<script type="module">
+// Tokonmon model viewer: ?mon=chilichick&clip=idle&t=0.4&yaw=25&pitch=12&dist=2.6&mood=day&w=&h=
+//   sheet=8 → a grid of 8 frames across the clip (cols=4); live=1 → animate in real time
+window.onerror = (m, s, l) => { document.getElementById('err').textContent += m + ' @' + l + '\n'; };
+import * as THREE from '../vendor/three.module.js';
+import { VxStage } from '../src/vx/stage.js';
+import { Fine } from '../src/vx/fine.js';
+import { Kit } from '../src/vx/kit.js';
+import { Model } from '../src/vx/model.js';
+import { Animator } from '../src/vx/anim.js';
+import { FX } from '../src/vx/fx.js';
+import { HD2D } from '../src/px/hd2d.js';
+const q = new URLSearchParams(location.search), num = (k, d) => (q.has(k) ? +q.get(k) : d);
+const W = num('w', 960), H = num('h', 720), sheet = num('sheet', 0), cols = num('cols', 4);
+const mod = await import('../src/vx/mons/' + (q.get('mon') || 'chilichick') + '.js');
+const st = new VxStage({ fov: num('fov', 30), shadowSize: 2048 });
+const fw = new Fine(128, 8, 128, 16), k = new Kit(fw);
+k.box(0, 0, 0, 127, 3, 127, 'grass', 'patch', { sc: 6 }); k.box(48, 3, 0, 80, 3, 127, 'gravel', 'patch', { sc: 3 });
+st.setSize(W, H); st.setWorld(fw); st.setMood(q.get('mood') || 'day');
+const m = new Model(mod.def); m.group.position.set(4, 0.25, 4); st.scene.add(m.group);
+const an = new Animator(m), fx = new FX(st);
+const clip = q.get('clip') || 'idle';
+const yaw = num('yaw', 25), pitch = num('pitch', 12), dist = num('dist', 2.6), ty = num('ty', 0.42);
+st.look([4, 0.25 + ty, 4], dist, yaw, pitch);
+const look = new THREE.Vector3(4 + Math.sin(yaw * Math.PI / 180) * 4, 1.0, 4 + Math.cos(yaw * Math.PI / 180) * 4);
+const cv = document.getElementById('c'), post = q.get('post') === '0' ? null : new HD2D(document.createElement('canvas'));
+if (post) Object.assign(post.opts, { focus: 0.5, band: 0.6, dof: 0.25, bloom: 0.5, threshold: 0.8, rays: 0, vig: 0.3, warm: 0.25, sat: 1.06, contrast: 1.05 }, st.moodName === 'night' ? { night: 0.15, bloom: 0.9, threshold: 0.6 } : {});
+const frame = () => { const f = st.render(); if (!post) return f; post.cv.width = W; post.cv.height = H; post.draw(f, 0.5); return post.cv; };
+const DT = 1 / 60;
+function step(n) { for (let i = 0; i < n; i++) { an.update(DT, { fx, look }); fx.update(DT); st.time += DT; } }
+if (clip !== 'idle') an.play(clip, { fade: 0 });
+if (q.get('atlas')) {
+  const A = m.comp.atlas, sc2 = num('zoom', 4); cv.width = A.w * sc2; cv.height = A.h * sc2; const g = cv.getContext('2d'); g.imageSmoothingEnabled = false; g.fillStyle = '#404048'; g.fillRect(0, 0, cv.width, cv.height); g.drawImage(A.canvas(), 0, 0, cv.width, cv.height); document.title = 'ready';
+} else if (q.get('live')) {
+  cv.width = W; cv.height = H; const g = cv.getContext('2d'); let last = performance.now();
+  const loop = (now) => { step(Math.max(1, Math.round((now - last) / 16.7))); last = now; g.drawImage(frame(), 0, 0); requestAnimationFrame(loop); };
+  requestAnimationFrame(loop); document.title = 'ready';
+} else if (sheet) {
+  const len = (mod.def.anim.clips[clip] || {}).len || 1, rows = Math.ceil(sheet / cols), sc = num('sc', 0.5), fw2 = Math.round(W * sc), fh = Math.round(H * sc);
+  cv.width = fw2 * cols; cv.height = fh * rows; const g = cv.getContext('2d'); g.font = '14px monospace'; g.fillStyle = '#fff';
+  step(Math.round(num('pre', 0) / DT));
+  let tNow = 0;
+  for (let i = 0; i < sheet; i++) {
+    const target = (i / (sheet - (q.get('closed') ? 0 : 1))) * len * num('span', 1);
+    step(Math.max(0, Math.round((target - tNow) / DT))); tNow = target;
+    g.drawImage(frame(), (i % cols) * fw2, Math.floor(i / cols) * fh, fw2, fh);
+    g.fillText(clip + ' ' + target.toFixed(2) + 's', (i % cols) * fw2 + 6, Math.floor(i / cols) * fh + 16);
+  }
+  document.title = 'ready';
+} else {
+  step(Math.round(num('t', 0.5) / DT));
+  cv.width = W; cv.height = H; cv.getContext('2d').drawImage(frame(), 0, 0); document.title = 'ready';
+}
+</script></body></html>

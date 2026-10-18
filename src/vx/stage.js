@@ -5,6 +5,7 @@
 // The stage renders into its own canvas; the HD-2D post pass (bloom, tilt-shift,
 // grade) is applied on top by src/px/hd2d.js.
 import * as THREE from '../../vendor/three.module.js';
+import { OUTLINE } from './model.js';
 export const MOODS = {
   day: { sun: 0xfff1d6, sunI: 1.6, sunDir: [-0.55, 1, 0.42], hemiSky: 0xc4dcff, hemiGround: 0x9a8a6a, hemiI: 0.85, fog: 0xc8d8e8, bg: 0x9cc4ec, sky: ['#5a8ad0', '#9cc4ec', '#dceaf4'], glow: 0.12, exposure: 1.0 },
   golden: { sun: 0xffcf98, sunI: 1.75, sunDir: [-0.85, 0.7, 0.35], hemiSky: 0xc4c0ec, hemiGround: 0x8a6a4a, hemiI: 0.85, fog: 0xe8c8b0, bg: 0xe8b898, sky: ['#7a8ec8', '#d8b0b8', '#f6c49a'], glow: 0.3, exposure: 1.05 },
@@ -79,7 +80,7 @@ export class VxStage {
     this.cam.position.set(v.target.x + Math.sin(yr) * Math.cos(pr) * v.dist, v.target.y + Math.sin(pr) * v.dist, v.target.z + Math.cos(yr) * Math.cos(pr) * v.dist);
     this.cam.lookAt(v.target);
   }
-  render() { this.updateCamera(); this.cam.updateMatrixWorld(); for (const f of this.hooks) f(this); this.r.render(this.scene, this.cam); return this.cv; }
+  render() { this.updateCamera(); this.cam.updateMatrixWorld(); OUTLINE.uK.value = (2 * Math.tan((this.cam.fov * Math.PI) / 360)) / (this.h || 720); for (const f of this.hooks) f(this); this.r.render(this.scene, this.cam); return this.cv; }
 }
 
 // a vertical sky gradient for the background

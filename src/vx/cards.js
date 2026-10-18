@@ -36,8 +36,23 @@ function atlas() {
   }
   return ATLAS;
 }
-const uvOf = (i) => { const e = REG[i]; return [e.ax / AW, 1 - (e.ay + e.h) / AH, (e.ax + e.w) / AW, 1 - e.ay / AH]; };
+export const uvOf = (i) => { const e = REG[i]; return [e.ax / AW, 1 - (e.ay + e.h) / AH, (e.ax + e.w) / AW, 1 - e.ay / AH]; };
 export const spriteInfo = (i) => REG[i];
+export const atlasTexture = () => atlas().tex;
+// camera-facing basis shared by every billboard on a stage (updated each frame)
+const UP0 = new THREE.Vector3(0, 1, 0);
+export function camUniforms(stage) {
+  if (!stage.cardU) {
+    stage.cardU = { uRight: { value: new THREE.Vector3(1, 0, 0) }, uUp: { value: new THREE.Vector3(0, 1, 0) }, uN: { value: new THREE.Vector3(0, 0.6, 0.8) }, uWind: { value: 0 } };
+    stage.hooks.push((st) => {
+      const e = st.cam.matrixWorld.elements, u = st.cardU;
+      u.uRight.value.set(e[0], e[1], e[2]); u.uUp.value.set(e[4], e[5], e[6]);
+      u.uN.value.set(e[8], e[9], e[10]).multiplyScalar(0.75).addScaledVector(UP0, 0.7).normalize();
+      u.uWind.value = st.time || 0;
+    });
+  }
+  return stage.cardU;
+}
 
 // ------------------------------------------------------------ painters
 // one leaf: a lens along angle `ang`, lit from the upper left, with a darker midrib on big ones
@@ -171,7 +186,6 @@ const pick = (arr, r) => arr[Math.floor(r * arr.length) % arr.length];
 export { pick };
 
 // ------------------------------------------------------------ batches
-const UP = new THREE.Vector3(0, 1, 0);
 export class Cards {
   constructor() { this.list = []; }
   // add a card at world position (metres). o: { scale, rot, mode: 'bb' (billboard) | 'fix' (vertical, yaw = rot) | 'cross' | 'flat', hang (anchored at its top), glow, sway }
@@ -187,7 +201,7 @@ export class Cards {
       if (c.mode === 'cross') { groups.get(key).push({ ...c, spr, w, h, yaw: c.rot + Math.PI / 4 }, { ...c, spr, w, h, yaw: c.rot - Math.PI / 4 }); }
       else groups.get(key).push({ ...c, spr, w, h, yaw: c.rot });
     }
-    const A = atlas(), out = new THREE.Group(), U = stage.cardU || (stage.cardU = { uRight: { value: new THREE.Vector3(1, 0, 0) }, uUp: { value: new THREE.Vector3(0, 1, 0) }, uN: { value: new THREE.Vector3(0, 0.6, 0.8) }, uWind: { value: 0 } });
+    const A = atlas(), out = new THREE.Group(), U = camUniforms(stage);
     for (const [key, list] of groups) {
       const glow = key.startsWith('glow'), bb = key.includes('-bb'), hang = key.includes('-hang');
       const geo = new THREE.PlaneGeometry(1, 1); geo.translate(0, hang ? -0.5 : 0.5, 0);
@@ -231,15 +245,6 @@ export class Cards {
       out.add(mesh);
     }
     stage.scene.add(out);
-    if (!stage.cardHook) {
-      stage.cardHook = (st) => {
-        const e = st.cam.matrixWorld.elements, u = st.cardU;
-        u.uRight.value.set(e[0], e[1], e[2]); u.uUp.value.set(e[4], e[5], e[6]);
-        u.uN.value.set(e[8], e[9], e[10]).multiplyScalar(0.75).addScaledVector(UP, 0.7).normalize();
-        u.uWind.value = st.time || 0;
-      };
-      stage.hooks.push(stage.cardHook);
-    }
     return out;
   }
 }
