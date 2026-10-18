@@ -24,13 +24,13 @@ export const mx = (a, b, t) => { const key = a + b + t; let v = memoM.get(key); 
 export const C = {
   ink: '#1a1626',
   // feral-pigeon slate, light → dark
-  slate: ['#d2d7e3', '#aab1c5', '#868ea8', '#666d8a', '#4a4f6c'],
-  belly: ['#bcc2d2', '#959db4', '#757d98', '#585e7c', '#3e4260'],
+  slate: ['#e2e6ee', '#c0c6d5', '#a0a8bd', '#838ba4', '#666d88'],
+  belly: ['#cdd2de', '#adb4c6', '#9097ae', '#757c96', '#5a607a'],
   pale: ['#f6f7fa', '#e0e3ea', '#c2c7d4', '#9ea4b8', '#7c8298'],
-  covert: ['#e2e6ee', '#c4cad8', '#a2a9bd', '#80879f', '#62687f'],
+  covert: ['#eef1f6', '#d6dbe5', '#b9c0cf', '#9aa2b7', '#7d849b'],
   bar: ['#4a4c60', '#323446', '#22232f', '#16161f'],
-  prim: ['#8a90a8', '#686e88', '#4e536c', '#373b52', '#25283a'],
-  head: ['#9aa2bc', '#7a829e', '#5e6582', '#474d6a', '#323650'],
+  prim: ['#a0a6bc', '#80869f', '#646a84', '#4b506a', '#363a52'],
+  head: ['#b0b7cc', '#9097b0', '#767d98', '#5f6580', '#4a4f68'],
   // the neck's sheen, each [lit, base, shade]: green → teal → violet → magenta
   irG: ['#a6f6c8', '#46d092', '#20926e'],
   irT: ['#92ecec', '#2fb2b4', '#1c727e'],
@@ -54,7 +54,7 @@ export const C = {
 
 // ---------------------------------------------------------------- painting core
 const nrm = (v) => { const l = Math.hypot(v[0], v[1], v[2]) || 1; return [v[0] / l, v[1] / l, v[2] / l]; };
-export const LIT = nrm([-0.34, 0.88, 0.34]);
+export const LIT = nrm([-0.16, 0.9, 0.38]);
 // the model-space point under texel (i, j) of face f of cube c (handles `mirror`; rotated cubes in their own frame)
 export function at(c, f, i, j, w, h) {
   let u = (i + 0.5) / w; const v = (j + 0.5) / h;
@@ -100,7 +100,7 @@ export function ellN(q, O, R, pitch = 0) {
   return nrm([nx, ny, nz]);
 }
 // light bands: ramps run light → dark; l is the lit term n·LIT
-export const THR = [0.78, 0.42, -0.02, -0.5];
+export const THR = [0.8, 0.42, -0.12, -0.58];
 export const bandI = (l, n = 5, thr = THR) => { let k = 0; while (k < n - 1 && k < thr.length && l <= thr[k]) k++; return k; };
 // paint boxes as parts of one lit form: fn(l, q, n, i, j, face, cube, w, h) → colour (0 = transparent)
 export const form = (O, R, pitch, fn) => (p, w, h, face, c) => {
@@ -130,9 +130,9 @@ export function featherCol(cols, l, A, B, S = 8, RH = 5, face = 'south') {
   const n = cols.length, k = bandI(l, n);
   if (face === 'down') return cols[Math.min(n - 1, k + 1)];
   const s = shingle(A, B, S, RH);
-  if (s === 1) return cols[Math.min(n - 1, k + 1)];
-  if (s === 2) return mx(cols[k], cols[Math.min(n - 1, k + 1)], 0.5);
-  if (s === 3) return k > 0 ? mx(cols[k], cols[k - 1], 0.6) : cols[0];
+  if (s === 1) return mx(cols[k], cols[Math.min(n - 1, k + 1)], 0.75);
+  if (s === 2) return mx(cols[k], cols[Math.min(n - 1, k + 1)], 0.3);
+  if (s === 3) return k > 0 ? mx(cols[k], cols[k - 1], 0.5) : cols[0];
   return cols[k];
 }
 // iridescent sheen: t 0 → 1 runs green → teal → violet → magenta, dithered where hues meet

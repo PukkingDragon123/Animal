@@ -33,9 +33,9 @@ const headFur = furP(11);
 const headFur2 = furP(23, { s: 9 });
 const legFur = furP(31, { s: 8 });
 const fuzz = (seed, o = {}) => fringe(C.fur, { hi: C.furHi, lo: C.furLo, line: C.furLine, tip: C.furTip, seed, ...o });
-const headHalo = halo(C.fur, { hi: C.furHi, lo: C.furLo, line: C.furLine, tip: C.furTip, n: 30, depth: 0.13, inner: 0.74, sq: 2.6, seed: 4 });
+const headHalo = halo(C.fur, { hi: C.furHi, lo: C.furLo, line: C.furLine, tip: C.furTip, n: 26, depth: 0.16, inner: 0.76, sq: 2.7, seed: 4 });
 const earHalo = halo(C.fur, { hi: C.furHi, lo: C.furLo, line: C.furLine, tip: C.furTip, n: 14, depth: 0.2, inner: 0.6, sq: 2.2, seed: 8 });
-const muzP = fur(C.muz, { hi: C.muzHi, lo: C.muzLo, line: shift(C.muzLo, 0.1), lite: C.muzHi, ramp: [C.muzHi, C.muz, C.muz, shift(C.muz, -0.08)], s: 7, tipH: 2.5, seed: 5, y0: 1 });
+const muzP = fur(C.muz, { hi: C.muzHi, lo: C.muzLo, line: shift(C.muz, -0.12), lite: C.muzHi, ramp: [C.muzHi, C.muz, C.muz, shift(C.muz, -0.06)], s: 8, rowH: 6, tipH: 2.5, seed: 5, y0: 2 });
 // the muzzle front: cream fluff, a short philtrum and a one-sided smirk
 const muzFront = (p, w, h, face, cube) => {
   muzP(p, w, h, face, cube);
@@ -233,8 +233,8 @@ export const def = {
       B([-6.8, 12.0, -4.2], [13.6, 7.0, 8.4], headFur2),
       B([-5.0, 10.2, -4.2], [10, 11.6, 8.4], headFur),
       B([-5.2, 11.4, -5.4], [10.4, 9.0, 10.8], headFur2),
-      B([-7.7, 9.6, 0.3], [15.4, 13.4, 0], headHalo, { plane: 'z' }),
-      B([0.2, 9.6, -6.5], [0, 13.4, 13.0], headHalo, { plane: 'x' }),
+      B([-8.1, 9.3, 0.3], [16.2, 13.6, 0], headHalo, { plane: 'z' }),
+      B([0.2, 9.3, -6.9], [0, 13.6, 13.4], headHalo, { plane: 'x' }),
       B([-2.9, 11.5, 5.0], [5.8, 3.7, 2.5], muzP, { faces: { south: muzFront } }),
       B([-2.4, 15.0, 5.0], [4.8, 0.6, 2.0], muzP),
       B([-1.45, 14.55, 7.0], [2.9, 1.15, 1.2], noseP),
@@ -246,35 +246,37 @@ export const def = {
       B([-2.1, 11.55, 5.05], [4.2, 0.4, 2.2], mouthP, { outline: false }),
     ] },
     { name: 'shades', parent: 'head', pivot: [0, 18.0, 5.6], cubes: [
-      B([-5.9, 18.6, 5.3], [11.8, 0.7, 0.55], barP),
-      ...LENS.map((k) => B([-5.9, 16.1, 5.72], [11.8, 3.2, 0], lens(k), { plane: 'z', id: 'lens-' + k, hide: k !== 'dark' })),
-      B([-6.95, 18.65, -0.6], [0.45, 0.5, 6.3], barP),
-      B([6.5, 18.65, -0.6], [0.45, 0.5, 6.3], barP),
+      B([-5.6, 18.6, 5.3], [11.2, 0.7, 0.55], barP),
+      ...LENS.map((k) => B([-5.6, 16.1, 5.72], [11.2, 3.2, 0], lens(k), { plane: 'z', id: 'lens-' + k, hide: k !== 'dark' })),
+      B([-6.95, 18.65, -0.4], [0.45, 0.5, 6.0], barP),
+      B([6.5, 18.65, -0.4], [0.45, 0.5, 6.0], barP),
+      B([-6.95, 18.65, 5.3], [1.4, 0.5, 0.45], barP),
+      B([5.55, 18.65, 5.3], [1.4, 0.5, 0.45], barP),
     ] },
     { name: 'browR', parent: 'head', pivot: [-2.7, 19.9, 5.5], rot: [0, 0, -5], cubes: [B([-4.5, 19.45, 5.05], [3.6, 1.0, 0.8], browP)] },
     { name: 'browL', parent: 'head', pivot: [2.7, 19.9, 5.5], rot: [0, 0, 5], cubes: [B([0.9, 19.45, 5.05], [3.6, 1.0, 0.8], browP, { mirror: true })] },
-    { name: 'earR', parent: 'head', pivot: [-5.4, 19.2, -1.6], rot: [0, 0, 22], cubes: [
-      B([-8.6, 18.4, -2.4], [4.6, 3.2, 1.6], earP(61)),
-      B([-8.0, 17.8, -2.4], [3.4, 4.4, 1.6], earP(62)),
-      B([-8.95, 17.45, -1.6], [5.3, 5.1, 0], earHalo, { plane: 'z' }),
+    { name: 'earR', parent: 'head', pivot: [-5.6, 18.6, -0.6], rot: [0, 0, 18], cubes: [
+      B([-9.0, 17.9, -1.4], [5.0, 3.4, 1.7], earP(61)),
+      B([-8.35, 17.2, -1.4], [3.7, 4.8, 1.7], earP(62)),
+      B([-9.4, 16.85, -0.55], [5.9, 5.5, 0], earHalo, { plane: 'z' }),
     ] },
-    { name: 'earL', parent: 'head', pivot: [5.4, 19.2, -1.6], rot: [0, 0, -22], cubes: [
-      B([4.0, 18.4, -2.4], [4.6, 3.2, 1.6], earP(63), { mirror: true }),
-      B([4.6, 17.8, -2.4], [3.4, 4.4, 1.6], earP(64), { mirror: true }),
-      B([3.65, 17.45, -1.6], [5.3, 5.1, 0], earHalo, { plane: 'z', mirror: true }),
+    { name: 'earL', parent: 'head', pivot: [5.6, 18.6, -0.6], rot: [0, 0, -18], cubes: [
+      B([4.0, 17.9, -1.4], [5.0, 3.4, 1.7], earP(63), { mirror: true }),
+      B([4.65, 17.2, -1.4], [3.7, 4.8, 1.7], earP(64), { mirror: true }),
+      B([3.5, 16.85, -0.55], [5.9, 5.5, 0], earHalo, { plane: 'z', mirror: true }),
     ] },
-    { name: 'cap', parent: 'head', pivot: [0, 21.6, 0], rot: [-8, 0, 6], cubes: [
-      B([-4.3, 20.8, -4.1], [8.6, 1.8, 8.2], capP),
-      B([-5.2, 22.6, -5.2], [10.4, 0.75, 10.4], boardP, { pivot: [0, 22.97, 0], rot: [0, 45, 0] }),
+    { name: 'cap', parent: 'head', pivot: [0, 21.6, 0], rot: [-7, 0, 6], cubes: [
+      B([-4.5, 20.8, -4.2], [9.0, 1.8, 8.6], capP),
+      B([-6.2, 22.6, -6.2], [12.4, 0.75, 12.4], boardP),
       B([-0.6, 23.35, -0.6], [1.2, 0.45, 1.2], goldP),
-      B([-7.1, 23.36, -0.15], [6.6, 0.22, 0.3], goldP),
+      B([-8.4, 23.36, -0.15], [8.4, 0.22, 0.3], goldP, { pivot: [0, 23.45, 0], rot: [0, 45, 0] }),
     ] },
-    { name: 'tassel', parent: 'cap', pivot: [-7.15, 23.4, 0], rot: [8, 0, -6], cubes: [
-      B([-7.3, 21.2, -0.15], [0.3, 2.2, 0.3], goldP),
-      B([-7.5, 20.55, -0.35], [0.7, 0.7, 0.7], goldP),
-      B([-7.65, 18.3, -0.5], [1.0, 2.3, 1.0], tasselP),
-      B([-7.65, 17.4, 0], [1.0, 0.95, 0], tasselFringe, { plane: 'z' }),
-      B([-7.15, 17.4, -0.5], [0, 0.95, 1.0], tasselFringe, { plane: 'x' }),
+    { name: 'tassel', parent: 'cap', pivot: [-6.0, 23.4, 6.0], rot: [7, 0, -6], cubes: [
+      B([-6.15, 21.3, 5.85], [0.3, 2.1, 0.3], goldP),
+      B([-6.35, 20.65, 5.65], [0.7, 0.7, 0.7], goldP),
+      B([-6.5, 18.4, 5.5], [1.0, 2.3, 1.0], tasselP),
+      B([-6.5, 17.5, 6.0], [1.0, 0.95, 0], tasselFringe, { plane: 'z' }),
+      B([-6.0, 17.5, 5.5], [0, 0.95, 1.0], tasselFringe, { plane: 'x' }),
     ] },
   ],
 };
