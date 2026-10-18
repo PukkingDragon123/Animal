@@ -19,10 +19,27 @@ export class Story {
   home() { return LOCATIONS.chinatown.spots && Object.keys(LOCATIONS.chinatown.spots).length ? 'chinatown' : 'alamo'; }
   async boot() {
     const app = this.app;
-    if (app.params.get('loc')) { this.loadSave(); await this.run(async () => { await app.world.load(app.params.get('loc'), { mood: app.params.get('mood') || undefined }); await app.fade(0, 500); }); return; }
+    if (app.params.get('loc')) {
+      this.loadSave();
+      await this.run(async () => {
+        const w = app.world; await w.load(app.params.get('loc'), { mood: app.params.get('mood') || undefined });
+        if (app.params.get('roam')) await this.startRoam(w.loc.spots.start || [w.cam.target.x, w.cam.target.z + 2, 0]);
+        await app.fade(0, 500);
+      });
+      return;
+    }
     await this.titleScreen();
   }
   loadSave() { const s = S.load(); if (s) this.app.state = s; }
+  // free roam: the player (and the lead Tokonmon as a partner) under tap-to-move control
+  async startRoam(at) {
+    const w = this.app.world, st = this.app.state, [x, z, yaw, y] = at;
+    const hero = w.actor('hero') || w.addPerson('hero', st.look || 'hero', [x, z, yaw || 0, y]);
+    let partner = w.actor('partner');
+    const lead = st.party && st.party[0];
+    if (!partner) partner = await w.addMon('partner', (lead && lead.species) || 'chilichick', [x + 1, z - 0.8, yaw || 0, y], { drip: (lead && lead.drip) || 1, look: (lead && lead.look) || 0 });
+    w.setPlayer(hero, partner).roam(true);
+  }
   // ------------------------------------------------------------------ title
   async titleScreen() {
     const app = this.app, w = app.world;

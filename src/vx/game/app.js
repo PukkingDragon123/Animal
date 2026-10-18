@@ -89,6 +89,7 @@ export class VxApp {
       if (this.story.drawUI) this.story.drawUI(ui, dt);
       for (const o of this.overlays) o(ui, dt);
       if (this.phone.open) this.phone.draw(ui, dt);
+      this.world.handleTap(ui);
       this.fadeA += Math.sign(this.fadeTo - this.fadeA) * Math.min(Math.abs(this.fadeTo - this.fadeA), dt * 3.2);
       if (this.fadeA > 0.001) ui.fade(this.fadeA, '#0c0814');
       ui.end();
