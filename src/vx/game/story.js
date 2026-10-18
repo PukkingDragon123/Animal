@@ -124,7 +124,8 @@ export class Story {
     await kaito.walkTo([[S0[0] + 12, S0[1] + 2.6]], { speed: 1.6 }); w.remove('kaito');
     coach.face(hero); await w.closeOn(coach, { dist: 5 });
     await app.say('Coach Gonda', 'Not bad for a first fight. Here — every rookie gets one of these.', 'Your TokoPhone. The map shows where Tokonmon are gathering around the city. Start with Alamo Square — the pigeons there have gotten… cocky.');
-    S.setFlag(app.state, 'phone'); S.unlockLocation(app.state, 'alamo'); S.unlockLocation(app.state, home);
+    S.setFlag(app.state, 'phone'); S.setFlag(app.state, 'license'); S.setFlag(app.state, 'bracelet'); S.unlockLocation(app.state, 'alamo'); S.unlockLocation(app.state, home);
+    S.addItem(app.state, 'quartz', 5);
     app.toast('Got the TokoPhone!', { icon: 'phone', color: T.cyan, dur: 3 });
     this.objective = 'Open the map and go to Alamo Square';
     app.save();
