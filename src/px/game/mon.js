@@ -9,7 +9,7 @@ export const DESIGNS = Object.assign({}, SPRITES);
 export const hasDesign = (id) => !!DESIGNS[id];
 // more Tokonmon live in their own modules; load whichever exist
 export async function loadDesigns() {
-  for (const f of ['pix_friends', 'pix_bullies', 'pix_wild', 'pix_evos']) {
+  for (const f of ['pix_friends', 'pix_bullies', 'pix_wild', 'pix_evos_a', 'pix_evos_b']) {
     try { const m = await import(`../../data/sprites/${f}.js`); Object.assign(DESIGNS, m.SPRITES || {}); } catch (e) { /* not drawn yet */ }
   }
 }

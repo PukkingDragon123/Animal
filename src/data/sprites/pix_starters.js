@@ -92,6 +92,13 @@ function chilichick(P, m) {
     const nx = fx - 5, ny = cy - 10 + (ex === 'happy' || ex === 'closed' || ex === 'sleep' ? 1 : 0), farX = fx - 15, farY = cy - 9;
     P.stamp(nx, ny, e[0], EYEMAP, { on: true });
     P.stamp(farX, farY, e[1], EYEMAP, { on: true });
+    // always teary from the heat: a wet glint under each eye and a tear on the near cheek
+    if (ex !== 'ko') {
+      const drip = (m.ph >> 2) % 4, wet = '#bfeaff', tear = '#8ad4ff';
+      P.stamp(nx + 1, ny + (ex === 'open' ? 8 : 6), ['wwww'], { w: wet }, { on: true });
+      P.stamp(nx + 5, ny + 6 + drip, ['t', 'T'], { t: wet, T: tear }, { on: true });
+      P.stamp(farX, farY + (ex === 'open' ? 7 : 5), ['ww'], { w: wet }, { on: true });
+    }
     // cheeks: warm blush, blazing when the chili bites back
     const hot = m.fx.has('blush');
     P.stamp(nx, cy - 1, [hot ? 'rrrr' : '.rr.', hot ? '.rr.' : ''], { r: hot ? '#ff4a3a' : '#ff8a5e' }, { on: true });
