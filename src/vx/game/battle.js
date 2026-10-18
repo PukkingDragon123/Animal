@@ -12,7 +12,9 @@ import { T } from '../../px/game/ui.js';
 import { SKILLS } from '../../data/skills.js';
 import { SPECIES } from '../../data/species.js';
 import { ELEMENTS } from '../../data/elements.js';
-import { createElemon, battleSnapshot, gainExp, addFriendship } from '../../game/elemon.js';
+import { createElemon, battleSnapshot, gainExp, addFriendship, evolutionOptions, evolve } from '../../game/elemon.js';
+import { BattleTracker } from '../../data/progress.js';
+import { weatherOf } from '../../game/time.js';
 import * as S from '../../game/state.js';
 
 const ELC = (e) => (ELEMENTS[e] && ELEMENTS[e].color) || '#ffffff';
@@ -42,6 +44,9 @@ export class Battle3D {
       rules: Object.assign({ items: true }, spec.wild ? { wild: true, capture: !!s.flags.license, flee: true } : {}, spec.rules || {}),
     });
     this.ptr = playerTrainer(this.st);
+    // progress: battle events count toward skill unlocks and evolution conditions
+    const byUid = {}; for (const m of [...s.party, ...(s.box || [])]) byUid[m.uid] = m;
+    this.tracker = new BattleTracker(this.st, 0, byUid);
     // the arena in the world: sim (x, z) → world, the player's side on the left of the camera
     const C = A.cam || {}, yaw = ((C.yaw ?? 0) * Math.PI) / 180;
     this.cx = A.at[0]; this.cz = A.at[1]; this.k = (A.r || 5) / this.st.arena.r; this.phi = yaw - Math.PI / 2; this.gy = w.ground(this.cx, this.cz);
@@ -49,7 +54,7 @@ export class Battle3D {
     for (const a of w.actors.values()) { const p = a.g.position; if (Math.hypot(p.x - this.cx, p.z - this.cz) < (A.r || 5) + 1.2) { a.g.visible = false; this.hidden.push(a); } }
     this.units = new Map();
     for (const u of this.st.units) {
-      const a = await w.addMon('bu-' + u.id, u.species, [this.cx, this.cz, 0]);
+      const a = await w.addMon('bu-' + u.id, u.model || u.species, [this.cx, this.cz, 0], { drip: u.drip || 1, look: u.look || 0 });
       a.g.visible = false; a.life = null;
       this.units.set(u.id, { u, a, once: 0, clip: 'idle' });
     }
@@ -89,7 +94,7 @@ export class Battle3D {
     const st = this.st; this.t += dt;
     let scale = this.frozen ? 0 : 1; if (st.slowmo > 0) scale *= 0.4; if (st.hitstop > 0) scale *= 0.15;
     this.acc += dt * scale; let n = 0;
-    while (this.acc >= DT && n < 4) { step(st, DT); this.acc -= DT; n++; this.events(st.events); }
+    while (this.acc >= DT && n < 4) { step(st, DT); this.acc -= DT; n++; this.events(st.events); this.track(st.events); }
     if (st.qte && !this._qte) { this._qte = true; setTimeout(() => { import('../../battle/sim.js').then((m) => { if (this.st === st) m.resolveQte(st, st.qte.id, 0.75 + Math.random() * 0.2); this._qte = false; }); }, 600); }
     this.sync(dt);
     for (const p of this.pops) p.t += dt; this.pops = this.pops.filter((p) => p.t < 1);
@@ -262,8 +267,16 @@ export class Battle3D {
     this.cleanup();
     this.resolve(r);
   }
+  track(evs) {
+    if (!this.tracker || !evs || !evs.length) return;
+    for (const g of this.tracker.feed(evs, this.app.state.unlocks.slots)) {
+      const mon = S.monByUid(this.app.state, g.uid), name = mon ? (mon.nick || SPECIES[mon.species].name) : '';
+      this.app.ui.toast(`${name}: ${g.name || (g.skill && SKILLS[g.skill] ? SKILLS[g.skill].name : 'new skill')} unlocked!`, { icon: 'star', color: T.cyan, dur: 2.6 });
+    }
+  }
   rewards(r) {
     const s = this.app.state, out = [];
+    if (this.tracker) { const fin = this.tracker.finish(r, { slots: s.unlocks.slots }); for (const g of fin.got) out.push(`${g.name || (g.skill && SKILLS[g.skill] ? SKILLS[g.skill].name : 'A new skill')} unlocked!`); }
     s.stats.battles++; const won = r.winner === 0; if (won) s.stats.wins++;
     const parts = [];
     for (const u of r.units) { if (u.side !== 0) { S.seen(s, u.species); continue; } const mon = S.monByUid(s, u.uid); if (!mon) continue; mon.hp = u.fainted ? 0 : Math.max(0.05, u.hp / u.maxHp); if (u.took) parts.push(mon); }
@@ -283,6 +296,13 @@ export class Battle3D {
       out.unshift(`+${Math.round(exp)} EXP`);
       if (this.spec.money) { s.money += this.spec.money; out.push(`+$${this.spec.money}`); }
     } else if (!won) for (const m of s.party) if (!m.hp) m.hp = 0.15;
+    // evolutions whose conditions are now met (battle events, level, time, weather, held gear)
+    const ctx = { location: this.app.world.id, hour: s.time && s.time.hour, weather: s.time ? weatherOf(s.time) : null };
+    for (const mon of s.party) {
+      const opts = evolutionOptions(mon, ctx); if (!opts.length) continue;
+      const from = SPECIES[mon.species].name; evolve(mon, opts[0].to);
+      out.push(`${from} evolved into ${SPECIES[mon.species].name}!`);
+    }
     this.app.save();
     return out;
   }

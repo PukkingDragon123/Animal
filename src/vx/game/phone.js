@@ -81,6 +81,7 @@ export class SFPhone {
       const y = y0 + 4 + i * 22, sp = SPECIES[m.species];
       ui.panel(x0 + 2, y, w - 4, 20, {});
       ui.text(`${m.nick || sp.name}`, x0 + 7, y + 3, T.text); ui.text(`Lv${m.level}`, x0 + w - 8, y + 3, T.amber, { align: 'right', mini: true });
+      if ((m.drip || 1) > 1) ui.text(m.drip === 3 ? 'ULTRA DRIP' : 'DRIP', x0 + 9 + ui.tw(m.nick || sp.name), y + 4, m.drip === 3 ? T.amber : T.cyan, { mini: true });
       ui.bar(x0 + 7, y + 13, w - 20, 3, m.hp ?? 1, { color: (m.hp ?? 1) > 0.3 ? T.green : T.red });
       void maxHp;
     });
