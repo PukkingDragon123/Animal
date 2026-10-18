@@ -7,7 +7,7 @@
 // claws, tosses dynamite like a toy and cackles. Homage, never a likeness.
 import { E, seg, bump, wob, wave, key, bounce, hop } from '../anim.js';
 import {
-  PAL, J, P, mirrorCube, aimX, rod, furP, bellyP, tuftP, bangsP, skullP, muzzleP, noseP, jawP, mouthP, tongueP, toothP, whiskerP,
+  PAL, J, P, mirrorCube, aimX, rod, furP, bellyP, tuftP, bangsP, skullP, muzzleP, noseP, jawP, mouthP, tongueP, toothP,
   earPlaneP, hairP, maskEyes, tailP, handP, footP, cardP, tapeP, bottleCapP, crateP, ironP, tntP, fuseP, fuseSparkP, teethP, clawP, rig, shift, ramp,
 } from './raccoon_parts.js';
 
@@ -38,7 +38,6 @@ const muzzle = muzzleP(F, { bw: 2.0, bt: 1.4 });
 const snout = muzzleP(F, { mouth: true, bridge: false });
 const nose = noseP(F);
 const jaw = jawP(F);
-const brow = (p, w, h, face) => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, face === 'up' ? F.creamHi : face === 'down' ? F.creamLo : y === 0 ? F.creamHi : F.cream); };
 const hand = handP(F), foot = footP(F);
 const sock = (k) => (p, w, h, face, cube) => {
   fur(p, w, h, face, cube);
@@ -171,8 +170,6 @@ export const def = {
       P([-1.5, 15.0, 8.69], [3.0, 0.667, 0], teethP(false), { plane: 'z', outline: false }),
       P([-2.1, 14.4, 7.6], [0.6, 1.267, 0.5], toothP),
       P([1.5, 14.8, 7.6], [0.6, 0.867, 0.5], toothP),
-      P([-6.333, 16.0, 8.0], [4.0, 1.667, 0], whiskerP, { plane: 'z', mirror: true }),
-      P([2.333, 16.0, 8.0], [4.0, 1.667, 0], whiskerP, { plane: 'z' }),
       ...hairCubes,
     ] },
     ...EYES.bones,
@@ -182,8 +179,6 @@ export const def = {
       P([-1.833, 15.367, 4.5], [3.667, 0.3, 3.333], mouthP, { outline: false }),
       P([-1.167, 15.4, 5.0], [2.333, 0.3, 2.5], tongueP, { outline: false }),
     ] },
-    { name: 'browR', parent: 'head', pivot: [-2.75, 22.8, 5.1], rot: [0, 0, -20], cubes: [P([-4.5, 22.4, 4.8], [3.5, 0.833, 0.6], brow)] },
-    { name: 'browL', parent: 'head', pivot: [2.75, 22.8, 5.1], rot: [0, 0, 20], cubes: [P([1.0, 22.4, 4.8], [3.5, 0.833, 0.6], brow, { mirror: true })] },
     { name: 'earR', parent: 'head', pivot: [-5.0, 22.0, -0.5], rot: [-6, 18, 64], cubes: earCubes(false) },
     { name: 'earL', parent: 'head', pivot: [5.0, 22.0, -0.5], rot: [-6, -18, -64], cubes: earCubes(true).map(mirrorCube) },
     // drip 2: the horned cardboard cap
@@ -267,7 +262,6 @@ export const anim = {
       P.rot('armR', -10 * toss + 8 * bump(t, 1.2, 1.45), 0, 0).rot('foreR', -30 * toss + 14 * bump(t, 1.22, 1.45), 0, 0);
       P.pos('held', 0, 5.0 * toss, 1.2 * toss).rot('held', 0, 0, 360 * spin);
       P.rot('armL', wave(t, 1 / 2.4, 1) * 6, 0, -sw * 4).rot('foreL', -6 + wave(t, 1 / 1.2) * 5, 0, 0);
-      P.rot('browR', 0, 0, -3 * bump(t, 1.3, 1.6)).rot('browL', 0, 0, 3 * bump(t, 1.3, 1.6));
       P.rot('tail1', 0, sw * 10, 0).rot('tail3', wave(t, 1 / 2.4, 1.2) * 8, 0, 0);
       P.face('eyes', t > 1.3 && t < 1.7 ? 'sleepy' : undefined);
       dart(P, 0.5 * (bump(t, 0.6, 1.3) - bump(t, 1.8, 2.3)), 0.2 * toss); eyeSq(P, 1, 1 + 0.12 * toss);   // the eyes follow the toss
@@ -297,7 +291,6 @@ export const anim = {
       P.rot('armL', -30 * cackle - 40 * roar, 0, -10 * cackle - 60 * roar).rot('foreL', -40 * cackle - 30 * roar, 0, 0);
       const dy = -1.2 * seg(t, 0.85, 0.95) * (1 - seg(t, 0.95, 1.1)) + 0.6 * roar; P.pos('root', 0, Math.max(0, dy), 0); if (dy < 0) plant(P, dy);
       P.sq('body', 0.06 * roar * (1 - seg(t, 1.1, 1.3)) + wob(t, 1.12, 0.05, 3, 5));
-      P.rot('browR', 0, 0, -8 * roar).rot('browL', 0, 0, 8 * roar);
       P.face('eyes', cackle > 0.4 ? 'happy' : roar > 0.3 ? 'wide' : undefined); P.lookW = 1 - Math.max(cackle, roar);
       fizz(P, t, 30);
       if (t > 1.0 && t < 2.1) bandFizz(P, t, 18);

@@ -7,7 +7,7 @@
 // ringed tail ends in a devil's spade. Slit eyes glow red-hot under the iron brim. Homage only.
 import { E, seg, bump, wob, wave, key } from '../anim.js';
 import {
-  PAL, J, P, mirrorCube, rod, furP, bellyP, tuftP, skullP, muzzleP, noseP, jawP, mouthP, tongueP, toothP, whiskerP,
+  PAL, J, P, mirrorCube, rod, furP, bellyP, tuftP, skullP, muzzleP, noseP, jawP, mouthP, tongueP, toothP,
   maskEyes, hairP, tailP, handP, footP, teethP, pipeP, ironP, galvP, lidP, jerryP, seatP, canEngineP, finsP, bronzeP, lensP, jetP, rig, shift, ramp,
 } from './raccoon_parts.js';
 
@@ -206,7 +206,6 @@ export const def = {
       P([-1.0, 31.2, 4.0], [2.0, 1.1, 0.9], nose),
       P([-1.7, 28.9, 4.22], [3.4, 0.7, 0], teethP(false), { plane: 'z', outline: false }),
       P([-2.3, 28.2, 3.2], [0.7, 1.4, 0.6], toothP), P([1.6, 28.4, 3.2], [0.7, 1.2, 0.6], toothP),
-      P([-6.8, 30.0, 3.4], [4.4, 1.8, 0], whiskerP, { plane: 'z', mirror: true }), P([2.4, 30.0, 3.4], [4.4, 1.8, 0], whiskerP, { plane: 'z' }),
       P([-6.25, 29.6, -8.0], [0, 6.2, 7.0], hairP(MANE, { seed: 2, min: 0.45, tips: true }), { plane: 'x', pivot: [-6.1, 35.6, -4], rot: [0, 0, -14] }),
       P([6.25, 29.6, -8.0], [0, 6.2, 7.0], hairP(MANE, { seed: 3, min: 0.45, tips: true }), { plane: 'x', pivot: [6.1, 35.6, -4], rot: [0, 0, 14] }),
     ] },

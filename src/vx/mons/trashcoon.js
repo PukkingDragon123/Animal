@@ -7,7 +7,7 @@
 // likeness: no logos, no covers, no real people.
 import { E, seg, bump, wob, wave, key, bounce, hop } from '../anim.js';
 import {
-  PAL, J, P, mirrorCube, aimX, furP, bellyP, tuftP, skullP, muzzleP, noseP, jawP, mouthP, tongueP, toothP, whiskerP,
+  PAL, J, P, mirrorCube, aimX, furP, bellyP, tuftP, skullP, muzzleP, noseP, jawP, mouthP, tongueP, toothP,
   earPlaneP, hairP, maskEyes, tailP, handP, footP, cardP, tapeP, bottleCapP, barkP, leafP, tieP, tabP, trashBagP, bagHemP, rig, shift, ramp,
 } from './raccoon_parts.js';
 
@@ -37,7 +37,6 @@ const muzzle = muzzleP(F, { bw: 1.6, bt: 1.4 });
 const snout = muzzleP(F, { mouth: true, bridge: false });
 const nose = noseP(F);
 const jaw = jawP(F);
-const brow = (p, w, h, face) => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, face === 'up' ? F.creamHi : face === 'down' ? F.creamLo : y === 0 ? F.creamHi : F.cream); };
 const hand = handP(F), foot = footP(F);
 // limbs: grey fur that darkens into black "socks" at the paws
 const sock = (k) => (p, w, h, face, cube) => {
@@ -172,8 +171,6 @@ export const def = {
       P([-1.333, 11.667, 6.0], [2.667, 2.0, 1.667], snout),
       P([-0.667, 12.833, 7.5], [1.333, 0.833, 0.667], nose),
       P([0.5, 11.2, 7.3], [0.5, 0.667, 0.333], toothP),
-      P([-5.667, 11.667, 6.9], [3.667, 1.667, 0], whiskerP, { plane: 'z', mirror: true }),
-      P([2.0, 11.667, 6.9], [3.667, 1.667, 0], whiskerP, { plane: 'z' }),
       ...hairCubes,
     ] },
     ...EYES.bones,
@@ -183,8 +180,6 @@ export const def = {
       P([-1.0, 11.4, 4.567], [2.0, 0.3, 2.0], tongueP, { outline: false }),
       P([-0.5, 10.4, 6.567], [1.0, 0.333, 2.0], tongueP, { id: 'tongue-out', hide: true, outline: false, pivot: [0, 11.4, 6.567], rot: [55, 0, 0] }),
     ] },
-    { name: 'browR', parent: 'head', pivot: [-2.4, 18.1, 4.47], rot: [0, 0, -12], cubes: [P([-3.733, 17.867, 4.167], [2.667, 0.5, 0.5], brow)] },
-    { name: 'browL', parent: 'head', pivot: [2.4, 18.1, 4.47], rot: [0, 0, 12], cubes: [P([1.067, 17.867, 4.167], [2.667, 0.5, 0.5], brow, { mirror: true })] },
     { name: 'earR', parent: 'head', pivot: [-3.667, 19.667, -0.333], rot: [-4, 14, 24], cubes: earCubes },
     { name: 'earL', parent: 'head', pivot: [3.667, 19.667, -0.333], rot: [-4, -14, -24], cubes: earCubes.map(mirrorCube) },
     { name: 'cap', parent: 'head', pivot: [0, 18.667, 0.4], rot: [-6, 0, 7], cubes: [
@@ -277,7 +272,6 @@ export const anim = {
       P.rot('head', 13 * n - 4, wave(t, 0.5) * -6, wave(t, 1, 0.5) * 3).rot('jaw', 3 + 6 * n);
       P.rot('stick', 0, 0, -3 * n + wave(t, 0.5) * 2);
       P.pos('footR', 0, Math.max(0, -wave(t, 2, 1.2)) * 0.5, 0).rot('footR', -10 * Math.max(0, -wave(t, 2, 1.2)), 0, 0);
-      P.rot('browR', 0, 0, 4 * bump(t % 1, 0.5, 0.8)).rot('browL', 0, 0, -4 * bump(t % 1, 0.5, 0.8));
       P.rot('tail1', 0, wave(t, 0.5) * 8, 0).rot('tail3', wave(t, 0.5, 1.4) * 6, 0, 0);
       const chord = seg(t, 0.95, 1.05, E.out) - seg(t, 1.95, 2.0, E.out);
       play(P, { strum: strumAt(t), slide: -1.6 * chord });
@@ -321,7 +315,6 @@ export const anim = {
       P.rot('earR', 0, 0, -18 * zap).rot('earL', 0, 0, 18 * zap);
       const bangs = bump(t, 1.0, 1.22) + bump(t, 1.28, 1.5);
       P.rot('head', 14 * crouch - 26 * up + 30 * bangs + wave(t, 13) * 3 * zap, 0, wave(t, 9) * 3 * land).rot('jaw', 6 * crouch + 36 * up + 6 * bangs);
-      P.rot('browR', 0, 0, -10 * up).rot('browL', 0, 0, 10 * up);
       P.face('eyes', zap > 0.2 ? 'shock' : up > 0.3 ? 'angry' : undefined); P.blinkOK = up < 0.1; P.lookW = 1 - up;
       eyeSq(P, 1 - 0.12 * zap + 0.1 * crouch, 1 + 0.25 * zap - 0.2 * crouch);
       P.burst(0.52, 'thunder', 'stick', NECK_TIP, { n: 1 }).burst(0.53, 'thunder', 'stick', NECK_TIP, { n: 1 }).burst(0.52, 'spark', 'stick', NECK_TIP, { n: 2 });
@@ -364,7 +357,6 @@ export const anim = {
       P.rot('armR', -360 * mill - 150 * free * (1 - mill), 0, -20 * free).rot('foreR', 10 * free, 0, 0);
       P.sq('body', 0.06 * crouch * (1 - slam) - 0.1 * seg(t, 0.86, 0.9) * (1 - seg(t, 0.9, 1.1)));
       P.rot('head', 10 * crouch - 24 * slam + wave(t, 14) * 3 * ring, 0, 6 * slam).rot('jaw', 30 * slam + 10 * ring);
-      P.rot('browR', 0, 0, -8 * slam).rot('browL', 0, 0, 8 * slam);
       P.face('eyes', slam > 0.3 ? (t < 1.2 ? 'angry' : 'happy') : crouch > 0.3 ? 'sleepy' : undefined); P.lookW = 1 - slam;
       P.burst(0.87, 'shockring', 'stick', STRUM_FX, {}).burst(0.9, 'shockring', 'stick', STRUM_FX, { scale: 1.5 });
       P.burst(0.87, 'riff', 'stick', STRUM_FX, { n: 14, dir: [0, 0.3, 1], spread: 1, speed: 1.4 }).burst(0.87, 'note', 'stick', STRUM_FX, { n: 6, spread: 1, speed: 2 });
