@@ -1,0 +1,51 @@
+<!doctype html><html><head><meta charset="utf-8"><title>px</title>
+<style>
+html,body{margin:0;background:#1a1426;color:#eee;font:12px monospace}
+#wrap{padding:10px;display:flex;flex-direction:column;gap:10px}
+.row{display:flex;gap:6px;align-items:flex-end;flex-wrap:wrap}
+.lab{color:#ffd36b;margin:2px 0}
+canvas{image-rendering:pixelated;display:block}
+.cell{background:repeating-conic-gradient(#2c2340 0 25%,#251d36 0 50%) 0 0/16px 16px;border:1px solid #3a2f55}
+#err{color:#ff6b6b;white-space:pre}
+</style></head><body><div id="wrap"></div><div id="err"></div>
+<script type="module">
+// Sprite review tool (2D pixel sprites).
+//   mod=<module exporting SPRITES>  id=a,b,c (default: all)  clips=idle,move,attack,…  zoom=4
+//   bonded=1  form=elemental  flip=1  lineup=1 (one idle frame of every id side by side at zoom)  bg=#hex
+window.onerror = (m, s, l) => { document.getElementById('err').textContent += m + ' @' + l + '\n'; };
+import { frames, CLIPS, renderFrame } from '../src/px/sdf.js';
+const q = new URLSearchParams(location.search);
+const mod = await import(q.get('mod') || '../src/data/sprites/sdf_starters.js');
+const pool = mod.SPRITES || mod.DESIGNS || {};
+const ids = q.get('id') ? q.get('id').split(',') : Object.keys(pool);
+const zoom = +(q.get('zoom') || 4);
+const clips = (q.get('clips') || 'idle,walk,attack,breath,hurt,eat').split(',');
+const opts = { bonded: q.has('bonded'), scale: +(q.get('scale') || 1), expr: q.get('expr') || undefined }; if (q.has('yaw')) opts.yaw = +q.get('yaw'); const every = +(q.get('every') || 1);
+const wrap = document.getElementById('wrap');
+if (q.get('hide')) for (const id of ids) for (const n of q.get('hide').split(',')) { const p = pool[id] && pool[id].parts.find((x) => x.n === n); if (p) p.hide = true; }
+const bg = q.get('bg');
+const cv = (surf, z = zoom) => { const c = document.createElement('canvas'); c.width = surf.w * z; c.height = surf.h * z; const x = c.getContext('2d'); x.imageSmoothingEnabled = false; if (bg) { x.fillStyle = bg; x.fillRect(0, 0, c.width, c.height); } x.drawImage(surf.canvas(), 0, 0, c.width, c.height); c.className = 'cell'; return c; };
+const t0 = performance.now();
+if (q.has('dirs')) {
+  const row = document.createElement('div'); row.className = 'row';
+  for (const id of ids) for (const yw of [0, -45, -90, -135, 180, 135, 90, 45]) { const d = pool[id]; const f = renderFrame(d, Object.assign({}, opts, { clip: q.get('clips') || 'idle', frame: 0, yaw: yw })); row.append(cv(f)); }
+  wrap.append(row);
+} else if (q.has('lineup')) {
+  const row = document.createElement('div'); row.className = 'row';
+  for (const id of ids) { const d = pool[id]; if (!d) continue; const f = frames(d, 'idle', opts)[0]; const box = document.createElement('div'); box.append(Object.assign(document.createElement('div'), { className: 'lab', textContent: id }), cv(f)); row.append(box); }
+  wrap.append(row);
+} else for (const id of ids) {
+  const d = pool[id]; if (!d) continue;
+  const head = document.createElement('div'); head.className = 'lab'; head.textContent = `${id} ${d.size.join('×')}`; wrap.append(head);
+  for (const c of clips) {
+    const row = document.createElement('div'); row.className = 'row';
+    row.append(Object.assign(document.createElement('div'), { className: 'lab', textContent: c.padEnd(7) }));
+    for (let i = 0; i < (CLIPS[c] || 24); i += every) row.append(cv(renderFrame(d, Object.assign({}, opts, { clip: c, frame: i }))));
+    wrap.append(row);
+  }
+  // 1× and 2× in-game sizes
+  if (q.has('sizes')) { const row = document.createElement('div'); row.className = 'row'; const f = renderFrame(d, Object.assign({}, opts, { clip: 'idle', frame: 0 })); row.append(cv(f, 1), cv(f, 2), cv(f, 3)); wrap.append(row); }
+}
+document.title = 'ready';
+console.log('render ms', (performance.now() - t0).toFixed(0));
+</script></body></html>
