@@ -110,7 +110,7 @@ export class Closet {
       if (!has) { r.acc.push(it.acc); if (ACC_KEY[it.acc]) r[ACC_KEY[it.acc]] = it.color; }
     }
     if (r.mood === 'tired') r.mood = 'happy';
-    if (au.sfx) au.sfx('select');
+    if (au.sfx) au.sfx('ui_tap');
     const a = this.rebuild(it.slot === 'top' || it.slot === 'bottom' ? 'look' : 'cheer');
     this.app.world.fx.emit('sparkle', a.headPos(), { n: 6 });
     this.lastWorn = { name: it.name, t: 1.6 };
@@ -171,6 +171,6 @@ export class Closet {
     // whisper-quiet hints, the last item worn, and the ✓
     if (this.hint > 0) { const a = Math.min(1, this.hint); if (a > 0.3) ui.text('drag clothes onto you  ·  swipe ↑↓ skin  ·  ←→ body  ·  tap head: hair', W >> 1, ui.h - 12, T.dim, { align: 'center', mini: true }); }
     if (this.lastWorn) { this.lastWorn.t -= dt; if (this.lastWorn.t > 0) ui.text(this.lastWorn.name, W >> 1, rails[1] + 30, T.amber, { align: 'center', mini: true, outline: '#0c0814' }); }
-    if (ui.button(W - 24, ui.h - 24, 20, 20, '', { icon: 'check', color: T.green, hotkey: 'Enter' })) { this.app.audio.sfx && this.app.audio.sfx('confirm'); this.close(); }
+    if (ui.button(W - 24, ui.h - 24, 20, 20, '', { icon: 'check', color: T.green, hotkey: 'Enter' })) { this.app.audio.sfx && this.app.audio.sfx('ui_confirm'); this.close(); }
   }
 }

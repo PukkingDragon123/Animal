@@ -5,6 +5,7 @@ import { T } from '../../px/game/ui.js';
 import { LOCATIONS, MAP_SIGHTS } from './locations.js';
 import { SPECIES } from '../../data/species.js';
 import { maxHp } from '../../game/elemon.js';
+import { tramOpen, rideTram, QUESTS } from './quests.js';
 
 const LAND = [[0.0, 0.2], [0.04, 0.14], [0.1, 0.12], [0.16, 0.135], [0.22, 0.095], [0.33, 0.1], [0.42, 0.08], [0.5, 0.085], [0.58, 0.11], [0.66, 0.095], [0.73, 0.12], [0.77, 0.19], [0.8, 0.27], [0.86, 0.33], [0.84, 0.42], [0.86, 0.5], [0.84, 0.6], [0.88, 0.72], [0.9, 0.86], [0.93, 1], [0, 1]];
 const MARIN = [[0, 0], [0.32, 0], [0.26, 0.03], [0.17, 0.045], [0.1, 0.04], [0.04, 0.06], [0, 0.07]];
@@ -22,11 +23,11 @@ export class SFPhone {
     const s = this.app.state, hh = String(s.time.hour).padStart(2, '0');
     ui.text(`DAY ${s.time.day}  ${hh}:00`, px + pw - 4, py + 2, T.text, { mini: true, align: 'right' });
     // tabs
-    const tabs = [['map', 'MAP'], ['team', 'TEAM']], tw = Math.floor((pw - 8) / tabs.length);
+    const tabs = [['map', 'MAP'], ['quests', 'QUESTS'], ['team', 'TEAM']], tw = Math.floor((pw - 8) / tabs.length);
     tabs.forEach(([id, label], i) => { if (ui.button(px + 4 + i * tw, py + ph - 18, tw - 2, 14, label, { color: this.tab === id ? T.amber : T.dim })) this.tab = id; });
     if (ui.button(px + pw - 20, py + 13, 16, 12, 'X', { color: T.red, hotkey: 'Escape' })) this.toggle();
     const ax = px + 3, ay = py + 13, aw = pw - 6, ah = ph - 34;
-    if (this.tab === 'map') this.drawMap(ui, ax, ay, aw, ah); else this.drawTeam(ui, ax, ay, aw, ah);
+    if (this.tab === 'map') this.drawMap(ui, ax, ay, aw, ah); else if (this.tab === 'quests') this.drawQuests(ui, ax, ay, aw, ah); else this.drawTeam(ui, ax, ay, aw, ah);
   }
   drawMap(ui, x0, y0, w, h) {
     const M = (u, v) => [Math.round(x0 + u * w), Math.round(y0 + v * h)];
@@ -53,9 +54,25 @@ export class SFPhone {
       if (L.hidden || !L.map || !(s.unlocks.locations.includes(id) || id === here)) continue;
       const [a, b] = M(...L.map), bob = id === here ? 0 : Math.round(Math.sin(this.t * 4 + a) * 1);
       ui.rect(a - 2, b - 6 + bob, 5, 5, id === here ? T.cyan : T.red); ui.px(a, b - 1 + bob, id === here ? T.cyan : T.red); ui.px(a - 1, b - 5 + bob, '#ffffff');
+      if (tramOpen(this.app, id) && id !== here) { ui.rect(a + 3, b - 7 + bob, 4, 3, '#ffb030'); ui.px(a + 4, b - 4 + bob, '#141018'); ui.px(a + 6, b - 4 + bob, '#141018'); }
       const lw = ui.tw(L.name, { mini: true }) + 6;
-      if (ui.button(Math.max(x0, Math.min(x0 + w - lw, a - (lw >> 1))), b + 2, lw, 9, L.name, { mini: true, color: id === here ? T.cyan : T.text }) && id !== here) { this.open = false; this.app.story.run(() => this.app.travel(id)); }
+      if (ui.button(Math.max(x0, Math.min(x0 + w - lw, a - (lw >> 1))), b + 2, lw, 9, L.name, { mini: true, color: id === here ? T.cyan : T.text }) && id !== here) { this.open = false; this.app.story.run(() => (tramOpen(this.app, id) ? rideTram(this.app, id) : this.app.travel(id))); }
     }
+  }
+  drawQuests(ui, x0, y0, w, h) {
+    const list = this.app.quests ? this.app.quests.list() : [];
+    if (!list.length) { ui.text('No quests yet.', x0 + 6, y0 + 8, T.dim); return; }
+    let y = y0 + 4;
+    for (const q of list) {
+      if (y > y0 + h - 18) break;
+      const step = q.active ? (q.steps[q.step] || '') : 'Done';
+      ui.panel(x0 + 2, y, w - 4, 22, {});
+      ui.icon(q.main ? 'star' : 'talk', x0 + 6, y + 3, q.active ? (q.main ? T.amber : T.cyan) : T.dim);
+      ui.text(q.title, x0 + 16, y + 3, q.active ? T.text : T.dim);
+      ui.text(ui.wrap ? step.slice(0, 44) : step, x0 + 16, y + 13, q.active ? T.amber : T.dim, { mini: true });
+      y += 24;
+    }
+    void QUESTS;
   }
   drawTeam(ui, x0, y0, w) {
     const party = this.app.state.party;

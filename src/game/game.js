@@ -7,6 +7,7 @@ import { SKILLS } from '../data/skills.js';
 import { ITEMS, gemMultiplier, GEM_IDS } from '../data/items.js';
 import { questProgress, QUESTS } from '../data/quests.js';
 import { ELEMENTS } from '../data/elements.js';
+import { weatherOf } from './time.js';
 
 export class Game {
   constructor(app) { this.app = app; }
@@ -145,7 +146,7 @@ export class Game {
     // capture
     if (res.reason === 'capture' && res.captured) {
       const c = res.captured;
-      const mon = createElemon(c.species, { level: c.level, wild: true, ot: s.player.name, caught: { day: s.time.day, map: this.app.world.mapId, gem: c.gem } });
+      const mon = createElemon(c.species, { level: c.level, wild: true, drip: c.drip, look: c.look, ot: s.player.name, caught: { day: s.time.day, map: this.app.world.mapId, gem: c.gem } });
       mon.hp = Math.max(0.2, c.hp);
       for (const [lv, id] of SPECIES[c.species].learn) if (lv <= c.level && !mon.skills.known.includes(id)) mon.skills.known.push(id);
       mon.skills.active = mon.skills.known.filter((id) => SKILLS[id].kind === 'active').slice(0, 4);
@@ -182,7 +183,7 @@ export class Game {
   }
   async checkEvolutions() {
     for (const mon of this.s.party) {
-      const opts = evolutionOptions(mon, { location: this.app.world.mapId, hour: this.s.time.hour });
+      const opts = evolutionOptions(mon, { location: this.app.world.mapId, hour: this.s.time.hour, weather: weatherOf(this.s.time) });
       if (!opts.length) continue;
       const pick = opts.length > 1 ? await this.app.screens.pickEvolution(mon, opts) : opts[0];
       if (pick) await this.app.screens.evolve(mon, pick.to);

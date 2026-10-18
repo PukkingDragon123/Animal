@@ -28,6 +28,8 @@ import { SKILLS, COMBOS } from '../data/skills.js';
 import { SPECIES, elemsOf } from '../data/species.js';
 import { effectiveness, reactionFor, teamCombo } from '../data/elements.js';
 import { think } from './ai.js';
+import { SYNERGIES } from '../data/synergies.js';
+import { GEAR } from '../data/gear.js';
 
 export const DT = 1 / 30;
 const PARRY_WIN = 0.3, PERFECT_PARRY = 0.15, PERFECT_DODGE = 0.18;
@@ -70,6 +72,7 @@ export function createBattle(spec) {
   spec.sides.forEach((side, si) => {
     side.trainers.forEach((tr, ti) => addTrainer(st, si, ti, side.trainers.length, tr));
   });
+  applySynergies(st);
   ev(st, 'start', {});
   return st;
 }
@@ -100,6 +103,7 @@ function makeUnit(st, snap, T, side) {
     if (p.when) cpass.push({ id: pid, when: p.when, mods: p.mods, on: false });
     else addMods(mods, p.mods);
   }
+  for (const gid of snap.gear || []) if (GEAR[gid] && GEAR[gid].mods) addMods(mods, GEAR[gid].mods); // equipped gear
   const u = {
     id: 'u' + st.nextId++, uid: snap.uid, side, trainer: T.id, species: snap.species, name: snap.name || sp.name, level: snap.level,
     elems: elemsOf(sp), elem: elemsOf(sp)[0], snap, mods, modsBase: mods, cpass, basic: sp.basic, boss: !!sp.boss, beast: !!sp.beast,
@@ -112,7 +116,7 @@ function makeUnit(st, snap, T, side) {
     dash: null, grab: null, grabbedBy: null, charge: null,
     st: [], buffs: [], aura: null, heat: 0, rhythm: 0, ult: 0, soul: 0, spectral: 0,
     hist: [], hpHist: [], relay: null, lastHitBy: null,
-    k: { dealt: 0, taken: 0, precise: 0, healed: 0, blocked: 0, beats: 0, charged: 0, teamCombos: 0, reactions: 0, kos: 0, crits: 0, bondT: 0, bondKos: 0, emotes: 0, uses: {}, hits: {} },
+    k: { dealt: 0, taken: 0, precise: 0, healed: 0, blocked: 0, beats: 0, charged: 0, teamCombos: 0, reactions: 0, kos: 0, crits: 0, bondT: 0, bondKos: 0, emotes: 0, faintBonded: 0, burnFaintBonded: 0, shieldAlly: 0, healMoves: 0, uses: {}, hits: {} },
     disobey: (snap.friendship ?? 100) < 40 && T.isPlayer ? 0.14 : 0,
     brain: null, drowsy: 0, moveSpeedMul: 1, auto: !T.isPlayer || st.rules.orders,
   };
@@ -120,6 +124,32 @@ function makeUnit(st, snap, T, side) {
   u.ultSkill = snap.ult && SKILLS[snap.ult] ? snap.ult : null;
   st.units.push(u);
   return u;
+}
+
+// Team synergies (src/data/synergies.js): Fab Four, John & Yoko… applied once at setup as passive-style mods.
+function applySynergies(st) {
+  for (const sy of SYNERGIES) {
+    const groups = sy.scope === 'team' ? st.trainers.map((T) => T.team.map((id) => unitById(st, id))) : [0, 1].map((s) => st.units.filter((u) => u.side === s));
+    for (const g of groups) {
+      if (!sy.need.every((sp) => g.some((u) => u.species === sp))) continue;
+      const us = g.filter((u) => sy.need.includes(u.species));
+      for (const u of us) {
+        if (sy.mods && sy.mods[u.species]) { addMods(u.modsBase, sy.mods[u.species]); u._dirty = true; }
+        (u.synergies = u.synergies || []).push(sy.id);
+        if (sy.heal && u.species === sy.heal.to) u.teamHeal = { from: g.filter((x) => x.species === sy.heal.from).map((x) => x.id), k: sy.heal.k, every: sy.heal.every, t: 0 };
+      }
+      ev(st, 'synergy', { id: sy.id, name: sy.name, side: us[0].side, units: us.map((u) => u.id) });
+    }
+  }
+}
+// a synergy partner (on the field or the bench, not fainted) heals this unit every few seconds
+function stepTeamHeal(st, u, dt) {
+  const h = u.teamHeal;
+  h.t += dt;
+  if (h.t < h.every) return;
+  h.t -= h.every;
+  const src = h.from.map((id) => unitById(st, id)).find((x) => x && x.state !== 'faint' && x.hp > 0);
+  if (src) heal(st, src, u, u.maxHp * h.k);
 }
 
 // ------------------------------------------------------------------ passives & conditional mods
@@ -722,13 +752,14 @@ function runEffects(st, u, sk, aim, mult = 1, grow = 1) {
           if (e.over) addStatus(st, w, { s: 'regen', dur: e.over, k: amt / e.over, src: u.id });
           else heal(st, u, w, amt);
         }
+        u.k.healMoves++;
         ev(st, 'healFx', { u: u.id, who: who.map((w) => w.id) });
         break;
       }
       case 'buff': {
         const who = e.who === 'team' ? alliesOf(st, u) : [u];
         for (const w of who) {
-          if (e.s === 'shield') { w.shield = Math.max(w.shield, w.maxHp * e.k * (u.mods.shieldMul || 1)); w.shieldT = e.dur || 7; ev(st, 'shield', { u: w.id }); }
+          if (e.s === 'shield') { w.shield = Math.max(w.shield, w.maxHp * e.k * (u.mods.shieldMul || 1)); w.shieldT = e.dur || 7; if (w !== u) u.k.shieldAlly++; ev(st, 'shield', { u: w.id, src: u.id }); }
           else if (e.s === 'energy') w.energy = Math.min(100, w.energy + e.k);
           else if (e.s === 'cleanse') { w.st = w.st.filter((x) => !['poison', 'burn', 'slow', 'root', 'defdown', 'curse', 'blind', 'confuse', 'radiation'].includes(x.s)); ev(st, 'cleanse', { u: w.id }); }
           else if (e.s === 'phase') { w.iframes = Math.max(w.iframes, e.dur); addBuff(w, 'phase', 1, e.dur); }
@@ -1434,11 +1465,14 @@ function hitProps(st, x, z, r, power, src) {
 // ------------------------------------------------------------------ faint / end
 function faint(st, u, src) {
   if (u.state === 'faint') return;
+  const burning = has(u, 'burn'), bonded = u.bonded; // read before statuses/bond are cleared
   u.hp = 0; u.state = 'faint'; u.act = null; u.dash = null; u.charge = null; u.st = []; u.vx = u.vz = 0;
   if (u.grab) releaseGrab(st, u);
   if (u.grabbedBy) { const g = unitById(st, u.grabbedBy); if (g) g.grab = null; u.grabbedBy = null; }
   for (const t of st.tele.filter((x) => x.owner === u.id)) removeTele(st, t.id);
   if (u.bonded) endBond(st, u, 'faint');
+  // fainting while bonded (Hartbox → Utero) / from a burn while bonded (Jungeon → Paradove)
+  if (bonded) { u.k.faintBonded++; if (burning) u.k.burnFaintBonded++; }
   if (src) {
     src.k.kos++;
     if (src.side === 0) st.defeats.push({ species: u.species, by: src.uid, level: u.level });
@@ -1454,7 +1488,7 @@ function faint(st, u, src) {
       }
     }
   }
-  ev(st, 'faint', { u: u.id, src: src ? src.id : null });
+  ev(st, 'faint', { u: u.id, src: src ? src.id : null, bonded, burning });
   ev(st, 'anim', { u: u.id, mode: 'faint' });
   const T = st.trainers.find((t) => t.id === u.trainer);
   const next = T.team.map((id) => unitById(st, id)).find((x) => x && x !== u && x.hp > 0 && x.state !== 'faint');
@@ -1595,7 +1629,7 @@ function stepUnit(st, u, dt) {
   if (u.state === 'captured') {
     u.capture.t += dt;
     if (u.capture.t > 0.7 * (u.capture.shakes + 1) + 0.4) {
-      if (u.capture.ok) { st.captured = { species: u.species, level: u.level, hp: u.hp / u.maxHp, uid: u.uid, gem: st.used.gems[st.used.gems.length - 1] }; ev(st, 'captured', { u: u.id }); u.onField = false; const T = st.trainers.find((t) => t.id === u.trainer); if (T) T.out = true; endBattle(st, 0, 'capture'); }
+      if (u.capture.ok) { st.captured = { species: u.species, level: u.level, hp: u.hp / u.maxHp, uid: u.uid, gem: st.used.gems[st.used.gems.length - 1], drip: u.snap.drip, look: u.snap.look }; ev(st, 'captured', { u: u.id }); u.onField = false; const T = st.trainers.find((t) => t.id === u.trainer); if (T) T.out = true; endBattle(st, 0, 'capture'); }
       else { u.state = 'idle'; u.capture = null; st.flags.angry = true; addBuff(u, 'dmg', 0.25, 10); ev(st, 'breakFree', { u: u.id }); }
     }
     return;
@@ -1622,6 +1656,7 @@ function stepUnit(st, u, dt) {
   u.heat = Math.max(0, u.heat - dt * 2);
   if (u.aura) { u.aura.t -= dt; if (u.aura.t <= 0) u.aura = null; }
   if (u.mods.regen) heal(st, u, u, u.maxHp * u.mods.regen * dt);
+  if (u.teamHeal) stepTeamHeal(st, u, dt);
   if (st.tick % 3 === 0) { u.hpHist.push({ t: st.t, hp: u.hp }); while (u.hpHist.length && st.t - u.hpHist[0].t > 4) u.hpHist.shift(); }
   // statuses
   for (let i = 0; i < u.st.length; i++) {

@@ -27,7 +27,7 @@ export class Battle3D {
     return new Promise((resolve) => this._start(spec, resolve).catch((e) => { console.error(e); this.active = false; resolve({ winner: 0, error: true }); }));
   }
   async _start(spec, resolve) {
-    const app = this.app, s = app.state, w = app.world, L = w.loc, A = L.arena || { at: [w.cam.target.x, w.cam.target.z], r: 5 };
+    const app = this.app, s = app.state, w = app.world, L = w.loc, A = spec.arena || L.arena || (w.sc && w.sc.arena) || { at: [w.cam.target.x, w.cam.target.z], r: 5 };
     this.resolve = resolve; this.spec = spec; this.prevCam = { target: w.cam.target.toArray(), dist: w.cam.dist, yaw: w.cam.yaw, pitch: w.cam.pitch };
     const mine = (spec.only || S.battleTeam(s, spec.partySize || 3)).map((m) => battleSnapshot(m, s.unlocks.slots));
     const npcSnap = ([sp, lv, o]) => { const m = createElemon(sp, { level: lv, wild: true, friendship: 100, ...(o || {}) }); for (const [l, id] of SPECIES[sp].learn) if (l <= lv && !m.skills.known.includes(id)) m.skills.known.push(id); m.skills.active = m.skills.known.filter((id) => SKILLS[id] && SKILLS[id].kind === 'active').slice(0, 4); return battleSnapshot(m); };
@@ -135,7 +135,7 @@ export class Battle3D {
     for (const e of evs) {
       switch (e.type) {
         case 'anim': { const u = U(e.u); if (!u || !R(u)) break; this.once(R(u), MELEE.has(e.anim) ? 'attack' : 'special', MELEE.has(e.anim) ? 0.7 : 1.2); break; }
-        case 'cast': { const u = U(e.u); if (!u || e.phase !== 'release' || !R(u)) break; this.once(R(u), 'special', 1.2); app.audio.sfx && app.audio.sfx('cast'); break; }
+        case 'cast': { const u = U(e.u); if (!u || e.phase !== 'release' || !R(u)) break; this.once(R(u), 'special', 1.2); app.audio.sfx && app.audio.sfx('charge_release'); break; }
         case 'hit': {
           const t = U(e.tgt); if (!t || !R(t)) break;
           if (e.kind !== 'dot' && e.dmg > t.maxHp * 0.08) this.once(R(t), 'hurt', 0.5);

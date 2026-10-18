@@ -70,25 +70,11 @@ export const SPECIES = {
   amplifury: { name: 'Amplifury', elem: 'echo', family: 'Flyer', stage: 3, base: B(10, 14, 9, 14, 10), radius: 0.85,
     basic: { type: 'ranged', power: 12, range: 6.5, rate: 0.55, speed: 16 }, start: [], learn: [], ult: 'encore_loop', passives: ['perfect_pitch', 'reverb', 'mosh_spirit', 'groupie'], evolve: [], temper: 'curious', catch: 0, bond: 90, exp: 240 },
 
-  // ------------------------------------------------------------ the Beatles beetle
-  beatlet: { name: 'Beatlet', elem: 'bio', family: 'Bug', stage: 1, base: B(7, 6, 6, 7, 6), radius: 0.38,
-    basic: { type: 'melee', power: 9, range: 1.4, rate: 0.62 }, start: ['mop_top_spin', 'seed_shot'],
-    learn: [[7, 'twist_and_shout'], [9, 'vine_lash'], [12, 'sleep_pollen'], [15, 'petal_dance']],
-    ult: 'sakura_sanctuary', passives: ['with_a_little_help', 'venom_glands'],
-    evolve: [
-      { to: 'lenshorn', cond: { level: 12, defeat: { lemmo: 20, alpha_lemmo: 1 } }, hint: 'Defeat 20 Lemmo and the Alpha Lemmo in the safari. (Imagine that.)' },
-      { to: 'mccarapace', cond: { level: 16, friendship: 180, location: 'dotonbori' }, hint: 'Reach deep friendship, then let it be… by the Dotonbori canal.' },
-      { to: 'harrisun', cond: { level: 16, dojo: 3, hours: [5, 8] }, hint: 'Meditate at the dojo 3 times, then wait for the sun to come up.' },
-      { to: 'starrab', cond: { level: 16, teamCombos: 25 }, hint: 'Pull off 25 team combos — with a little help from your friends.' },
-    ], temper: 'curious', catch: 0.5, bond: 80, exp: 58, personality: 'Sunny, sings constantly, believes all you need is love (and leaves).' },
-  lenshorn: { name: 'Lenshorn', elem: 'echo', family: 'Bug', stage: 2, base: B(9, 12, 8, 9, 9), radius: 0.55, basic: { type: 'ranged', power: 11, range: 6, rate: 0.6, speed: 14 },
-    start: ['imagine', 'sound_wave'], learn: [[18, 'feedback_screech'], [22, 'bass_drop']], ult: 'encore_loop', passives: ['perfect_pitch', 'groupie'], evolve: [], temper: 'curious', catch: 0, bond: 80, exp: 150 },
-  mccarapace: { name: 'McCarapace', elem: 'hydro', family: 'Bug', stage: 2, base: B(9, 11, 9, 9, 10), radius: 0.55, basic: { type: 'ranged', power: 10, range: 6.5, rate: 0.58, speed: 16 },
-    start: ['yesterday', 'water_jet'], learn: [[18, 'ricochet'], [22, 'tidal_lance']], ult: 'ink_sniper', passives: ['deadeye', 'slick'], evolve: [], temper: 'curious', catch: 0, bond: 80, exp: 150 },
-  harrisun: { name: 'Harrisun', elem: 'pyro', family: 'Bug', stage: 2, base: B(10, 12, 8, 8, 9), radius: 0.55, basic: { type: 'melee', power: 12, range: 1.7, rate: 0.65 },
-    start: ['here_comes_the_sun', 'ember_shot'], learn: [[18, 'heat_wave'], [22, 'fireworks']], ult: 'festival_inferno', passives: ['fuel_tank', 'photosynthesis'], evolve: [], temper: 'curious', catch: 0, bond: 80, exp: 150 },
-  starrab: { name: 'Starrab', elem: 'geo', family: 'Bug', stage: 2, base: B(11, 9, 11, 8, 10), radius: 0.55, basic: { type: 'melee', power: 12, range: 1.7, rate: 0.6 },
-    start: ['octopus_garden', 'pebble_toss'], learn: [[18, 'rock_slam'], [22, 'earth_spikes']], ult: 'kiln_fortress', passives: ['with_a_little_help', 'bedrock'], evolve: [], temper: 'curious', catch: 0, bond: 80, exp: 150 },
+  // ------------------------------------------------------------ the Fab Four (Beatlet's line and Johnlemon/Starrfish: src/data/species/)
+  mccarapace: { name: 'McCarapace', elem: 'hydro', family: 'Aquatic', stage: 2, base: B(9, 11, 9, 9, 10), radius: 0.55, basic: { type: 'ranged', power: 10, range: 6.5, rate: 0.58, speed: 16 },
+    start: ['yesterday', 'water_jet'], learn: [[18, 'ricochet'], [22, 'tidal_lance']], ult: 'ink_sniper', passives: ['deadeye', 'slick'], evolve: [], temper: 'curious', catch: 0.12, bond: 80, exp: 150, role: 'Hydro sharpshooter — melodic water shots (Fab Four)', personality: 'A left-handed hermit crab whose shell is a violin-shaped bass. Writes a hit song before breakfast, every day.' },
+  harrisun: { name: 'Harrisun', elem: 'pyro', family: 'Spirit', stage: 2, base: B(10, 12, 8, 8, 9), radius: 0.55, basic: { type: 'melee', power: 12, range: 1.7, rate: 0.65 },
+    start: ['here_comes_the_sun', 'ember_shot'], learn: [[18, 'heat_wave'], [22, 'fireworks']], ult: 'festival_inferno', passives: ['fuel_tank', 'photosynthesis'], evolve: [], temper: 'curious', catch: 0.12, bond: 80, exp: 150, role: 'Pyro mystic — sunrise blasts and warmth (Fab Four)', personality: 'A little sun that plays the sitar at dawn. Quiet, spiritual, sneakily the best guitarist of the four.' },
 
   // ------------------------------------------------------------ rolling stone
   pebblips: { name: 'Pebblips', elem: 'geo', family: 'Rock', stage: 1, base: B(7, 6, 8, 7, 6), radius: 0.36, basic: { type: 'melee', power: 9, range: 1.3, rate: 0.66 },
@@ -100,17 +86,17 @@ export const SPECIES = {
 
   // ------------------------------------------------------------ cast
   zapanda: { name: 'Zapanda', elem: 'volto', family: 'Beast', stage: 1, base: B(7, 8, 5, 9, 6), radius: 0.42, basic: { type: 'melee', power: 9, range: 1.4, rate: 0.55 },
-    start: ['zap', 'thunder_fang'], learn: [[8, 'spark_dash'], [12, 'static_field'], [16, 'discharge']], ult: 'lemon_storm', passives: ['slick'], evolve: [], temper: 'curious', catch: 0.4, bond: 70, exp: 62 },
+    start: ['zap', 'thunder_fang'], learn: [[8, 'spark_dash'], [12, 'static_field'], [16, 'discharge']], ult: 'lemon_storm', passives: ['slick'], evolve: [], temper: 'curious', catch: 0.4, bond: 70, exp: 62, role: 'Speedy volto striker — prism sparks', personality: "Mika's electric red panda. The prism on its chest splits light into a rainbow down its battery tail." },
   kanizumo: { name: 'Kanizumo', elem: ['hydro', 'geo'], family: 'Aquatic', stage: 2, base: B(9, 7, 10, 5, 10), radius: 0.62, basic: { type: 'melee', power: 11, range: 1.7, rate: 0.85 },
-    start: ['crab_hammer', 'shiko_stomp', 'water_jet', 'bubble_trap'], learn: [], ult: 'kiln_fortress', passives: ['bedrock'], evolve: [], temper: 'territorial', catch: 0.25, bond: 60, exp: 120 },
+    start: ['crab_hammer', 'shiko_stomp', 'water_jet', 'bubble_trap'], learn: [], ult: 'kiln_fortress', passives: ['bedrock'], evolve: [], temper: 'territorial', catch: 0.25, bond: 60, exp: 120, role: 'Sumo bruiser — slaps and stomps', personality: "Coach's sumo crab with a towering beehive topknot and cat-eye markings. Dances sideways like a rock lobster." },
   studrat: { name: 'Studrat', elem: 'ferro', family: 'Beast', stage: 1, base: B(8, 5, 6, 9, 6), radius: 0.4, basic: { type: 'melee', power: 9, range: 1.3, rate: 0.5 },
-    start: ['stud_shot', 'iron_bash', 'chain_whip'], learn: [], ult: null, passives: [], evolve: [], temper: 'aggressive', catch: 0.4, bond: 30, exp: 60 },
+    start: ['stud_shot', 'iron_bash', 'chain_whip'], learn: [], ult: null, passives: [], evolve: [], temper: 'aggressive', catch: 0.4, bond: 30, exp: 60, role: 'Metal brawler — studs and chains', personality: "Team Metallica's street rat: sledgehammer, chrome mohawk and a kill-'em-all attitude." },
   moshbull: { name: 'Moshbull', elem: 'geo', family: 'Beast', stage: 2, base: B(11, 5, 9, 6, 10), radius: 0.7, basic: { type: 'melee', power: 12, range: 1.8, rate: 0.9 },
-    start: ['mosh_charge', 'shiko_stomp', 'rock_slam'], learn: [], ult: null, passives: ['immovable'], evolve: [], temper: 'aggressive', catch: 0.3, bond: 25, exp: 110 },
+    start: ['mosh_charge', 'shiko_stomp', 'rock_slam'], learn: [], ult: null, passives: ['immovable'], evolve: [], temper: 'aggressive', catch: 0.3, bond: 25, exp: 110, role: 'Mosh-pit tank — charges and stomps', personality: 'A rock-plated mosh-pit bull pulled by marionette strings over a field of little crosses. Master of puppets, servant of none.' },
   thrashark: { name: 'Thrashark', elem: ['hydro', 'ferro'], family: 'Aquatic', stage: 2, base: B(11, 9, 8, 9, 9), radius: 0.65, basic: { type: 'melee', power: 12, range: 1.8, rate: 0.62 },
-    start: ['sawblade', 'water_jet', 'riptide_dash', 'tidal_lance'], learn: [], ult: 'tsunami', passives: [], evolve: [], temper: 'aggressive', catch: 0.2, bond: 20, exp: 130 },
+    start: ['sawblade', 'water_jet', 'riptide_dash', 'tidal_lance'], learn: [], ult: 'tsunami', passives: [], evolve: [], temper: 'aggressive', catch: 0.2, bond: 20, exp: 130, role: 'Storm shark — sawblades and riptides', personality: 'A sawblade-finned walking shark crackling with lightning. Rides the lightning, every storm.' },
   lemmo: { name: 'Lemmo', elem: 'volto', family: 'Plant', stage: 1, base: B(5, 6, 5, 7, 5), radius: 0.32, basic: { type: 'melee', power: 7, range: 1.2, rate: 0.7 },
-    start: ['zest_spray', 'zap'], learn: [], ult: null, passives: [], evolve: [], temper: 'territorial', catch: 0.65, bond: 60, exp: 34 },
+    start: ['zest_spray', 'zap'], learn: [], ult: null, passives: [], evolve: [], temper: 'territorial', catch: 0.65, bond: 60, exp: 34, role: 'Zesty pest — sour sprays and zaps', personality: 'A walking lemon battery with a little baseball bat and a bee on its peel. Turns sour fast — lemonade slow.' },
   alpha_lemmo: { name: 'Alpha Lemmo', elem: 'volto', family: 'Plant', stage: 3, boss: true, base: B(11, 12, 10, 6, 22), radius: 1.2, basic: { type: 'melee', power: 14, range: 2.4, rate: 0.95 },
     start: ['zest_spray', 'discharge', 'static_field', 'zap'], learn: [], ult: 'lemon_storm', passives: ['immovable'], evolve: [], temper: 'aggressive', catch: 0.08, bond: 15, exp: 320 },
   kagarou: { name: 'Kagarou', elem: 'pyro', family: 'Beast', stage: 2, rare: true, base: B(12, 10, 7, 12, 9), radius: 0.6, basic: { type: 'melee', power: 13, range: 1.7, rate: 0.55 },
@@ -119,15 +105,15 @@ export const SPECIES = {
   hotarumi: { name: 'Hotarumi', elem: ['volto', 'bio'], family: 'Bug', stage: 1, rare: true, base: B(5, 9, 5, 9, 5), radius: 0.32, basic: { type: 'ranged', power: 7, range: 5.5, rate: 0.6, speed: 14 },
     start: ['zap', 'sleep_pollen', 'mending_bloom'], learn: [], ult: 'sakura_sanctuary', passives: ['photosynthesis'], evolve: [], temper: 'skittish', catch: 0.3, bond: 60, exp: 70 },
   kappachi: { name: 'Kappachi', elem: 'hydro', family: 'Yokai', stage: 1, base: B(7, 7, 7, 7, 6), radius: 0.4, basic: { type: 'melee', power: 9, range: 1.4, rate: 0.62 },
-    start: ['water_jet', 'bubble_trap', 'riptide_dash'], learn: [], ult: 'tsunami', passives: ['slick'], evolve: [], temper: 'curious', catch: 0.45, bond: 55, exp: 64 },
+    start: ['water_jet', 'bubble_trap', 'riptide_dash'], learn: [], ult: 'tsunami', passives: ['slick'], evolve: [], temper: 'curious', catch: 0.45, bond: 55, exp: 64, role: 'Surf kappa — water jets and riptides', personality: 'The Tea Garden kappa in a striped surf shirt with a tiny surfboard. Its head-dish sloshes like a wave — keep it level!' },
   chochobake: { name: 'Chochobake', elem: 'ecto', family: 'Yokai', stage: 1, rare: true, base: B(5, 9, 5, 8, 6), radius: 0.42, basic: { type: 'ranged', power: 8, range: 5.5, rate: 0.62, speed: 12 },
-    start: ['shade_ball', 'lantern_glare', 'phase'], learn: [], ult: null, passives: [], evolve: [], temper: 'skittish', catch: 0.3, bond: 45, exp: 72, eyeSlot: true },
+    start: ['shade_ball', 'lantern_glare', 'phase'], learn: [], ult: null, passives: [], evolve: [], temper: 'skittish', catch: 0.3, bond: 45, exp: 72, role: 'Lantern ghost — glares and phasing', personality: "Chinatown's one-eyed paper-lantern ghost in a red-jacket pattern with one sparkly glove. Moonwalks between the lanterns at midnight.", eyeSlot: true },
   tengale: { name: 'Tengale', elem: 'aero', family: 'Flyer', stage: 2, rare: true, base: B(9, 9, 7, 11, 8), radius: 0.5, basic: { type: 'melee', power: 11, range: 1.6, rate: 0.55 },
     start: ['air_slash', 'gust', 'tornado', 'tailwind'], learn: [], ult: null, passives: [], evolve: [], temper: 'territorial', catch: 0.18, bond: 30, exp: 130 },
   yukiusa: { name: 'Yukiusa', elem: 'cryo', family: 'Beast', stage: 1, rare: true, base: B(5, 9, 5, 10, 5), radius: 0.32, basic: { type: 'ranged', power: 7, range: 5, rate: 0.6, speed: 14 },
     start: ['ice_shard', 'frost_breath', 'blizzard'], learn: [], ult: null, passives: [], evolve: [], temper: 'skittish', catch: 0.22, bond: 50, exp: 80 },
   cabbunny: { name: 'Cabbunny', elem: 'bio', family: 'Plant', stage: 1, base: B(5, 6, 6, 7, 7), radius: 0.32, basic: { type: 'melee', power: 7, range: 1.2, rate: 0.65 },
-    start: ['seed_shot', 'mending_bloom'], learn: [], ult: null, passives: [], evolve: [], temper: 'skittish', catch: 0.6, bond: 70, exp: 40 },
+    start: ['seed_shot', 'mending_bloom'], learn: [], ult: null, passives: [], evolve: [], temper: 'skittish', catch: 0.6, bond: 70, exp: 40, role: 'Shy grazer — seeds and healing', personality: 'A cabbage bunny with edgy shades and painted claws. Turns every veggie patch into a summer party.' },
   moglow: { name: 'Moglow', elem: 'geo', family: 'Beast', stage: 1, base: B(7, 5, 7, 5, 7), radius: 0.36, basic: { type: 'melee', power: 9, range: 1.3, rate: 0.7 },
     start: ['pebble_toss', 'quicksand', 'rock_slam'], learn: [], ult: null, passives: [], evolve: [], temper: 'curious', catch: 0.55, bond: 70, exp: 44 },
   mechanyan: { name: 'Mechanyan', elem: ['ferro', 'volto'], family: 'Machine', stage: 2, base: B(9, 9, 9, 9, 8), radius: 0.5, basic: { type: 'melee', power: 11, range: 1.5, rate: 0.6 },
@@ -153,7 +139,7 @@ export const SPECIES = {
 };
 
 // ---- Tokonmon remake: the three new starter lines replace the old five; retired lines are removed.
-for (const id of ['kindoru', 'chochidra', 'infernobori', 'takopo', 'takommando', 'admiraken', 'mochika', 'hanashika', 'shinrinoh', 'clayki', 'tanukiln', 'dogugaia', 'komoriff', 'reverbat', 'amplifury', 'pebblips', 'jaggeode']) delete SPECIES[id];
+for (const id of ['kindoru', 'chochidra', 'infernobori', 'takopo', 'takommando', 'admiraken', 'mochika', 'hanashika', 'shinrinoh', 'clayki', 'tanukiln', 'dogugaia', 'komoriff', 'reverbat', 'amplifury', 'pebblips', 'jaggeode', 'lenshorn', 'starrab']) delete SPECIES[id];
 Object.assign(SPECIES, STARTER_SPECIES);
 for (const mod of EXTRA_SPECIES) Object.assign(SPECIES, mod);
 

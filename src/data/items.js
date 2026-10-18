@@ -1,6 +1,7 @@
 // Items: food (heal/boosts/friendship), capture gems for the keychain device,
 // vinyl skill discs (teach shared skills), key items. Prices in ¥.
 import { SKILLS, DISC_SKILLS } from './skills.js';
+import { GEAR } from './gear.js';
 export const ITEMS = {
   // food — battle usable ones map to sim ITEMS_BATTLE ids
   takoyaki: { name: 'Takoyaki ×6', icon: '🐙', kind: 'food', battle: true, price: 400, desc: 'Restores 30% HP. Osaka soul food.', heal: 0.3, friend: 2 },
@@ -50,6 +51,9 @@ for (const k of Object.keys(ITEMS)) if (ITEMS[k].kind === 'mixtape') delete ITEM
 export const DISC_IDS = Object.keys(ITEMS).filter((k) => ITEMS[k].kind === 'disc' && k.startsWith('disc_'));
 export const discFits = (discId, elems) => { const d = ITEMS[discId]; return !!d && d.kind === 'disc' && (elems || []).includes(d.elem); };
 
+// gear (src/data/gear.js) is sold and carried like any item; equip it with state.equipGearItem
+for (const [id, g] of Object.entries(GEAR)) ITEMS[id] = Object.assign({ kind: 'gear' }, g);
+export const GEAR_ITEM_IDS = Object.keys(GEAR);
 export const itemOf = (id) => ITEMS[id];
 export const GEM_IDS = Object.keys(ITEMS).filter((k) => ITEMS[k].kind === 'gem');
 export function gemMultiplier(gemId, elems) {

@@ -1,3 +1,5 @@
 // Unique move modules for the non-starter lines (each exports MOVES). Add new
 // modules here; src/data/skills.js registers everything.
-export const EXTRA_MOVES = [];
+import { MOVES as SF_LINES } from './sf_lines.js';
+import { MOVES as SF_WILD } from './sf_wild.js';
+export const EXTRA_MOVES = [SF_LINES, SF_WILD];

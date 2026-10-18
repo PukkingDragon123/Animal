@@ -93,7 +93,8 @@ export class VxWorld {
     }
     const t = v.top(Math.floor(x * v.vpm), Math.floor(z * v.vpm)); return t < 0 ? 0 : (t + 1) / v.vpm;
   }
-  spot(name) { const s = this.loc && this.loc.spots && this.loc.spots[name]; return s || [this.cam.target.x, this.cam.target.z, 0]; }
+  // named spots come from the location table, else from the scene module itself (interiors carry their own)
+  spot(name) { const s = (this.loc && this.loc.spots && this.loc.spots[name]) || (this.sc && this.sc.spots && this.sc.spots[name]); return s || [this.cam.target.x, this.cam.target.z, 0]; }
   // ---- free roam: tap the ground to walk there; the camera follows; the partner tags along
   setPlayer(a, partner = null) { this.player = a; this.partner = partner; return this; }
   roam(on = true) { this.free = on; if (on && this.player) this.followCam(0.8); return this; }
@@ -106,7 +107,7 @@ export class VxWorld {
   async goTo(x, z, y, o = {}) {
     const a = this.player; if (!a) return false;
     const p = a.g.position, path = this.nav.path({ x: p.x, y: p.y, z: p.z }, { x, y: y ?? p.y, z });
-    if (!path || !path.length) { this.app.audio.sfx && this.app.audio.sfx('error'); return false; }
+    if (!path || !path.length) { this.app.audio.sfx && this.app.audio.sfx('ui_error'); return false; }
     const pts = path.slice(1).map(([px, pz]) => [px, pz]);
     if (o.stopShort && pts.length) { const [lx, lz] = pts[pts.length - 1], [qx, qz] = pts.length > 1 ? pts[pts.length - 2] : [p.x, p.z], d = Math.hypot(lx - qx, lz - qz); if (d > o.stopShort) pts[pts.length - 1] = [lx - ((lx - qx) / d) * o.stopShort, lz - ((lz - qz) / d) * o.stopShort]; else if (pts.length > 1) pts.pop(); }
     if (!pts.length) return true;
@@ -223,7 +224,7 @@ export class VxWorld {
       if (h.when && !h.when(this.app)) continue;
       const s = this.project(h.at); if (!s.vis) continue;
       const bob = Math.round(Math.sin(this.app.t * 3 + h.at[0]) * 1.5), w = ui.tw(h.label) + 18, x = Math.round(s.x - w / 2), y = Math.round(s.y - 20 + bob);
-      if (ui.button(x, y, w, 14, h.label, { icon: h.icon || 'star', color: h.color || T.amber })) { this.app.audio.sfx && this.app.audio.sfx('select'); this.app.story.run(async () => { if (this.free && this.player && h.walk !== false) { const [wx, wz] = h.walk || [h.at[0], h.at[2]]; await this.goTo(wx, wz, h.at[1], { stopShort: h.walk ? 0 : 1.2 }); this.player.faceTo(h.at[0], h.at[2]); } await h.act(this.app); }); }
+      if (ui.button(x, y, w, 14, h.label, { icon: h.icon || 'star', color: h.color || T.amber })) { this.app.audio.sfx && this.app.audio.sfx('ui_tap'); this.app.story.run(async () => { if (this.free && this.player && h.walk !== false) { const [wx, wz] = h.walk || [h.at[0], h.at[2]]; await this.goTo(wx, wz, h.at[1], { stopShort: h.walk ? 0 : 1.2 }); this.player.faceTo(h.at[0], h.at[2]); } await h.act(this.app); }); }
       ui.px(Math.round(s.x), y + 15, T.amber); ui.px(Math.round(s.x), y + 16, T.amber);
     }
   }

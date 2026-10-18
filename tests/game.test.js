@@ -2,7 +2,7 @@
 // friendship, items, dojo, time, quests, league, save migration.
 import { ok, section, done } from './_h.js';
 import * as S from '../src/game/state.js';
-import { createElemon, gainExp, allocate, statsOf, equip, learn, evolutionOptions, condProgress, evolve, battleSnapshot, expToNext, SPECTRAL_FRIENDSHIP, addFriendship } from '../src/game/elemon.js';
+import { createElemon, gainExp, allocate, statsOf, equip, learn, evolutionOptions, condProgress, condMet, evolve, battleSnapshot, expToNext, SPECTRAL_FRIENDSHIP, addFriendship, equipGear } from '../src/game/elemon.js';
 import { advance, slotOf, clockText } from '../src/game/time.js';
 import { questProgress, QUESTS } from '../src/data/quests.js';
 import { SPECIES, STARTERS } from '../src/data/species.js';
@@ -46,19 +46,25 @@ const snap4 = battleSnapshot(mon, { active: 4, ult: 1, passive: 2 });
 ok('snapshot hp positive', snap4.hp > 0 && snap4.maxHp >= snap4.hp);
 
 section('evolution conditions');
-const b = createElemon('beatlet', { level: 12 });
-ok('beatlet needs lemmo hunting', evolutionOptions(b).length === 0);
-b.counters.defeat.lemmo = 20; b.counters.defeat.alpha_lemmo = 1;
-ok('beatlet → lenshorn after 20 Lemmo + Alpha', evolutionOptions(b).some((e) => e.to === 'lenshorn'));
-const b2 = createElemon('beatlet', { level: 16 }); b2.friendship = 200;
-ok('mccarapace only by the canal', !evolutionOptions(b2, { location: 'umeda' }).some((e) => e.to === 'mccarapace') && evolutionOptions(b2, { location: 'dotonbori' }).some((e) => e.to === 'mccarapace'));
-const b3 = createElemon('beatlet', { level: 16 }); b3.counters.dojo = 3;
-ok('harrisun only at sunrise', !evolutionOptions(b3, { hour: 12 }).some((e) => e.to === 'harrisun') && evolutionOptions(b3, { hour: 6 }).some((e) => e.to === 'harrisun'));
-const b4 = createElemon('beatlet', { level: 16 }); b4.counters.teamCombos = 25;
-ok('starrab after 25 team combos', evolutionOptions(b4).some((e) => e.to === 'starrab'));
-ok('condition progress lists defeats', condProgress(b, SPECIES.beatlet.evolve[0].cond).some((r) => r.label.includes('Lemmo')));
-evolve(b, 'lenshorn');
-ok('evolve changes species + learns start skills', b.species === 'lenshorn' && SPECIES.lenshorn.start.every((id) => b.skills.known.includes(id)));
+const b = createElemon('beatlet', { level: 17 });
+ok('beatlet waits for Lv.18', evolutionOptions(b).length === 0);
+b.level = 18;
+ok('beatlet → pepperhorn at Lv.18', evolutionOptions(b).some((e) => e.to === 'pepperhorn'));
+evolve(b, 'pepperhorn');
+ok('evolve changes species + learns start skills', b.species === 'pepperhorn' && SPECIES.pepperhorn.start.every((id) => b.skills.known.includes(id)));
+b.level = 36;
+ok('pepperhorn → abbeyhorn at Lv.36 (no egg: no walrus)', evolutionOptions(b).map((e) => e.to).join() === 'abbeyhorn');
+equipGear(b, 'egg');
+ok('holding an Egg → walrusk is offered', evolutionOptions(b).some((e) => e.to === 'walrusk'));
+evolve(b, 'walrusk');
+ok('walrusk evolution uses up the Egg', b.species === 'walrusk' && !b.gear.includes('egg'));
+// generic condition kinds (no longer used by the roster but still supported)
+const g = createElemon('lemmo', { level: 16 });
+ok('defeat cond', !condMet(g, { defeat: { lemmo: 20, alpha_lemmo: 1 } }) && (g.counters.defeat.lemmo = 20, g.counters.defeat.alpha_lemmo = 1, condMet(g, { defeat: { lemmo: 20, alpha_lemmo: 1 } })));
+ok('condition progress lists defeats', condProgress(g, { defeat: { lemmo: 20 } }).some((r) => r.label.includes('Lemmo')));
+ok('location cond', !condMet(g, { location: 'dotonbori' }, { location: 'umeda' }) && condMet(g, { location: 'dotonbori' }, { location: 'dotonbori' }));
+ok('hours cond (+ wrap past midnight)', condMet(g, { hours: [5, 8] }, { hour: 6 }) && !condMet(g, { hours: [5, 8] }, { hour: 12 }) && condMet(g, { hours: [20, 5] }, { hour: 2 }) && !condMet(g, { hours: [20, 5] }, { hour: 12 }));
+ok('teamCombos cond', !condMet(g, { teamCombos: 25 }) && (g.counters.teamCombos = 25, condMet(g, { teamCombos: 25 })));
 for (const [id, sp] of Object.entries(SPECIES)) for (const e of sp.evolve || []) ok(`${id}→${e.to} has a hint`, typeof e.hint === 'string' && e.hint.length > 5);
 
 section('friendship & spectral');

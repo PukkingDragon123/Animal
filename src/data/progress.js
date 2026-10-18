@@ -5,7 +5,7 @@
 //     { start: true }                         known from the start
 //     { level: n }                            reach a level
 //     { eat: { tag: 'spicy', n } }            eat n dishes with a taste tag   · { eat: { food: id, n } }
-//     { battle: { ev, n } }                   battle events (see BATTLE_EVENTS)
+//     { battle: { ev, n } }                   battle events (see BATTLE_EVENTS; also usable in evolve conds)
 //     { uses: { skill, n } }                  use a skill n times
 //     { explore: mapId }                      visit a place together          · { explore: { map, hour: [a, b] } }
 //     { activity: { id, n } }                 dojo, onsen, arcade, karaoke, listen, hangout, train_<stat>
@@ -26,6 +26,8 @@ export const BATTLE_EVENTS = {
   reaction: 'Elemental reactions', steam: 'Steam explosions', heal: 'HP healed', hit_taken: 'Hits taken', shield_block: 'Damage absorbed by shields',
   stun: 'Foes stunned', bond_secs: 'Seconds bonded', ult: 'Ultimates used', win: 'Battles won', win_bonded: 'Wins while bonded',
   low_hp_win: 'Wins from below 40% HP', flawless: 'Wins above 70% HP', stadium_win: 'Stadium wins',
+  // evolution events (sim: faint() / buff shield / heal effects)
+  ko_bonded: 'Fainted while bonded', burn_faint_bonded: 'Fainted from a burn while bonded', shield_ally: 'Teammates shielded', heal_move: 'Healing moves used',
 };
 
 // ---------------------------------------------------------------- skill levels
@@ -182,7 +184,12 @@ export class BattleTracker {
         case 'drowned': add(e.u, 'drowned'); if (e.src) add(e.src, 'drown_foe'); break;
         case 'perfectDodge': add(e.u, 'perfect_dodge'); break;
         case 'parry': if (e.perfect) add(e.u, 'perfect_parry'); break;
-        case 'faint': if (e.src) { add(e.src, 'ko'); const s = this.st.units.find((x) => x.id === e.src); if (s && s.bonded) add(e.src, 'bond_ko'); } break;
+        case 'faint':
+          if (e.src) { add(e.src, 'ko'); const s = this.st.units.find((x) => x.id === e.src); if (s && s.bonded) add(e.src, 'bond_ko'); }
+          if (e.bonded) { add(e.u, 'ko_bonded'); if (e.burning) add(e.u, 'burn_faint_bonded'); }
+          break;
+        case 'shield': if (e.src && e.src !== e.u) add(e.src, 'shield_ally'); break;
+        case 'healFx': add(e.u, 'heal_move'); break;
         case 'onBeat': add(e.u, 'on_beat'); break;
         case 'switch': if (!e.forced && e.in) { const u = this.st.units.find((x) => x.id === e.in); if (u && u.wasOut) add(e.in, 'switch_in'); } break;
         case 'comebackPunch': add(e.u, 'comeback'); break;

@@ -136,7 +136,7 @@ export const SPECIES = {
   },
   // ------------------------------------------------------------------ Strawbaa → Ramberry / Pennyewe
   strawbaa: {
-    name: 'Strawbaa', elem: 'bio', family: 'Beast', stage: 1, line: 'strawbaa', role: 'Healer & support — rams, lots of health, plants vines that heal and hurt',
+    name: 'Strawbaa', elem: 'bio', family: 'Beast', stage: 1, line: 'strawbaa', role: 'Baby-lamb healer — little rams, lots of health, strawberry vines that heal and hurt',
     base: B(6, 6, 7, 4, 12), radius: 0.46,
     basic: { type: 'melee', power: 9, range: 1.5, rate: 0.85 },
     start: ['woolly_ram', 'strawberry_vines'],
@@ -157,7 +157,7 @@ export const SPECIES = {
       { to: 'ramberry', cond: { level: 16, blocked: 30 }, hint: 'Block or absorb 30 attacks and reach Lv.16 — its horns start to grow.' },
       { to: 'pennyewe', cond: { level: 16, healed: 600 }, hint: 'Heal 600 HP and reach Lv.16 — it starts carrying poppies.' },
     ],
-    temper: 'curious', catch: 0, bond: 90, exp: 64, personality: 'Gentle, sleepy, unstoppable when a friend is hurt. Smells like strawberries forever.',
+    temper: 'curious', catch: 0, bond: 90, exp: 64, personality: 'A tiny baby strawberry lamb with a little red bandana and wool like whipped cream. Gentle, sleepy, unstoppable when a friend is hurt — it heals everyone and smells like strawberries forever.',
   },
   ramberry: {
     name: 'Ramberry', elem: ['bio', 'geo'], family: 'Beast', stage: 2, line: 'strawbaa', role: 'Tank & bruiser — giant horns, vines, huge health',

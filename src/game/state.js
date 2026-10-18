@@ -1,5 +1,5 @@
 // Game state: everything that persists in the save. Pure data + helpers.
-import { createElemon, gainExp, maxHp, addFriendship, statsOf } from './elemon.js';
+import { createElemon, gainExp, maxHp, addFriendship, statsOf, equipGear, unequipGear, newLook } from './elemon.js';
 import { advance } from './time.js';
 import { ITEMS } from '../data/items.js';
 import { SPECIES } from '../data/species.js';
@@ -62,6 +62,15 @@ export function addItem(s, id, n = 1) { s.bag[id] = (s.bag[id] || 0) + n; if (s.
 export const hasItem = (s, id, n = 1) => (s.bag[id] || 0) >= n;
 export function spend(s, amt) { if (s.money < amt) return false; s.money -= amt; return true; }
 export function buy(s, id, n = 1) { const it = ITEMS[id]; if (!it || !spend(s, it.price * n)) return false; addItem(s, id, n); return true; }
+// Gear from the bag onto a Tokonmon (a piece pushed out of a full slot goes back to the bag) and back.
+export function equipGearItem(s, mon, id) {
+  const it = ITEMS[id];
+  if (!it || it.kind !== 'gear' || !hasItem(s, id) || !mon) return false;
+  const r = equipGear(mon, id); if (!r) return false;
+  addItem(s, id, -1); if (r.off) addItem(s, r.off, 1);
+  return true;
+}
+export function unequipGearItem(s, mon, id) { if (!unequipGear(mon, id)) return false; addItem(s, id, 1); return true; }
 // Use a food/boost item on an Elemon outside battle.
 export function useItemOn(s, id, mon) {
   const it = ITEMS[id];
@@ -136,10 +145,16 @@ export function load() {
 }
 export function hasSave() { try { return !!localStorage.getItem(SAVE_KEY); } catch (e) { return false; } }
 export function wipe() { try { localStorage.removeItem(SAVE_KEY); } catch (e) { /* ignore */ } }
+// retired species → their place in the new roster (the Beatles beetle line was remade)
+const RETIRED = { lenshorn: 'abbeyhorn', starrab: 'walrusk' };
 function migrate(s) {
   const base = newGame();
   for (const k of Object.keys(base)) if (s[k] === undefined) s[k] = base[k];
-  for (const m of [...s.party, ...s.box]) { if (!m.counters) m.counters = base.party; if (m.hp == null) m.hp = 1; }
+  for (const m of [...s.party, ...s.box]) {
+    if (!m.counters) m.counters = base.party; if (m.hp == null) m.hp = 1;
+    if (RETIRED[m.species]) m.species = RETIRED[m.species];
+    if (!m.drip) m.drip = 1; if (m.look == null) m.look = newLook(); if (!Array.isArray(m.gear)) m.gear = [];
+  }
   return s;
 }
 

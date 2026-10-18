@@ -15,6 +15,7 @@ import { VxWorld } from './world.js';
 import { SFPhone } from './phone.js';
 import { Story } from './story.js';
 import { LOCATIONS } from './locations.js';
+import { Quests, visit, drawTramSign } from './quests.js';
 
 const NO_AUDIO = { sfx() {}, voice() {}, music() {}, stinger() {}, ambience() {}, unlock() {}, setVolumes() {}, setIntensity() {}, stopAll() {}, autoUnlock() {} };
 export const POST = {
@@ -46,6 +47,7 @@ export class VxApp {
     this.world = new VxWorld(this);
     this.phone = new SFPhone(this);
     this.story = new Story(this);
+    this.quests = new Quests(this);
     this.last = performance.now();
     this.loop = this.loop.bind(this); requestAnimationFrame(this.loop);
     window.__app = this;
@@ -88,6 +90,7 @@ export class VxApp {
       else this.world.drawUI(ui, dt);
       if (this.story.drawUI) this.story.drawUI(ui, dt);
       for (const o of this.overlays) o(ui, dt);
+      drawTramSign(this, ui, dt);
       if (this.phone.open) this.phone.draw(ui, dt);
       this.world.handleTap(ui);
       this.fadeA += Math.sign(this.fadeTo - this.fadeA) * Math.min(Math.abs(this.fadeTo - this.fadeA), dt * 3.2);
@@ -106,9 +109,13 @@ export class VxApp {
   async travel(id, o = {}) {
     if (!LOCATIONS[id] || this._travelling) return;
     this._travelling = true; this.audio.sfx && this.audio.sfx('whoosh');
-    await this.fade(1, 420);
+    if (o.fade !== false) await this.fade(1, 420);
     await this.world.load(id, o);
-    this.state.map = { id }; this.save();
+    this.state.map = { id }; visit(this, id); this.save();
+    if (this.roaming) {                                         // free roam: step in at the tram stop or the start spot
+      const L = LOCATIONS[id], at = (o.at === 'tram' && L.tram && L.tram.spot) || (L.spots && (L.spots[o.at] || L.spots.start)) || (this.world.sc.spots && (this.world.sc.spots[o.at] || this.world.sc.spots.start)) || [(L.view || this.world.sc.view).target[0], (L.view || this.world.sc.view).target[2] + 2, 0];
+      await this.story.startRoam(at);
+    }
     await this.fade(0, 500);
     this._travelling = false;
     this.toast(LOCATIONS[id].name, { icon: 'map', color: T.cyan, dur: 2.4 });

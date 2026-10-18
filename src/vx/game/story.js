@@ -39,7 +39,7 @@ export class Story {
     let partner = w.actor('partner');
     const lead = st.party && st.party[0];
     if (!partner) partner = await w.addMon('partner', (lead && lead.species) || 'chilichick', [x + 1, z - 0.8, yaw || 0, y], { drip: (lead && lead.drip) || 1, look: (lead && lead.look) || 0 });
-    w.setPlayer(hero, partner).roam(true);
+    w.setPlayer(hero, partner).roam(true); this.app.roaming = true;
   }
   // ------------------------------------------------------------------ title
   async titleScreen() {
@@ -70,7 +70,8 @@ export class Story {
     const app = this.app;
     if (this.caption) { const c = this.caption; c.t += dt; const a = Math.min(1, c.t * 2, (c.dur - c.t) * 2); if (a > 0) { ui.text(c.text, 10, ui.h - 22, T.text, { outline: '#0c0814' }); if (c.sub) ui.text(c.sub, 10, ui.h - 12, T.amber, { mini: true, outline: '#0c0814' }); } if (c.t > c.dur) this.caption = null; }
     if (this.busy || ui.dialog || (app.battle && app.battle.active)) return;
-    if (this.objective) { const w = Math.min(ui.w - 70, ui.tw(this.objective) + 22); ui.panel(4, 4, w, 15, {}); ui.icon('star', 8, 8, T.amber); ui.text(this.objective, 18, 8, T.text); }
+    const obj = this.objective || (app.quests && app.quests.objective());
+    if (obj) { const w = Math.min(ui.w - 70, ui.tw(obj) + 22); ui.panel(4, 4, w, 15, {}); ui.icon('star', 8, 8, T.amber); ui.text(obj, 18, 8, T.text); }
     if (app.state.flags.phone && !app.phone.open && ui.button(ui.w - 26, 4, 22, 20, '', { icon: 'phone', color: T.cyan, hotkey: 'Tab' })) app.phone.toggle();
   }
   cap(text, sub, dur = 4) { this.caption = { text, sub, dur, t: 0 }; }
