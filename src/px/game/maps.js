@@ -18,7 +18,7 @@ export const MAPS = {
         else if (w > 60 && h > 80 && s.y > 200) s.foot = [7, 3];     // trees: just the trunk
       }
       return {
-        scene,
+        scene, terrain: scene.terrain,
         walk: [
           [[0, 121], [640, 121], [640, 139], [0, 139]],             // upper sidewalk
           [[38, 136], [122, 136], [122, 224], [38, 224]],           // left stairs

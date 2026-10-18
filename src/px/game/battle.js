@@ -184,7 +184,10 @@ export class Battle2D {
   // ------------------------------------------------------------------ FX (painted into the low-res frame)
   spark(x, y, c, n = 8) { for (let i = 0; i < n; i++) { const a = Math.random() * Math.PI * 2, s = 40 + Math.random() * 70; this.fx.push({ kind: 'spark', x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s * 0.7, t: 0, life: 0.25 + Math.random() * 0.15, c }); } this.fx.push({ kind: 'star', x, y, t: 0, life: 0.16, c: '#ffffff', r: 7 }); }
   burst(x, y, c, n = 16, r = 20) { this.fx.push({ kind: 'ring', x, y, t: 0, life: 0.35, c, r }); for (let i = 0; i < n; i++) { const a = Math.random() * Math.PI * 2, s = 30 + Math.random() * 60; this.fx.push({ kind: 'spark', x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s * 0.6 - 20, g: 60, t: 0, life: 0.4 + Math.random() * 0.3, c }); } }
-  pop(x, y, str, c, scale = 1) { this.pops.push({ x, y, str, c, scale, t: 0 }); }
+  pop(x, y, str, c, scale = 1) { // stack pops that would overlap
+    for (const p of this.pops) if (p.t < 0.5 && Math.abs(p.x - x) < 30 && Math.abs(p.y - p.t * 22 - y) < 9) y = p.y - p.t * 22 - 10;
+    this.pops.push({ x, y, str, c, scale, t: 0 });
+  }
   callout(str, sub, c, dur = 1, big = false) { this.callouts = this.callouts.filter((k) => !big || !k.big); this.callouts.push({ str, sub, c, dur, big, t: 0 }); }
   paintFx(ctx, cam) {
     if (!this.active) return;

@@ -32,7 +32,7 @@ export class Scene2D {
     const g = mk(this.w, this.h), gx = g.getContext('2d');
     gx.drawImage(toCanvas(this.ground), 0, 0);
     const sh = mk(this.w, this.h), sx = sh.getContext('2d');
-    for (const s of this.sprites) if (s.shadow && !s.dynamic) this.castShadow(sx, s.cv, s.x - s.ax, s.y, s.ay, s.shadowLift || 0);
+    for (const s of this.sprites) if (s.shadow && !s.dynamic && !s.only3d) this.castShadow(sx, s.cv, s.x - s.ax, s.y, s.ay, s.shadowLift || 0);
     this._shadowStatic = sh;
     gx.globalAlpha = this.shadowAlpha; gx.drawImage(this.tint(sh), 0, 0); gx.globalAlpha = 1;
     this.baked = g;
@@ -54,11 +54,17 @@ export class Scene2D {
     c.imageSmoothingEnabled = false;
     c.setTransform(1, 0, 0, 1, 0, 0);
     c.clearRect(0, 0, this.vw, this.vh);
+    if (this.stage) {     // HD-2D diorama: the 3D stage draws ground, props, creatures, shadows and lights
+      c.drawImage(this.stage.render(this.cam, [...this.actors], t), 0, 0);
+      this.drawGlows(c, cx, cy, t);
+      for (const f of this.fx) f(c, this.cam, t);
+      return this.out;
+    }
     c.drawImage(this.baked, cx, cy, this.vw, this.vh, 0, 0, this.vw, this.vh);
     // dynamic shadows (actors), merged so overlaps don't double-darken
     if (!this._dyn) { this._dyn = mk(this.vw, this.vh); this._dynx = this._dyn.getContext('2d'); }
     const dx = this._dynx; dx.setTransform(1, 0, 0, 1, 0, 0); dx.clearRect(0, 0, this.vw, this.vh);
-    const list = [...this.sprites.filter((s) => s.y + 80 > cy && s.y - (s.cv.height + 80) < cy + this.vh && s.x + s.cv.width > cx - 60 && s.x - s.cv.width < cx + this.vw + 60)];
+    const list = [...this.sprites.filter((s) => !s.only3d && s.y + 80 > cy && s.y - (s.cv.height + 80) < cy + this.vh && s.x + s.cv.width > cx - 60 && s.x - s.cv.width < cx + this.vw + 60)];
     for (const a of this.actors) {
       const f = a.frame(t); if (!f) continue;
       const cv = toCanvas(f.surf); a.cv = cv; a.ax = f.ax; a.ay = f.ay;
@@ -69,17 +75,20 @@ export class Scene2D {
     list.sort((a, b) => (a.y + (a.z || 0)) - (b.y + (b.z || 0)));
     for (const s of list) c.drawImage(s.cv, Math.round(s.x - s.ax) - cx, Math.round(s.y - s.ay) - cy);
     c.drawImage(this.ov, cx, cy, this.vw, this.vh, 0, 0, this.vw, this.vh);
-    // soft light halos (lamps, neon, lanterns) — added light, picked up by bloom
+    this.drawGlows(c, cx, cy, t);
+    for (const f of this.fx) f(c, this.cam, t);
+    return this.out;
+  }
+  // soft light halos (lamps, neon, lanterns) — added light, picked up by bloom
+  drawGlows(c, cx, cy, t) {
     c.globalCompositeOperation = 'lighter';
     for (const L of this.glows) {
       const x = L.x - cx, y = L.y - cy; if (x < -L.r || y < -L.r || x > this.vw + L.r || y > this.vh + L.r) continue;
-      const a = L.a * (L.flicker ? 0.85 + 0.15 * Math.sin(t * 7 + L.x) : 1);
+      const a = L.a * (L.flicker ? 0.85 + 0.15 * Math.sin(t * 7 + L.x) : 1) * (this.stage && !this.stage.night ? 0.6 : 1);
       const gr = c.createRadialGradient(x, y, 0, x, y, L.r); gr.addColorStop(0, hexA(L.color, a)); gr.addColorStop(1, hexA(L.color, 0));
       c.fillStyle = gr; c.fillRect(x - L.r, y - L.r, L.r * 2, L.r * 2);
     }
     c.globalCompositeOperation = 'source-over';
-    for (const f of this.fx) f(c, this.cam, t);
-    return this.out;
   }
 }
 

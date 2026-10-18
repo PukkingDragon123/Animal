@@ -2,6 +2,7 @@
 // (world/battle frame + lighting) and a crisp low-res pixel UI layer above it,
 // both scaled by the same whole-number factor so pixels line up exactly.
 import { HD2D } from '../hd2d.js';
+import { Stage3D } from '../stage3d.js';
 import { PixelUI, T } from './ui.js';
 import { World2D } from './world.js';
 import { loadFonts } from '../font.js';
@@ -52,6 +53,7 @@ export class App {
     this.ui.resize(this.vw, this.vh);
     this.uctx = this.uiCv.getContext('2d');
     if (this.world && this.world.sc) { this.world.sc.setView(this.vw, this.vh); }
+    if (this.stage3d) this.stage3d.setView(this.vw, this.vh);
     if (this.battle && this.battle.sc) this.battle.sc.setView(this.vw, this.vh);
   }
   bindInput() {
@@ -124,6 +126,17 @@ export class App {
   async rest() { await this.say('', 'You sit on the bench for a while. The afternoon light crawls across the tiles.'); S.healParty(this.state, 1); this.ui.toast('Team rested', { icon: 'heart' }); }
   onExit(ex) { if (ex.act) return ex.act(this); }
   save() { if (this.state.party.length) S.save(this.state); }
+  // HD-2D diorama: rebuild a painted scene as a lit 3D set (falls back to flat 2D with ?flat=1 or without WebGL)
+  attachStage(sc, o = {}) {
+    if (this.params.has('flat')) return;
+    try {
+      if (!this.stage3d) { this.stage3d = new Stage3D({ pitch: +(this.params.get('pitch') || 38), fov: +(this.params.get('fov') ?? 18) }); }
+      this.stage3d.setView(this.vw, this.vh);
+      this.stage3d.dispose();
+      this.stage3d.build(sc, o);
+      sc.stage = this.stage3d;
+    } catch (e) { console.warn('3D stage unavailable, staying flat', e); }
+  }
   async startBattle(spec) {
     if (!this.battle || !this.battle.start) { const m = await import('./battle.js').catch(() => null); if (m) this.battle = new m.Battle2D(this); }
     if (!this.battle || !this.battle.start) { await this.say('', '(Battle!)'); return { winner: 0 }; }

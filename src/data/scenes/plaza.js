@@ -146,6 +146,7 @@ export function buildPlaza(o = {}) {
   const pole2 = PR.utilityPole(170);
   sc.add(pole2, 470, 236);
   sc.add(PR.streetLamp({ on: night }), 330, 262);
+  if (night) sc.glows.push({ x: 344, y: 200, r: 18, color: '#fff0c0', a: 0.55, base: 262, h: 62 });
   sc.add(PR.bench(), 360, 300);
   sc.add(PR.hydrant(), 300, 262);
   sc.add(PR.cone(), 520, 268); sc.add(PR.cone(), 534, 272);
@@ -161,8 +162,19 @@ export function buildPlaza(o = {}) {
   const p1 = [120, 300 - 170 + 10], p2 = [470, 236 - 170 + 10];
   wire(p1[0] - 12, p1[1], p2[0] - 12, p2[1], 18); wire(p1[0] + 12, p1[1], p2[0] + 12, p2[1], 22); wire(p1[0] - 9, p1[1] + 10, p2[0] - 9, p2[1] + 10, 26);
   wire(p1[0] - 12, p1[1], -10, 30, 10); wire(p2[0] + 12, p2[1], 660, 50, 14); wire(p2[0] - 12, p2[1], 640, 20, 10);
-  // a string of lanterns over the upper street
-  { let lx = 0; for (let x = 6; x < PLAZA.w; x += 26) { const y = 92 + Math.round(Math.sin((x / PLAZA.w) * Math.PI * 3) * 4); if (lx) ov.line(lx[0], lx[1], x, y, '#3a2a30'); PR.lantern(ov, x - 3, y, { color: x % 52 ? C.red : C.mustard }); lx = [x, y]; sc.glows.push({ x, y: y + 6, r: 8, color: '#ffb070', a: 0.3 }); } }
+  // the same wires as 3D catenaries for the diorama stage: [ground x, ground y, height above it]
+  sc.wires3d = [
+    { a: [108, 300, 160], b: [458, 236, 160], sag: 18 }, { a: [132, 300, 160], b: [482, 236, 160], sag: 22 }, { a: [111, 300, 150], b: [461, 236, 150], sag: 26 },
+    { a: [108, 300, 160], b: [-10, 118, 88], sag: 10 }, { a: [482, 236, 160], b: [660, 118, 68], sag: 14 }, { a: [458, 236, 160], b: [640, 118, 98], sag: 10 },
+  ];
+  // a string of lanterns over the upper street (painted on the overlay in 2D, hung as 3D cards in the diorama)
+  { let lx = 0, prev = null; const lanSurf = (col) => { const s2 = newSurf(9, 14), p2 = new Pen(s2, 3); PR.lantern(p2, 1, 2, { color: col }); return s2; };
+    for (let x = 6; x < PLAZA.w; x += 26) { const y = 92 + Math.round(Math.sin((x / PLAZA.w) * Math.PI * 3) * 4), col = x % 52 ? C.red : C.mustard; if (lx) ov.line(lx[0], lx[1], x, y, '#3a2a30'); PR.lantern(ov, x - 3, y, { color: col }); lx = [x, y];
+      sc.glows.push({ x, y: y + 6, r: 8, color: '#ffb070', a: 0.3, base: 132, h: 132 - y - 6 });
+      sc.add({ surf: lanSurf(col), ax: 4, ay: 132 - y + 2 }, x, 132, { only3d: true, shadow: true, solid: false });
+      if (prev) sc.wires3d.push({ a: [prev[0], 132, 132 - prev[1]], b: [x, 132, 132 - y], sag: 3 }); prev = [x, y]; } }
+  // terraces for the diorama: the upper street is a level 66 painted px up; the retaining wall is its vertical face
+  sc.terrain = [{ y0: -1000, y1: 150, h0: 66, h1: 66 }, { y0: 150, y1: 216, h0: 66, h1: 0 }, { y0: 216, y1: 100000, h0: 0, h1: 0 }];
   sc.bake();
   return sc;
 }

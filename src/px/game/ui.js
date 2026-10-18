@@ -81,16 +81,30 @@ export class PixelUI {
     const g = ICONS[name]; if (!g) return;
     for (const [ox, oy, col] of shadow ? [[1, 1, shadow], [0, 0, c]] : [[0, 0, c]]) for (let r = 0; r < 7; r++) for (let k = 0; k < 7; k++) if (g[r] & (1 << (6 - k))) this.s.px(x + k + ox, y + r + oy, col);
   }
-  // bevelled panel: dark outline, light top-left edge, dark bottom-right, flat fill, optional inner line
+  // rounded pixel rect fill (corner radius 1–3 px, cut like hand-made pixel art)
+  rrect(x, y, w, h, c, r = 2) {
+    for (let j = 0; j < h; j++) {
+      const k = j < r ? r - j : j >= h - r ? j - (h - r - 1) : 0;
+      const cut = k >= 3 ? 3 : k === 2 ? 1 : k === 1 ? (r >= 2 ? 1 : 0) : 0;
+      const ins = r >= 3 ? [0, 1, 1, 3][k] || 0 : r === 2 ? [0, 1, 2][k] || 0 : [0, 1][k] || 0;
+      if (w - ins * 2 > 0) this.s.hline(x + ins, x + w - 1 - ins, y + j, c);
+    }
+  }
+  // panel: drop shadow, dark ink outline, light inner rim, two-tone fill, corner rivets
   panel(x, y, w, h, o = {}) {
     const fill = o.fill || T.panel, line = o.line || T.ink, edge = o.edge || T.edge, edgeL = o.edgeL || T.edgeL;
-    this.rect(x + 1, y, w - 2, h, line); this.rect(x, y + 1, w, h - 2, line);
-    this.rect(x + 1, y + 1, w - 2, h - 2, edge);
-    this.rect(x + 2, y + 2, w - 4, h - 4, fill);
-    this.s.hline(x + 2, x + w - 3, y + 1, edgeL); this.s.vline(x + 1, y + 2, y + h - 3, edgeL);
-    this.s.hline(x + 2, x + w - 3, y + h - 2, shift(edge, -1)); this.s.vline(x + w - 2, y + 2, y + h - 3, shift(edge, -1));
-    if (o.inner) { this.s.hline(x + 4, x + w - 5, y + 3, mix(fill, edgeL, 0.35)); }
-    if (o.dots) for (let j = y + 4; j < y + h - 4; j += 4) for (let i = x + 4 + ((j >> 2) % 2) * 2; i < x + w - 4; i += 4) this.s.px(i, j, mix(fill, edge, 0.35));
+    if (o.shadow !== false) this.rrect(x + 1, y + 2, w, h, '#0a0612', 3);
+    this.rrect(x, y, w, h, line, 3);
+    this.rrect(x + 1, y + 1, w - 2, h - 2, edge, 2);
+    this.rrect(x + 2, y + 2, w - 4, h - 4, fill, 1);
+    // lit top band + inner rim lines
+    this.s.hline(x + 3, x + w - 4, y + 2, mix(fill, edgeL, 0.55));
+    this.s.hline(x + 3, x + w - 4, y + 1, edgeL);
+    this.s.vline(x + 1, y + 3, y + h - 4, mix(edge, edgeL, 0.5));
+    this.s.hline(x + 3, x + w - 4, y + h - 3, shift(fill, -0.6));
+    if (h > 16) for (let j = y + 3; j < y + Math.min(h - 3, 8); j++) this.s.hline(x + 3, x + w - 4, j, mix(fill, edgeL, 0.12 * (8 - (j - y)) / 5));
+    if (o.dots) for (let j = y + 6; j < y + h - 5; j += 4) for (let i = x + 5 + ((j >> 2) % 2) * 2; i < x + w - 5; i += 4) this.s.px(i, j, mix(fill, edge, 0.32));
+    if (w > 30 && h > 20 && o.rivets !== false) for (const [rx, ry] of [[x + 4, y + 4], [x + w - 5, y + 4], [x + 4, y + h - 5], [x + w - 5, y + h - 5]]) { this.s.px(rx, ry, edgeL); this.s.px(rx + 1, ry + 1, shift(fill, -0.9)); }
   }
   // slanted header banner with a diamond badge (like pixel UI kit section headers)
   banner(x, y, str, o = {}) {
@@ -106,37 +120,58 @@ export class PixelUI {
     if (o.chev !== false) for (let k = 0; k < 3; k++) { const bx = x + w + 6 + k * 5; for (let j = 0; j < h; j++) { const off = Math.abs(j - 6) >> 1; this.s.px(bx - off, y + j, k === 0 ? c : c2); this.s.px(bx - off + 1, y + j, k === 0 ? c : c2); } }
     return w;
   }
-  // segmented bar (HP, energy): value 0..1, colours shift with value
+  // segmented bar (HP, energy): value 0..1; rounded track with an inset shadow, glossy fill
   bar(x, y, w, h, v, o = {}) {
     v = Math.max(0, Math.min(1, v));
-    this.rect(x - 1, y - 1, w + 2, h + 2, T.ink);
-    this.rect(x, y, w, h, o.back || '#1a1428');
+    const r = h >= 4 ? 2 : 1;
+    this.rrect(x - 1, y - 1, w + 2, h + 2, T.ink, r);
+    this.rrect(x, y, w, h, o.back || '#1a1428', r - 1);
+    this.s.hline(x + 1, x + w - 2, y, '#0e0a18');
     const col = o.color || (v > 0.5 ? T.green : v > 0.22 ? T.amber : T.red);
     const seg = o.seg || 0, fw = Math.round(w * v);
-    for (let i = 0; i < fw; i++) { if (seg && i % seg === seg - 1) continue; this.s.vline(x + i, y, y + h - 1, col); this.s.px(x + i, y, shift(col, 0.9)); if (h > 2) this.s.px(x + i, y + h - 1, shift(col, -0.9)); }
     if (o.ghost != null && o.ghost > v) { const gw = Math.round(w * Math.min(1, o.ghost)); for (let i = fw; i < gw; i++) this.s.vline(x + i, y, y + h - 1, '#e8e0f0'); }
+    for (let i = 0; i < fw; i++) {
+      const edgeCut = h >= 4 && (i === 0 || i === w - 1);
+      const y0 = y + (edgeCut ? 1 : 0), y1 = y + h - 1 - (edgeCut ? 1 : 0);
+      this.s.vline(x + i, y0, y1, col);
+      if (h > 2) { this.s.px(x + i, y0, shift(col, 1.1)); this.s.px(x + i, y1, shift(col, -0.9)); }
+      if (h > 4) this.s.px(x + i, y0 + 1, mix(col, '#ffffff', 0.25));
+      if (seg && i % seg === seg - 1) this.s.vline(x + i, y0, y1, shift(col, -1.3));
+    }
   }
   // ------------------------------------------------------------------ input
   inside(x, y, w, h) { return this.ptr.x >= x && this.ptr.y >= y && this.ptr.x < x + w && this.ptr.y < y + h; }
-  // returns true on click; draws the button
+  // returns true on click; draws the button: a chunky pixel key with a 3D lip that presses down
   button(x, y, w, h, label, o = {}) {
     const over = this.inside(x, y, w, h) && !o.disabled && !(this.dialog && !o.modal), down = over && this.ptr.down;
     if (over) this.hot = label;
-    const accent = o.color || T.cyan;
-    const fill = o.disabled ? '#2a2638' : down ? shift(o.fill || T.panel, -0.6) : over ? shift(o.fill || T.panel, 0.5) : (o.fill || T.panel);
-    const dy = down ? 1 : 0;
-    this.panel(x, y + dy, w, h - (down ? 1 : 0), { fill, edge: o.disabled ? '#3a3450' : over || o.active ? accent : T.edge, edgeL: o.disabled ? '#4a4460' : over || o.active ? shift(accent, 0.8) : T.edgeL });
-    if (!down) { this.s.hline(x + 2, x + w - 3, y + h, T.ink); }
-    let tx = x + Math.round(w / 2), ty = y + Math.round((h - 7) / 2) + dy;
+    const accent = o.disabled ? '#5a5478' : (o.color || T.cyan);
+    const base = o.disabled ? '#2a2638' : (o.fill || (o.active ? mix(T.panel, accent, 0.28) : T.panel));
+    const face = over && !down ? shift(base, 0.45) : base, lip = 3, dy = down ? lip - 1 : 0;
+    // shadow + lip (the key's side), then the face
+    this.rrect(x + 1, y + lip + 1, w, h - lip, '#0a0612', 3);
+    this.rrect(x, y + lip, w, h - lip, T.ink, 3);
+    this.rrect(x + 1, y + lip, w - 2, h - lip - 1, mix(shift(accent, -1.6), base, 0.45), 2);
+    const fy = y + dy, fh = h - lip;
+    this.rrect(x, fy, w, fh, T.ink, 3);
+    this.rrect(x + 1, fy + 1, w - 2, fh - 2, over || o.active ? accent : mix(T.edge, accent, 0.25), 2);
+    this.rrect(x + 2, fy + 2, w - 4, fh - 4, face, 1);
+    // two-tone face: lighter upper half + shine line + specular dot
+    for (let j = fy + 2; j < fy + 2 + Math.floor((fh - 4) / 2); j++) this.s.hline(x + 3, x + w - 4, j, mix(face, '#ffffff', 0.07));
+    this.s.hline(x + 3, x + w - 5, fy + 2, mix(face, '#ffffff', 0.28));
+    this.s.px(x + 3, fy + 3, mix(face, '#ffffff', 0.5));
+    // accent stripe on the left edge
+    if (!o.disabled && w > 24) { this.s.vline(x + 2, fy + 3, fy + fh - 4, accent); this.s.vline(x + 3, fy + 4, fy + fh - 5, mix(accent, face, 0.5)); }
+    let tx = x + Math.round(w / 2), ty = fy + Math.round((fh - 7) / 2);
     const lc = o.disabled ? '#6a6488' : o.textColor || T.text;
     if (o.icon) {
       const lw = label ? this.tw(label) + 10 : 7;
-      const ix = tx - Math.round(lw / 2);
+      const ix = tx - Math.round(lw / 2) + (w > 24 ? 1 : 0);
       this.icon(o.icon, ix, ty, o.disabled ? '#6a6488' : accent);
       if (label) this.text(label, ix + 10, ty, lc, { shadow: T.ink });
     } else if (label) this.text(label, tx, ty, lc, { align: 'center', shadow: T.ink });
-    if (o.sub) this.text(o.sub, x + w - 3, y + h - 8 + dy, o.subColor || T.dim, { align: 'right', mini: true });
-    if (o.key) this.text(o.key, x + 3, y + 2 + dy, T.dim, { mini: true });
+    if (o.sub) this.text(o.sub, x + w - 4, fy + fh - 8, o.subColor || T.dim, { align: 'right', mini: true });
+    if (o.key) this.text(o.key, x + 5, fy + 3, T.dim, { mini: true });
     const clicked = (over && this.ptr.released) || (o.hotkey && this.key(o.hotkey) && !o.disabled);
     if (clicked) this.ptr.released = false;
     return clicked;

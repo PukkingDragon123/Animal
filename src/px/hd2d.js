@@ -63,7 +63,7 @@ export class HD2D {
     this.pBright = this.prog(vs, BRIGHT); this.pBlur = this.prog(vs, BLUR); this.pFinal = this.prog(vs, FINAL);
     const b = g.createBuffer(); g.bindBuffer(g.ARRAY_BUFFER, b); g.bufferData(g.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), g.STATIC_DRAW);
     this.tex = {}; this.fbo = {};
-    this.opts = { focus: 0.52, band: 0.22, dof: 0.65, bloom: 0.45, threshold: 0.8, rays: 0.06, rayDir: [1, 0.55], rayCol: [1.0, 0.84, 0.58], vig: 0.6, warm: 0.5, night: 0, sat: 1.12, contrast: 1.1 };
+    this.opts = { focus: 0.52, band: 0.2, dof: 0.75, bloom: 0.5, threshold: 0.78, rays: 0.11, rayDir: [1, 0.62], rayCol: [1.0, 0.8, 0.52], vig: 0.62, warm: 0.65, night: 0, sat: 1.16, contrast: 1.14 };
   }
   sh(type, src) { const g = this.g, s = g.createShader(type); g.shaderSource(s, src); g.compileShader(s); if (!g.getShaderParameter(s, g.COMPILE_STATUS)) throw new Error(g.getShaderInfoLog(s)); return s; }
   prog(vs, fs) { const g = this.g, p = g.createProgram(); g.attachShader(p, vs); g.attachShader(p, this.sh(g.FRAGMENT_SHADER, fs)); g.bindAttribLocation(p, 0, 'a'); g.linkProgram(p); if (!g.getProgramParameter(p, g.LINK_STATUS)) throw new Error(g.getProgramInfoLog(p)); return p; }

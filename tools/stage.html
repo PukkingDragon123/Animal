@@ -1,0 +1,34 @@
+<!doctype html><html><head><meta charset="utf-8"><title>stage</title>
+<link href="https://fonts.googleapis.com/css2?family=DotGothic16&display=swap" rel="stylesheet">
+<style>html,body{margin:0;background:#120c16;overflow:hidden}canvas{display:block;width:100vw;height:100vh;object-fit:contain;image-rendering:pixelated}#err{position:fixed;top:0;left:0;color:#f66;font:12px monospace;white-space:pre}</style>
+</head><body><canvas id="c"></canvas><div id="err"></div>
+<script type="module">
+// 3D diorama preview: ?x=&y= camera, night=1, raw=1 (no post), pitch=, fov=, yaw=, actor=0
+window.onerror = (m, s, l) => { document.getElementById('err').textContent += m + ' @' + l + '\n'; };
+await new Promise((r) => setTimeout(r, 30));
+import { buildPlaza } from '../src/data/scenes/plaza.js';
+import { HD2D } from '../src/px/hd2d.js';
+import { Stage3D } from '../src/px/stage3d.js';
+import { Actor } from '../src/px/scene2d.js';
+import { renderFrame } from '../src/px/sdf.js';
+import { SPRITES } from '../src/data/sprites/sdf_starters.js';
+import { loadFonts } from '../src/px/font.js';
+const q = new URLSearchParams(location.search);
+await loadFonts();
+const W = +(q.get('w') || 480), H = +(q.get('h') || 270), S = +(q.get('s') || 3);
+const night = q.has('night');
+const sc = buildPlaza({ viewW: W, viewH: H, night });
+const st = new Stage3D({ pitch: +(q.get('pitch') || 38), fov: +(q.get('fov') ?? 18) });
+st.setView(W, H); st.build(sc, { terrain: sc.terrain, night }); st.yaw = +(q.get('yaw') || 0);
+sc.stage = st;
+sc.cam.x = +(q.get('x') ?? 80); sc.cam.y = +(q.get('y') ?? 110);
+if (q.get('actor') !== '0') for (const [id, x, y, yaw] of [['chilichick', 300, 330, -30], ['bubblion', 360, 336, 20], ['strawbaa', 250, 345, -10]]) {
+  const f = renderFrame(SPRITES[id], { clip: 'idle', frame: 0, scale: 0.5, yaw, pitch: 26 });
+  sc.actors.add(new Actor({ x, y, src: () => ({ surf: f, ax: SPRITES[id].anchor[0] * 0.5 + (f.ox || 0), ay: SPRITES[id].anchor[1] * 0.5 + (f.oy || 0) }) }));
+}
+const cv = document.getElementById('c'); cv.width = W * S; cv.height = H * S;
+const frame = sc.render(0.5);
+if (q.has('raw')) { const g = cv.getContext('2d'); g.imageSmoothingEnabled = false; g.drawImage(frame, 0, 0, cv.width, cv.height); }
+else { const post = new HD2D(cv); if (night) Object.assign(post.opts, { night: 0.35, rays: 0, warm: 0.2, threshold: 0.6, bloom: 0.9 }); post.draw(frame, 0.5); }
+document.title = 'ready';
+</script></body></html>

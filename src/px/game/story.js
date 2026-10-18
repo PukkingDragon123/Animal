@@ -102,7 +102,8 @@ class TitleScreen {
     this.app = app; this.can = canContinue; this.t = 0;
     this.sc = buildPlaza({ viewW: app.vw, viewH: app.vh, night: true });
     this.sc.cam.x = 40; this.sc.cam.y = 60;
-    app.post.opts.night = 0.35; app.post.opts.bloom = 0.8; app.post.opts.threshold = 0.66; app.post.opts.rays = 0;
+    app.attachStage(this.sc, { terrain: this.sc.terrain, night: true });
+    app.post.opts.night = 0.25; app.post.opts.bloom = 0.7; app.post.opts.threshold = 0.72; app.post.opts.rays = 0;
     this.choice = new Promise((r) => { this.resolve = r; });
     app.battle = app.battle || null;
   }

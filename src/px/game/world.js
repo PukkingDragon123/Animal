@@ -17,6 +17,7 @@ export class World2D {
     const app = this.app;
     const built = M.build({ viewW: app.vw, viewH: app.vh, night: o.night, state: app.state });
     this.id = id; this.M = M; this.sc = built.scene; this.meta = built;
+    app.attachStage(this.sc, { terrain: built.terrain || this.sc.terrain, night: !!o.night });
     this.buildMask(built);
     // avatar = your lead Tokonmon
     const sp = (app.state && app.state.party[0] && app.state.party[0].species) || o.species || 'chilichick';
