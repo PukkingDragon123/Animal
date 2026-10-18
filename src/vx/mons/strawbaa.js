@@ -17,13 +17,11 @@ const C = {
   g0: '#c8f08c', g1: '#86d45e', g2: '#4ea846', g3: '#2c723e', g4: '#18442c',
   st0: '#7aa046', st1: '#55803a', st2: '#3a5c2c',
   // grizzled old face and legs
-  s0: '#ece1d0', s1: '#cdbfac', s2: '#ab9b88', s3: '#857261', s4: '#5e4c46', s5: '#40323a',
+  s0: '#ece1d0', s1: '#cdbfac', s2: '#ab9b88', s3: '#857261', s4: '#5e4c46',
   // weathered nose leather
   n0: '#d4b4b0', n1: '#ae8c8c', n2: '#7a5a60', n3: '#3e2632',
   // white wool: beard, brows, chops, fetlocks
   b0: '#ffffff', b1: '#f3eee6', b2: '#d8cfc4', b3: '#ada19a', b4: '#7c6e72',
-  // horn: weathered ivory, dirtier toward the skull
-  h0: '#f6e4bc', h1: '#e2c690', h2: '#c6a26a', h3: '#9e7a50', h4: '#70543c', h5: '#47342c',
   // hooves
   k0: '#6a5c68', k1: '#463a46', k2: '#2a212c',
   // mouth
@@ -252,8 +250,8 @@ function hornSeg(i, n, o = {}) {
 function hornBreak(p, w, h, face) {
   hornSeg(10, 11)(p, w, h, face);
   if (face !== 'south') return;
-  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const e = Math.min(x, y, w - 1 - x, h - 1 - y); p.px(x, y, e === 0 ? C.h4 : (x + y) % 3 === 0 ? C.h2 : C.h1); }
-  p.px(1, 1, C.h5); p.px(2, 2, C.h5); p.px(w - 2, h - 2, C.h5);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const e = Math.min(x, y, w - 1 - x, h - 1 - y); p.px(x, y, e === 0 ? HR[3] : (x + y) % 3 === 0 ? HR[2] : HR[0]); }
+  p.px(1, 1, HR[4]); p.px(2, 2, HR[4]); p.px(w - 2, h - 2, HR[4]);
 }
 
 // ears: long flaps, pink-grey inside with a darker crease, grizzled outside, a rounded tip (texture x = w - 1);
