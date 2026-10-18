@@ -6,7 +6,7 @@
 import * as THREE from '../../../vendor/three.module.js';
 import { E, seg, bump, wob, wave, key, bounce, lerp } from '../anim.js';
 import { defineFx } from '../fx.js';
-import { poly, ramp, shift, mix, h2 } from './kit.js';
+import { ramp, shift, h2 } from './kit.js';
 
 const C = {
   ink: '#3a0f26',
@@ -457,7 +457,7 @@ const EYES = {
   sleep: (p) => { lineEye([[0, 3.6], [3, 4.8], [6, 4.8], [9, 3.8]], C.ink, 2)(p); lineEye([[1, 2.4], [5, 2.6], [8, 2.2]], C.s3)(p); },
   happy: (p) => { lineEye([[0, 4.8], [2, 3.4], [5, 2.8], [8, 3.4], [9, 4.4]], C.ink, 2)(p); lineEye([[2, 6], [6, 6.2]], C.s3)(p); },
   squeeze: (p) => { lineEye([[0, 1.5], [5, 3.6], [9, 3.2]], C.ink, 2)(p); lineEye([[0, 5.8], [5, 4.4], [9, 4.6]], C.ink)(p); },
-  swirl: (p) => { eyeShape(p, { lid: 0.15, droop: 0, glint: false }); for (let x = 1; x < EW - 1; x++) for (let y = 1; y < EH; y++) { const r = Math.hypot(x - 4.5, (y - 3.6) * 1.4); if (r < 3.6) p.px(x, y, '#fff2dc'); } for (let a = 0; a < 15; a += 0.2) { const r = a * 0.24, x = Math.round(4.5 + Math.cos(a) * r), y = Math.round(3.6 + Math.sin(a) * r * 0.7); if (r < 3.4) p.px(x, y, C.ink); } },
+  swirl: (p) => { for (let y = 0; y < EH; y++) for (let x = 0; x < EW; x++) { const d = Math.hypot((x - 4.5) / 4.6, (y - 3.3) / 3.3); if (d > 1) continue; const r = Math.hypot(x - 4.5, (y - 3.3) * 1.35); p.px(x, y, d > 0.86 ? C.ink : Math.abs(r - 2.6) < 0.62 || r < 0.9 ? C.ink : '#fff4e6'); } p.px(7, 2, C.ink); p.px(6, 1, '#fff4e6'); },
 };
 
 // ---------------------------------------------------------------- the model
@@ -501,7 +501,7 @@ function sepals(glow) {
   }
   return out;
 }
-const stemPts = [[0, 28.1, 10.6], [0.1, 29.7, 10.5], [0.2, 31.0, 10.0], [0.3, 31.7, 9.0], [0.4, 31.5, 7.9], [0.5, 30.7, 7.4], [0.5, 30.0, 7.9], [0.5, 30.2, 8.7]];
+const stemPts = [[0, 28.1, 10.6], [0.1, 30.0, 10.4], [0.25, 31.5, 9.4], [0.4, 31.6, 7.8], [0.5, 30.4, 7.2], [0.5, 29.8, 8.2]];
 const stem = chain(stemPts, (i, n) => [1.2 - 0.5 * i / n, 1.2 - 0.5 * i / n], () => stemP, { over: 0.5 });
 // healing vines (hidden until the special): spiralling runners with leaflets, two carrying a berry
 function vine(base, turn, hgt, berry) {
@@ -578,8 +578,8 @@ const HEAD_BONES = [
   { name: 'earL', parent: 'head', pivot: [4.2, 20.6, 6.9], rot: [0, 8, -14], cubes: [P([4.2, 19.4, 6.5], [5.4, 2.5, 0.8], earP(true))] },
   { name: 'browR', parent: 'head', pivot: [-1.3, 23.0, 12.8], rot: [0, 0, 8], cubes: [P([-4.9, 22.0, 11.6], [3.8, 2.0, 2.4], browP), P([-6.0, 21.4, 11.8], [1.5, 1.7, 1.8], browP)] },
   { name: 'browL', parent: 'head', pivot: [1.3, 23.0, 12.8], rot: [0, 0, -8], cubes: [P([1.1, 22.0, 11.6], [3.8, 2.0, 2.4], browP, { mirror: true }), P([4.5, 21.4, 11.8], [1.5, 1.7, 1.8], browP, { mirror: true })] },
-  { name: 'tieA', parent: 'head', pivot: [0.4, 24.4, 4.9], rot: [58, 28, 0], cubes: [P([0.4, 19.8, 3.6], [0, 4.6, 2.6], tieTailP, { plane: 'x' })] },
-  { name: 'tieB', parent: 'head', pivot: [-0.4, 24.2, 4.9], rot: [70, -24, 0], cubes: [P([-0.4, 20.4, 3.7], [0, 3.8, 2.4], tieTailP, { plane: 'x' })] },
+  { name: 'tieA', parent: 'head', pivot: [0.4, 24.4, 4.9], rot: [52, 50, 0], cubes: [P([0.4, 19.8, 3.6], [0, 4.6, 2.6], tieTailP, { plane: 'x' })] },
+  { name: 'tieB', parent: 'head', pivot: [-0.4, 24.2, 4.9], rot: [62, -46, 0], cubes: [P([-0.4, 20.4, 3.7], [0, 3.8, 2.4], tieTailP, { plane: 'x' })] },
   ...braid(-1), ...braid(1),
   { name: 'jaw', parent: 'head', pivot: [0, 16.1, 10.0], cubes: [
     P([-1.8, 14.8, 11.2], [3.6, 1.2, 6.2], jawP, MZ),
@@ -689,12 +689,12 @@ export const anim = {
     { bone: 'stem', tip: [0, 3, -1.5], k: 120, d: 6, gain: 1.0, max: 26 },
     { bone: 'cap', tip: [0, 1.5, 0], k: 260, d: 12, gain: 0.5, max: 10 },
     { bone: 'tail', tip: [0, -1, -2.5], k: 170, d: 8, gain: 1.0, max: 26 },
-    { bone: 'braidR1', tip: [0, -3.2, 0], k: 190, d: 11, gain: 0.45, max: 9, axes: [1, 0.2, 0.7] },
-    { bone: 'braidR2', tip: [0, -3.2, 0], k: 160, d: 10, gain: 0.5, max: 11, axes: [1, 0.2, 0.7] },
-    { bone: 'braidR3', tip: [0, -3.5, 0], k: 140, d: 9, gain: 0.55, max: 13, axes: [1, 0.2, 0.7] },
-    { bone: 'braidL1', tip: [0, -3.2, 0], k: 190, d: 11, gain: 0.45, max: 9, axes: [1, 0.2, 0.7] },
-    { bone: 'braidL2', tip: [0, -3.2, 0], k: 160, d: 10, gain: 0.5, max: 11, axes: [1, 0.2, 0.7] },
-    { bone: 'braidL3', tip: [0, -3.5, 0], k: 140, d: 9, gain: 0.55, max: 13, axes: [1, 0.2, 0.7] },
+    { bone: 'braidR1', tip: [0, -3.2, 0], k: 200, d: 12, gain: 0.42, max: 7, axes: [1, 0.2, 0.7] },
+    { bone: 'braidR2', tip: [0, -3.2, 0], k: 170, d: 11, gain: 0.46, max: 8, axes: [1, 0.2, 0.7] },
+    { bone: 'braidR3', tip: [0, -3.5, 0], k: 150, d: 10, gain: 0.5, max: 10, axes: [1, 0.2, 0.7] },
+    { bone: 'braidL1', tip: [0, -3.2, 0], k: 200, d: 12, gain: 0.42, max: 7, axes: [1, 0.2, 0.7] },
+    { bone: 'braidL2', tip: [0, -3.2, 0], k: 170, d: 11, gain: 0.46, max: 8, axes: [1, 0.2, 0.7] },
+    { bone: 'braidL3', tip: [0, -3.5, 0], k: 150, d: 10, gain: 0.5, max: 10, axes: [1, 0.2, 0.7] },
     { bone: 'tieA', tip: [0, -3.2, -1.5], k: 90, d: 5, gain: 1.1, max: 30 },
     { bone: 'tieB', tip: [0, -2.8, -1.2], k: 100, d: 5, gain: 1.1, max: 30 },
     { bone: 'guitar', tip: [0, 2, -6], k: 320, d: 14, gain: 0.35, max: 6 },
@@ -738,7 +738,7 @@ export const anim = {
     } },
     // a heavy, bouncy trot: diagonal pairs, the body drops onto each step, the head nods a beat behind
     walk: { len: 0.8, loop: true, f(P, t) {
-      const ph = (t / 0.8) * TAU, b = bounce(t, 0.4, { squash: 0.08, stretch: 0.035 }), dy = b.u * 1.0 - 0.25;
+      const ph = (t / 0.8) * TAU, b = bounce(t, 0.4, { squash: 0.1, stretch: 0.04 }), dy = b.u * 1.3 - 0.3;
       trunk(P, { dy, a: -1 + 1.5 * Math.sin(ph * 2 + 0.6), roll: 2.4 * Math.sin(ph) });
       P.sq('body', b.sq);
       for (const [leg, off] of [['legFR', 0], ['legBL', 0.15], ['legFL', Math.PI], ['legBR', Math.PI + 0.15]]) {
@@ -767,7 +767,7 @@ export const anim = {
       P.sq('body', wob(t, 1.72, -0.14, 2.6, 6)).rot('head', wob(t, 1.72, 8, 2.6, 6));
       snort(P, 0.22, 0.8);
       for (const tt of [0.62, 0.9, 1.18]) P.burst(tt, 'ring', 'head', MOUTH, {});
-      P.burst(0.66, 'note', 'head', MOUTH, { n: 3, dir: [0, 1, 0.5], speed: 1.2, spread: 0.6 });
+      P.burst(0.66, 'note', 'head', MOUTH, { n: 3, dir: [0, 1, 0.5], speed: 1.2, spread: 0.6 }).burst(0.46, 'seed', 'body', [0, 21, -2], { n: 12, speed: 1.6 });
       if (t > 0.6 && t < 1.4) P.stream('leaf', 'body', [0, 22, -2], { rate: 10, dir: [Math.cos(t * 9), 1, Math.sin(t * 9)], speed: 1.4, spread: 0.5 }).stream('petal', 'body', [0, 21, -4], { rate: 12, dir: [-Math.cos(t * 9), 1, -Math.sin(t * 9)], speed: 1.3, spread: 0.5 });
       if (land) P.burst(1.72, 'dust', 'legFR', HOOF.legFR, { n: 6, speed: 1.4, spread: 1, scale: 0.8 }).burst(1.72, 'dust', 'legFL', HOOF.legFL, { n: 6, speed: 1.4, spread: 1, scale: 0.8 }).burst(1.72, 'rock', 'root', [0, 1, 6], { n: 3 });
       snort(P, 2.02, 0.9);

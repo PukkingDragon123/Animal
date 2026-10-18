@@ -42,18 +42,19 @@ export function fur(c, o = {}) {
     // clumps: scallops with a pointed tip, laid bottom-up so each row overlaps the one beneath.
     // The rim is lit on the left and dark on the right; the very tip catches a lighter colour.
     for (let r = rows; r >= 0; r--) {
-      const yTop = (r - 1) * rowH + (o.y0 ?? 0), off = (r % 2) * Math.floor(s / 2);
+      const yTop = (r - 1) * rowH + (o.y0 ?? 0), off = (r % 2) * Math.floor(s / 2) + (r % 3 === 2 ? 1 : 0);
       for (let k = -2; k * s + off - ox < w + s; k++) {
-        const x0 = k * s + off - ox; if (x0 + s < 0) continue;
-        const th = tipH * (1 + ((h2(k, r, seed) - 0.5) * (o.vary ?? 0.5)));
+        const jx = h2(k, r, seed + 7) < 0.3 ? 1 : h2(k, r, seed + 7) > 0.8 ? -1 : 0, x0 = k * s + off - ox + jx; if (x0 + s < 0) continue;
+        const th = tipH * (1 + ((h2(k, r, seed) - 0.5) * (o.vary ?? 0.7))), skew = (h2(r, k, seed + 2) - 0.5) * (o.skew ?? 0.5);
         for (let yy = 0; yy < rowH + th + 1; yy++) for (let xx = 0; xx < s; xx++) {
           const X = x0 + xx, Y = yTop + yy; if (X < 0 || X >= w || Y < 0 || Y >= h) continue;
-          const u = ((xx + 0.5) / s) * 2 - 1, bottom = rowH + (1 - Math.abs(u)) ** pt * th;
+          const u = ((xx + 0.5) / s) * 2 - 1, uc = u - skew, bottom = rowH + Math.max(0, 1 - Math.abs(uc) / (1 + Math.sign(uc) * skew)) ** pt * th;
           if (yy > bottom) continue;
           let col = base(X, Y);
-          if (yy > bottom - 1.2) col = u < -0.2 ? (top ? shift(hi, 0.1) : lite) : top ? shift(col, -0.18) : line;
-          else if (yy > bottom - 2.3 && u > 0.25) col = shift(col, -0.1);
-          else if (tip && yy > bottom - 2.6 && Math.abs(u) < 0.34) col = tip;
+          // the rim: only along the lower arc (not up the flanks, so neighbours' lines never join into a lattice)
+          if (yy > bottom - 1.2 && yy > rowH * 0.6) col = uc < -0.25 ? (top ? shift(hi, 0.1) : lite) : top ? shift(col, -0.18) : line;
+          else if (yy > bottom - 2.3 && uc > 0.3 && yy > rowH * 0.6) col = shift(col, -0.1);
+          else if (tip && yy > bottom - 2.6 && Math.abs(uc) < 0.34) col = tip;
           p.px(X, Y, col);
         }
       }
@@ -273,3 +274,10 @@ defineFx('bear-heart', {
   glow: true, life: [0.8, 1.2], size: [0.08, 0.16], speed: [0.5, 1.1], grav: -0.7, drag: 1.1, spread: 0.6, wob: 1, fade: true,
 });
 export { mix, shift, ramp, poly, h2 };
+// claw marks: three bright raking streaks
+defineFx('bear-slash', {
+  w: 16, h: 16, paint: (p, w, h) => {
+    for (let k = 0; k < 3; k++) for (let i = 0; i < 13; i++) { const x = 1 + i + k * 1.2, y = 2 + i * 0.85 + k * 3.2 - Math.sin((i / 12) * Math.PI) * 2; const c = i < 2 || i > 10 ? '#ffd0e8' : '#ffffff'; p.px(Math.round(x), Math.round(y), c); if (i > 2 && i < 10) p.px(Math.round(x), Math.round(y) + 1, '#ff8ac8'); }
+  },
+  glow: true, life: [0.22, 0.28], size: [0.34, 0.42], speed: [0, 0], grav: 0, pop: true,
+});

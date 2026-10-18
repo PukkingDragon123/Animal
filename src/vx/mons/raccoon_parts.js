@@ -18,7 +18,7 @@ export const PAL = {
     cream: '#ece6db', creamHi: '#fffbf3', creamLo: '#bdb3a8',
     mask: '#28232e', maskHi: '#433d4b', maskLo: '#17131b',
     belly: '#c2b8b2', bellyHi: '#ddd4cc', bellyLo: '#9a8f8c',
-    paw: '#37323d', pawHi: '#5a5361', pawLo: '#201c25',
+    paw: '#4a434c', pawHi: '#6c646e', pawLo: '#2e2930',
     ringD: '#2e282e', ringL: '#c2bab6', bolt: '#e8c870',
     nose: '#1d1921', noseHi: '#6c6476', ink: '#17121b',
   },
@@ -162,8 +162,9 @@ export const bangsP = (F, o = {}) => (p, w, h) => {
 export function skullP(F, o = {}) {
   const fur = furP(F, { sx: 8, sy: 6 });
   const ex = o.ex ?? 7.5, ey = o.ey ?? 9.5, bar = o.mask === 'bar';
-  const mtop = (dx) => (bar ? ey - 4.4 : dx < 1.5 ? ey - 2.4 : ey - 4.6 + Math.max(0, dx - ex - 2) * 0.5);
-  const mbot = (dx) => (bar ? ey + 3.8 : dx < 1.5 ? ey + 6 : ey + 3.6 + Math.max(0, dx - ex + 1) * 0.55);
+  const mh = o.mh ?? 4.6;
+  const mtop = (dx) => (bar ? ey - mh : dx < 1.5 ? ey - mh + 2.4 : ey - mh + Math.max(0, dx - ex - 2.5) * 0.5);
+  const mbot = (dx) => (bar ? ey + mh - 0.6 : dx < 1.2 ? ey + mh + 1 : ey + mh - 0.4 + Math.max(0, dx - ex) * 0.6);
   return (p, w, h, face, cube) => {
     fur(p, w, h, face, cube);
     if (face === 'south') {
@@ -188,9 +189,10 @@ export function skullP(F, o = {}) {
       // the mask wraps back toward the ears, drooping and narrowing
       const edge = (w * 0 + (cube ? cube.s[0] * 3 : 30) - 1) / 2;
       for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-        const f = face === 'east' ? x : w - 1 - x, lim = w * (bar ? 0.3 : 0.42);
+        const f = face === 'east' ? x : w - 1 - x, lim = w * (bar ? 0.3 : 0.4);
         if (f > lim) continue;
-        const t = mtop(edge) + f * 0.25, b = mbot(edge) - f * 0.35;
+        const t = mtop(edge) + f * 0.3, b = mbot(edge) - f * 0.55;
+        if (t > b) continue;
         if (y >= t && y <= b) p.px(x, y, F.mask);
         else if (y > b && y < h - 1) p.px(x, y, ramp([F.cream, F.creamLo], (y - b) / Math.max(1, h - b), x, y));
       }
@@ -234,7 +236,7 @@ export const earP = (F, part) => (p, w, h, face) => {
   else if (face === 'east' || face === 'west') fill(p, w, h, (x, y) => (y === 0 && part === 'tip' ? F.creamHi : x === 0 || x === w - 1 ? F.cream : F.c));
 };
 // whiskers: long pale strands, darker roots
-export const whiskerP = (p, w, h) => { for (const [y0, sl] of [[h * 0.2, -0.1], [h * 0.6, 0.02], [h * 0.95, 0.12]]) for (let x = 1; x < w; x++) { const y = Math.round(y0 + (w - x) * sl); p.px(x, y, x > w * 0.8 ? '#5a5462' : x < w * 0.3 ? '#fbf8f4' : '#dcd6dc'); } };
+export const whiskerP = (p, w, h) => { for (const [y0, sl] of [[h * 0.25, -0.12], [h * 0.85, 0.06]]) for (let x = 0; x < w; x++) { const y = Math.round(y0 + (w - x) * sl); if (x < w - 1 || y % 2) p.px(x, y, x > w * 0.75 ? '#a8a0a8' : '#f6f2ee'); } };
 
 // ---------------------------------------------------------------- eyes
 // sharp bandit eyes: an almond with a straight hard upper lid that slants toward the snout, a
@@ -244,7 +246,7 @@ export const whiskerP = (p, w, h) => { for (const [y0, sl] of [[h * 0.2, -0.1], 
 export function eyeShape(p, o = {}) {
   const W = p.w, H = p.h, kx = 10 / W, ky = 7 / H;
   const lid = o.lid ?? 1.6, slope = o.slope ?? 0.2, low = o.low ?? 5.6;
-  const top = (X) => lid + slope * X, bot = (X) => low - Math.abs(X - 5) ** 2 * (o.curve ?? 0.05);
+  const top = (X) => lid + slope * X, bot = (X) => low - Math.abs(X - (o.lowAt ?? 5.5)) ** 2 * (o.curve ?? 0.05);
   const ix = o.ix ?? 6, iy = o.iy ?? 3.6, ir = o.ir ?? 2.2;
   const G = o.colors || EYE_TRASH.colors;
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
@@ -253,26 +255,25 @@ export function eyeShape(p, o = {}) {
     if (Y < t || Y > b || x === 0 || x === W - 1) { p.px(x, y, G.ink); continue; }
     const dx = (X - ix) / kx, dy = (Y - iy) / ky, d = Math.hypot(dx, dy), R = ir / kx;
     if (d < R) {
-      const pupil = o.pupil === 'dot' ? d < 1.1 : Math.abs(dx) < 0.62 && Math.abs(dy) < (o.slitH ?? 1.7) / ky;
-      p.px(x, y, pupil ? G.pupil : d > R - 0.9 ? G.irisLo : dy > 0.6 ? G.irisHi : G.iris);
+      const pupil = o.pupil === 'dot' ? d < 1.2 : Math.abs(dx) < 0.62 && Math.abs(dy) < (o.slitH ?? 1.1) / ky;
+      p.px(x, y, pupil ? G.pupil : d > R - 0.9 ? G.irisLo : dy > 0.5 ? G.irisHi : G.iris);
     } else p.px(x, y, Y < t + ky ? G.scleraLo : G.sclera);
   }
   for (let x = 0; x < W; x++) p.px(x, Math.floor(top((x + 0.5) * kx) / ky) - 1, G.ink);              // the hard lid line
   if (o.flick !== false) { const y0 = Math.floor(top(0.5 * kx) / ky) - 2; p.px(0, y0, G.ink); p.px(1, y0, G.ink); p.px(0, y0 - 1, G.ink); }
-  if (o.glint && G.glint !== null) p.px(Math.round((ix - ir * 0.45) / kx), Math.round((iy - ir * 0.5) / ky), G.glint || '#ffffff');
+  if (o.glint && G.glint !== null) p.px(Math.round((ix - ir * 0.5) / kx), Math.round((iy - ir * 0.45) / ky), G.glint || '#ffffff');
 }
 // the full set of expression textures for one eye style
 export function eyeSet(style = {}) {
   const C = style.colors, ink = (C && C.ink) || '#120e15';
   const base = (o) => (p) => eyeShape(p, { colors: C, pupil: style.pupil, glint: style.glint, ...o });
-  const line = (p, pts) => { for (const [x, y] of pts) p.px(Math.round(x * p.w / 10), Math.round(y * p.h / 7), ink); };
   return {
-    sly: base({ lid: 2.0, slope: 0.1, low: 5.3, ix: 6.3, iy: 3.9, ir: 2.1, curve: 0.06 }),
-    glare: base({ lid: 1.3, slope: 0.36, low: 5.5, ix: 6.0, iy: 4.2, ir: 1.9, slitH: 1.2, curve: 0.04 }),
-    wide: base({ lid: 0.7, slope: 0.05, low: 6.2, ix: 5.2, iy: 3.4, ir: 1.7, pupil: 'dot', flick: false, glint: false }),
-    smug: base({ lid: 2.8, slope: -0.05, low: 5.1, ix: 5.6, iy: 4.3, ir: 2.0, curve: 0.09 }),
+    sly: base({ lid: 1.5, slope: 0.2, low: 6.1, lowAt: 4.5, curve: 0.07, ix: 5.9, iy: 4.1, ir: 2.35 }),
+    glare: base({ lid: 1.2, slope: 0.36, low: 6.0, lowAt: 4.0, curve: 0.06, ix: 5.6, iy: 4.5, ir: 2.1, slitH: 0.9 }),
+    wide: base({ lid: 0.6, slope: 0.04, low: 6.5, curve: 0.06, ix: 5.2, iy: 3.6, ir: 1.9, pupil: 'dot', flick: false, glint: false }),
+    smug: base({ lid: 2.7, slope: -0.02, low: 5.8, lowAt: 5, curve: 0.1, ix: 5.6, iy: 4.6, ir: 2.2 }),
     closed: (p) => { const W = p.w, H = p.h; for (let x = 0; x < W; x++) { const y = Math.round((3.4 + Math.abs(x * 10 / W - 5) * 0.1 + x * 10 / W * 0.12) * H / 7); p.px(x, y, ink); if (x > 0 && x < W - 1) p.px(x, y - 1, ink); } p.px(0, Math.round(2 * H / 7), ink); p.px(1, Math.round(2 * H / 7), ink); },
-    hurt: (p) => { const W = p.w, H = p.h, m = Math.round(H / 2); for (let i = 0; i < m; i++) { const x = Math.round(W * 0.2) + i; p.px(x, m - 1 - i + 0, ink); p.px(x + 1, m - 1 - i, ink); p.px(x, m + i - 1, ink); p.px(x + 1, m + i - 1, ink); } },
+    hurt: (p) => { const W = p.w, H = p.h, m = Math.round(H / 2); for (let i = 0; i < m; i++) { const x = Math.round(W * 0.2) + i; p.px(x, m - 1 - i, ink); p.px(x + 1, m - 1 - i, ink); p.px(x, m + i - 1, ink); p.px(x + 1, m + i - 1, ink); } },
     x: (p) => { const W = p.w, H = p.h, n = Math.min(W, H) - 1, x0 = Math.round((W - n) / 2); for (let i = 0; i < n; i++) { p.px(x0 + i, i, ink); p.px(x0 + i + 1, i, ink); p.px(x0 + n - i, i, ink); p.px(x0 + n - i - 1, i, ink); } },
     swirl: (p) => { const W = p.w, H = p.h; for (let a = 0; a < 14; a += 0.15) { const r = a * 0.26, x = Math.round(W / 2 + Math.cos(a) * r * W / 9), y = Math.round(H / 2 + Math.sin(a) * r * H / 8); if (r < 3.6) p.px(x, y, style.swirl || '#e8e2d6'); } },
   };
@@ -284,9 +285,9 @@ export const EYE_TRASH = { colors: { sclera: '#f2ead4', scleraLo: '#c9bda6', iri
 // rings alternate dark / pale along the tail with a tiny zig-zag edge; every dark ring carries a
 // little bolt-shaped notch (the wink at the bolt in the band's name). s0 = tail length (texels) at
 // this segment's root end, so neighbouring segments continue the rings. Segments run along local −z.
-const BOLT = ['..#', '.#.', '###', '.#.', '#..'];
+const BOLT = ['..##', '.##.', '####', '.##.', '##..'];
 export function tailP(F, s0 = 0, o = {}) {
-  const per = o.per || 12, dk = o.dark || 6, tipAt = o.tipAt ?? 1e9;
+  const per = o.per || 13, dk = o.dark || 7, tipAt = o.tipAt ?? 1e9;
   return (p, w, h, face, cube) => {
     const L = Math.round(cube.s[2] * 3);
     const map = (x, y) => (face === 'east' ? [x, y] : face === 'west' ? [L - 1 - x, y] : face === 'up' ? [h - 1 - y, x] : face === 'down' ? [y, x] : face === 'south' ? [0, x] : [L - 1, x]);
@@ -307,7 +308,7 @@ export function tailP(F, s0 = 0, o = {}) {
     if (face === 'east' || face === 'west' || face === 'up') {
       for (let k = Math.floor(s0 / per) - 1; k * per < s0 + L; k++) {
         if (k * per + dk > tipAt) continue;
-        const a0 = k * per - s0 + Math.floor((dk - 3) / 2), c0 = Math.round(across / 2 - 2.5 + ((k * 3) % 3) - 1);
+        const a0 = k * per - s0 + Math.floor((dk - 4) / 2), c0 = Math.round(across / 2 - 2.5 + ((k * 3) % 3) - 1);
         BOLT.forEach((row, i) => [...row].forEach((ch, j) => {
           if (ch !== '#') return;
           const a = a0 + j, c = c0 + i; if (a < 0 || a >= L || c < 0 || c >= across) return;
@@ -342,7 +343,8 @@ export function cardP(o = {}) {
   return (p, w, h, face) => {
     const base = (x, y) => (face === 'up' ? (o.upFlat ? J.cardHi : ramp([J.cardHi, J.card], y / Math.max(1, h - 1) * 0.8, x, y)) : face === 'down' ? J.cardDeep : ramp([J.cardHi, J.card, J.cardLo], h > 1 ? y / (h - 1) : 0.5, x, y));
     fill(p, w, h, (x, y) => { const c = base(x, y); return (face === 'up' ? y : x) % 3 === 0 ? shift(c, -0.045) : c; });
-    if (side(face) && o.edge !== false && h > 2) { for (let x = 0; x < w; x++) p.px(x, 0, x % 2 ? J.cardIn : J.cardDeep); }
+    if (side(face) && o.edge !== false && h > 2) { for (let x = 0; x < w; x++) p.px(x, 0, x % 2 ? J.cardIn : J.cardHi); }
+    if (o.stains && side(face) && w > 10) for (const [u, v, r] of [[0.22, 0.55, 1.6], [0.7, 0.4, 1.2]]) { const cx = u * w, cy = v * h; for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const d = Math.hypot(x - cx, (y - cy) * 1.3); if (d < r + 0.6 && d > r - 0.6) p.px(x, y, shift(J.card, -0.1)); } }
     if (side(face) && h > 3) for (let x = 0; x < w; x++) p.px(x, h - 1, J.cardDeep);
     for (const [a, b] of o.tape || []) {
       if (!(face === 'south' || face === 'north' || face === 'east' || face === 'west' || face === 'up')) continue;

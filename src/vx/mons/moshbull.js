@@ -317,11 +317,11 @@ export const def = {
     { name: 'earL', parent: 'head', pivot: [10.0, 23.0, 17.5], rot: [0, -12, 24], cubes: [P([9.8, 21.4, 15.4], [7.6, 3.2, 4.4], earP, { mirror: true })] },
     ...strings('strHR', 'head', [-18.6, 38.8, 24.6], [-12, 0, 8]),
     ...strings('strHL', 'head', [18.6, 38.8, 24.6], [-12, 0, -8]),
-    { name: 'flower', parent: 'root', pivot: [0, 0, 36.0], cubes: [
-      P([-1.0, 0, 36.0], [2.0, 4.6, 0], stemP, { plane: 'z', id: 'flower', hide: true }),
-      P([0, 0, 35.0], [0, 4.6, 2.0], stemP, { plane: 'x', id: 'flower', hide: true }),
-      P([-2.2, 4.2, 33.8], [4.4, 0, 4.4], petalsP, { plane: 'y', id: 'flower', hide: true }),
-      P([-1.8, 3.2, 36.0], [3.6, 3.6, 0], petalsP, { plane: 'z', id: 'flower', hide: true }),
+    { name: 'flower', parent: 'root', pivot: [2.0, 0, 33.0], cubes: [
+      P([1.0, 0, 33.0], [2.0, 4.6, 0], stemP, { plane: 'z', id: 'flower', hide: true }),
+      P([2.0, 0, 32.0], [0, 4.6, 2.0], stemP, { plane: 'x', id: 'flower', hide: true }),
+      P([-0.2, 4.2, 30.8], [4.4, 0, 4.4], petalsP, { plane: 'y', id: 'flower', hide: true }),
+      P([0.2, 3.2, 33.0], [3.6, 3.6, 0], petalsP, { plane: 'z', id: 'flower', hide: true }),
     ] },
   ],
 };
@@ -509,14 +509,14 @@ export const anim = {
     graze: { len: 3.4, next: 'idle', f(P, t) {
       const pop = seg(t, 0.05, 0.35, E.back) * (1 - seg(t, 2.5, 2.7, E.in));
       P.face('flower', t > 0.05 && t < 2.7 ? 'on' : 'off').scl('flower', pop, pop * (1 - 0.6 * seg(t, 1.6, 2.5)), pop);
-      P.burst(0.08, 'leaf', 'root', [0, 1, 24], { n: 3, speed: 0.5 });
+      P.burst(0.08, 'leaf', 'root', [2, 1, 33], { n: 3, speed: 0.5 });
       const down = seg(t, 0.35, 0.95, E.inout) * (1 - seg(t, 2.6, 3.1, E.inout));
-      P.rot('head', 52 * down, 0, 0).rot('body', 5 * down, 0, 0).pos('body', 0, -1.2 * down, 1.0 * down); plant(P, -1.2 * down);
+      P.rot('head', 9 * down, 0, 0).rot('body', 3 * down, 0, 0).pos('body', 0, -0.8 * down, 0.6 * down); plant(P, -0.8 * down);
       const sniff = (bump(t, 1.0, 1.12) + bump(t, 1.16, 1.28)) * down;
       P.rot('head', -3 * sniff, 0, 0);
       const chew = t > 1.5 && t < 2.6 ? Math.sin((t - 1.5) * Math.PI * 2 * 2.4) : 0;
       P.rot('jaw', 6 * Math.abs(chew) * down, 3 * chew, 0).rot('head', 0, 0, 2 * chew * down);
-      P.burst(1.62, 'petal', 'root', [0, 3, 24], { n: 3, speed: 0.5 }).burst(2.1, 'petal', 'root', [0, 2, 24], { n: 2, speed: 0.4 });
+      P.burst(1.62, 'petal', 'root', [2, 4, 33], { n: 3, speed: 0.5 }).burst(2.1, 'petal', 'root', [2, 3, 33], { n: 2, speed: 0.4 });
       P.face('eyes', t > 1.4 && t < 2.8 ? 'content' : undefined); P.lookW = 1 - down;
       P.rot('tail', 0, 0, wave(t, 1.2) * 16 * down).rot('earR', 0, 0, -10 * down).rot('earL', 0, 0, 10 * down);
       drift(P, t);

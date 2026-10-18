@@ -28,11 +28,12 @@ const C = {
 };
 
 // ---------------------------------------------------------------- painters
-const furP = (seed, o = {}) => fur(C.fur, { hi: C.furHi, lo: C.furLo, line: C.furEdge, tip: C.furTip, lite: C.furLite, s: 10, seed, ...o });
+const furP = (seed, o = {}) => fur(C.fur, { hi: C.furHi, lo: C.furLo, line: C.furEdge, tip: C.furTip, lite: C.furLite, s: 10, pt: 0.6, seed, ...o });
 const headFur = furP(11);
 const headFur2 = furP(23, { s: 9 });
 const legFur = furP(31, { s: 8 });
 const fuzz = (seed, o = {}) => fringe(C.fur, { hi: C.furHi, lo: C.furLo, line: C.furLine, tip: C.furTip, seed, ...o });
+const capFringe = fuzz(71, { tw: 3.2, short: 0.55 }), cheekFringe = fuzz(73, { tw: 3.6, lean: 0.12 }), wristFringe = fuzz(75, { tw: 3, short: 0.5 }), ankleFringe = fuzz(77, { tw: 3.2, short: 0.5 });
 const headHalo = halo(C.fur, { hi: C.furHi, lo: C.furLo, line: C.furLine, tip: C.furTip, n: 26, depth: 0.16, inner: 0.76, sq: 2.7, seed: 4 });
 const earHalo = halo(C.fur, { hi: C.furHi, lo: C.furLo, line: C.furLine, tip: C.furTip, n: 14, depth: 0.2, inner: 0.6, sq: 2.2, seed: 8 });
 const muzP = fur(C.muz, { hi: C.muzHi, lo: C.muzLo, line: shift(C.muz, -0.12), lite: C.muzHi, ramp: [C.muzHi, C.muz, C.muz, shift(C.muz, -0.06)], s: 8, rowH: 6, tipH: 2.5, seed: 5, y0: 2 });
@@ -191,10 +192,12 @@ export const def = {
     { name: 'legR', parent: 'root', pivot: [-2.7, 4.4, 0.2], cubes: [
       B([-4.6, 1.3, -1.6], [3.8, 3.5, 3.6], legFur),
       B([-4.8, 0, -2.0], [4.2, 1.7, 5.0], footP(41), { faces: { down: soleP } }),
+      B([-4.65, 1.75, 2.05], [3.9, 0.9, 0], ankleFringe, { plane: 'z' }),
     ] },
     { name: 'legL', parent: 'root', pivot: [2.7, 4.4, 0.2], cubes: [
       B([0.8, 1.3, -1.6], [3.8, 3.5, 3.6], legFur, { mirror: true }),
       B([0.6, 0, -2.0], [4.2, 1.7, 5.0], footP(43), { faces: { down: soleP }, mirror: true }),
+      B([0.75, 1.75, 2.05], [3.9, 0.9, 0], ankleFringe, { plane: 'z', mirror: true }),
     ] },
     { name: 'body', parent: 'root', pivot: [0, 7.2, 0], cubes: [
       B([-5.2, 3.6, -4.0], [10.4, 7.6, 8.0], sweater),
@@ -224,17 +227,21 @@ export const def = {
       B([-8.5, 6.0, -1.6], [3.2, 4.9, 3.4], sleeve),
       B([-8.65, 5.0, -1.75], [3.5, 1.1, 3.7], ribCuff),
       B([-8.35, 3.2, -1.45], [2.9, 2.0, 3.1], pawP(51)),
+      B([-8.4, 4.1, 1.7], [3.0, 0.95, 0], wristFringe, { plane: 'z' }),
+      B([-8.42, 4.1, -1.5], [0, 0.95, 3.2], wristFringe, { plane: 'x' }),
     ] },
     { name: 'armL', parent: 'body', pivot: [5.5, 10.2, 0.2], rot: [0, 0, 8], cubes: [
       B([5.3, 6.0, -1.6], [3.2, 4.9, 3.4], sleeve),
       B([5.15, 5.0, -1.75], [3.5, 1.1, 3.7], ribCuff),
       B([5.45, 3.2, -1.45], [2.9, 2.0, 3.1], pawP(53), { mirror: true }),
+      B([5.4, 4.1, 1.7], [3.0, 0.95, 0], wristFringe, { plane: 'z', mirror: true }),
+      B([8.42, 4.1, -1.5], [0, 0.95, 3.2], wristFringe, { plane: 'x' }),
     ] },
     { name: 'head', parent: 'body', pivot: [0, 11.2, 0.4], cubes: [
-      B([-6.0, 10.8, -4.8], [12, 10.4, 9.6], headFur),
-      B([-6.8, 12.0, -4.2], [13.6, 7.0, 8.4], headFur2),
-      B([-5.0, 10.2, -4.2], [10, 11.6, 8.4], headFur),
-      B([-5.2, 11.4, -5.4], [10.4, 9.0, 10.8], headFur2),
+      B([-6.3, 11.2, -4.6], [12.6, 9.6, 9.2], headFur),
+      B([-6.9, 12.4, -3.8], [13.8, 6.4, 7.6], headFur2),
+      B([-5.0, 10.3, -4.0], [10, 11.5, 8.0], headFur),
+      B([-5.1, 11.6, -5.4], [10.2, 8.8, 10.8], headFur2),
       B([-8.1, 9.3, 0.3], [16.2, 13.6, 0], headHalo, { plane: 'z' }),
       B([0.2, 9.3, -6.9], [0, 13.6, 13.4], headHalo, { plane: 'x' }),
       B([-2.9, 11.5, 5.0], [5.8, 3.7, 2.5], muzP, { faces: { south: muzFront } }),
@@ -242,6 +249,12 @@ export const def = {
       B([-1.45, 14.55, 7.0], [2.9, 1.15, 1.2], noseP),
       B([-0.85, 13.85, 6.95], [1.7, 0.8, 1.1], noseP),
       ...eyeStates(-1), ...eyeStates(1),
+      // fuzz: tufts poking out under the cap, cheek fluff spilling over the shoulders
+      B([-4.6, 20.3, 5.5], [9.2, 1.3, 0], capFringe, { plane: 'z' }),
+      B([-6.6, 10.2, 4.75], [3.6, 1.5, 0], cheekFringe, { plane: 'z' }),
+      B([3.0, 10.2, 4.75], [3.6, 1.5, 0], cheekFringe, { plane: 'z', mirror: true }),
+      B([-7.0, 10.4, -3.2], [0, 1.4, 6.6], cheekFringe, { plane: 'x' }),
+      B([7.0, 10.4, -3.2], [0, 1.4, 6.6], cheekFringe, { plane: 'x' }),
     ] },
     { name: 'jaw', parent: 'head', pivot: [0, 12.0, 5.6], cubes: [
       B([-2.3, 10.6, 5.0], [4.6, 1.5, 2.3], muzP),
@@ -341,7 +354,7 @@ export const anim = {
       const pump = t > 0.95 && t < 1.7 ? Math.abs(Math.sin((t - 0.95) * Math.PI * 2.7)) : 0;
       air(P, h); P.pos('body', 0, -1.4 * crouch, 0).sq('body', -0.16 * crouch + 0.13 * (t > 0.36 && t < 0.62 ? 1 - seg(t, 0.5, 0.62) : 0) + land);
       if (t > 0.9) P.pos('body', 0, Math.min(0, land * 6), 0);
-      arms(P, 12 * crouch + 138 * up - 26 * pump, 18 * crouch - 12 * up, 12 * crouch + 138 * up - 26 * pump, 18 * crouch - 12 * up);
+      arms(P, 12 * crouch + 118 * up - 22 * pump, 18 * crouch - 18 * up, 12 * crouch + 118 * up - 22 * pump, 18 * crouch - 18 * up);
       P.rot('head', 14 * crouch - 22 * up + 6 * pump, 0, wave(t, 3) * 3 * up).rot('jaw', 4 * crouch + 26 * up + 8 * pump);
       P.rot('browR', 0, 0, 10 * crouch - 6 * up).rot('browL', 0, 0, -10 * crouch + 6 * up).pos('browR', 0, 0.4 * up, 0).pos('browL', 0, 0.4 * up, 0);
       P.face('lens', t > 0.5 && t < 0.62 ? 'flash' : t >= 0.62 && t < 0.78 ? 'shine' : undefined);
@@ -353,12 +366,12 @@ export const anim = {
       const wind = seg(t, 0, 0.3, E.inout) * (1 - seg(t, 0.3, 0.4, E.in)), hit = seg(t, 0.3, 0.44, E.in3) * (1 - seg(t, 0.56, 0.95, E.inout));
       P.pos('root', 0, 0, -1.5 * wind + 5.2 * hit).rot('body', -6 * wind + 14 * hit, -28 * wind + 26 * hit, 4 * wind - 6 * hit);
       P.sq('body', -0.08 * wind + 0.06 * hit * (1 - seg(t, 0.44, 0.54)) + wob(t, 0.46, 0.06, 4, 7));
-      P.rot('armR', 30 * wind - 72 * hit, 0, 70 * wind - 60 * hit).rot('armL', -20 * wind + 20 * hit, 0, 18 * wind + 10 * hit);
+      P.rot('armR', 36 * wind - 84 * hit, 0, -86 * wind + 52 * hit).rot('armL', -20 * wind + 24 * hit, 0, 18 * wind + 14 * hit);
       P.rot('head', -8 * wind + 14 * hit, 18 * wind - 14 * hit, 0).rot('jaw', 22 * hit);
       P.rot('browR', 0, 0, 12 * (wind + hit)).rot('browL', 0, 0, -12 * (wind + hit));
       P.rot('legR', -10 * hit, 0, 0).rot('legL', 12 * wind, 0, 0);
       P.face('lens', hit > 0.6 ? 'shine' : undefined);
-      P.burst(0.42, 'spark', 'armR', [-7, 4, 8], {}).burst(0.42, 'bear-star', 'armR', [-7, 4, 8], { n: 5 }).burst(0.42, 'bear-fluff', 'armR', [-7, 4, 6], { n: 4, tint: FUR_TINT });
+      P.burst(0.4, 'bear-slash', 'body', [0.5, 9, 11], { n: 1 }).burst(0.42, 'spark', 'body', [1, 9, 11], {}).burst(0.42, 'bear-star', 'body', [1, 9, 11], { n: 5 }).burst(0.42, 'bear-fluff', 'body', [1, 9, 9], { n: 4, tint: FUR_TINT });
     } },
     // the colour explosion: gather, leap with arms flung wide, cap flying, confetti and notes everywhere
     special: { len: 2.6, next: 'idle', f(P, t) {
@@ -366,7 +379,7 @@ export const anim = {
       const h = t < 0.62 ? 0 : t < 1.12 ? Math.sin(((t - 0.62) / 0.5) * Math.PI) * 5 : 0;
       const wide = seg(t, 0.62, 0.78, E.back) * (1 - seg(t, 1.9, 2.4, E.inout));
       air(P, h); P.pos('body', 0, -1.6 * gather + (t > 1.12 ? wob(t, 1.12, -1, 2.5, 6) : 0), 0).sq('body', -0.14 * gather + 0.12 * bump(t, 0.6, 0.85) + (t > 1.12 ? wob(t, 1.12, -0.14, 2.5, 6) : 0));
-      arms(P, -30 * gather + 120 * wide, -60 * gather + 10 * wide, -30 * gather + 120 * wide, -60 * gather + 10 * wide);
+      arms(P, -30 * gather + 108 * wide, -60 * gather - 6 * wide, -30 * gather + 108 * wide, -60 * gather - 6 * wide);
       P.rot('head', 16 * gather - 24 * wide, 0, 0).rot('jaw', 30 * wide);
       // the cap flies off, spins, and drops back on
       const capT = seg(t, 0.7, 1.75, E.lin), capY = capT > 0 && capT < 1 ? Math.sin(capT * Math.PI) * 13 : 0;
@@ -391,20 +404,20 @@ export const anim = {
     faint: { len: 2.2, next: 'down', f(P, t) {
       const dizzy = seg(t, 0, 0.3) * (1 - seg(t, 0.95, 1.05)), fall = seg(t, 0.95, 1.4, E.bounce);
       P.rot('body', 0, wave(t, 1.4) * 16 * dizzy, wave(t, 2) * 9 * dizzy).rot('head', 0, 0, wave(t, 2, 1) * 12 * dizzy);
-      const slip = seg(t, 0.2, 0.7, E.out);
-      P.pos('shades', -0.4 * slip, -1.0 * slip, 0.4 * slip).rot('shades', 8 * slip, 0, -22 * slip);
+      const slip = seg(t, 0.2, 0.6, E.back);
+      P.pos('shades', 0.3 * slip, 1.5 * slip, -0.25 * slip).rot('shades', -16 * slip, 0, 16 * slip);
       P.rot('root', 0, 0, 82 * fall).pos('root', -2 * fall, 4.6 * fall, 0);
-      arms(P, 30 * dizzy + 150 * fall, -10 * fall, 30 * dizzy + 20 * fall, 20 * fall);
-      P.rot('legR', -20 * fall, 0, 0).rot('legL', 25 * fall, 0, -10 * fall).rot('jaw', 22 * fall).rot('head', 0, 0, 10 * fall);
-      const cf = seg(t, 1.0, 1.6, E.out);
-      P.pos('cap', -3 * cf, -2.2 * cf, 3 * cf).rot('cap', 30 * cf, 0, 40 * cf);
+      arms(P, 30 * dizzy + 10 * fall, -10 * fall, 30 * dizzy - 36 * fall, -40 * fall);
+      P.rot('legR', -10 * fall, 0, 0).rot('legL', -34 * fall, 0, -8 * fall).rot('jaw', 22 * fall).rot('head', 0, 0, 10 * fall);
+      const cf = seg(t, 0.95, 1.5, E.back);
+      P.pos('cap', 1.8 * cf, -0.6 * cf, 0).rot('cap', 0, 0, -32 * cf);
       P.face('eyes', 'swirl').face('lens', 'dark'); P.blinkOK = false; P.lookW = 1 - dizzy;
       P.burst(1.0, 'star', 'head', [0, 23, 0], { n: 5 }).burst(1.38, 'dust', 'root', [-8, 1, 1], { n: 8, spread: 1, speed: 0.8 });
     } },
     down: { len: 2.6, loop: true, f(P, t) {
       P.rot('root', 0, 0, 82).pos('root', -2, 4.6, 0);
-      arms(P, 150, -10 + wave(t, 0.4) * 4, 20, 20); P.rot('legR', -20 + wave(t, 0.4, 1) * 5, 0, 0).rot('legL', 25, 0, -10).rot('jaw', 22).rot('head', 0, 0, 10);
-      P.pos('shades', -0.4, -1.0, 0.4).rot('shades', 8, 0, -22).pos('cap', -3, -2.2, 3).rot('cap', 30, 0, 40);
+      arms(P, 10, -10, -36 + wave(t, 0.4) * 3, -40); P.rot('legR', -10, 0, 0).rot('legL', -34 + wave(t, 0.4, 1) * 4, 0, -8).rot('jaw', 22 + wave(t, 0.4) * 3).rot('head', 0, 0, 10);
+      P.pos('shades', 0.3, 1.5, -0.25).rot('shades', -16, 0, 16).pos('cap', 1.8, -0.6, 0).rot('cap', 0, 0, -32);
       P.face('eyes', 'swirl'); P.blinkOK = false; P.lookW = 0; P.breathW = 0.5;
       P.stream('star', 'head', [0, 22, 2], { rate: 1.2, spread: 0.6, speed: 0.4 });
     } },
@@ -414,18 +427,18 @@ export const anim = {
       const capT = seg(t, 0.36, 1.62, E.lin), capY = capT > 0 && capT < 1 ? Math.sin(capT * Math.PI) * 17 : 0;
       P.pos('cap', 0, capY, 0).rot('cap', 360 * seg(t, 0.36, 1.62, E.inout), 540 * seg(t, 0.36, 1.62), 0);
       if (t > 1.62) P.pos('cap', 0, wob(t, 1.62, -0.7, 3, 7), 0).sq('head', wob(t, 1.62, -0.06, 3, 7));
-      P.rot('armR', -40 * grab - 60 * toss, 0, -120 * grab - 40 * toss);
+      P.rot('armR', -40 * grab - 50 * toss, 0, -100 * grab - 20 * toss);
       const dance = seg(t, 0.62, 0.8) * (1 - seg(t, 1.45, 1.6)), sh = Math.sin((t - 0.62) * Math.PI * 4.4);
       P.pos('body', 0, -0.6 * Math.abs(sh) * dance - 1.2 * bump(t, 0.2, 0.36), 0).rot('body', 0, sh * 10 * dance, sh * 6 * dance).sq('body', -0.05 * Math.abs(sh) * dance);
       arms(P, 30 * dance + 10 * Math.abs(sh) * dance, -50 * dance * (sh > 0 ? 1 : 0.5), 30 * dance + 10 * Math.abs(sh) * dance, -50 * dance * (sh < 0 ? 1 : 0.5));
       P.rot('head', -16 * toss - 10 * seg(t, 0.4, 1.2) * (1 - seg(t, 1.3, 1.6)), sh * 8 * dance, 0).rot('jaw', 20 * dance);
       // the pose: right paw points to the sky, left fist on the hip, one brow up
       const pose = seg(t, 1.7, 1.95, E.back) * (1 - seg(t, 2.55, 2.8, E.inout));
-      P.rot('armR', -40 * pose, 0, -150 * pose).rot('armL', 20 * pose, 0, 40 * pose).rot('body', 0, -12 * pose, 0).rot('head', -6 * pose, 10 * pose, 0);
+      P.rot('armR', -34 * pose, 0, -108 * pose).rot('armL', 16 * pose, 0, 34 * pose).rot('body', 0, -12 * pose, 0).rot('head', -8 * pose, 10 * pose, 0);
       P.rot('browL', 0, 0, -12 * pose).pos('browL', 0, 0.5 * pose, 0);
       P.face('lens', t > 2.0 && t < 2.2 ? 'shine' : undefined);
       if (t > 0.6 && t < 1.5) P.stream('bear-confetti', 'body', [0, 24, 0], { rate: 30, dir: [0, 1, 0], spread: 1, speed: 0.7 });
-      P.burst(0.7, 'bear-note', 'head', [0, 22, 2], { n: 6 }).burst(1.64, 'sparkle', 'head', [0, 24, 0], { n: 8 }).burst(1.95, 'bear-star', 'armR', [-9, 24, 2], { n: 6 });
+      P.burst(0.7, 'bear-note', 'head', [0, 22, 2], { n: 6 }).burst(1.64, 'sparkle', 'head', [0, 24, 0], { n: 8 }).burst(1.95, 'bear-star', 'armR', [-7, 2.5, 1], { n: 6 });
     } },
     // dozing in class: sat on the floor, head sinking, a jolt awake, sinking again
     sleep: { len: 4.0, loop: true, f(P, t) {

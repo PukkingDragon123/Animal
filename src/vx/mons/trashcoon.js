@@ -31,9 +31,9 @@ const cheekP = (p, w, h, face) => {   // fluffy cheek ruff: pale, grey on top
   if (face === 'north') for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, y < h / 2 ? F.c : F.lo);
   if (face === 'east' || face === 'west') for (let y = 0; y < 2; y++) for (let x = 0; x < w; x++) p.px(x, y, y ? F.c : F.hi);
 };
-const skull = skullP(F, { ex: 7.5, ey: 9.5 });
-const muzzle = muzzleP(F);
-const snout = muzzleP(F, { mouth: true, bw: 1.2, bt: 0.6 });
+const skull = skullP(F, { ex: 7.5, ey: 9.0, mh: 5.0 });
+const muzzle = muzzleP(F, { bw: 1.6, bt: 1.4 });
+const snout = muzzleP(F, { mouth: true, bridge: false });
 const nose = noseP(F);
 const jaw = jawP(F);
 const brow = (p, w, h, face) => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, face === 'up' ? F.creamHi : face === 'down' ? F.creamLo : y === 0 ? F.creamHi : F.cream); };
@@ -44,7 +44,7 @@ const bandP = (p, w, h, face, cube) => {
   if (face === 'south' || face === 'north' || face === 'east' || face === 'west') for (let x = 0; x < w; x++) p.px(x, h - 2, shift(J.cardLo, -0.06));
 };
 const puffP = (p, w, h, face, cube) => {
-  cardP({ upFlat: true })(p, w, h, face, cube);
+  cardP({ upFlat: true, stains: face === 'west' || face === 'north' })(p, w, h, face, cube);
   if (face === 'south' || face === 'north' || face === 'east' || face === 'west') for (let x = 2; x < w; x += 9) for (let y = 1; y < h; y++) p.px(x, y, J.cardLo);   // panel seams
 };
 const capTopP = (p, w, h, face, cube) => {
@@ -100,18 +100,29 @@ const EYES = eyeSet(EYE_TRASH);
 // ---------------------------------------------------------------- the model
 // the stick-guitar: its base (the "body") rests in front of the right hip and the neck runs up
 // and across to the left; local +x runs along the stick, local +y is "up", local +z faces out
-const SB = [-3.6, 5.8, 5.6], SL = 16, SDIR = [1, 0.62, 0.1], SUP = [0, 1, 0];
+const SB = [-4.0, 4.3, 5.6], SL = 16, SDIR = [1, 0.46, 0.1], SUP = [0, 1, 0];
 const s = (dx, dy, dz) => [SB[0] + dx, SB[1] + dy, SB[2] + dz];
-const STRUM = s(2.4, 0.9, 0.5), FRET = s(10.5, 0.4, 0.6);
-const eyeParts = (side) => Object.entries(EYES).map(([k, fn]) => P(side < 0 ? [-4.5, 14.333, 4.71] : [0.5, 14.333, 4.71], [4.0, 2.667, 0], fn, { plane: 'z', mirror: side > 0, id: 'eye-' + k, hide: k !== 'sly' }));
+const STRUM = s(2.7, 0.9, 0.5), FRET = s(11.6, 0.5, 0.6);
+const eyeParts = (side) => Object.entries(EYES).map(([k, fn]) => P(side < 0 ? [-4.667, 14.333, 4.38] : [0.333, 14.333, 4.38], [4.333, 3.0, 0], fn, { plane: 'z', mirror: side > 0, id: 'eye-' + k, hide: k !== 'sly' }));
 const earCubes = [
-  P([-6.0, 17.67, -1.0], [3.333, 1.667, 0.667], earP(F, 'base')),
-  P([-5.667, 19.333, -1.0], [2.667, 1.333, 0.667], earP(F, 'mid')),
-  P([-5.167, 20.667, -1.0], [1.667, 0.667, 0.667], earP(F, 'tip')),
+  P([-5.833, 17.333, -0.833], [3.0, 1.333, 0.5], earP(F, 'base')),
+  P([-5.5, 18.667, -0.833], [2.333, 1.0, 0.5], earP(F, 'mid')),
+  P([-5.0, 19.667, -0.833], [1.333, 0.667, 0.5], earP(F, 'tip')),
 ];
-const armCubes = [P([-5.333, 7.333, 0.0], [2.0, 3.667, 2.0], fur), P([-5.667, 9.0, -0.333], [2.667, 2.333, 2.667], fur)];
-const foreCubes = [P([-5.233, 4.667, 0.1], [1.8, 3.333, 1.8], fur), P([-5.433, 3.167, -0.1], [2.2, 1.667, 2.2], hand)];
-const legCubes = [P([-5.333, 0.667, -3.333], [4.333, 4.667, 5.333], fur, { faces: { north: furBack } }), P([-4.5, 0.333, -1.333], [3.0, 1.333, 3.0], fur)];
+// limbs: grey fur that darkens into black "socks" at the paws
+const sock = (k) => (p, w, h, face, cube) => {
+  fur(p, w, h, face, cube);
+  if (face === 'up' || face === 'down') return;
+  const y0 = Math.round(h * (1 - k));
+  for (let y = y0; y < h; y++) for (let x = 0; x < w; x++) { if (y === y0 && x % 3 === 1) continue; p.px(x, y, ramp([F.pawHi, F.paw, F.paw, F.pawLo], (y - y0) / Math.max(1, h - y0), x, y)); }
+};
+const armCubes = [P([-5.233, 6.667, 0.5], [1.8, 3.667, 1.8], fur), P([-5.5, 8.667, 0.233], [2.333, 1.833, 2.333], fur)];
+const foreCubes = [P([-5.167, 4.0, 0.567], [1.667, 3.333, 1.667], sock(0.5)), P([-5.333, 2.667, 0.4], [2.0, 1.333, 2.0], hand)];
+const legCubes = [
+  P([-5.333, 1.0, -3.0], [4.0, 4.333, 5.0], fur, { faces: { north: furBack } }),
+  P([-5.667, 1.667, -2.667], [4.333, 3.0, 4.333], furFringe),
+  P([-4.333, 0.333, -1.333], [2.667, 1.333, 2.667], sock(1)),
+];
 const footCube = P([-3.933, 0.0, -1.4], [2.667, 1.0, 4.667], foot, { pivot: [-2.6, 0, 0.6], rot: [0, -12, 0] });
 // a chamfered tail segment (two crossed boxes) with continuous rings
 const tailSeg = (cx, cy, z0, len, w, h, s0, o = {}) => [
@@ -127,32 +138,33 @@ export const def = {
     { name: 'legR', parent: 'root', pivot: [-2.8, 4.8, -0.6], cubes: legCubes },
     { name: 'legL', parent: 'root', pivot: [2.8, 4.8, -0.6], cubes: legCubes.map(mirrorCube) },
     { name: 'body', parent: 'root', pivot: [0, 4.6, -0.6], rot: [8, 0, 0], cubes: [
-      P([-5.333, 2.333, -3.667], [10.667, 6.333, 7.667], fur, { faces: { south: belly, north: furBack } }),
-      P([-5.833, 3.0, -3.167], [11.667, 5.0, 6.667], furFringe, { faces: { south: belly, north: furBack } }),
-      P([-4.0, 3.0, 3.667], [8.0, 4.667, 0.833], potBelly),
-      P([-4.333, 8.333, -3.0], [8.667, 3.333, 6.667], fur, { faces: { south: chestP, north: furBack } }),
-      P([-4.833, 8.667, -2.5], [9.667, 2.333, 5.667], fur, { faces: { north: furBack } }),
+      // a pear: wide furry hips with a pot belly, a narrower chest with a pale bib, rounded shoulders
+      P([-5.167, 2.333, -3.333], [10.333, 5.333, 7.0], fur, { faces: { south: belly, north: furBack } }),
+      P([-5.667, 2.667, -2.833], [11.333, 4.333, 6.0], furFringe, { faces: { south: belly, north: furBack } }),
+      P([-3.833, 3.0, 3.667], [7.667, 4.667, 0.667], potBelly),
+      P([-4.5, 7.333, -3.0], [9.0, 3.667, 6.333], fur, { faces: { south: chestP, north: furBack } }),
+      P([-3.833, 10.667, -2.5], [7.667, 0.667, 5.333], fur),
       // notebook-paper collar round the neck, two points, and the pull-tab knot of the tie
-      P([-3.667, 10.667, 3.333], [7.333, 1.0, 0.5], paperP),
-      P([-3.667, 10.667, -3.167], [7.333, 1.0, 0.5], paperP),
-      P([-4.0, 10.667, -3.167], [0.5, 1.0, 7.0], paperP),
-      P([3.5, 10.667, -3.167], [0.5, 1.0, 7.0], paperP),
-      P([-3.0, 9.0, 3.85], [2.667, 1.667, 0], collarPtP(false), { plane: 'z' }),
-      P([0.333, 9.0, 3.85], [2.667, 1.667, 0], collarPtP(true), { plane: 'z' }),
-      P([-0.667, 9.5, 3.6], [1.333, 1.333, 0.667], tabP),
+      P([-3.667, 10.333, 2.833], [7.333, 1.0, 0.5], paperP),
+      P([-3.667, 10.333, -2.833], [7.333, 1.0, 0.5], paperP),
+      P([-4.0, 10.333, -2.833], [0.5, 1.0, 6.167], paperP),
+      P([3.5, 10.333, -2.833], [0.5, 1.0, 6.167], paperP),
+      P([-3.0, 8.667, 3.36], [2.667, 1.667, 0], collarPtP(false), { plane: 'z' }),
+      P([0.333, 8.667, 3.36], [2.667, 1.667, 0], collarPtP(true), { plane: 'z' }),
+      P([-0.667, 9.167, 3.167], [1.333, 1.333, 0.667], tabP),
     ] },
-    { name: 'tie', parent: 'body', pivot: [0, 9.7, 4.0], rot: [-18, 0, 0], cubes: [P([-1.167, 4.2, 4.05], [2.333, 5.5, 0], tieP, { plane: 'z' })] },
-    { name: 'tail1', parent: 'body', pivot: [0.6, 4.2, -3.4], rot: [24, -26, 0], cubes: tailSeg(0.6, 4.2, -3.067, 5.667, 4.0, 4.0, 6) },
-    { name: 'tail2', parent: 'tail1', pivot: [0.6, 4.2, -8.2], rot: [24, -6, 0], cubes: tailSeg(0.6, 4.2, -7.867, 6.333, 4.667, 4.667, 19) },
-    { name: 'tail3', parent: 'tail2', pivot: [0.6, 4.2, -13.8], rot: [26, 0, 0], cubes: tailSeg(0.6, 4.2, -13.467, 5.667, 4.0, 4.0, 36) },
-    { name: 'tail4', parent: 'tail3', pivot: [0.6, 4.2, -18.8], rot: [16, 0, 0], cubes: tailSeg(0.6, 4.2, -18.467, 4.667, 3.333, 3.333, 51, { tipAt: 57 }) },
-    { name: 'armR', parent: 'body', pivot: [-4.333, 10.667, 1.0], cubes: armCubes },
-    { name: 'foreR', parent: 'armR', pivot: [-4.333, 7.667, 1.0], hand: [-4.333, 3.9, 1.0], cubes: [
+    { name: 'tie', parent: 'body', pivot: [0, 9.4, 3.6], rot: [-14, 0, 0], cubes: [P([-1.333, 4.9, 3.65], [2.667, 4.5, 0], tieP, { plane: 'z' })] },
+    { name: 'tail1', parent: 'body', pivot: [0.6, 4.0, -3.0], rot: [14, -28, 0], cubes: tailSeg(0.6, 4.0, -2.4, 5.6, 3.667, 3.667, 6) },
+    { name: 'tail2', parent: 'tail1', pivot: [0.6, 4.0, -7.6], rot: [22, -8, 0], cubes: tailSeg(0.6, 4.0, -6.9, 6.0, 4.333, 4.333, 19) },
+    { name: 'tail3', parent: 'tail2', pivot: [0.6, 4.0, -12.6], rot: [24, 0, 0], cubes: tailSeg(0.6, 4.0, -11.9, 5.4, 3.667, 3.667, 34) },
+    { name: 'tail4', parent: 'tail3', pivot: [0.6, 4.0, -17.0], rot: [14, 0, 0], cubes: tailSeg(0.6, 4.0, -16.3, 4.7, 3.0, 3.0, 47, { tipAt: 53 }) },
+    { name: 'armR', parent: 'body', pivot: [-4.333, 10.0, 1.4], cubes: armCubes },
+    { name: 'foreR', parent: 'armR', pivot: [-4.333, 7.0, 1.4], hand: [-4.333, 3.233, 1.4], cubes: [
       ...foreCubes,
-      P([-6.2, 2.9, 2.2], [3.6, 2.0, 0], fishP, { plane: 'z', id: 'fish', hide: true }),
+      P([-6.2, 2.4, 2.4], [3.6, 2.0, 0], fishP, { plane: 'z', id: 'fish', hide: true }),
     ] },
-    { name: 'armL', parent: 'body', pivot: [4.333, 10.667, 1.0], cubes: armCubes.map(mirrorCube) },
-    { name: 'foreL', parent: 'armL', pivot: [4.333, 7.667, 1.0], hand: [4.333, 3.9, 1.0], cubes: foreCubes.map(mirrorCube) },
+    { name: 'armL', parent: 'body', pivot: [4.333, 10.0, 1.4], cubes: armCubes.map(mirrorCube) },
+    { name: 'foreL', parent: 'armL', pivot: [4.333, 7.0, 1.4], hand: [4.333, 3.233, 1.4], cubes: foreCubes.map(mirrorCube) },
     { name: 'stick', parent: 'body', pivot: SB, rot: aimX(SDIR, SUP), cubes: [
       P(s(-1.333, -1.167, -0.833), [3.333, 2.333, 1.667], stickNub),
       P(s(0.0, -0.833, 0.8), [1.0, 1.0, 0.333], bridgeP),
@@ -166,39 +178,43 @@ export const def = {
       P(s(SL - 1.4, 0.4, 0.1), [2.0, 2.0, 0], leafP, { plane: 'z', pivot: s(SL - 1.0, 0.6, 0.1), rot: [0, 0, 40] }),
     ] },
     { name: 'head', parent: 'body', pivot: [0, 11.4, 0.6], cubes: [
-      P([-5.0, 11.0, -3.333], [10.0, 8.0, 8.0], fur, { faces: { south: skull, east: skull, west: skull, north: furBack } }),
-      P([-6.0, 11.0, -1.667], [12.0, 3.0, 5.333], cheekP),
-      P([-7.667, 10.333, 1.0], [2.0, 3.667, 0], tuftP(F, { cream: true }), { plane: 'z', mirror: true }),
-      P([5.667, 10.333, 1.0], [2.0, 3.667, 0], tuftP(F, { cream: true, ph: 1 }), { plane: 'z' }),
-      P([-2.0, 11.333, 4.333], [4.0, 2.667, 2.333], muzzle),
-      P([-1.333, 11.667, 6.333], [2.667, 2.0, 1.667], snout),
-      P([-0.667, 12.833, 7.833], [1.333, 0.833, 0.667], nose),
-      P([0.5, 11.2, 7.6], [0.5, 0.667, 0.333], toothP),
-      P([-5.667, 11.667, 7.2], [3.667, 1.667, 0], whiskerP, { plane: 'z', mirror: true }),
-      P([2.0, 11.667, 7.2], [3.667, 1.667, 0], whiskerP, { plane: 'z' }),
-      P([-2.667, 17.333, 4.72], [2.667, 1.667, 0], bangsP(F), { plane: 'z' }),
+      // a wide, shallow skull tapering at the back, flared sideburn ruffs, a pointed muzzle
+      P([-5.0, 11.0, -2.333], [10.0, 7.667, 6.667], fur, { faces: { south: skull, east: skull, west: skull, north: furBack } }),
+      P([-4.333, 11.333, -3.333], [8.667, 6.667, 1.0], furBack),
+      P([-6.333, 10.667, -1.333], [12.667, 3.333, 4.667], cheekP),
+      P([-8.0, 9.667, 1.2], [2.0, 4.0, 0], tuftP(F, { cream: true }), { plane: 'z', mirror: true }),
+      P([6.0, 9.667, 1.2], [2.0, 4.0, 0], tuftP(F, { cream: true, ph: 1 }), { plane: 'z' }),
+      P([-8.0, 9.667, -1.0], [2.0, 4.0, 0], tuftP(F, { ph: 2 }), { plane: 'z', mirror: true }),
+      P([6.0, 9.667, -1.0], [2.0, 4.0, 0], tuftP(F, { ph: 3 }), { plane: 'z' }),
+      P([-2.0, 11.333, 4.0], [4.0, 2.667, 2.333], muzzle),
+      P([-1.333, 11.667, 6.0], [2.667, 2.0, 1.667], snout),
+      P([-0.667, 12.833, 7.5], [1.333, 0.833, 0.667], nose),
+      P([0.5, 11.2, 7.3], [0.5, 0.667, 0.333], toothP),
+      P([-5.667, 11.667, 6.9], [3.667, 1.667, 0], whiskerP, { plane: 'z', mirror: true }),
+      P([2.0, 11.667, 6.9], [3.667, 1.667, 0], whiskerP, { plane: 'z' }),
+      P([-2.667, 17.0, 4.39], [2.667, 1.667, 0], bangsP(F), { plane: 'z' }),
       ...eyeParts(-1), ...eyeParts(1),
     ] },
-    { name: 'jaw', parent: 'head', pivot: [0, 11.667, 4.667], cubes: [
-      P([-1.667, 10.333, 4.333], [3.333, 1.333, 3.0], jaw),
-      P([-1.5, 11.367, 4.5], [3.0, 0.3, 2.667], mouthP, { outline: false }),
-      P([-1.0, 11.4, 4.9], [2.0, 0.3, 2.0], tongueP, { outline: false }),
-      P([-0.5, 10.4, 6.9], [1.0, 0.333, 2.0], tongueP, { id: 'tongue-out', hide: true, outline: false, pivot: [0, 11.4, 6.9], rot: [55, 0, 0] }),
+    { name: 'jaw', parent: 'head', pivot: [0, 11.667, 4.333], cubes: [
+      P([-1.667, 10.333, 4.0], [3.333, 1.333, 3.0], jaw),
+      P([-1.5, 11.367, 4.167], [3.0, 0.3, 2.667], mouthP, { outline: false }),
+      P([-1.0, 11.4, 4.567], [2.0, 0.3, 2.0], tongueP, { outline: false }),
+      P([-0.5, 10.4, 6.567], [1.0, 0.333, 2.0], tongueP, { id: 'tongue-out', hide: true, outline: false, pivot: [0, 11.4, 6.567], rot: [55, 0, 0] }),
     ] },
-    { name: 'browR', parent: 'head', pivot: [-2.5, 17.833, 4.8], rot: [0, 0, -12], cubes: [P([-4.0, 17.5, 4.5], [3.0, 0.667, 0.5], brow)] },
-    { name: 'browL', parent: 'head', pivot: [2.5, 17.833, 4.8], rot: [0, 0, 12], cubes: [P([1.0, 17.5, 4.5], [3.0, 0.667, 0.5], brow, { mirror: true })] },
-    { name: 'earR', parent: 'head', pivot: [-4.333, 18.0, -0.667], rot: [0, 8, 42], cubes: earCubes },
-    { name: 'earL', parent: 'head', pivot: [4.333, 18.0, -0.667], rot: [0, -8, -42], cubes: earCubes.map(mirrorCube) },
-    { name: 'cap', parent: 'head', pivot: [0, 19.0, 0.4], rot: [-6, 0, 7], cubes: [
-      P([-5.167, 18.333, -3.833], [10.333, 2.0, 8.667], bandP),
-      P([-5.5, 20.0, -4.167], [11.0, 1.667, 9.333], puffP),
-      P([-4.667, 21.667, -3.333], [9.333, 0.5, 7.667], capTopP),
-      P([-0.667, 22.167, 0.0], [1.333, 0.5, 1.333], bottleCapP()),
-      P([1.333, 21.6, -4.333], [1.333, 0.75, 9.667], tapeP),
-      P([-4.333, 18.333, 4.833], [8.667, 0.5, 3.667], brimP, { pivot: [0, 18.583, 4.833], rot: [12, 0, 0] }),
-      P([-0.833, 18.667, 4.833], [1.667, 1.333, 0.333], badgeP),
+    { name: 'browR', parent: 'head', pivot: [-2.5, 17.9, 4.47], rot: [0, 0, -14], cubes: [P([-3.833, 17.667, 4.167], [2.667, 0.5, 0.5], brow)] },
+    { name: 'browL', parent: 'head', pivot: [2.5, 17.9, 4.47], rot: [0, 0, 14], cubes: [P([1.167, 17.667, 4.167], [2.667, 0.5, 0.5], brow, { mirror: true })] },
+    { name: 'earR', parent: 'head', pivot: [-4.333, 17.5, -0.6], rot: [-8, 18, 52], cubes: earCubes },
+    { name: 'earL', parent: 'head', pivot: [4.333, 17.5, -0.6], rot: [-8, -18, -52], cubes: earCubes.map(mirrorCube) },
+    { name: 'cap', parent: 'head', pivot: [0, 18.667, 0.4], rot: [-6, 0, 7], cubes: [
+      P([-5.167, 18.0, -3.833], [10.333, 2.0, 8.667], bandP),
+      P([-5.5, 19.667, -4.167], [11.0, 1.667, 9.333], puffP),
+      P([-4.667, 21.333, -3.333], [9.333, 0.5, 7.667], capTopP),
+      P([-0.667, 21.833, 0.0], [1.333, 0.5, 1.333], bottleCapP()),
+      P([1.333, 21.267, -4.333], [1.333, 0.75, 9.667], tapeP),
+      P([-4.333, 18.0, 4.833], [8.667, 0.5, 3.667], brimP, { pivot: [0, 18.25, 4.833], rot: [12, 0, 0] }),
+      P([-0.833, 18.333, 4.833], [1.667, 1.333, 0.333], badgeP),
     ] },
-    { name: 'flap', parent: 'cap', pivot: [3.3, 17.9, 8.3], rot: [62, 0, 8], cubes: [P([2.3, 17.9, 8.3], [2.0, 0, 1.333], flapP, { plane: 'y' })] },
+    { name: 'flap', parent: 'cap', pivot: [3.3, 17.567, 8.3], rot: [62, 0, 8], cubes: [P([2.3, 17.567, 8.3], [2.0, 0, 1.333], flapP, { plane: 'y' })] },
   ],
 };
 
@@ -225,7 +241,7 @@ function play(P, o = {}) {
 const strumAt = (t, per = 0.5) => key([[0, 1], [0.07, -1, 'out'], [0.25, -1], [0.32, 1, 'out'], [0.5, 1]], ((((t % per) + per) % per) / per) * 0.5);
 // a headbang: snap down on the beat, ease back up
 const bang = (t, per = 0.5) => { const u = (((t % per) + per) % per) / per; return u < 0.12 ? E.out(u / 0.12) : 1 - E.inout((u - 0.12) / 0.88); };
-const NECK_TIP = s(SL - 0.5, 0, 0), STRUM_FX = s(2.4, 0.6, 1.6), CAP_TOP = [0, 22.7, 0.4];
+const NECK_TIP = s(SL - 0.5, 0, 0), STRUM_FX = s(2.4, 0.6, 1.6), CAP_TOP = [0, 22.4, 0.4];
 const REST_DIR = SDIR;
 
 export const anim = {
@@ -238,7 +254,7 @@ export const anim = {
     { bone: 'tail2', tip: [0, 0, -5], k: 110, d: 8, gain: 0.8, max: 20 },
     { bone: 'tail3', tip: [0, 0, -5], k: 95, d: 7, gain: 1.0, max: 24 },
     { bone: 'tail4', tip: [0, 0, -4], k: 85, d: 6.5, gain: 1.1, max: 26 },
-    { bone: 'tie', tip: [0, -5.5, 0], k: 80, d: 6, gain: 1.1, max: 30, axes: [1, 0.3, 1] },
+    { bone: 'tie', tip: [0, -4.5, 0], k: 80, d: 6, gain: 1.1, max: 30, axes: [1, 0.3, 1] },
     { bone: 'cap', tip: [0, 3, 0], k: 260, d: 9, gain: 0.35, max: 10 },
     { bone: 'flap', tip: [0, 0, 1.333], k: 70, d: 4.5, gain: 1.4, max: 40 },
     { bone: 'earR', tip: [-1, 2.5, 0], k: 170, d: 8, gain: 0.6, max: 18 },

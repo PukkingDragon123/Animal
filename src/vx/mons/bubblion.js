@@ -18,7 +18,7 @@ const D2R = Math.PI / 180;
 const R = 15, BC = [0, 15, 0];          // the water ball: radius and centre (it rests on the ground)
 const FC = [0, 14.8, 0];               // the fish's centre: it swims and turns about this point
 const MC = [0, 15.0, 4.6];             // centre of the mane round the face
-const LIPS = [0, 12.2, 7.8];           // bubbles and water bullets leave from here
+const LIPS = [0, 12.2, 8.3];           // bubbles and water bullets leave from here
 
 // ---------------------------------------------------------------- palette
 const K = '#0b0b10';                                          // ink: pupils, liner, trim
@@ -73,8 +73,8 @@ const face = (p, w, h, f, c) => {
     const [x, y] = tp(c, f, i, j, w, h), ax = Math.abs(x), t = tone(y) * 0.7;
     const inMask = (yy) => ((ax - 2.0) / 1.95) ** 2 + ((yy - 15.95) / 1.3) ** 2 < 1 || (ax < 0.8 && yy > 15.35 && yy < 16.45) || segD(ax, yy, 3.0, 16.9, 3.8, 17.65) < 0.38;
     const mask = inMask(y), top = mask && !inMask(y + 0.34);
-    const whisk = segD(ax, y, 2.85, 14.1, 3.85, 13.6) < 0.18 || segD(ax, y, 2.75, 13.35, 3.85, 12.6) < 0.18;
-    p.px(i, j, mask ? (top ? BLK[0] : BLK[2]) : whisk ? GRY[1] : ramp(WHT, t, i, j));
+    const whisk = segD(ax, y, 2.85, 14.1, 3.85, 13.6) < 0.18 || segD(ax, y, 2.75, 13.35, 3.85, 12.6) < 0.18, pout = segD(ax, y, 1.2, 12.75, 1.6, 12.3) < 0.17;
+    p.px(i, j, mask ? (top ? BLK[0] : BLK[2]) : pout ? BLK[1] : whisk ? GRY[1] : ramp(WHT, t, i, j));
   }
 };
 // eyes: 10 × 8 texels drawn on the black mask, the outer corner at x = 0 (the left eye is mirrored).
@@ -86,8 +86,8 @@ const EYES = {
   up: ['..........', '...WKKW...', '.WWWKKWWW.', 'WWWWWWWWWW', '.WWWWWWWW.', '...wwww...', '..........', '..........'],
   wide: ['..........', '...WWWW...', '.WWWWWWWW.', 'WWWWWKWWWW', '.WWWWWWWW.', '...wwww...', '..........', '..........'],
   glare: ['..........', '..........', '.WW.......', '..WWWW....', '...WWWKK..', '.....wKK..', '..........', '..........'],
-  closed: ['..........', '..........', '..........', '..........', '.GGGGGGGG.', '..........', '..........', '..........'],
-  smug: ['..........', '..........', '..........', '.W......W.', '..WW..WW..', '....WW....', '..........', '..........'],
+  closed: ['..........', '..........', '..........', '.w......w.', '..ww..ww..', '....ww....', '..........', '..........'],
+  smug: ['..........', '..........', 'W.........', '.WWWWWWWW.', '..........', '..........', '..........', '..........'],
   shut: ['..........', '.WW.......', '...WWW....', '......WW..', '...WWW....', '.WW.......', '..........', '..........'],
   x: ['..........', '..W....W..', '...W..W...', '....WW....', '...W..W...', '..W....W..', '..........', '..........'],
 };
@@ -141,7 +141,7 @@ function pectoralP(root, side) {
       const [x, y] = tp(c, f, i, j, w, h), dx = (x - root[0]) * side, dy = y - root[1]; if (dx <= 0) continue;
       const r = Math.hypot(dx, dy), a = Math.atan2(dy, dx) / D2R; if (a < -42 || a > 36) continue;
       const kf = (a + 42) / 13, k = Math.round(kf), perp = Math.abs(kf - k) * 13 * D2R * r;
-      const len = 6.8 + 1.2 * Math.sin((k / 6) * Math.PI), memb = len - 1.0 - 1.2 * Math.abs(Math.sin(kf * Math.PI)), onRay = perp < 0.3;
+      const len = 7.6 + 1.4 * Math.sin((k / 6) * Math.PI), memb = len - 1.0 - 1.2 * Math.abs(Math.sin(kf * Math.PI)), onRay = perp < 0.3;
       if (r > len || (!onRay && r > memb)) continue;
       const band = Math.floor(r / 1.3) % 2 === 0;
       let col = onRay ? (band ? BLK[1] : '#ffffff') : band ? WHT[2] : WHT[1];
@@ -194,9 +194,9 @@ const raindrop = (p, w, h) => {
   }
   p.px(Math.floor(cx), Math.round(h * 0.5), '#ffffff');
 };
-const lipP = shade('#3a3a48', { top: '#5c5e6e', bottom: '#1c1c24', grain: 0 });
+const lipP = shade('#34343f', { top: '#5a5c6c', bottom: '#18181f', grain: 0 });
 const upperLip = (p, w, h, f) => { lipP(p, w, h, f); if (f === 'south') { p.px(Math.floor(w / 2) - 1, 0, '#1c1c24'); p.px(Math.floor(w / 2), 0, '#1c1c24'); } };
-const lowerLip = (p, w, h, f) => { lipP(p, w, h, f); if (f === 'south') { p.hl(1, 3, 0, '#8a8ea0'); p.px(1, 0, '#ffffff'); p.px(2, 0, '#ffffff'); } if (f === 'up') { p.hl(1, w - 2, h - 1, '#7a7e8e'); p.px(1, h - 1, '#ffffff'); } };
+const lowerLip = (p, w, h, f) => { lipP(p, w, h, f); if (f === 'south') { p.hl(0, w - 1, 0, '#4a4c5a'); p.hl(1, 3, 1, '#7a7e90'); p.px(1, 1, '#ffffff'); p.px(2, 1, '#e4e6ee'); } if (f === 'up') { p.hl(0, w - 1, h - 1, '#6a6e7e'); p.px(1, h - 1, '#ffffff'); p.px(2, h - 1, '#c8ccd8'); } };
 // thin arched brows (the outer end at x = 0): a sculpted, faintly sardonic arch
 const browP = (p) => { for (const [x, y] of [[0, 2], [1, 1], [2, 1], [3, 0], [4, 0], [5, 0], [6, 0], [7, 1]]) { p.px(x, y, K); p.px(x, y + 1, x > 1 && x < 7 ? BLK[1] : K); } };
 const tentacle = (p, w, h) => { for (let j = 0; j < h; j++) { const dark = (j >> 1) % 2 === 0; p.px(1, j, dark ? BLK[1] : '#ffffff'); if (j > 1 && j % 2 === 0) p.px(j % 4 === 0 ? 0 : 2, j, dark ? GRY[1] : WHT[2]); } };
@@ -282,14 +282,14 @@ const shotSpr = (f) => (p, w, h) => {
   for (let t = 0; t < 9; t += 0.25) { const a = t + f * 0.8, r = t * 0.55; if (r < c - 1) p.px(Math.round(c + Math.cos(a) * r), Math.round(c + Math.sin(a) * r), '#ffffff'); }
   p.px(3, 3, '#ffffff'); p.px(4, 3, '#ffffff'); p.px(3, 4, '#ffffff');
 };
-defineFx('bblion-shot', { w: 13, h: 13, frames: [0, 1, 2, 3].map(shotSpr), fps: 16, life: [0.6, 0.6], size: [0.2, 0.14], speed: [6.5, 6.5], grav: 0.2, drag: 0.05, spread: 0.0 });
+defineFx('bblion-shot', { w: 13, h: 13, frames: [0, 1, 2, 3].map(shotSpr), fps: 16, life: [0.75, 0.75], size: [0.28, 0.2], speed: [5, 5], grav: 0.2, drag: 0.05, spread: 0.0 });
 const jetSpr = (p) => { p.rect(1, 1, 3, 3, '#7ad2f6'); p.px(2, 0, '#c8f2ff'); p.px(0, 2, '#c8f2ff'); p.px(1, 1, '#ffffff'); p.px(4, 2, '#3a8ac4'); p.px(2, 4, '#3a8ac4'); p.px(3, 3, '#4aa2d8'); };
 defineFx('bblion-jet', { w: 5, h: 5, paint: jetSpr, life: [0.2, 0.34], size: [0.07, 0.03], speed: [4.2, 6.2], grav: 2.5, drag: 0.8, spread: 0.08 });
 defineFx('bblion-ring', { w: 32, h: 32, paint: (p, w) => { const m = (w - 1) / 2; for (let y = 0; y < w; y++) for (let x = 0; x < w; x++) { const d = Math.hypot(x - m, y - m); if (d < m + 0.2 && d > m - 2.4) p.px(x, y, d > m - 1 ? '#bdeeff' : '#ffffff'); } }, life: [0.32, 0.32], size: [0.12, 1.0], speed: [0, 0], grav: 0, fade: true });
 const glintSpr = (p, w) => { const c = (w - 1) / 2; for (let i = 0; i < w; i++) { const d = Math.abs(i - c) / c, col = d < 0.3 ? '#ffffff' : '#bff0ff'; if (d < 0.99) { p.px(i, c, col); p.px(c, i, col); } } p.px(c - 1, c - 1, '#e8fbff'); p.px(c + 1, c + 1, '#e8fbff'); p.px(c + 1, c - 1, '#e8fbff'); p.px(c - 1, c + 1, '#e8fbff'); };
 defineFx('bblion-glint', { w: 9, h: 9, paint: glintSpr, glow: true, life: [0.4, 0.7], size: [0.11, 0.02], speed: [0.1, 0.5], grav: 0, drag: 1.2, spread: 1, fade: true, spin: 1.5 });
 const rainSpr = (p, w, h) => { const cx = (w - 1) / 2; for (let y = 0; y < h; y++) { const v = y / (h - 1), half = v < 0.45 ? (v / 0.45) * 1.2 : Math.sqrt(Math.max(0, 1 - ((v - 0.66) / 0.34) ** 2)) * (w / 2); for (let x = 0; x < w; x++) { const d = Math.abs(x - cx); if (d > half) continue; p.px(x, y, d > half - 1 || v > 0.92 ? '#5a26b0' : x < cx && v > 0.45 && v < 0.75 ? '#f0dcff' : '#a66cf0'); } } };
-defineFx('bblion-rain', { w: 5, h: 8, paint: rainSpr, life: [0.55, 0.85], size: [0.07, 0.06], speed: [0.6, 1.2], grav: 7, drag: 0.3, spread: 0.12 });
+defineFx('bblion-rain', { w: 5, h: 8, paint: rainSpr, life: [0.6, 0.9], size: [0.1, 0.09], speed: [0.4, 0.9], grav: 6, drag: 0.3, spread: 0.1 });
 
 // ---------------------------------------------------------------- the model
 const P = (o, s, tex, x = {}) => ({ o, s, tex, ...x });
@@ -334,7 +334,7 @@ export const def = {
   bones: [
     { name: 'root', pivot: [0, 0, 0], cubes: [] },
     { name: 'shadow', parent: 'root', pivot: [0, 0, 0], cubes: [P([-6, 0.04, -4.2], [12, 0, 8.4], contactP, { plane: 'y', shadow: false, id: 'contact' })] },
-    { name: 'puddle', parent: 'root', pivot: [0, 0, 0], cubes: [P([-9, 0.07, -5], [18, 0, 12], puddleP, { plane: 'y', shadow: false, id: 'puddle', hide: true })] },
+    { name: 'puddle', parent: 'root', pivot: [0, 0, 0], cubes: [P([-11, 0.07, -6.5], [22, 0, 15], puddleP, { plane: 'y', shadow: false, id: 'puddle', hide: true })] },
     { name: 'float', parent: 'root', pivot: BC, cubes: [] },
     { name: 'ball', parent: 'float', pivot: BC, cubes: [] },
     { name: 'bbY', parent: 'ball', pivot: BC, cubes: [] },
@@ -356,12 +356,13 @@ export const def = {
       P([-4.0, 11.8, 1.8], [8.0, 4.2, 4.2], body),
       P([-3.2, 18.2, 1.8], [6.4, 0.6, 4.2], body),
       P([-2.9, 10.9, 2.0], [5.8, 0.5, 4.0], body),
-      P([-1.1, 12.6, 6.3], [2.2, 0.6, 0.9], upperLip),
-      P([-1.0, 12.0, 6.35], [2.0, 0.9, 0.8], '#120c14', { outline: false }),
+      P([-3.3, 11.4, 6.4], [6.6, 3.0, 0.5], body, { faces: { south: face } }),          // the jaw juts a little (lionfish underbite)
+      P([-1.1, 12.6, 6.8], [2.2, 0.6, 0.9], upperLip),
+      P([-1.0, 12.0, 6.85], [2.0, 0.9, 0.8], '#120c14', { outline: false }),
       ...(typeof location !== 'undefined' && location.search.includes('dbg=noeyes') ? [] : [...eyeParts(-1), ...eyeParts(1)]),
     ] },
-    { name: 'jaw', parent: 'head', pivot: [0, 12.6, 6.6], cubes: [P([-1.35, 11.6, 6.2], [2.7, 1, 1.4], lowerLip)] },
-    { name: 'gum', parent: 'jaw', pivot: [0, 12.1, 7.7], cubes: [P([-1.5, 10.6, 9.2], [3, 3, 0], bubSpr, { plane: 'z', id: 'gum', hide: true })] },
+    { name: 'jaw', parent: 'head', pivot: [0, 12.6, 7.1], cubes: [P([-1.35, 11.6, 6.7], [2.7, 1, 1.4], lowerLip)] },
+    { name: 'gum', parent: 'jaw', pivot: [0, 12.1, 8.2], cubes: [P([-1.5, 10.6, 9.7], [3, 3, 0], bubSpr, { plane: 'z', id: 'gum', hide: true })] },
     { name: 'browR', parent: 'head', pivot: [-2.0, 17.95, 6.5], rot: [0, 0, 3], cubes: [
       P([-3.33, 17.5, 6.48], [8 / 3, 1, 0], browP, { plane: 'z' }),
       P([-3.9, 17.95, 6.5], [1, 8 / 3, 0], tentacle, { plane: 'z', pivot: [-3.4, 18.0, 6.55], rot: [-24, 0, 26] }),
@@ -371,22 +372,22 @@ export const def = {
       P([2.9, 18.3, 6.5], [1, 8 / 3, 0], tentacle, { plane: 'z', pivot: [3.4, 18.35, 6.55], rot: [-24, 0, -26] }),
     ] },
     { name: 'crown', parent: 'head', pivot: [0.8, 18.7, 4.0], rot: [6, 0, -14], cubes: [
-      P([-0.95, 18.6, 2.5], [3.5, 1.2, 3.0], crownBand),
-      P([-0.95, 19.8, 5.5], [3.5, 2, 0], crownPts(3), { plane: 'z' }),
-      P([-0.95, 19.8, 2.5], [3.5, 2, 0], crownPts(3), { plane: 'z' }),
-      P([-0.95, 19.8, 2.5], [0, 2, 3.0], crownPts(2), { plane: 'x' }),
-      P([2.55, 19.8, 2.5], [0, 2, 3.0], crownPts(2), { plane: 'x' }),
-      P([0.8 - 5 / 6, 18.75, 5.58], [5 / 3, 2, 0], raindrop, { plane: 'z' }),
+      P([-1.2, 18.6, 2.3], [4.0, 4 / 3, 3.4], crownBand),
+      P([-1.2, 19.93, 5.7], [4.0, 7 / 3, 0], crownPts(3), { plane: 'z' }),
+      P([-1.2, 19.93, 2.3], [4.0, 7 / 3, 0], crownPts(3), { plane: 'z' }),
+      P([-1.2, 19.93, 2.3], [0, 7 / 3, 3.4], crownPts(2), { plane: 'x' }),
+      P([2.8, 19.93, 2.3], [0, 7 / 3, 3.4], crownPts(2), { plane: 'x' }),
+      P([-0.2, 18.75, 5.8], [2, 7 / 3, 0], raindrop, { plane: 'z' }),
     ] },
     { name: 'maneT', parent: 'head', pivot: MC, cubes: MANE.maneT },
     { name: 'maneL', parent: 'head', pivot: MC, cubes: MANE.maneL },
     { name: 'maneR', parent: 'head', pivot: MC, cubes: MANE.maneR },
     { name: 'jab', parent: 'head', pivot: [0, 11.1, 5.0], cubes: MANE.jab },
     { name: 'spines', parent: 'fish', pivot: [0, 18.4, -1.0], cubes: spineCubes },
-    { name: 'finR1', parent: 'fish', pivot: [-3.1, 13.6, 0.6], rot: [-18, -24, 34], cubes: [P([-6.9, 10.8, 0.6], [3.8, 5.2, 0], pectoralP(ROOT_R, -1), { plane: 'z' })] },
-    { name: 'finR2', parent: 'finR1', pivot: [-6.9, 13.6, 0.6], cubes: [P([-11.5, 8.1, 0.6], [4.6, 10.2, 0], pectoralP(ROOT_R, -1), { plane: 'z' })] },
-    { name: 'finL1', parent: 'fish', pivot: [3.1, 13.6, 0.6], rot: [-18, 24, -34], cubes: [P([3.1, 10.8, 0.6], [3.8, 5.2, 0], pectoralP(ROOT_L, 1), { plane: 'z' })] },
-    { name: 'finL2', parent: 'finL1', pivot: [6.9, 13.6, 0.6], cubes: [P([6.9, 8.1, 0.6], [4.6, 10.2, 0], pectoralP(ROOT_L, 1), { plane: 'z' })] },
+    { name: 'finR1', parent: 'fish', pivot: [-3.1, 13.6, 0.6], rot: [-20, -30, 30], cubes: [P([-7.1, 10.6, 0.6], [4.0, 5.6, 0], pectoralP(ROOT_R, -1), { plane: 'z' })] },
+    { name: 'finR2', parent: 'finR1', pivot: [-7.1, 13.6, 0.6], cubes: [P([-12.3, 7.6, 0.6], [5.2, 11.2, 0], pectoralP(ROOT_R, -1), { plane: 'z' })] },
+    { name: 'finL1', parent: 'fish', pivot: [3.1, 13.6, 0.6], rot: [-20, 30, -30], cubes: [P([3.1, 10.6, 0.6], [4.0, 5.6, 0], pectoralP(ROOT_L, 1), { plane: 'z' })] },
+    { name: 'finL2', parent: 'finL1', pivot: [7.1, 13.6, 0.6], cubes: [P([7.1, 7.6, 0.6], [5.2, 11.2, 0], pectoralP(ROOT_L, 1), { plane: 'z' })] },
     { name: 'tail1', parent: 'fish', pivot: [0, 14.8, -1.6], cubes: [
       P([-2.4, 12.2, -4.0], [4.8, 5.4, 2.4], body),
       P([-1.4, 13.3, -5.8], [2.8, 3.0, 1.9], body),
@@ -414,7 +415,7 @@ function eyeOf(stage) {
 // turn the rim disc (bones bbY → bbX) toward the camera, and drop the fallback ring when that works
 function faceCamera(P, c) {
   const fx = c.fx; if (!fx) return;
-  hookFx(fx);
+  hookFx(fx); P.scl('cage', 0.001);
   let st = FRAMES.get(P.names); if (!st) FRAMES.set(P.names, (st = {}));
   P.stream(PROBE, 'ball', BC, { dir: [0, 0, 1], probe: (pos, d) => { st.pos = pos; st.fz = d; } });
   P.stream(PROBE, 'ball', BC, { dir: [0, 1, 0], probe: (pos, d) => { st.fy = d; } });
@@ -423,13 +424,14 @@ function faceCamera(P, c) {
   const xx = fy.y * fz.z - fy.z * fz.y, xy = fy.z * fz.x - fy.x * fz.z, xz = fy.x * fz.y - fy.y * fz.x;
   const lx = (dx * xx + dy * xy + dz * xz) / L, ly = (dx * fy.x + dy * fy.y + dz * fy.z) / L, lz = (dx * fz.x + dy * fz.y + dz * fz.z) / L;
   P.rot('bbY', 0, Math.atan2(lx, lz) / D2R, 0).rot('bbX', -Math.asin(Math.max(-1, Math.min(1, ly))) / D2R, 0, 0);
-  P.scl('cage', 0.001);
 }
 
 // ---------------------------------------------------------------- animation helpers
 // squash (a < 0) / stretch (a > 0) the ball about its centre, keeping its bottom on the ground;
 // returns how far the centre dropped (units) so the fish can sink with it
 function squash(P, a) { const k = Math.max(0.3, 1 + a); P.sq('ball', a).pos('ball', 0, -R * (1 - k), 0); return R * (1 - k); }
+// lift the whole ball (and the fish) off the ground; the contact shadow shrinks as it rises
+function lift(P, y) { P.pos('float', 0, y, 0); const s = Math.max(0.35, 1 - Math.max(0, y) / 14); P.scl('shadow', s, 1, s); }
 // scale the whole ball about its centre (swell, burst, re-form)
 const swell = (P, s) => P.scl('ball', s, s, s);
 // little bubbles rising inside the ball, popping at the top (they stay inside the sphere)
@@ -481,7 +483,7 @@ function koPose(P, k = 1) {
   P.rot('crown', 0, 0, -40 * k).pos('crown', 2.6 * k, -1.6 * k, 0.4 * k);
   P.rot('jaw', 12 * k).rot('spines', -20 * k, 0, 0).scl('spines', 1 - 0.2 * k);
 }
-const RAIN = [[-9, 0], [-4.5, -3], [0, 2], [4.5, -2], [9, 1], [-6, 4], [6, 4]];
+const RAIN = [[-11, 0], [-7, -4], [-5, 4], [-2, -2], [0, 5], [2, 1], [5, -4], [7, 3], [11, -1]];
 
 export const anim = {
   start: 'idle', seed: 5,
@@ -518,8 +520,8 @@ export const anim = {
     idle: { len: 4.8, loop: true, f(P, t, c) {
       const S = lap(t);
       base(P, c, { swim: S.swim });
-      const b = bounce(t, 1.6, { squash: 0.08, stretch: 0.04, sharp: 5 });
-      P.pos('float', 0, b.u * 2.2, 0); const drop = squash(P, b.sq);
+      const n = Math.floor(t / 1.6), hb = [1.8, 3.8, 2.4][n % 3], b = bounce(t, 1.6, { squash: 0.06 + 0.012 * hb, stretch: 0.02 + 0.008 * hb, sharp: 5 });
+      lift(P, b.u * hb); const drop = squash(P, b.sq);
       P.rot('ball', wave(t, 1 / 1.6, 1) * 1.5, 0, wave(t, 1 / 4.8) * 2.5);
       P.pos('swim', S.x, S.y - drop * 0.8 - (1 - b.u) * 0.5, S.z).rot('swim', 0, S.hd, 0).rot('fish', S.pitch, 0, S.bank);
       P.lookW = 1 - S.swim;
@@ -532,7 +534,7 @@ export const anim = {
     walk: { len: 0.8, loop: true, f(P, t, c) {
       base(P, c, { swim: 1, k: 1.3 });
       const h = hop(t, 0.8, 4.2, { crouch: 1.4 }), air = h.air ? Math.sin(h.k * Math.PI) : 0;
-      P.pos('float', 0, Math.max(0, h.y), 0); const drop = squash(P, h.sq);
+      lift(P, Math.max(0, h.y)); const drop = squash(P, h.sq);
       P.rot('ball', h.air ? -6 + 12 * h.k : 5 * (h.sq / -0.2), 0, 0);
       const ph = (t / 0.8) * Math.PI * 4;
       P.pos('swim', 0, h.air ? -1.4 * Math.cos(h.k * Math.PI) : -drop * 0.9, 1.2).rot('fish', 14 - 8 * air, 0, Math.sin(ph / 2) * 4);
@@ -552,11 +554,11 @@ export const anim = {
       if (t < BURST) {
         const s = 1 - 0.04 * suck + 0.2 * strain + wave(t, 13) * 0.012 * strain;
         P.scl('ball', s * (1 + 0.06 * suck), s * (1 - 0.1 * suck), s * (1 + 0.06 * suck));
-        P.pos('float', 0, R * (s - 1) - 1.4 * suck, 0);
+        lift(P, R * (s - 1) - 1.4 * suck);
       } else {
         const re = seg(t, REFORM, REFORM + 0.32, E.back), s = t < REFORM ? 1.2 + 0.25 * seg(t, BURST, BURST + 0.15, E.out) : 0.25 + 0.75 * re;
-        swell(P, s); P.pos('float', 0, t < REFORM ? R * 0.2 * (1 - seg(t, BURST, REFORM, E.in)) : 0, 0);
-        P.face('shell', t < REFORM ? 'off' : 'on').face('pop', t < BURST + 0.07 ? 'a' : t < BURST + 0.16 ? 'b' : 'off');
+        swell(P, s); lift(P, t < REFORM ? R * 0.2 * (1 - seg(t, BURST, REFORM, E.in)) : 0);
+        P.face('shell', t < REFORM ? 'off' : 'on').face('contact', t < REFORM ? 'off' : 'on').face('pop', t < BURST + 0.07 ? 'a' : t < BURST + 0.16 ? 'b' : 'off');
         if (t > REFORM + 0.32) squash(P, wob(t, REFORM + 0.32, 0.07, 2.6, 4.5));
       }
       const fall = t > BURST ? -2.4 * bump(t, BURST, REFORM + 0.35) : 0;
@@ -597,12 +599,13 @@ export const anim = {
       P.pos('swim', 0, 0.4 * aim, 2.6 * aim - 2.4 * fire).rot('fish', -4 * charge + 10 * fire, 0, 4 * aim);
       P.scl('head', 1 + 0.1 * charge, 1 + 0.04 * charge, 1 + 0.04 * charge).rot('jaw', -6 * charge + 30 * fire).pos('jaw', 0, 0, 0.5 * charge);
       P.rot('crown', 0, 0, wave(t, 11) * 6 * charge); mane(P, 1 + 0.08 * charge - 0.06 * fire, 8 * charge); fins(P, -16 * fire, 10 * charge);
-      P.face('eyes', aim > 0.3 && t < 1.12 ? 'aim' : t >= 1.12 && t < 1.62 ? 'smug' : undefined);
+      P.face('eyes', aim > 0.3 && t < 1.12 ? 'aim' : t >= 1.12 && t < 1.62 ? 'smug' : undefined).face('gum', t > 0.12 && t < 0.55 ? 'on' : 'off');
+      P.scl('gum', 0.2 + 0.85 * charge + wave(t, 9) * 0.06 * charge);
       P.blinkOK = false; P.lookW = 0.6;
-      P.burst(0.55, 'bblion-shot', 'head', LIPS, { n: 1, dir: [0, 0.02, 1] }).burst(0.55, 'splash', 'head', LIPS, { n: 6, dir: [0, 0.2, 1], spread: 0.25, speed: 1.2 })
-        .burst(0.57, 'bblion-ring', 'float', [0, 13, 15.5], {});
+      P.burst(0.55, 'bblion-shot', 'head', [0, 12.2, 9.9], { n: 1, dir: [0, 0.02, 1] }).burst(0.55, 'splash', 'head', LIPS, { n: 7, dir: [0, 0.2, 1], spread: 0.3, speed: 1.2 })
+        .burst(0.55, 'bblion-ring', 'head', [0, 12.2, 9.9], { scale: 0.35 }).burst(0.6, 'bblion-ring', 'float', [0, 13, 15.5], {});
       if (t > 0.55 && t < 0.72) P.stream('bblion-jet', 'head', LIPS, { rate: 90, dir: [0, 0.03, 1] });
-      if (t < 0.5) P.stream('bblion-bub', 'head', [0, 12.2, 9.2], { rate: 10 * charge, dir: [0, 0, -1], speed: 0.3, spread: 0.6 });
+      if (t < 0.5) P.stream('bblion-bub', 'head', [0, 12.2, 9.7], { rate: 10 * charge, dir: [0, 0, -1], speed: 0.3, spread: 0.6 });
       const blow = bump(t, 1.12, 1.45); P.rot('jaw', -8 * blow).rot('head', -6 * blow, 0, 0);
       P.burst(1.25, 'bblion-bub', 'head', LIPS, { n: 1, dir: [0, 1, 0.2], speed: 0.4 });
     } },
@@ -654,20 +657,23 @@ export const anim = {
     win: { len: 3.0, next: 'idle', f(P, t, c) {
       base(P, c, { k: 1.2 });
       const h = t < 1.0 ? hop(t, 1.0, 6, { crouch: 1.6 }) : { y: 0, sq: wob(t, 1.0, -0.12, 2.6, 5) };
-      P.pos('float', 0, Math.max(0, h.y), 0); const drop = squash(P, h.sq);
+      lift(P, Math.max(0, h.y)); const drop = squash(P, h.sq + wob(t, 1.92, -0.08, 3, 5));
       const spin = seg(t, 0.25, 0.85, E.inout);
       P.pos('swim', 0, -drop * 0.8, 1.6).rot('swim', 0, 360 * spin, 0);
       const flick = bump(t, 1.06, 1.3), air = seg(t, 1.16, 1.76, E.lin), cy = air > 0 && air < 1 ? 7.5 * Math.sin(air * Math.PI) : 0;
       P.pos('crown', 0, cy, 0).rot('crown', 0, 720 * air, 0);
       P.rot('head', 14 * flick - 20 * bump(t, 1.2, 1.8), 0, 0);
       const catchK = Math.max(0, wob(t, 1.76, 1, 3, 6)); P.sq('fish', -0.08 * catchK).pos('crown', 0, -0.6 * catchK, 0);
-      const pose = seg(t, 1.9, 2.2, E.back);
-      P.rot('finR1', 0, 30 * pose, -100 * pose).rot('finR2', 0, 0, -20 * pose).rot('finL1', 0, -14 * pose, 18 * pose);
-      P.rot('head', -16 * pose, -26 * pose, 7 * pose).rot('fish', 0, 0, -6 * pose); mane(P, 1 + 0.18 * pose, 10 * pose);
-      P.rot('browL', 0, 0, 14 * pose);
+      // the finale: turned three-quarters, chin thrown up, one fin flung high, eyes closed — and the rain begins
+      const pose = seg(t, 1.9, 2.15, E.back), hold = wave(t, 1.2) * pose;
+      P.rot('swim', 0, -30 * pose, 0).rot('fish', -8 * pose, 0, -10 * pose + hold * 2);
+      P.rot('finR1', 30 * pose, 10 * pose, -128 * pose).rot('finR2', 0, 0, -26 * pose + hold * 6).rot('finL1', 0, -20 * pose, 26 * pose);
+      P.rot('head', -24 * pose, 0, 8 * pose); mane(P, 1 + 0.22 * pose, 14 * pose); P.rot('spines', 14 * pose, 0, 0).scl('spines', 1 + 0.15 * pose);
+      P.rot('browL', 0, 0, 16 * pose).rot('jaw', 6 * pose);
       P.face('eyes', t > 1.16 && t < 1.76 ? 'up' : pose > 0.3 ? 'smug' : undefined); P.lookW = 1 - Math.max(spin < 1 ? spin : 0, pose);
       P.burst(1.77, 'bblion-glint', 'head', [0.8, 21, 4], { n: 6, spread: 1, speed: 0.7 }).burst(2.0, 'bblion-glint', 'float', [-8, 24, 6], { n: 3, speed: 0.4 });
-      if (t > 1.95) for (const [x, z] of RAIN) P.stream('bblion-rain', 'root', [x, 38, z], { rate: 4, dir: [0, -1, 0], key: 'r' + x + z });
+      if (t > 1.95) for (const [x, z] of RAIN) P.stream('bblion-rain', 'root', [x, 33, z], { rate: 6, dir: [0, -1, 0], key: 'r' + x + z });
+      P.burst(1.95, 'bblion-glint', 'float', [0, 30, 2], { n: 5, spread: 1, speed: 0.8 });
     } },
     // asleep: floating low in the ball, fins drooping, crown slipped over one eye, slow bubbles
     sleep: { len: 4.0, loop: true, f(P, t, c) {
@@ -686,8 +692,8 @@ export const anim = {
       base(P, c, { k: 0.8 });
       squash(P, bounce(t, 1.3, { squash: 0.05, stretch: 0.02 }).sq);
       const slip = seg(t, 0.15, 0.35, E.in) * (1 - seg(t, 1.05, 1.3, E.back)), reach = seg(t, 0.55, 0.95, E.inout) * (1 - seg(t, 1.25, 1.6, E.inout)), proud = seg(t, 1.45, 1.7, E.out) * (1 - seg(t, 2.3, 2.6));
-      P.rot('crown', 0, 0, -28 * slip).pos('crown', -1.2 * slip, -1.1 * slip, 0.3 * slip);
-      P.rot('finR1', 0, 60 * reach, -110 * reach).rot('finR2', 0, 0, -30 * reach);
+      P.rot('crown', 0, 0, -44 * slip).pos('crown', -1.9 * slip, -1.7 * slip, 0.5 * slip);
+      P.rot('finR1', 34 * reach, 0, -150 * reach).rot('finR2', 0, 0, -36 * reach + wave(t, 6) * 8 * reach);
       P.rot('head', -8 * reach - 12 * proud, 10 * proud, -6 * reach); P.rot('browL', 0, 0, 12 * proud);
       P.face('eyes', t > 0.3 && t < 1.25 ? 'up' : proud > 0.3 ? 'smug' : undefined); P.lookW = 1 - Math.max(reach, proud);
       P.burst(1.15, 'bblion-glint', 'head', [0.8, 21, 4], { n: 2 }).burst(1.6, 'bblion-bub', 'head', LIPS, { n: 1, dir: [0, 1, 0.3] });
@@ -708,11 +714,11 @@ export const anim = {
       squash(P, bounce(t, 1.2, { squash: 0.05, stretch: 0.02 }).sq);
       const grow = seg(t, 0.25, 1.05, E.inout), POP = 1.1, flinch = seg(t, POP, POP + 0.08, E.out) * (1 - seg(t, POP + 0.3, POP + 0.7, E.inout)), recover = seg(t, 1.7, 2.0, E.out) * (1 - seg(t, 2.2, 2.4));
       P.face('gum', t > 0.25 && t < POP ? 'on' : 'off');
-      P.scl('gum', 0.15 + 1.1 * grow).rot('jaw', -6 * grow * (t < POP ? 1 : 0)).pos('jaw', 0, 0, 0.4 * grow * (t < POP ? 1 : 0));
+      P.scl('gum', 0.15 + 1.75 * grow + wave(t, 5) * 0.06 * grow).rot('jaw', -6 * grow * (t < POP ? 1 : 0)).pos('jaw', 0, 0, 0.4 * grow * (t < POP ? 1 : 0));
       P.pos('swim', 0, 0, -1.6 * flinch).rot('head', -14 * flinch - 10 * recover, -18 * recover, wave(t, 9) * 4 * flinch);
       mane(P, 1 + 0.2 * flinch, -8 * flinch); fins(P, 26 * flinch);
       P.face('eyes', t < POP ? (grow > 0.35 ? 'wide' : undefined) : t < POP + 0.45 ? 'shut' : recover > 0.2 ? 'smug' : undefined); P.lookW = 1 - Math.max(flinch, recover);
-      P.burst(POP, 'splash', 'head', [0, 12.2, 10.3], { n: 8, spread: 1, speed: 0.8 }).burst(POP, 'bblion-ring', 'head', [0, 12.2, 10.3], { scale: 0.3 });
+      P.burst(POP, 'splash', 'head', [0, 12.2, 10.8], { n: 8, spread: 1, speed: 0.8 }).burst(POP, 'bblion-ring', 'head', [0, 12.2, 10.8], { scale: 0.3 });
     } },
   },
 };

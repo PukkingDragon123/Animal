@@ -9,6 +9,7 @@
 import { GLOW } from '../fine.js';
 import { h3 } from '../kit.js';
 import { glyphs, Pen, newSurf } from '../decals.js';
+import { sprite, spriteInfo } from '../cards.js';
 import { shift, mix } from '../../px/paint.js';
 
 export const C = {
@@ -874,7 +875,6 @@ export function cableCar(k, x, y, z, o = {}) {
 }
 
 // ------------------------------------------------------------ lantern cards (saturated night glow)
-import { sprite, spriteInfo } from '../cards.js';
 function lanternPx(p, W, H, c, lit, o = {}) {
   const cx = (W - 1) / 2, top = 2, bot = H - 4, cy = (top + bot) / 2, ry = (bot - top) / 2 + 0.5, rx = W / 2, tall = o.tall;
   p.rect(Math.round(cx) - 1, 0, 3, 1, '#2a2020');

@@ -12,7 +12,7 @@ import { Dress } from '../dress.js';
 import { SPR } from '../cards.js';
 import { skyline } from '../stage.js';
 import { decal, loadSignFonts } from '../decals.js';
-import { bx, C, LIT, one, many, pagodaRoof, paifang, lion, pavilion, ctLamp, win, railing, balcony, loggia, fireEscape, awning, tileEave, shutter, waterTank, condenser, roofHut, chessTable, newsBoxes, trashCan, bench, van, shade, brackets, beam, ell, cylY, cableCar, lanternCards, P, SIGN_TEXT } from './chinatown_parts.js';
+import { bx, C, LIT, one, many, pagodaRoof, paifang, lion, pavilion, ctLamp, win, railing, balcony, loggia, fireEscape, awning, tileEave, shutter, waterTank, condenser, roofHut, chessTable, newsBoxes, trashCan, bench, van, shade, brackets, ell, cylY, cableCar, lanternCards, P, SIGN_TEXT } from './chinatown_parts.js';
 
 // ---- layout (voxels, 8 per metre). x runs along Grant Avenue, z toward the camera.
 const SY = 8, WY = 9, Y0 = 10, PY = 17;          // asphalt top, sidewalk top, ground floor, plaza top
@@ -156,7 +156,7 @@ export function build(o = {}) {
     B(x0, gy0 - 1, ZF - dep + 1, x1, gy0 - 1, ZF - 1, F);
     for (let x = x0; x <= x1; x++) for (let y = gy0; y <= gy1; y++) if (x === x0 || x === x1 || y === gy1 || (q.mull && (x - x0) % q.mull === 0)) v.set(x, y, ZF - dep + 1, F);
     if (q.transom !== false) { B(x0, gy1 + 1, ZF - 1, x1, gy1 + 3, ZF - 1, (x, y) => ((x - x0) % 4 === 0 || y === gy1 + 1 ? F : glass(true)(x, y))); B(x0, gy1 + 1, ZF, x1, gy1 + 3, ZF, 0); }
-    if (night) light((x0 + x1) / 2, gy0 + 10, ZF + 6, 0xffc070, q.pow ?? 10, 6.5);
+    if (night && q.lamp !== false) light((x0 + x1) / 2, gy0 + 10, ZF + 6, 0xffc070, q.pow ?? 10, 6.5);
     return { y0: gy0, y1: gy1, z: ZF - dep };
   };
   const door = (x0, x1, q = {}) => {
@@ -187,7 +187,7 @@ export function build(o = {}) {
     const x0 = 0, x1 = 63, wall = brick(['#d6c8ae', '#ccbea4', '#dccfb6', '#c4b69c'], '#e6dcc8');
     const yr = house({ x0, x1, n: 2, wall, trim: '#f0e8d8', cornice: 'bracket', core: '#c8bca4' });
     const sf = storefront({ x0, x1, pier: '#8a8278' });
-    shopWin(4, 22, { mull: 6, bulk: '#2e4a3c' }); door(24, 31, { col: '#2e4a3c', glass: true }); shopWin(33, 59, { mull: 9, bulk: '#2e4a3c' });
+    shopWin(4, 22, { mull: 6, bulk: '#2e4a3c' }); door(24, 31, { col: '#2e4a3c', glass: true }); shopWin(33, 59, { mull: 9, bulk: '#2e4a3c', lamp: false });
     signBox(4, sf.sy0, 59, sf.sy1, '#1f3a2e');
     dS(4, sf.sy0, 59, sf.sy1, ZF + 2, P.board({ cjk: '華埠禮品', en: 'GATEWAY GIFTS & TEA', bg: '#1f3a2e', bg2: '#244436', text: '#f0d070', frame: '#c89a3a' }), { ppm: 48 });
     awning(k, { x0: 4, x1: 59, y: sf.sy0 - 2, zf: ZF, D: 9, drop: 4, cols: ['#2e6a4c', '#e8e0cc'], sw: 4 });
@@ -205,7 +205,7 @@ export function build(o = {}) {
     B(68, duck.y1 - 1, ZF - 5, 84, duck.y1 - 1, ZF - 5, one(k, '#c8c8cc'));
     door(87, 97, { col: '#b02428', h: 23, deep: 3 });
     tileEave(k, { x0: 85, x1: 99, y: Y0 + 25, zf: ZF, D: 4, rise: 3, lift: 2 });
-    shopWin(100, 115, { mull: 8, bulk: '#6a1e20', frame: '#3a1a14' });
+    shopWin(100, 115, { mull: 8, bulk: '#6a1e20', frame: '#3a1a14', lamp: false });
     signBox(67, sf.sy0, 116, sf.sy1, '#9a1e22');
     dS(67, sf.sy0, 116, sf.sy1, ZF + 2, P.board({ cjk: '金龍酒家', en: 'GOLDEN DRAGON', bg: '#a01e22', bg2: '#b4262a', text: '#f6d060', frame: '#e8b83a', dragon: true }), { ppm: 48, glow: true });
     dS(69, Y0 + 5, 83, Y0 + 21, ZF - 6, P.ducks(), { ppm: 40, glow: true, off: 0.01 });
@@ -226,7 +226,6 @@ export function build(o = {}) {
     B(82, yr + 7, ZF - 1, 101, yr + 13, ZF, wall);
     for (let j = 0; j < 4; j++) B(82 + j * 2, yr + 14 + j, ZF - 1, 101 - j * 2, yr + 14 + j, ZF, wall);
     B(80, yr + 7, ZF + 1, 103, yr + 7, ZF + 1, one(k, '#f4ecdc'));
-    cylY(v, 91.5, ZF + 1, 0, 0, -1, 0);
     for (let y = yr + 9; y <= yr + 16; y++) for (let x = 88; x <= 95; x++) { const d = Math.hypot(x - 91.5, y - (yr + 12.5)); if (d < 4) v.set(x, y, ZF + 1, d > 3 ? one(k, C.gold[0]) : one(k, '#b02428')); }
     dS(88, yr + 9, 95, yr + 16, ZF + 1, P.fu({ round: true }), { ppm: 48 });
     // a vertical neon blade sign
@@ -276,7 +275,7 @@ export function build(o = {}) {
     const yr = house({ x0, x1, n: 2, wall, trim: '#e8dcc4', cornice: 'corbel', par: 5, core: '#7a3a2e' });
     const sf = storefront({ x0, x1, pier: '#3a3230' });
     // herbalist: dark wood front, jars of herbs in the window
-    const hw = shopWin(168, 184, { deep: 3, bulk: '#4a2e1e', frame: '#3a2416', mull: 8, back: one(k, night ? '#f0c070' : '#5a3a24', night ? GLOW : 0) });
+    const hw = shopWin(168, 184, { deep: 3, bulk: '#4a2e1e', frame: '#3a2416', mull: 8, back: one(k, night ? '#f0c070' : '#5a3a24', night ? GLOW : 0), lamp: false });
     dS(168, hw.y0, 184, hw.y1, ZF - 3, P.herbs(), { ppm: 48, glow: true, off: 0.01 });
     door(186, 191, { col: '#4a2e1e', glass: true, frame: '#3a2416' });
     signBox(167, sf.sy0, 191, sf.sy1, '#3a2416');
@@ -303,7 +302,7 @@ export function build(o = {}) {
     const x0 = 220, x1 = 283, wall = stucco(['#e6c47a', '#ddba70', '#ebcc88']);
     const yr = house({ x0, x1, n: 3, wall, trim: '#f2e6c8', cornice: 'none', par: 3, core: '#c8a868' });
     const sf = storefront({ x0, x1, pier: '#2a6a4c' });
-    shopWin(224, 246, { mull: 6, bulk: '#2a6a4c', frame: '#1f3a2a', pow: 12 }); door(248, 255, { col: '#2a6a4c', glass: true, frame: '#1f3a2a' }); shopWin(257, 279, { mull: 6, bulk: '#2a6a4c', frame: '#1f3a2a', pow: 12 });
+    shopWin(224, 246, { mull: 6, bulk: '#2a6a4c', frame: '#1f3a2a', pow: 12 }); door(248, 255, { col: '#2a6a4c', glass: true, frame: '#1f3a2a' }); shopWin(257, 279, { mull: 6, bulk: '#2a6a4c', frame: '#1f3a2a', pow: 12, lamp: false });
     dS(225, Y0 + 6, 245, Y0 + 20, ZF - 2, P.dimsum(), { ppm: 48, glow: true, off: 0.01 });
     dS(258, Y0 + 6, 278, Y0 + 20, ZF - 2, P.teaWin(), { ppm: 48, glow: true, off: 0.01 });
     tileEave(k, { x0: x0, x1: x1, y: fl(1) - 3, zf: ZF, D: 7, rise: 4, lift: 4 });
@@ -423,7 +422,7 @@ export function build(o = {}) {
     const x0 = 392, x1 = 447, wall = stucco(['#efe6d4', '#e8dfcc', '#f4ecdc']), RED = one(k, '#b02428');
     const yr = house({ x0, x1, n: 3, wall, trim: '#f6f0e2', cornice: 'none', par: 3, core: '#cfc4ae' });
     const sf = storefront({ x0, x1, pier: '#b02428' });
-    shopWin(396, 420, { mull: 6, bulk: '#1f5a3a', frame: '#c8962c', pow: 12 }); door(422, 430, { col: '#b02428', glass: true, frame: '#c8962c' }); shopWin(432, 443, { mull: 6, bulk: '#1f5a3a', frame: '#c8962c' });
+    shopWin(396, 420, { mull: 6, bulk: '#1f5a3a', frame: '#c8962c', pow: 12 }); door(422, 430, { col: '#b02428', glass: true, frame: '#c8962c' }); shopWin(432, 443, { mull: 6, bulk: '#1f5a3a', frame: '#c8962c', lamp: false });
     dS(397, Y0 + 6, 419, Y0 + 20, ZF - 2, P.bazaar(), { ppm: 48, glow: true, off: 0.01 });
     signBox(395, sf.sy0, 444, sf.sy1, '#1f5a3a');
     dS(395, sf.sy0, 444, sf.sy1, ZF + 2, P.board({ cjk: '中華百貨', en: 'CATHAY BAZAAR', bg: '#1f5a3a', bg2: '#246642', text: '#f6d466', frame: '#e8b83a' }), { ppm: 48, glow: true });
@@ -543,7 +542,7 @@ export function build(o = {}) {
   // planters with ginkgo trees, more trees in the lawns, chess tables, benches
   const planter = (x0, z0, x1, z1) => { B(x0, PY + 1, z0, x1, PY + 4, z1, (x, y, z) => (y === PY + 4 ? GRAN[3] : GRAN[(x + z) % 4])); B(x0 + 1, PY + 4, z0 + 1, x1 - 1, PY + 4, z1 - 1, 'dirt'); dr.tufts(x0 + 2, z0 + 2, x1 - 2, z1 - 2, Math.round((x1 - x0) * (z1 - z0) / 30), [...SPR.fern, ...SPR.grass, ...SPR.flowers], x0 + z0, { scale: 0.9 }); };
   for (const [x, z, s] of [[40, 252, 1], [150, 250, 2], [322, 250, 3], [420, 262, 4]]) { planter(x - 10, z - 8, x + 10, z + 8); dr.tree(x, PY + 5, z, 'ginkgo', s, { h: 30, r: 18 }); }
-  for (const [x, z, kind, s] of [[40, 330, 'leaf', 11], [96, 352, 'ginkgo', 12], [340, 366, 'leaf', 13], [416, 362, 'ginkgo', 14]]) dr.tree(x, PY + 1, z, kind, s, kind === 'leaf' ? { h: 34, r: 22 } : { h: 30, r: 18 });
+  for (const [x, z, kind, s] of [[40, 330, 'leaf', 11], [96, 352, 'ginkgo', 12], [340, 366, 'leaf', 13], [396, 368, 'ginkgo', 14]]) dr.tree(x, PY + 1, z, kind, s, kind === 'leaf' ? { h: 34, r: 22 } : { h: 30, r: 18 });
   const boards = [];
   for (const [x, z] of [[334, 288], [366, 294], [346, 318], [378, 322]]) boards.push(chessTable(k, x, PY + 1, z));
   for (const [x, z, len] of [[178, 272, 18], [276, 272, 18], [150, 310, 16], [306, 312, 16], [196, 346, 18], [258, 346, 18]]) bench(k, x, PY + 1, z, len);
@@ -570,13 +569,13 @@ export function build(o = {}) {
   const gate = paifang(k, { x: GX, y: Y0, pz: [113, 131, 197, 215] });
   lion(k, GX - 19, Y0, 121, {}); lion(k, GX - 19, Y0, 202, { female: true });
   const pq = gate.plaque;
-  for (const [face, xl] of [['e', pq.x1], ['w', pq.x0]]) (face === 'e' ? dE : dW)(pq.z0, pq.y0, pq.z1, pq.y1, xl, P.plaque({ cjk: '天下為公', bg: '#1f3f66' }), { ppm: 48 });
+  for (const [face, xl] of [['e', pq.x1], ['w', pq.x0]]) (face === 'e' ? dE : dW)(pq.z0, pq.y0, pq.z1, pq.y1, xl, P.plaque({ cjk: '天下為公', bg: '#1f3f66' }), { ppm: 48, glow: true });
   for (const c of gate.couplets) for (const [face, xl] of [['e', GX + 1], ['w', GX - 2]]) {
     B(face === 'e' ? GX + 2 : GX - 3, c.y, c.z - 1, face === 'e' ? GX + 2 : GX - 3, c.y + 26, c.z + 1, one(k, '#7a1418'));
-    (face === 'e' ? dE : dW)(c.z - 1, c.y, c.z + 1, c.y + 26, face === 'e' ? GX + 2 : GX - 3, P.couplet({ cjk: c.side < 0 ? (face === 'e' ? '萬事如意' : '四季平安') : (face === 'e' ? '福星高照' : '花開富貴') }), { ppm: 48 });
+    (face === 'e' ? dE : dW)(c.z - 1, c.y, c.z + 1, c.y + 26, face === 'e' ? GX + 2 : GX - 3, P.couplet({ cjk: c.side < 0 ? (face === 'e' ? '萬事如意' : '四季平安') : (face === 'e' ? '福星高照' : '花開富貴') }), { ppm: 48, glow: true });
   }
   for (const l of gate.lanterns) dr.card(LAN.big[0], l[0] + 0.5, l[1] - 1, l[2], { hang: true, glow: true, scale: 1.3, sway: 0.4 });
-  if (night) { light(GX, Y0 + 40, 166, 0xff7050, 16, 12); }
+  if (night) { light(GX - 16, Y0 + 54, 166, 0xffb070, 18, 13); light(GX + 16, Y0 + 54, 166, 0xffb070, 18, 13); light(GX - 30, Y0 + 22, 125, 0xffa060, 8, 6); light(GX - 30, Y0 + 22, 206, 0xffa060, 8, 6); }
 
   // ---------------------------------------------------------------- street furniture
   for (const x of [80, 160, 240, 320, 400]) lamps.push(ctLamp(k, x, Y0, 200, { night }));
@@ -632,7 +631,7 @@ export function build(o = {}) {
   return {
     vox: v, mood: o.mood || 'golden', lamps, dress: dr, view, shots, palette: pal,
     setup(st) {
-      skyline(st, { x: [-40, 110], z: -95, n: 46 });
+      skyline(st, { x: [-6, 66], z: -70, n: 34 });
       dr.build(st);
       for (const d of D) decal(st, d);
       for (const [x, y, z, col, pow, dist] of glowLights) st.lamp(x, y, z, col, pow, dist);
