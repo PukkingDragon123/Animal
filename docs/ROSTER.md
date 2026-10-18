@@ -8,9 +8,9 @@ no real logos, cover artwork, mascots or likenesses. Models live in `src/vx/mons
 ## Starters
 | Line | Artist homage | Stages |
 |---|---|---|
-| **Chilichick** → Riffrooster / Funkadoodle | Red Hot Chili Peppers (chili, heat, funk-rock) | a small, fat, furious fire chick in a chili headband, crying and screaming, swigging its own hot sauce → a rock front-man rooster / a slap-bass funk rooster |
+| **Chilichick** → Riffrooster / Funkadoodle | Red Hot Chili Peppers (chili, heat, funk-rock) | a goofy round chick: big Fuecoco-like eyes, a burning chili-pepper comb, a punk fringe, tube-sock legs and clown feet; squirts its hot sauce and hiccups fireballs (ultra drip: black and gold, truffle sauce, blue fire) → a rock front-man rooster / a slap-bass funk rooster |
 | **Bubblion** → Princeidon / Purple Rain | Prince | a black-and-white lionfish prince swimming inside a water bubble, ruffled fin frills, tiny crown → the showman king / the purple queen of rain |
-| **Strawbaa** → Ramberry / Pennyewe | Willie Nelson (country legend) | a grizzled old strawberry ram with white braids, beard and a red bandana, a healer → a giant-horned tank / a poppy healer |
+| **Strawbaa** → Ramberry / Pennyewe | Willie Nelson (country legend) | a baby strawberry lamb with braided wool pigtails and a calyx cap, a healer → a giant-horned tank / a poppy healer |
 
 ## Wild and partner Tokonmon
 | Tokonmon | Artist homage | Notes |
@@ -22,7 +22,7 @@ no real logos, cover artwork, mascots or likenesses. Models live in `src/vx/mons
 | **Barkorious** | The Notorious B.I.G. | the giant sea-lion king of Pier 39: tilted crown, gold chain, loud 90s knit pattern, nods to the beat |
 | **Kanizumo** | The B-52's ("Rock Lobster") | Coach's sumo crab with a towering beehive topknot and cat-eye markings |
 | **Zapanda** | Pink Floyd ("The Dark Side of the Moon") | Mika's electric red panda: prism emblem, a battery tail that splits light into a rainbow |
-| **Beatlet** → Lenshorn / McCarapace / Harrisun / Starrab | The Beatles | Taro's mop-top beetle with a Sgt.-Pepper collar; the crosswalk walk |
+| **Beatlet** → **Pepperhorn** → **Abbeyhorn** / **Walrusk** | The Beatles | a Heracross-style beetle line: the mop-top kid in a collarless suit → a Sgt.-Pepper satin bandleader with moustache mandibles → split at Lv 36: the sleek white-suited crosswalk striker, or (holding an Egg) the tusked psychedelic walrus tank |
 | **Studrat** | Metallica ("Kill 'Em All") | Team Metallica's street rat with a sledgehammer and chrome mohawk |
 | **Moshbull** | Metallica ("Master of Puppets") | rock-plated mosh-pit bull with marionette strings and a field of crosses |
 | **Thrashark** | Metallica ("Ride the Lightning") | sawblade-finned walking shark crackling with lightning |
@@ -30,6 +30,21 @@ no real logos, cover artwork, mascots or likenesses. Models live in `src/vx/mons
 | **Cabbunny** | Bad Bunny | the cabbage bunny with edgy shades, painted claws, summer swagger |
 | **Kappachi** | The Beach Boys | the Tea Garden kappa in a striped surf shirt with a little surfboard; its dish sloshes like a wave |
 | **Chochobake** | Michael Jackson ("Thriller") | Chinatown's one-eyed paper-lantern ghost in a red-jacket pattern with one sparkly glove; moonwalks |
+
+## Story Tokonmon (the opening)
+| Tokonmon | Artist homage | Notes |
+|---|---|---|
+| **Wheezowl** | Weezer | the player's Mom: a kind, nerdy owl in black-rimmed glasses and a cardigan of feathers who wheezes you awake |
+| **Mopzart** | Mozart | the family's ancient mop dog, its corded coat a powdered periwig; conducts with its tail |
+| **Dreadrake** | Kendrick Lamar | a muscle-bound mallard with dreadlocks, partner of Spike the street punk |
+| **Zapkit** → **Thundersabre** | ThunderCats (cartoon homage) | a lightning kitten → the dark sabre-toothed storm cat that drives the cable car with its gripman |
+| **Barkorious (forced bond)** | The Notorious B.I.G. | the Pier 39 king, swollen by a forced bond: red eyes, a fish cannon — the 3-vs-1 boss of Day 1 |
+
+## Appearance: drip tiers
+Every Tokon is **normal** (1 accessory), **dripped** (2) or **ultra dripped** (3 — and its luxury
+black-and-gold form with blue fire); each tier offers a choice of accessories. Wild spawns roll
+85 / 13 / 2 %. Accessories can't be bought; **gear** (guitar picks, tube amps, drumsticks…) is the
+buyable stat system.
 
 ## Second wave (requested)
 | Line | Artist homage | Stages |

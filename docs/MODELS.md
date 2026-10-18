@@ -59,10 +59,29 @@ Use the kit — it gives the house look:
   material with crisp bands, darker lines only where forms meet, small highlights. Never fill
   faces with salt-and-pepper noise. Use colour to separate parts (belly patch, face mask,
   markings).
-* **Eyes**: separate `plane: 'z'` parts on the face (one plane per expression state, all but
-  one hidden, toggled by the `eyes` slot). Tokonmon eyes are **never cartoon-cute** — no huge
-  sparkly pupils, no blush. Use cool Pokémon-like eyes: sharp shapes, small dot pupils,
-  slits, glares, visors. Give each species its own eye language.
+* **Eyes** — the house rules (from the player, in order of importance):
+  - No human eyes and no kawaii/anime eyes or blush. Every species gets its **own** Pokémon-like
+    eye design (Gen 8–9 official-art language): vary the shape (round, almond, sharp, droopy,
+    sleepy), whites or none, iris colour, pupil (round, slit, none) and size.
+  - Faces are painted at **full resolution** (`chunk: 1`): hand-drawn eye maps of about 10–16 px
+    with a darker iris top, a defined pupil, 1–2 clean highlights and a lid line.
+  - Use the shared kit `src/vx/mons/eyes.js`: `eyeRig({ style: 'pix', chunk: 1, map: { open: [...] }, at, ... })`
+    gives two eye bones (squash, stretch and dart them in clips) and the `eyes` face slot with
+    the expression states (open closed happy shut x swirl shock wide angry sad sleepy heart star
+    teary, + wink); lid states are cut from the open map. `chilichick.js` has a reference map.
+  - No 3D eyebrow cubes, and no anatomy the animal doesn't have (no ears on birds or fish).
+* **Hair, fur and feathers** are styled after the artist (mop-top, mohawk, braids, curls…) — homage, never a likeness.
+* **Silhouettes** stay clean and Cobblemon-like: fewer, bigger, readable parts; detail goes into accessories.
+
+## Drip tiers (appearance)
+Every Tokon instance has `drip` 1 | 2 | 3 (wild spawns roll 85 / 13 / 2 %) and a `look` seed:
+normal wears one accessory, dripped two, ultra dripped three — each tier offers a choice:
+`def.drip = [[{ id, name }, { id, name }], [...], [...]]`, every option's cubes tagged with its
+id and `hide: true`; `model.drip(level, look)` shows one option per tier. Accessories can't be
+bought (buyable **gear** is a separate, invisible stat system). At drip 3 the model is built from
+`dripForm(def)` (src/vx/model.js): warm colours turn to black lacquer, yellows to gold, fire burns
+blue and sauces turn to truffle; tune it per species with `def.dripForm = { map(hex, glow), fx }`.
+Gear can also be fitted at `def.attach = { head, face, neck, back: { bone, at, size } }`.
 
 ## Animation (`def.anim`)
 ```js
@@ -73,7 +92,7 @@ anim: {
   look: { bone: 'head', yaw: 28, pitch: 14, speed: 5 },            // head tracks the target
   springs: [{ bone: 'tail', tip: [0, 5, -3], k: 170, d: 9, gain: 0.9, max: 22 }],
   faces: { eyes: { default: 'angry', states: { angry: ['eye-angry'], closed: ['eye-closed'] } } },
-  fidget: { every: [5, 9], clips: ['sip', 'stomp'] },              // idle variations
+  fidget: { every: [3.5, 7], clips: ['dance', 'dance', 'sip', 'hiccup'] },   // idle variations: the dance shows often
   clips: { idle: { len: 1.2, loop: true, f(P, t, c) { ... } }, cry: { len: 2, next: 'idle', f(P, t) { ... } } },
 }
 ```
