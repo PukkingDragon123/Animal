@@ -4,13 +4,16 @@
 // pavilion, dragon street lamps with pagoda lantern tops, and the parts shophouse
 // facades are made of: windows with sashes and blinds, fret railings, balconies
 // and loggias, fire escapes, striped awnings, tile eaves, rolling shutters; rooftop
-// water tanks and condensers; chess tables, news boxes, bins, a delivery van and
-// a California Street cable car. Positions are voxels (8 per metre); facades face +z.
+// water tanks and condensers; chess tables, news boxes, bins, a delivery van, a
+// food cart and a California Street cable car. Positions are voxels (8 per metre);
+// facades face +z. The second half paints the 2D layer: shop boards, neon, plaques,
+// window displays, posters and menus (P.*), and paper-lantern cards with a deep
+// red night glow (lanternCards).
 import { GLOW } from '../fine.js';
 import { h3 } from '../kit.js';
 import { glyphs, Pen, newSurf } from '../decals.js';
 import { sprite, spriteInfo } from '../cards.js';
-import { shift, mix } from '../../px/paint.js';
+import { shift } from '../../px/paint.js';
 
 export const C = {
   tile: ['#2c784a', '#3a8c5a', '#2f8050', '#48a06e'], tileD: '#22603c', ridge: '#1c4a31', ridgeHi: '#2f704a', edge: '#1f5636',
@@ -540,6 +543,36 @@ export function van(k, x, y, z, o = {}) {
   for (const w of [1, 2, Wd - 3, Wd - 2]) { P(L - 1, 6, w, one(k, '#fff6d8')); P(0, 6, w, one(k, '#d8342c')); }
   return { side: z + Wd, roof: y + 20 };
 }
+// a street-food cart (along x) under a striped umbrella; returns the sign face position
+export function cart(k, x, y, z, o = {}) {
+  const v = k.v, R = one(k, o.col || '#c8302c'), RD = one(k, shade(o.col || '#c8302c', -0.3)), GD = one(k, C.gold[0]), T = one(k, '#1c1c20'), M = one(k, '#b8bcc4'), GL = one(k, '#c8dce4');
+  bx(k, x, y + 3, z, x + 13, y + 9, z + 7, (xx, yy, zz) => (yy === y + 9 ? GD : yy === y + 3 ? RD : (xx === x || xx === x + 13) && yy > y + 4 ? RD : R));
+  bx(k, x + 1, y + 10, z + 1, x + 12, y + 12, z + 6, (xx, yy, zz) => (yy === y + 12 || xx === x + 1 || xx === x + 12 || zz === z + 1 || zz === z + 6 ? M : GL));
+  for (let xx = x + 3; xx <= x + 10; xx += 3) { v.set(xx, y + 10, z + 3, one(k, '#e8b040')); v.set(xx + 1, y + 10, z + 4, one(k, '#f0c858')); }
+  for (const wz of [z - 1, z + 8]) for (let dy = 0; dy <= 4; dy++) for (let dx = 0; dx <= 4; dx++) { const d = Math.hypot(dx - 2, dy - 2); if (Math.abs(d - 1.9) < 0.6) v.set(x + 3 + dx, y + dy, wz, T); else if (d < 0.5) v.set(x + 5, y + 2, wz, M); }
+  bx(k, x + 13, y + 7, z + 1, x + 16, y + 7, z + 1, M); bx(k, x + 13, y + 7, z + 6, x + 16, y + 7, z + 6, M); bx(k, x + 16, y + 7, z + 1, x + 16, y + 7, z + 6, M);
+  bx(k, x + 6, y + 13, z + 3, x + 6, y + 26, z + 3, M);
+  const U = [one(k, o.um || '#e8302c'), one(k, '#f4f0e4')];
+  for (let dz = -10; dz <= 10; dz++) for (let dx = -10; dx <= 10; dx++) { const d = Math.hypot(dx, dz); if (d > 10) continue; const yy = y + 27 - Math.round((d / 10) * 3); v.set(x + 6 + dx, yy, z + 3 + dz, U[Math.floor(((Math.atan2(dz, dx) + Math.PI) / (Math.PI * 2)) * 12) % 2]); }
+  v.set(x + 6, y + 28, z + 3, GD);
+  return { sign: [x + 1, y + 4, x + 12, y + 8, z + 7] };
+}
+// a bicycle standing along x (wheels in the x-y plane at z)
+export function bike(k, x, y, z, col = '#2a8a8a') {
+  const v = k.v, F = one(k, col), T = one(k, '#1c1c20'), M = one(k, '#b8bcc4'), S = one(k, '#3a2a22');
+  for (const cx of [x + 3, x + 13]) for (let dx = -4; dx <= 4; dx++) for (let dy = -4; dy <= 4; dy++) { const d = Math.hypot(dx, dy); if (Math.abs(d - 3.3) < 0.6) v.set(cx + dx, y + 3 + dy, z, T); else if (d < 0.6) v.set(cx, y + 3, z, M); }
+  for (const [a, b] of [[[x + 3, y + 3, z], [x + 6, y + 9, z]], [[x + 6, y + 9, z], [x + 7, y + 3, z]], [[x + 3, y + 3, z], [x + 7, y + 3, z]], [[x + 7, y + 3, z], [x + 11, y + 9, z]], [[x + 6, y + 8, z], [x + 11, y + 9, z]], [[x + 11, y + 9, z], [x + 13, y + 3, z]]]) line3(v, a, b, F);
+  v.set(x + 5, y + 10, z, S); v.set(x + 6, y + 10, z, S); v.set(x + 11, y + 10, z, M); v.set(x + 11, y + 11, z - 1, M); v.set(x + 11, y + 11, z + 1, M); v.set(x + 11, y + 11, z, M);
+  v.set(x + 7, y + 2, z + 1, M); v.set(x + 7, y + 4, z - 1, M);
+}
+// a hand truck loaded with boxes (leaning on the wall behind it, toward -z)
+export function handTruck(k, x, y, z) {
+  const v = k.v, I = one(k, '#c8302c'), T = one(k, '#1c1c20'), BX = [one(k, '#c8a070'), one(k, '#b88a58'), one(k, '#d8b484')];
+  for (let j = 0; j < 14; j++) { v.set(x, y + j, z - (j >> 2), I); v.set(x + 5, y + j, z - (j >> 2), I); }
+  for (let i = 0; i <= 5; i++) v.set(x + i, y + 14, z - 3, I);
+  for (const wx of [x - 1, x + 6]) for (let dy = 0; dy <= 2; dy++) for (let dz = -1; dz <= 1; dz++) if (Math.abs(dy - 1) + Math.abs(dz) < 2) v.set(wx, y + dy, z + 1 + dz, T);
+  for (const [j, h] of [[1, 4], [5, 4], [9, 3]]) for (let yy = j; yy < j + h; yy++) for (let xx = x + 1; xx <= x + 4; xx++) for (let zz = z + 1 - (yy >> 2); zz <= z + 4 - (yy >> 2); zz++) v.set(xx, y + yy, zz, BX[(j + xx) % 3]);
+}
 export function shade(hex, f) {
   const n = parseInt(hex.slice(1), 16), c = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((q) => Math.max(0, Math.min(255, Math.round(f < 0 ? q * (1 + f) : q + (255 - q) * f))));
   return '#' + c.map((q) => q.toString(16).padStart(2, '0')).join('');
@@ -548,10 +581,10 @@ export function shade(hex, f) {
 // ============================================================ painted decals
 // Pixel-art painters for the 2D layer: each returns paint(p, W, H) for decal().
 // Every CJK string used is listed in SIGN_TEXT so prepare() can load its glyphs.
-export const SIGN_TEXT = '天下為公金龍酒家菜單燒鴨叉燒炒麵雲吞點心月滿餅家仁和堂中藥玉蓮珠寶銀雲茶樓福德廟旭日生果幸運餅玉門禮品中華百貨華埠禮品都板街萬事如意四季平安福星高照花開富貴金星茶太極吉屋出租中秋節麻雀月光音樂會蛋撻菠蘿包月餅特價新鮮酒店牙科旅行社功夫麻雀館宴會廳';
+export const SIGN_TEXT = '天下為公金龍酒家菜單燒鴨叉燒炒麵雲吞點心月滿餅家仁和堂中藥玉蓮珠寶銀雲茶樓福德廟旭日生果幸運餅玉門禮品中華百貨華埠禮品都板街萬事如意四季平安福星高照花開富貴金星茶太極吉屋出租中秋節麻雀月光音樂會蛋撻菠蘿包月餅特價新鮮酒店牙科旅行社功夫麻雀館宴會廳雞仔';
 
 // CJK text fitted and centred in a box (renders, measures the ink, shrinks until it fits)
-export function fit(p, str, bx, by, bw, bh, col, o = {}) {
+export function fit(p, str, fx, fy, bw, bh, col, o = {}) {
   const n = [...str].length, vert = !!o.vertical;
   let size = Math.floor((vert ? Math.min(bw, bh / n) : Math.min(bh, bw / n)) * (o.k ?? 1.05));
   for (let t = 0; t < 8 && size >= 5; t++) {
@@ -561,7 +594,7 @@ export function fit(p, str, bx, by, bw, bh, col, o = {}) {
     const b = S.bounds(); if (!b) return null;
     const w = b.x1 - b.x0 + 1, h = b.y1 - b.y0 + 1;
     if (w > bw || h > bh) { size = Math.floor(size * Math.min(0.94, bw / w, bh / h)); continue; }
-    p.put(S, Math.round(bx + (bw - w) / 2 - b.x0), Math.round(by + (bh - h) / 2 - b.y0));
+    p.put(S, Math.round(fx + (bw - w) / 2 - b.x0), Math.round(fy + (bh - h) / 2 - b.y0));
     return { w, h, size };
   }
   return null;
@@ -706,7 +739,7 @@ export const P = {
     const tins = ['#c8302c', '#2e7a4a', '#e8b830', '#2e5a9c', '#8a2a6a', '#e86a2a'];
     for (let s = 0; s < 3; s++) { const y = 6 + s * Math.floor(H / 3.3); p.hl(0, W - 1, y + 13, '#8a5a34'); p.hl(0, W - 1, y + 14, '#5a3820');
       for (let x = 3, i = s; x < W - 7; x += 9, i++) { const c = tins[i % tins.length]; if ((i + s) % 4 === 3) { blob(p, x + 3, y + 9, 4, 3.5, ['#4a2414', '#7a3e22', '#9a5432', '#c87a4a']); p.rect(x + 7, y + 7, 2, 2, '#7a3e22'); p.px(x + 3, y + 5, '#4a2414'); } else { p.rect(x, y + 2, 7, 11, c); p.vl(x, y + 2, y + 12, shift(c, 0.6)); p.vl(x + 6, y + 2, y + 12, shift(c, -0.8)); p.rect(x, y + 1, 7, 1, '#d8b440'); p.rect(x + 1, y + 6, 5, 3, '#f4ecd8'); } } }
-    small(p, 'TEA', W - 16, H - 9, '#f6d060', { scale: 1 });
+    small(p, 'TEA', W - 4, H - 9, '#f6d060', { align: 'right' });
     glare(p, W, H);
   },
   gifts: () => (p, W, H) => {
@@ -826,6 +859,7 @@ export const P = {
     fit(p, o.cjk, 3, 3, W - 6, H - 6 - en, o.col || '#f0c848', { vertical: true, outline: '#3a2a10', font: 'serif' });
     if (o.en) { p.rect(1, H - en - 1, W - 2, en, '#1a1410'); small(p, o.en, Math.floor(W / 2), H - en + 1, o.col || '#f0c848', { align: 'center', mini: true }); }
   },
+  cartSign: () => (p, W, H) => { p.rect(0, 0, W, H, '#fff4dc'); p.frame(0, 0, W, H, '#c8302c'); fit(p, '雞蛋仔', 2, 1, W * 0.56, H - 2, '#c8302c', { font: 'serif' }); small(p, 'EGG', W - 4, 3, '#3a2a1a', { align: 'right', mini: true }); small(p, 'WAFFLE', W - 4, 10, '#3a2a1a', { align: 'right', mini: true }); small(p, '$5', W - 4, H - 8, '#c8302c', { align: 'right', mini: true }); },
   openSign: () => (p, W, H) => { p.rect(0, 0, W, H, '#14101a'); p.frame(0, 0, W, H, '#3a8aff'); small(p, 'OPEN', Math.floor(W / 2), Math.floor((H - 5) / 2), '#ff3a4a', { align: 'center', mini: true }); },
   chalk: () => (p, W, H) => {
     p.rect(0, 0, W, H, '#2a2e2a'); p.frame(0, 0, W, H, '#8a5a36'); p.frame(1, 1, W - 2, H - 2, '#6a4428');

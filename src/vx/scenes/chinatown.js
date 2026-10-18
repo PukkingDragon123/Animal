@@ -12,7 +12,7 @@ import { Dress } from '../dress.js';
 import { SPR } from '../cards.js';
 import { skyline } from '../stage.js';
 import { decal, loadSignFonts } from '../decals.js';
-import { bx, C, LIT, one, many, pagodaRoof, paifang, lion, pavilion, ctLamp, win, railing, balcony, loggia, fireEscape, awning, tileEave, shutter, waterTank, condenser, roofHut, chessTable, newsBoxes, trashCan, bench, van, shade, brackets, ell, cylY, cableCar, lanternCards, P, SIGN_TEXT } from './chinatown_parts.js';
+import { bx, C, LIT, one, many, pagodaRoof, paifang, lion, pavilion, ctLamp, win, railing, balcony, loggia, fireEscape, awning, tileEave, shutter, waterTank, condenser, roofHut, chessTable, newsBoxes, trashCan, bench, van, shade, brackets, ell, cylY, cableCar, lanternCards, bike, handTruck, cart, P, SIGN_TEXT } from './chinatown_parts.js';
 
 // ---- layout (voxels, 8 per metre). x runs along Grant Avenue, z toward the camera.
 const SY = 8, WY = 9, Y0 = 10, PY = 17;          // asphalt top, sidewalk top, ground floor, plaza top
@@ -24,12 +24,20 @@ const fl = (n) => Y0 + GH + (n - 1) * FH;         // bottom of upper floor n (1-
 const roofY = (n) => fl(n + 1) - 1;               // roof deck layer of a building with n upper floors
 
 export const view = { target: [32, 8, 22], dist: 70, yaw: 0, pitch: 30 };
+// cutscene cameras (metres; yaw 0 = camera on the +z side looking north)
 export const shots = [
-  { name: 'hub', ...view },
-  { name: 'gate', target: [5.5, 6, 20.5], dist: 26, yaw: 62, pitch: 16 },
-  { name: 'street', target: [30, 3.5, 19.5], dist: 34, yaw: 72, pitch: 14 },
-  { name: 'square', target: [30, 2.5, 36], dist: 30, yaw: -18, pitch: 38 },
-  { name: 'bakery', target: [17.7, 3, 14.5], dist: 11, yaw: 4, pitch: 10 },
+  { name: 'hub', ...view },                                                   // the whole diorama: street, gate, tower, square
+  { name: 'gate', target: [6, 5.5, 20.5], dist: 22, yaw: -72, pitch: 9 },       // the Dragon Gate from outside, Grant Avenue through the arch
+  { name: 'gateInside', target: [5, 6, 20.5], dist: 26, yaw: 62, pitch: 16 },   // the gate from inside Chinatown: plaque, roofs, a lion
+  { name: 'street', target: [30, 4, 19], dist: 34, yaw: 72, pitch: 14 },        // down Grant Avenue under the lanterns toward the gate
+  { name: 'square', target: [30, 2.5, 36], dist: 30, yaw: -18, pitch: 38 },     // Portsmouth Square and its pavilion
+  { name: 'chess', target: [45, 3, 38], dist: 11, yaw: 10, pitch: 40 },         // the xiangqi tables
+  { name: 'bakery', target: [17.7, 3, 14.5], dist: 11, yaw: 4, pitch: 10 },     // Lucky Moon Bakery: egg tarts in the window
+  { name: 'shops', target: [24, 8, 14], dist: 22, yaw: 0, pitch: 8 },           // herbalist, jeweller and teahouse fronts
+  { name: 'temple', target: [31, 12, 13], dist: 16, yaw: 0, pitch: 6 },         // the temple balcony atop the teahouse
+  { name: 'alley', target: [36.5, 6, 12], dist: 18, yaw: -22, pitch: 12 },      // Fortune Cookie alley: mural, laundry, lanterns
+  { name: 'tower', target: [54, 18, 12], dist: 26, yaw: -28, pitch: 14 },       // the pagoda corner tower
+  { name: 'cableCar', target: [57, 4, 31], dist: 18, yaw: 35, pitch: 10 },      // the California Street cable car
 ];
 
 export async function prepare() { await loadSignFonts(SIGN_TEXT); }
@@ -66,7 +74,7 @@ function foldPalette(v, max = 255) {
   for (const i of live) { map[i] = pal.length; pal.push(v.pal[i]); flag.push(v.flag[i]); }
   for (let i = 1; i < n; i++) if (cnt[i] >= 0) map[i] = map[root(i)];
   const d8 = new Uint8Array(d.length); for (let i = 0; i < d.length; i++) d8[i] = map[d[i]];
-  const idx = new Map(); for (const [key, i] of v.idx) idx.set(key, map[root(i)]);
+  const idx = new Map(); for (const [key, i] of v.idx) if (map[root(i)]) idx.set(key, map[root(i)]);
   Object.assign(v, { d: d8, pal, flag, idx }); delete v.c;
   return { colours: n - 1, kept: live.length };
 }
@@ -387,6 +395,7 @@ export function build(o = {}) {
     for (const x of [301, 346]) B(x, WY + 1, ZF + 15, x, sf.sy0 - 2, ZF + 15, one(k, '#2a2a2e'));
     dS(302, sf.sy0 - 1, 345, sf.sy1 - 1, ZF + 16, P.board({ cjk: '旭日生果', en: 'SUNRISE PRODUCE', bg: '#2e7a4a', bg2: '#348452', text: '#fff2c0', frame: '#f0d070' }), { ppm: 48 });
     for (let f = 1; f <= 2; f++) for (const x of [304, 317, 330]) win(k, { x0: x, x1: x + 9, y0: fl(f) + 5, y1: fl(f) + 19, zf: ZF, night, frame: '#2e7a4a', trim: '#f2f0ea', head: 'hood', ac: (f + x) % 3 === 0 ? (x === 330 ? -1 : 1) : 0 });
+    for (const x of [304, 330]) { B(x, fl(1) + 1, ZF + 1, x + 9, fl(1) + 3, ZF + 2, one(k, '#2e7a4a')); dr.tufts(x + 1, ZF + 1, x + 8, ZF + 2, 4, [...SPR.flowers, ...SPR.fern], x, { scale: 0.75 }); }
     B(340, fl(1) + 3, ZF + 1, 346, fl(2) + 12, ZF + 2, one(k, '#c8302c'));
     dS(340, fl(1) + 3, 346, fl(2) + 12, ZF + 2, P.vboard({ cjk: '新鮮生果', bg: '#c8302c', col: '#fff0c0', frame: '#f0d070' }), { ppm: 48 });
     waterTank(k, 316, yr + 1, 72, { r: 6, h: 11, leg: 6 }); condenser(k, 334, yr + 1, 62);
@@ -543,10 +552,13 @@ export function build(o = {}) {
   const planter = (x0, z0, x1, z1) => { B(x0, PY + 1, z0, x1, PY + 4, z1, (x, y, z) => (y === PY + 4 ? GRAN[3] : GRAN[(x + z) % 4])); B(x0 + 1, PY + 4, z0 + 1, x1 - 1, PY + 4, z1 - 1, 'dirt'); dr.tufts(x0 + 2, z0 + 2, x1 - 2, z1 - 2, Math.round((x1 - x0) * (z1 - z0) / 30), [...SPR.fern, ...SPR.grass, ...SPR.flowers], x0 + z0, { scale: 0.9 }); };
   for (const [x, z, s] of [[40, 252, 1], [150, 250, 2], [322, 250, 3], [420, 262, 4]]) { planter(x - 10, z - 8, x + 10, z + 8); dr.tree(x, PY + 5, z, 'ginkgo', s, { h: 30, r: 18 }); }
   for (const [x, z, kind, s] of [[40, 330, 'leaf', 11], [96, 352, 'ginkgo', 12], [340, 366, 'leaf', 13], [396, 368, 'ginkgo', 14]]) dr.tree(x, PY + 1, z, kind, s, kind === 'leaf' ? { h: 34, r: 22 } : { h: 30, r: 18 });
-  const boards = [];
-  for (const [x, z] of [[334, 288], [366, 294], [346, 318], [378, 322]]) boards.push(chessTable(k, x, PY + 1, z));
+  for (const [x, z] of [[334, 288], [366, 294], [346, 318], [378, 322]]) { chessTable(k, x, PY + 1, z); dU(x - 3, z - 3, x + 3, z + 3, PY + 6, P.xiangqi(), { ppm: 48 }); }
   for (const [x, z, len] of [[178, 272, 18], [276, 272, 18], [150, 310, 16], [306, 312, 16], [196, 346, 18], [258, 346, 18]]) bench(k, x, PY + 1, z, len);
   for (const [x, z] of [[132, 280], [300, 262], [414, 300]]) trashCan(k, x, PY + 1, z);
+  // an egg-waffle cart under a striped umbrella; a bench and a bin on California Street
+  const ct = cart(k, 110, PY + 1, 262, {});
+  dS(ct.sign[0], ct.sign[1], ct.sign[2], ct.sign[3], ct.sign[4], P.cartSign(), { ppm: 48 });
+  bench(k, 452, Y0, 300, 16, {}); trashCan(k, 458, Y0, 320);
   // notice board on the square, facing the camera
   B(150, PY + 1, 236, 151, PY + 22, 237, one(k, '#3a2a22')); B(186, PY + 1, 236, 187, PY + 22, 237, one(k, '#3a2a22'));
   B(150, PY + 8, 236, 187, PY + 22, 236, one(k, '#6a4a32'));
@@ -585,6 +597,7 @@ export function build(o = {}) {
   B(126, Y0, 128, 133, Y0 + 9, 131, (x, y, z) => (y === Y0 + 9 ? one(k, '#3e5a4a') : one(k, '#4a6a58')));
   dS(126, Y0 + 1, 133, Y0 + 9, 131, P.league(), { ppm: 48 });
   dE(128, Y0 + 1, 131, Y0 + 8, 133, P.concert(), { ppm: 48 });
+  bike(k, 244, Y0, 206, '#2a8a8a'); bike(k, 404, Y0, 127, '#c8a030'); handTruck(k, 349, Y0, 121);
   // cardboard boxes stacked by the fruit stand and the gift shop
   for (const [x, z, h] of [[346, 114, 6], [346, 119, 4], [389, 114, 5]]) B(x, Y0, z, x + 4, Y0 + h - 1, z + 4, (xx, y, zz) => (y === Y0 + h - 1 || xx === x + 2 ? one(k, '#b88a58') : one(k, '#c8a070')));
   // rooftop clutter: satellite dishes and antennas
@@ -635,7 +648,6 @@ export function build(o = {}) {
       dr.build(st);
       for (const d of D) decal(st, d);
       for (const [x, y, z, col, pow, dist] of glowLights) st.lamp(x, y, z, col, pow, dist);
-      for (const b of boards) decal(st, { x: b[0] / 8, y: b[1] / 8, z: (b[2] + 3.5) / 8, w: 7 / 8, h: 7 / 8, face: 'up', paint: P.xiangqi(), ppm: 48 });
     },
   };
 }
