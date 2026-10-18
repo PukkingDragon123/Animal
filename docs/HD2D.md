@@ -1,26 +1,26 @@
 # Tokonmon — HD-2D edition (how it fits together)
 
-Open `index.html` (the old voxel build is kept as `legacy.html`). Add `?flat=1` to skip the 3D diorama, `?ss=2` for cheaper creature rendering on slow GPUs.
+Open `index.html`. Add `?flat=1` to skip the 3D diorama.
 
-## Creatures: 3D models rendered as pixel art (`src/px/sdf.js`)
-- **Models.** Each Tokonmon is a smooth 3D model built from signed-distance shapes (ellipsoids, round cones, tori, boxes) hung on named bones.
-  - Files: `src/data/sprites/sdf_*.js`.
-  - Format: see the header of `sdf.js`; the starters are the reference examples.
-- **Rendering.** The GPU raymarches the model with 3×3 supersampling. The G-buffer is then shaded like hand-made pixel art:
-  - hue-shifted bands with light from the top-left;
-  - self-shadows and ambient occlusion;
-  - rim light and gloss;
-  - heat-ramped fire for emissive materials;
-  - painted eyes and markings that wrap the surface;
-  - selective outlines;
-  - a transparent "glass" pass for things like Bubblion's water ball.
-- **Animation.** Every facing direction and every clip comes from the same model: idle, walk, run, attack, breath, dash, throw, cast, hurt, faint, buff, happy, sleep, eat.
-  - Poses animate parts by name: `body`, `head`, `leg*`, `wing*`, `tail*`, `crest/hood/tuft…`, `jaw`.
-  - FX parts are switched on by show flags: `fire*`, `heart*`, `zz*`, `aura*`, `dashfire*`, `steam*`.
-- **Previews:**
-  - `tools/sdf.html?mod=…&id=…&dirs=1` shows the 8 facings.
-  - `tools/sheet.html?id=…` shows a reference-style character sheet.
-- **In game.** `src/px/game/mon.js` renders frames lazily per (clip, facing, frame) with a per-frame budget, animated on twos.
+## Creatures: hand-pixel art (`src/px/pixmon.js`)
+- **Designs.** Each Tokonmon is a `draw(P, m)` function in `src/data/sprites/pix_*.js`. It paints the creature from parts:
+  - ellipses, inflated polygons, tapered tubes and flame tongues;
+  - hand-placed pixel `stamp`s for eyes, mouths, highlights and markings.
+
+  The starters (`pix_starters.js`) are the reference examples.
+- **Shading.** Every part is cel-shaded in four hand-picked, hue-shifted tones from its material ramp, with light from the upper left:
+  - round parts shade like spheres;
+  - any other shape is inflated from its silhouette;
+  - flames and glows are shaded by distance from their edge (hot core, cooler rim).
+- **Line work.** A part drawn in front of another part gets a contour line. The silhouette gets a selective outline: dark at the bottom right, softer on the lit side. Lone pixels in the shading are cleaned up.
+- **Animation.** `motion(clip, frame)` turns each clip into whole-pixel pose values (bob, squash, lean, eyes, mouth, arm pose, steps, effects) that the design reads:
+  - clips: idle, walk, run, attack, breath, dash, throw, cast, hurt, faint, buff, happy, sleep, eat;
+  - shared effects live in `FX`: element breath, sparkles, Zzz, steam, hearts, hits, auras, dash lines.
+- **Views.** A 3/4 front view and a back view are drawn facing left and mirrored for the other side.
+  - Scale ≥ 0.9 doubles the pixels.
+  - Small scales give a head-and-shoulders icon crop (pixel art is never shrunk).
+- **Previews.** `tools/pix.html?mod=pix_starters&id=chilichick&clips=idle,walk&views=front,back&zoom=6`.
+- **In game.** `src/px/game/mon.js` renders frames lazily per (clip, facing, frame), animated on twos.
 
 ## Places: painted pixel art (`src/px/paint.js`, `src/px/props.js`, `src/px/scene2d.js`)
 - Scenes are painted procedurally in the Eastward style:

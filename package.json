@@ -1,16 +1,16 @@
 {
-  "name": "elemon",
+  "name": "tokonmon",
   "version": "1.0.0",
-  "description": "Elemon \u2014 Osaka 2050: a 3D voxel creature-battle RPG with real-time tactical combat (mobile-first, no build step)",
+  "description": "Tokonmon — Osaka 2050: a hand-pixeled HD-2D creature RPG with real-time tactical battles (no build step)",
   "type": "module",
-  "main": "src/main.js",
+  "main": "index.html",
   "directories": {
     "test": "tests"
   },
   "scripts": {
     "test": "node tests/battle.test.js && node tests/game.test.js && node tests/content.test.js",
     "start": "python3 -m http.server 8080",
-    "play": "node tools/play.mjs play-out 600 \"auto=new&q=low&renderEvery=1500\""
+    "playtest": "node tools/playtest.mjs"
   },
   "repository": {
     "type": "git",
