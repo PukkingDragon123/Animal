@@ -1,6 +1,6 @@
 // Chilichick — the goofy fire starter (a Red Hot Chili Peppers homage). A round
 // little chick whose head is bigger than its body: a cream heart-shaped face with
-// small dot eyes, a wide open grin with its tongue lolling out from the heat, two
+// round goofy eyes, a wide open grin with its tongue lolling out from the heat, two
 // jiggly wattles, a floppy chili pepper for a comb whose tip burns like a fuse, a
 // shaggy fringe of crest feathers (the frontman's hair), stubby wings, giant clown
 // feet and downy legs striped like tube socks. It hugs a squeeze bottle of hot sauce
@@ -49,12 +49,6 @@ const faceP = (p, w, h, f) => {
   const lobes = [[X(-2.9), Y(19.3)], [X(2.9), Y(19.3)]], r = 3.3 * S, low = [X(0), Y(15.8)], lrx = 5.3 * S, lry = 3.7 * S;
   const inside = (x, y) => x >= 0 && y >= 0 && x < w && y < h && (lobes.some(([cx, cy]) => (x + 0.5 - cx) ** 2 + (y + 0.5 - cy) ** 2 < r * r) || ((x + 0.5 - low[0]) / lrx) ** 2 + ((y + 0.5 - low[1]) / lry) ** 2 < 1);
   region(p, w, h, inside, (x, y) => ramp([C.maskHi, C.mask, C.maskLo], y / h, x, y), C.maskLine);
-  // freckles of heat and rosy cheeks with hatch marks
-  for (const s of [-1, 1]) {
-    const cx = X(s * 4.6), cy = Y(16.2), rx = 1.5 * S, ry = 0.8 * S;
-    region(p, w, h, (x, y) => ((x + 0.5 - cx) / rx) ** 2 + ((y + 0.5 - cy) / ry) ** 2 < 1, () => C.blush);
-    for (let k = -1; k <= 1; k++) { const x = Math.round(cx + k * 1.6); p.px(x, Math.round(cy) - 1, C.blushHi).px(x - 1, Math.round(cy), C.blushHi); }
-  }
 };
 // the shaggy crest fringe: layered feather locks falling over the brow
 const fringeP = (p, w, h, face) => {
@@ -144,20 +138,46 @@ const flames = (f, k = 1) => (p, w, h) => {
     }
   });
 };
-// the hot flush: two burning cheeks with hatching (shown when the sauce kicks in)
-const flushP = (p, w, h) => {
-  for (const cxF of [0.17, 0.83]) {
-    const cx = cxF * w, cy = h * 0.5, rx = w * 0.15, ry = h * 0.48;
-    region(p, w, h, (x, y) => ((x + 0.5 - cx) / rx) ** 2 + ((y + 0.5 - cy) / ry) ** 2 < 1, (x, y) => ((x + y) % 4 === 0 ? '#c81428' : '#ff3a3a'));
-  }
-  for (let x = Math.round(w * 0.36); x < w * 0.64; x += 3) for (let y = 1; y < h - 1; y++) if ((x + y) % 2) p.px(x, y, '#ff4a4a');
-};
 // a snot bubble for the sleep loop
 const bubbleP = (p, w, h) => {
   const cx = w / 2, cy = h / 2, r = Math.min(w, h) / 2;
   region(p, w, h, (x, y) => (x + 0.5 - cx) ** 2 + (y + 0.5 - cy) ** 2 < r * r, (x, y) => ((x + 0.5 - cx) ** 2 + (y + 0.5 - cy) ** 2 > (r - 1.5) ** 2 ? '#8ad0f0' : '#d8f6ff'), '#4a9ac8');
   p.px(Math.round(cx - r * 0.45), Math.round(cy - r * 0.5), '#ffffff').px(Math.round(cx - r * 0.25), Math.round(cy - r * 0.6), '#ffffff');
 };
+
+// drip accessories: a gold chain with a chili pendant, and a flame-painted slap bass on its back
+const goldP = (p, w, h, face) => { gradient(['#fff4b0', '#ffd23a', '#d89a1e', '#8a5a10'])(p, w, h, face); if (face !== 'up' && face !== 'down') for (let x = 0; x < w; x++) if (x % 2) p.px(x, Math.floor(h / 2), '#8a5a10'); };
+const strapP = (p, w, h, face) => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, y === 0 ? '#6a4a30' : '#3a2418'); if (face === 'south') for (let x = 1; x < w; x += 3) p.px(x, Math.floor(h / 2), '#e8e8f0'); };
+const bassBody = (p, w, h, face) => {
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const v = (h - 1 - y) / h, flame = v < 0.75 * (0.65 + 0.35 * Math.sin(x * 1.3 + (x % 3)));
+    p.px(x, y, !flame ? '#1c1418' : v < 0.25 ? '#ffd040' : v < 0.5 ? '#ff8a2a' : '#e8302a');
+  }
+  if (face === 'south' || face === 'north') {
+    const cx = Math.floor(w / 2);
+    p.rect(cx - 3, Math.floor(h * 0.3), 7, 2, '#141014').rect(cx - 3, Math.floor(h * 0.55), 7, 2, '#141014');          // pickups
+    for (const dx of [-2, 0, 2]) { p.px(cx + dx, Math.floor(h * 0.3), '#c8c8d0'); p.px(cx + dx, Math.floor(h * 0.55), '#c8c8d0'); }
+    p.rect(cx - 3, Math.floor(h * 0.8), 7, 1, '#d8d8e0');                                                                  // bridge
+    for (const dx of [-2, -1, 1, 2]) for (let y = 0; y < Math.floor(h * 0.8); y++) if (y % 4) p.px(cx + dx, y, '#e8e4dc');  // strings
+  }
+};
+const fretP = (p, w, h, face) => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, face === 'south' || face === 'north' ? (y % 3 === 0 ? '#d8d0c0' : '#7a4a22') : '#5a3418'); if (face === 'south' || face === 'north') for (let y = 4; y < h; y += 6) p.px(Math.floor(w / 2), y + 1, '#f4f0e8'); };
+const headstockP = (p, w, h, face) => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, '#1c1418'); if (face === 'south' || face === 'north') for (let y = 1; y < h; y += 2) { p.px(0, y, '#d8d8e0'); p.px(w - 1, y, '#d8d8e0'); } };
+
+const leather = (p, w, h, face) => {
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, face === 'up' ? '#4a4452' : ramp(['#3e3846', '#26222a', '#18161c'], y / Math.max(1, h - 1), x, y));
+  if (face !== 'up' && face !== 'down') { for (let x = 1; x < w; x += 3) p.px(x, 1, '#e8e8f0'); if (h > 6) for (let y = 3; y < h - 1; y += 3) p.px(w - 2, y, '#c8c8d4'); }
+};
+const jacketBack = (p, w, h, face) => {
+  leather(p, w, h, face);
+  if (face !== 'north') return;
+  const cx = w / 2, cy = h * 0.45;                       // a flame patch with a chili
+  region(p, w, h, (x, y) => ((x + 0.5 - cx) / (w * 0.26)) ** 2 + ((y + 0.5 - cy) / (h * 0.3)) ** 2 < 1, (x, y) => ((y + 0.5) < cy - h * 0.05 ? '#ff8a2a' : '#e8302a'), '#ffd040');
+  for (let i = -2; i <= 2; i++) p.px(Math.round(cx + i), Math.round(cy + (i > 0 ? 1 : 0)), '#7a0a14');
+  p.px(Math.round(cx - 3), Math.round(cy - 1), '#2e8a3a');
+};
+const lensP = (p, w, h, face) => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const edge = y === 0 || y === h - 1 || x === 0 || x === w - 1; p.px(x, y, face !== 'south' || edge ? '#18161c' : ramp(['#ff8a3a', '#e8302a', '#8a1030', '#3a0a20'], y / (h - 1), x, y)); } if (face === 'south') { p.px(2, 2, '#ffffff').px(3, 2, '#ffd0c0').px(2, 3, '#ffd0c0').px(w - 4, h - 3, '#ffe0b0'); } };
+const beadsP = (p, w, h) => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const k = x % 4; p.px(x, y, k === 0 ? '#2e8a3a' : k === 3 ? '#8a0a1c' : y === 0 ? '#ff6a5a' : '#d8142a'); } };
 
 // ---------------------------------------------------------------- the model
 const P = (o, s, tex, x = {}) => ({ o, s, tex, ...x });
@@ -171,13 +191,32 @@ const FOOT = [
   P([-3.5, 0, -2.6], [1.2, 0.9, 1.4], toeP),
 ];
 const LEG = [P([-4.1, 0.9, -0.8], [2.4, 3.8, 2.4], sockP), P([-4.3, 3.4, -1.0], [2.8, 0.8, 2.8], cuffP)];
+const WING_ACC = [
+  P([-8.1, 9.4, -2.7], [2.2, 2.8, 6.4], leather, { id: 'acc-jacket', hide: true }),
+  P([-8.05, 7.0, -2.65], [2.1, 0.9, 6.3], beadsP, { id: 'acc-bands', hide: true }),
+];
 const WING = [
   P([-7.8, 6.6, -2.4], [1.6, 5.4, 5.8], wingP),
   P([-7.7, 5.4, -1.8], [1.4, 1.4, 1.5], fingerP), P([-7.7, 5.1, -0.2], [1.4, 1.6, 1.5], fingerP), P([-7.7, 5.4, 1.4], [1.4, 1.4, 1.5], fingerP),
 ];
 const ABC = ['a', 'b', 'c'];
-// goofy Fuecoco-style eyes: round whites with big black pupils
-const EYES = eyeRig({ style: 'gen9', shape: 'round', sclera: true, iris: '#1a0810', irisLo: '#4a1c22', irisSize: 0.31, pupil: 'none', at: [-3.0, 19.5, 6.24], size: [10 / 3, 11 / 3] });
+const JACKET = [
+  P([-6.0, 5.0, -6.3], [12.0, 8.2, 0.5], jacketBack, { id: 'acc-jacket', hide: true, solo: true }),
+  P([-6.9, 5.2, -4.8], [0.5, 7.6, 9.4], leather, { id: 'acc-jacket', hide: true }),
+  P([-6.2, 4.8, 4.9], [1.9, 8.2, 0.9], leather, { id: 'acc-jacket', hide: true }),
+  P([-6.6, 12.0, -3.4], [3.0, 1.2, 6.8], leather, { id: 'acc-jacket', hide: true }),
+];
+const CH = P([-4.4, 11.0, 5.62], [3.9, 0.6, 0.5], goldP, { pivot: [-4.4, 11.3, 5.87], rot: [0, 0, -24], id: 'acc-chain', hide: true });
+// goofy hand-pixelled eyes (Fuecoco-like): round whites with a big black pupil
+const EYES = eyeRig({ style: 'pix', chunk: 2, at: [-3.1, 19.6, 6.24], line: '#2a0e10', map: { open: [
+  '..lll..',
+  '.lwwwl.',
+  'lwhkkwl',
+  'lwkkkwl',
+  'lwkkkwl',
+  '.lwwsl.',
+  '..lll..',
+] } });
 export const def = {
   name: 'chilichick', ppu: 3, scale: 0.42, outline: { color: '#1c0a0e', px: 1.4 },
   bones: [
@@ -193,6 +232,22 @@ export const def = {
       P([-4.6, 4.0, -4.2], [9.2, 0.6, 8.4], shade(C.redLo)),
       P([-4.6, 6.2, -5.8], [9.2, 6.0, 0.8], back),
       P([-5.0, 13.2, -4.2], [10.0, 0.6, 8.4], body),
+      // dripped: a gold rope chain with a chili pendant
+      ...[CH, L(CH)],
+      P([-0.4, 9.7, 5.62], [0.8, 0.8, 0.5], goldP, { id: 'acc-chain', hide: true }),
+      P([-0.7, 7.4, 5.66], [1.4, 2.4, 0.6], chiliP, { id: 'acc-chain', hide: true }),
+      P([-0.8, 9.4, 5.6], [1.6, 0.5, 0.7], calyxP, { id: 'acc-chain', hide: true }),
+      // ultra dripped: the bass strap across the chest
+      P([-5.6, 11.2, 5.66], [11.8, 0.7, 0.35], strapP, { pivot: [-5.6, 11.55, 5.84], rot: [0, 0, -28], id: 'acc-bass', hide: true }),
+      // dripped (or): a black punk jacket, studded, with a flame patch on the back
+      ...JACKET, ...JACKET.filter((c) => !c.solo).map(L),
+    ] },
+    { name: 'bass', parent: 'body', pivot: [0, 8.2, -6.4], rot: [0, 0, -50], cubes: [
+      P([-2.8, 5.4, -7.2], [5.6, 5.6, 1.2], bassBody, { id: 'acc-bass', hide: true }),
+      P([-3.4, 10.2, -7.1], [1.4, 2.0, 1.0], bassBody, { id: 'acc-bass', hide: true }),
+      P([1.8, 10.4, -7.1], [1.2, 2.6, 1.0], bassBody, { id: 'acc-bass', hide: true }),
+      P([-0.5, 11.0, -7.0], [1.0, 9.0, 0.8], fretP, { id: 'acc-bass', hide: true }),
+      P([-0.8, 20.0, -7.05], [1.6, 2.4, 0.9], headstockP, { id: 'acc-bass', hide: true }),
     ] },
     { name: 'tail', parent: 'body', pivot: [0, 10.4, -5.6], cubes: [
       P([-1.2, 10.0, -7.2], [2.4, 6.0, 1.4], tailP, { pivot: [0, 10.4, -6.2], rot: [-38, 0, 0] }),
@@ -203,8 +258,8 @@ export const def = {
       P([0, 14.2, -12.0], [0, 3.6, 4.4], flames(f, 0.8), { plane: 'x', glow: true, id: 'tf-' + ABC[f], hide: f > 0 }),
       P([-2.2, 14.2, -9.8], [4.4, 3.6, 0], flames(f + 1, 0.8), { plane: 'z', glow: true, id: 'tf-' + ABC[f], hide: f > 0 }),
     ]) },
-    { name: 'wingR', parent: 'body', pivot: [-6.2, 11.8, 0.6], cubes: WING },
-    { name: 'wingL', parent: 'body', pivot: [6.2, 11.8, 0.6], cubes: WING.map(L) },
+    { name: 'wingR', parent: 'body', pivot: [-6.2, 11.8, 0.6], cubes: [...WING, ...WING_ACC] },
+    { name: 'wingL', parent: 'body', pivot: [6.2, 11.8, 0.6], cubes: [...WING, ...WING_ACC].map(L) },
     { name: 'bottle', parent: 'body', pivot: [-9.7, 7.95, 1.9], cubes: [
       P([-11.4, 2.6, 0.2], [3.4, 6.8, 3.4], bottleBody),
       P([-11.1, 9.4, 0.5], [2.8, 0.9, 2.8], shade('#c8242a')),
@@ -217,6 +272,12 @@ export const def = {
       P([-6.2, 24.0, -4.8], [12.4, 0.8, 10.2], headP),
       P([-6.2, 11.8, -4.6], [12.4, 0.6, 9.6], shade(C.red)),
       P([-6.0, 13.4, -6.4], [12.0, 9.6, 0.8], headP),
+      // rocker shades: two mirrored red lenses over the eyes
+      P([-5.8, 17.3, 6.42], [5.2, 4.6, 0.5], lensP, { id: 'acc-shades', hide: true }),
+      P([0.6, 17.3, 6.42], [5.2, 4.6, 0.5], lensP, { id: 'acc-shades', hide: true, mirror: true }),
+      P([-0.7, 20.6, 6.45], [1.4, 0.6, 0.4], shade('#18161c'), { id: 'acc-shades', hide: true }),
+      P([-7.3, 20.4, -3.0], [0.4, 0.6, 9.8], shade('#18161c'), { id: 'acc-shades', hide: true }),
+      P([6.9, 20.4, -3.0], [0.4, 0.6, 9.8], shade('#18161c'), { id: 'acc-shades', hide: true }),
       // sideburn tufts and a cowlick
       P([-8.8, 13.4, -0.2], [1.6, 2.6, 2.6], tuftP, { pivot: [-7.6, 15.8, 1.1], rot: [0, 0, -28] }),
       P([7.2, 13.4, -0.2], [1.6, 2.6, 2.6], tuftP, { pivot: [7.6, 15.8, 1.1], rot: [0, 0, 28], mirror: true }),
@@ -224,16 +285,20 @@ export const def = {
       // the beak: upper bill and a hooked tip
       P([-2.6, 15.6, 6.0], [5.2, 2.2, 2.4], beakTop),
       P([-1.8, 15.0, 8.0], [3.6, 2.4, 1.6], beakTip, { pivot: [0, 17.4, 8.0], rot: [24, 0, 0] }),
-      // the hot flush over the cheeks (expression)
-      P([-6.4, 15.0, 6.215], [12.8, 2.6, 0], flushP, { plane: 'z', id: 'flush', hide: true }),
     ] },
     ...EYES.bones,
     // the frontman's shaggy fringe: locks falling over the brow, swept to one side
     { name: 'fringe', parent: 'head', pivot: [0, 24.2, 5.4], cubes: [
       P([-6.8, 22.6, 5.6], [13.6, 1.8, 1.0], fringeP),
-      P([-6.6, 21.2, 6.0], [3.2, 2.6, 0.8], lockP, { pivot: [-5.0, 23.6, 6.4], rot: [0, 0, 8] }),
-      P([1.6, 21.0, 6.0], [3.6, 2.9, 0.8], lockP, { pivot: [3.4, 23.6, 6.4], rot: [0, 0, -14] }),
-      P([4.9, 20.6, 5.4], [2.4, 3.4, 0.8], lockP, { pivot: [6.1, 23.8, 5.8], rot: [0, 0, -20] }),
+      P([-5.6, 23.6, 4.2], [2.0, 3.0, 2.0], lockP, { pivot: [-4.6, 23.8, 5.2], rot: [-20, 0, 24] }),
+      P([-2.6, 23.8, 4.4], [2.0, 3.4, 2.0], lockP, { pivot: [-1.6, 24.0, 5.4], rot: [-24, 0, 8] }),
+      P([3.0, 23.6, 4.2], [2.0, 3.0, 2.0], lockP, { pivot: [4.0, 23.8, 5.2], rot: [-20, 0, -26] }),
+      // a crown of little chilies: a gold band round the top of the head with peppers standing on it
+      P([-6.6, 23.4, 5.7], [13.2, 1.4, 0.8], goldP, { id: 'acc-crown', hide: true }),
+      P([-6.6, 23.4, -6.3], [13.2, 1.4, 0.8], goldP, { id: 'acc-crown', hide: true }),
+      P([-7.2, 23.4, -6.3], [0.8, 1.4, 12.8], goldP, { id: 'acc-crown', hide: true }),
+      P([6.4, 23.4, -6.3], [0.8, 1.4, 12.8], goldP, { id: 'acc-crown', hide: true }),
+      ...[-5, -2.5, 0, 2.5, 5].map((x, i) => P([x - 0.6, 24.8, 5.8], [1.2, 2.8, 1.2], i % 2 ? goldP : chiliP, { id: 'acc-crown', hide: true, pivot: [x, 24.8, 6.4], rot: [-10, 0, (i - 2) * -10] })),
       P([-7.4, 18.0, -3.8], [1.0, 6.0, 8.4], lockP),
       P([6.4, 18.0, -3.8], [1.0, 6.0, 8.4], lockP, { mirror: true }),
       P([-6.4, 17.2, -6.8], [12.8, 6.6, 1.0], fringeP),
@@ -250,9 +315,9 @@ export const def = {
       P([-1.8, 24.0, -1.2], [4.0, 1.0, 3.6], calyxP),
       P([-3.0, 24.95, -2.6], [6.4, 0, 6.4], calyxStar, { plane: 'y' }),
     ] },
-    { name: 'chili1', parent: 'comb', pivot: [0.2, 25.0, 0.6], rot: [0, 0, -20], cubes: [P([-1.4, 24.8, -1.0], [3.2, 4.4, 3.2], chiliP)] },
-    { name: 'chili2', parent: 'chili1', pivot: [0.2, 29.0, 0.6], rot: [0, 0, -28], cubes: [P([-1.1, 28.8, -0.7], [2.6, 3.8, 2.6], chiliP)] },
-    { name: 'chili3', parent: 'chili2', pivot: [0.2, 32.4, 0.6], rot: [0, 0, -34], cubes: [P([-0.8, 32.2, -0.4], [2.0, 3.0, 2.0], chiliP)] },
+    { name: 'chili1', parent: 'comb', pivot: [0.2, 25.0, 0.6], rot: [0, 0, -20], cubes: [P([-1.6, 24.8, -1.2], [3.6, 4.4, 3.6], chiliP)] },
+    { name: 'chili2', parent: 'chili1', pivot: [0.2, 29.0, 0.6], rot: [0, 0, -28], cubes: [P([-1.25, 28.8, -0.85], [2.9, 3.8, 2.9], chiliP)] },
+    { name: 'chili3', parent: 'chili2', pivot: [0.2, 32.4, 0.6], rot: [0, 0, -34], cubes: [P([-0.9, 32.2, -0.5], [2.2, 3.0, 2.2], chiliP)] },
     { name: 'chili4', parent: 'chili3', pivot: [0.2, 35.0, 0.6], rot: [0, 0, -30], cubes: [P([-0.45, 34.8, -0.05], [1.3, 2.0, 1.3], chiliTip)] },
     { name: 'fuse', parent: 'chili4', pivot: [0.2, 36.6, 0.6], rot: [0, 0, 112], cubes: [
       ...[0, 1, 2].flatMap((f) => [
@@ -264,6 +329,12 @@ export const def = {
         P([-1.8, 36.0, 0.6], [4.0, 2.6, 0], flames(f + 8, 0.6), { plane: 'z', glow: true, id: 'fl-low' + f, hide: true }),
       ]),
     ] },
+  ],
+  // appearance tiers: normal wears one of the first list, dripped adds the second, ultra dripped the third
+  drip: [
+    [{ id: 'acc-shades', name: 'Rocker shades' }, { id: 'acc-bands', name: 'Chili bracelets' }],
+    [{ id: 'acc-jacket', name: 'Punk jacket' }, { id: 'acc-chain', name: 'Chili-pendant chain' }],
+    [{ id: 'acc-bass', name: 'Flame slap bass' }, { id: 'acc-crown', name: 'Chili crown' }],
   ],
   // where bought gear sits (model units): hats go beside the chili
   attach: {
@@ -329,11 +400,11 @@ export const anim = {
   blink: { slot: 'eyes', closed: 'closed', every: [2.0, 4.6], dur: 0.12 },
   look: { bone: 'head', yaw: 26, pitch: 12, speed: 5 },
   springs: [
-    { bone: 'chili1', tip: [0, 4.4, 0], k: 150, d: 8, gain: 0.8, max: 16, axes: [1, 0.3, 1] },
-    { bone: 'chili2', tip: [0, 3.8, 0], k: 120, d: 7, gain: 1.0, max: 22, axes: [1, 0.3, 1] },
-    { bone: 'chili3', tip: [0, 3.0, 0], k: 100, d: 6, gain: 1.1, max: 26, axes: [1, 0.3, 1] },
-    { bone: 'chili4', tip: [0, 2.0, 0], k: 90, d: 6, gain: 1.2, max: 28, axes: [1, 0.3, 1] },
-    { bone: 'fuse', tip: [0, 3, 0], k: 140, d: 8, gain: 0.8, max: 20 },
+    { bone: 'chili1', tip: [0, 4.4, 0], k: 170, d: 9, gain: 0.6, max: 8, axes: [1, 0.3, 1] },
+    { bone: 'chili2', tip: [0, 3.8, 0], k: 150, d: 8, gain: 0.7, max: 10, axes: [1, 0.3, 1] },
+    { bone: 'chili3', tip: [0, 3.0, 0], k: 130, d: 7, gain: 0.8, max: 12, axes: [1, 0.3, 1] },
+    { bone: 'chili4', tip: [0, 2.0, 0], k: 120, d: 7, gain: 0.8, max: 12, axes: [1, 0.3, 1] },
+    { bone: 'fuse', tip: [0, 3, 0], k: 160, d: 8, gain: 0.5, max: 8 },
     { bone: 'fringe', tip: [0, -2, 1], k: 200, d: 10, gain: 0.6, max: 10, axes: [1, 0, 1] },
     { bone: 'tongue', tip: [0, 0, 2.0], k: 110, d: 6, gain: 1.3, max: 35 },
     { bone: 'tongue2', tip: [0, 0, 1.7], k: 90, d: 5, gain: 1.5, max: 40 },
@@ -346,7 +417,6 @@ export const anim = {
     eyes: EYES.slot,
     flame: { default: 'a', states: { a: ['fl-a'], b: ['fl-b'], c: ['fl-c'], low0: ['fl-low0'], low1: ['fl-low1'], off: [] } },
     tailfire: { default: 'a', states: { a: ['tf-a'], b: ['tf-b'], c: ['tf-c'], off: [] } },
-    flush: { default: 'off', states: { off: [], hot: ['flush'] } },
     snot: { default: 'off', states: { off: [], on: ['snot'] } },
   },
   fidget: { every: [4, 8], clips: ['sip', 'hiccup', 'dance'] },
@@ -380,7 +450,6 @@ export const anim = {
       // a beat of nothing… then the heat arrives
       const boom = seg(t, 1.95, 2.02, E.out) * (1 - seg(t, 2.9, 3.3, E.inout)), pause = bump(t, 1.6, 1.98);
       eyeScale(P, 1 + 0.25 * pause, 1 + 0.35 * pause); brows(P, 0.9 * pause + 0.4 * boom, -12 * boom);
-      P.face('flush', t > 1.95 && t < 3.2 ? 'hot' : 'off');
       P.rot('jaw', 40 * boom + wave(t, 9) * 6 * boom).scl('fuse', 1 + 1.2 * boom);
       const run = seg(t, 2.05, 2.95, E.inout), hh = t > 2.05 && t < 2.95 ? Math.abs(Math.sin(((t - 2.05) * Math.PI) / 0.15)) * 1.6 : 0;
       P.rot('root', 0, 360 * run, 0).pos('root', 0, hh, 0).sq('body', wob(t, 1.97, 0.14, 3, 6));
@@ -444,7 +513,6 @@ export const anim = {
       P.rot('wingR', 0, 0, -35 * blast).rot('wingL', 0, 0, 35 * blast + wave(t, 14) * 6 * blast).scl('fuse', 1 + 1.6 * blast);
       brows(P, 0.7 * puff - 0.2 * blast, -14 * blast); eyeScale(P, 1 + 0.3 * puff);
       P.face('eyes', t < 0.45 ? 'closed' : puff > 0.2 ? 'shock' : blast > 0.2 ? 'angry' : t > 1.6 ? 'happy' : undefined);
-      P.face('flush', puff > 0.2 || blast > 0.2 ? 'hot' : 'off');
       if (t > 0.78 && t < 1.45) P.stream('breath', 'head', MOUTH, { rate: 140, dir: [0, 0.05, 1], spread: 0.16 });
       P.burst(1.55, 'smoke', 'head', MOUTH, { n: 6, dir: [0, 1, 0.4], speed: 0.7 }).burst(1.55, 'sweat', 'head', [-6.5, 22, 3], {});
     } },

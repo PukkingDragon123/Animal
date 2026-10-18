@@ -86,7 +86,7 @@ export class VxWorld {
   spot(name) { const s = this.loc && this.loc.spots && this.loc.spots[name]; return s || [this.cam.target.x, this.cam.target.z, 0]; }
   // ---- actors
   async addMon(id, species, at, o = {}) {
-    const def = await monDef(species), m = new Model(def), a = new Actor(this, id, m, 'mon');
+    const def = await monDef(species), m = new Model(def), a = new Actor(this, id, m, 'mon'); m.drip(o.drip || 1, o.look || 0);
     this.st.actors.add(m.group); this.actors.set(id, a);
     const [x, z, yaw] = typeof at === 'string' ? this.spot(at) : at; a.place(x, z, o.yaw ?? yaw ?? 0);
     if (o.clip) a.play(o.clip, { fade: 0 });

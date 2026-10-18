@@ -20,7 +20,7 @@ const st = new VxStage({ fov: num('fov', 30), shadowSize: 2048 });
 const fw = new Fine(128, 8, 128, 16), k = new Kit(fw);
 k.box(0, 0, 0, 127, 3, 127, 'grass', 'patch', { sc: 6 }); k.box(48, 3, 0, 80, 3, 127, 'gravel', 'patch', { sc: 3 });
 st.setSize(W, H); st.setWorld(fw); st.setMood(q.get('mood') || 'day');
-const m = new Model(mod.def); m.group.position.set(4, 0.25, 4); st.scene.add(m.group);
+const m = new Model(mod.def); m.group.position.set(4, 0.25, 4); st.scene.add(m.group); m.drip(num('drip', 1), (q.get('look') || '0').includes(',') ? q.get('look').split(',').map(Number) : num('look', 0));
 const an = new Animator(m), fx = new FX(st);
 const clip = q.get('clip') || 'idle';
 const yaw = num('yaw', 25), pitch = num('pitch', 12), dist = num('dist', 2.6), ty = num('ty', 0.42);

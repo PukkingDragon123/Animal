@@ -22,7 +22,7 @@ const fw = new Fine(160, 8, 96, 16), k = new Kit(fw);
 k.box(0, 0, 0, 159, 3, 95, 'sidewalk', 'patch', { sc: 6 });
 st.setSize(W, H); if (q.get('ink') !== '0') st.setStyle({ ink: true, toon: q.get('toon') !== '0', inkCrease: 0.03 }); st.setWorld(fw); st.setMood(q.get('mood') || 'golden');
 const gap = num('gap', 1.15), x0 = 5 - ((defs.length - 1) * gap) / 2, fx = new FX(st), ans = [];
-defs.forEach((d, i) => { const m = d.vox ? castVox(d.vox) : new Model(d); m.group.position.set(x0 + i * gap, 0.25, 3); st.scene.add(m.group); const a = new Animator(m); if (q.get('clip')) a.play(q.get('clip'), { fade: 0 }); ans.push(a); });
+defs.forEach((d, i) => { const m = d.vox ? castVox(d.vox) : new Model(d); m.group.position.set(x0 + i * gap, 0.25, 3); st.scene.add(m.group); if (m.drip) m.drip(+(q.get('drip') || 1)); const a = new Animator(m); if (q.get('clip')) a.play(q.get('clip'), { fade: 0 }); ans.push(a); });
 st.look([5, 0.25 + num('ty', 0.7), 3], num('dist', 7), num('yaw', 0), num('pitch', 8));
 const DT = 1 / 60; for (let i = 0; i < Math.round(num('t', 1) / DT); i++) { for (const a of ans) a.update(DT, { fx }); fx.update(DT); st.time += DT; }
 const cv = document.getElementById('c'); cv.width = W; cv.height = H;

@@ -217,6 +217,19 @@ export class Model {
     this.group.scale.setScalar(this.scale);
   }
   show(id, v = true) { for (const m of this.parts[id] || []) { m.visible = v; if (m.userData.hull) m.userData.hull.visible = v; } }
+  // appearance tier: 1 normal (one accessory), 2 dripped (two), 3 ultra dripped (three).
+  // Accessory cubes carry id 'drip2' / 'drip3' (and start hidden); 'drip1' is always worn.
+  // def.drip may list options per tier: [[{ id, name }, …], [...], [...]]; pick chooses one per tier
+  // (an array of indices, or a number seed), so two Tokonmon of a species can wear different gear.
+  drip(level = 1, pick = 0) {
+    const D = this.def.drip; this.dripLevel = level;
+    if (Array.isArray(D) && Array.isArray(D[0])) {
+      this.dripPick = D.map((opts, i) => (Array.isArray(pick) ? pick[i] || 0 : Math.floor(Math.abs(pick) / 7 ** i)) % opts.length);
+      D.forEach((opts, i) => opts.forEach((o, j) => this.show(o.id, i < level && j === this.dripPick[i])));
+      return this;
+    }
+    this.show('drip2', level >= 2); this.show('drip3', level >= 3); return this;
+  }
 }
 // outline hull: the cube itself, pushed outward in the vertex shader by a constant
 // number of screen pixels (so lines stay crisp at any distance), back faces only
