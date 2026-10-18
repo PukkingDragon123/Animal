@@ -387,8 +387,7 @@ function pose(d, clip, t) {
       B('body', { rx: -10 * k, ry: 14 * k, dy: 2 * Math.max(0, -k), sy: 1 - 0.04 * k });
       each(/^wing/, (n) => B(n, { rz: side(n) * (/R$/.test(n) ? 80 : 20) * Math.max(0, k), rx: /R$/.test(n) ? -60 * k : 0 }));
       B('head', { rx: -6 * k });
-      if (clip === 'throw' && t < 0.48) o.__show.add('chiliHand');
-      if (clip === 'throw' && t >= 0.48) { const u = (t - 0.48) / 0.52; o.__show.add('chiliFly'); B('chiliFly', { dz: 70 * u, dy: 14 * Math.sin(u * Math.PI), rx: 600 * u }); }
+      if (clip === 'throw' && t >= 0.48) { const u = (t - 0.48) / 0.52; o.__show.add('chiliFly'); o.__show.add('noHand'); B('chiliFly', { dz: 70 * u, dy: 14 * Math.sin(u * Math.PI), rx: 600 * u }); }
       o.__mouth = k < 0 ? 'open' : null; if (k < 0) o.__expr = 'fierce';
       break;
     }
@@ -446,8 +445,8 @@ function pose(d, clip, t) {
       const chew = t > 0.2 && t < 0.6 ? Math.abs(W(t * 7)) : 0;
       const gulp = kf([[0, 0], [0.6, 0], [0.64, 1], [0.7, 0], [1, 0]], t);
       const heat = kf([[0, 0], [0.66, 0], [0.74, 1], [1, 1]], t);
-      if (t < 0.17) o.__show.add('chiliHand');
-      else if (t < 0.6) { o.__show.add('chili'); const s = kf([[0.17, 1], [0.6, 0.15]], t); B('chili', { sz: s, rx: -6 * chew }); }
+      if (t >= 0.17) o.__show.add('noHand');                   // the held chili moves to the beak…
+      if (t >= 0.17 && t < 0.6) { o.__show.add('chili'); const s = kf([[0.17, 1], [0.6, 0.15]], t); B('chili', { sz: s, rx: -6 * chew }); }
       B('body', { sy: 1 - 0.03 * chew - 0.06 * gulp + 0.04 * heat * Math.abs(W(t * 10)), sx: 1 + 0.04 * gulp, dy: 2.5 * heat * Math.abs(W(t * 6)) });
       B('head', { rx: -8 * lift + 6 * chew - 8 * gulp + heat * 3 * W(t * 12), rz: heat * 4 * W(t * 9), dy: -1.5 * gulp });
       each(/^wing/, (n) => B(n, { rz: side(n) * (heat > 0.3 ? 70 * Math.abs(W(t * 8)) : /R$/.test(n) ? 50 * lift : 0), rx: /R$/.test(n) ? -50 * lift : 0 }));

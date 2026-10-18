@@ -29,145 +29,132 @@ const both = (p) => [p, mirror(p)];
 const paintOn = (on, extra = {}) => Object.assign({ paint: true, on }, extra);
 
 // ---------------------------------------------------------------- Chilichick (Pyro)
-// A fire chick that lives inside a hollowed-out chili pepper and wears it like a
-// parka hood: the green calyx frames its face like hood trim, the stem curls up
-// like an antenna and the pod's tip trails behind, burning like a fuse. Its eyes
-// are always watery (it can never stop eating chilis), its cheeks are flushed,
-// and when the heat gets too much it breathes it out as fire.
+// A tiny, round, chubby fire chick that never lets go of its chili pepper. It
+// hugs a big glossy chili in both wings, nibbles it constantly, cries from the
+// heat (its eyes are always watery) and breathes the heat back out as fire.
+// A little three-feather flame tuft on its head flickers when it gets fired up.
 {
-  const E = 6.9, EY = 46.2, EZ = 16.2;     // eye centre (x mirrored), eye height, surface depth
+  const E = 6.6, EY = 33.4, EZ = 15.2;       // eye centre (x mirrored), eye height, surface depth
   const eyeL = (x) => [
-    ['ell', [x, EY, EZ], [3.8, 5.3, 5], 'eye', paintOn(['head'])],
-    ['ell', [x + 0.2 * Math.sign(x), EY - 1.7, EZ + 0.5], [2.9, 3, 5], 'iris', paintOn(['head'])],
-    ['ell', [x, EY - 2.6, EZ + 0.6], [1.9, 1.4, 5], 'iris2', paintOn(['head'])],
-    ['ell', [x - 1.3, EY + 2.1, EZ + 1], [1.6, 1.8, 4], 'shine', paintOn(['head'])],
-    ['ell', [x + 1.4, EY - 2.5, EZ + 1], [0.8, 0.8, 4], 'shine', paintOn(['head'])],
+    ['ell', [x, EY, EZ], [3.5, 4.7, 5], 'eye', paintOn(['body'])],
+    ['ell', [x + 0.2 * Math.sign(x), EY - 1.5, EZ + 0.5], [2.6, 2.7, 5], 'iris', paintOn(['body'])],
+    ['ell', [x, EY - 2.4, EZ + 0.6], [1.7, 1.2, 5], 'iris2', paintOn(['body'])],
+    ['ell', [x - 1.2, EY + 1.9, EZ + 1], [1.5, 1.7, 4], 'shine', paintOn(['body'])],
+    ['ell', [x + 1.3, EY - 2.3, EZ + 1], [0.75, 0.75, 4], 'shine', paintOn(['body'])],
   ];
-  const lid = (x, rz, y = EY + 3.6) => ['ell', [x, y, EZ], [4.4, 2.4, 5], 'down', paintOn(['head'], { rot: [0, 0, rz] })];
-  const line = (x, y, rz, len = 3.2) => ['ell', [x, y, EZ + 0.4], [len, 0.75, 5], 'eye', paintOn(['head'], { rot: [0, 0, rz] })];
-  const flameGrad = (a, b) => ({ a, b, stops: [[0, 'down'], [0.45, 'down2'], [0.78, 'ember']] });
+  const lid = (x, rz, y = EY + 3.6) => ['ell', [x, y, EZ], [4.4, 2.4, 5], 'down', paintOn(['body'], { rot: [0, 0, rz] })];
+  const line = (x, y, rz, len = 3.2) => ['ell', [x, y, EZ + 0.4], [len, 0.75, 5], 'eye', paintOn(['body'], { rot: [0, 0, rz] })];
+  const flameGrad = (a, b) => ({ a, b, stops: [[0, 'down'], [0.4, 'down2'], [0.75, 'ember']] });
   const fireGrad = (a, b) => ({ a, b, stops: [[0, 'fCore'], [0.14, 'fY'], [0.42, 'fO'], [0.76, 'fR']] });
-  // five pointed sepals fanning back over the hood
-  const lobes = [18, 54, 90, 126, 162].map((a) => {
-    const r = a * Math.PI / 180, R = 16.2;
-    return ['cone', [Math.cos(r) * 14.2, 44.6 + Math.sin(r) * 14.2, 14.6], [Math.cos(r) * (R + 4.4), 44.6 + Math.sin(r) * (R + 4.4), 8.4], 2.6, 0.5, 'leaf', { k: 1.4 }];
-  });
+  // the chili it hugs: a fat glossy pod lying across its belly, calyx + curly stem on the right
+  const POD = [[-12.5, 9.6, 16.4, 1.5], [-8, 11.6, 19.6, 3.3], [-2, 13.6, 21, 4.3], [4.2, 15.6, 20.6, 4.1], [9.6, 17.6, 18.2, 3.2]];
   SPRITES.chilichick = {
-    id: 'chilichick', size: [96, 96], anchor: [48, 91], unit: 1, yaw: -24, pitch: 16, ink: '#33140e',
+    id: 'chilichick', size: [96, 96], anchor: [48, 91], unit: 1, yaw: -22, pitch: 16, ink: '#33140e',
     pal: {
-      down: '#ffc23a', down2: '#ff9a26', ember: '#ec4a28', belly: '#ffe8b0',
-      chili: { c: '#e5222c', gloss: true, ramp: ['#3c0a1e', '#7a1028', '#b0182a', '#e0262c', '#ff4c34', '#ffa080'] }, chiliIn: '#ffd7a0',
-      leaf: { c: '#4aa83a', ramp: ['#0f2a1e', '#1f5a2e', '#2e7f34', '#4aa83a', '#7cc94a', '#c4ec7a'] }, stem: { c: '#3a8a34', ramp: ['#0f2a1e', '#1f5a2e', '#2a7030', '#3a8a34', '#62ad40', '#a8dc6a'] },
+      down: '#ffc63e', down2: '#ff9c2a', ember: '#ec4a28', belly: '#fff0c4',
       beak: { c: '#ff8414', gloss: true }, beakD: '#cc5410', mouthIn: '#8c1c2a', tongue: '#ff6f86',
       eye: '#22100e', iris: '#7a2a1a', iris2: '#c0582a', shine: { c: '#ffffff', flat: true }, blush: '#ff8a80',
-      tear: { c: '#9fe8ff', gloss: true }, foot: '#d97a2c',
+      tear: { c: '#9fe8ff', gloss: true }, foot: '#e0782a',
+      chiliP: { c: '#ee2a26', gloss: true, ramp: ['#3c0a1e', '#7a1028', '#b0182a', '#e8282a', '#ff5034', '#ffa080'] },
+      leaf: { c: '#4aa83a', ramp: ['#0f2a1e', '#1f5a2e', '#2e7f34', '#4aa83a', '#7cc94a', '#c4ec7a'] }, stem: { c: '#3a8a34', ramp: ['#0f2a1e', '#1f5a2e', '#2a7030', '#3a8a34', '#62ad40', '#a8dc6a'] },
       fCore: { c: '#fffbe0', emit: true, heat: 1 }, fY: { c: '#ffd23a', emit: true, heat: 0.78 }, fO: { c: '#ff8a1e', emit: true, heat: 0.58 }, fR: { c: '#e8382a', emit: true, heat: 0.4 },
-      chiliP: { c: '#ee2a26', gloss: true, ramp: ['#3c0a1e', '#7a1028', '#b0182a', '#e8282a', '#ff5034', '#ffa080'] }, heart: { c: '#ff4f7e', gloss: true }, zz: { c: '#cfe6ff', flat: true }, steam: '#fff4ec',
+      heart: { c: '#ff4f7e', gloss: true }, zz: { c: '#cfe6ff', flat: true }, steam: '#fff4ec',
     },
-    anim: { bob: 1.2, sway: 1.1, lag: 1.2, hop: 1.2 },
-    pad: { breath: [72, 8, 0, 0], throw: [56, 0, 0, 0], dash: [0, 0, 24, 0], eat: [24, 0, 0, 0] },
+    anim: { bob: 1.3, sway: 1.1, lag: 1.2, hop: 1.3 },
+    pad: { breath: [72, 8, 0, 0], throw: [56, 0, 0, 0], dash: [0, 0, 24, 0], eat: [16, 0, 0, 0] },
     parts: [
-      // ---- body
-      { n: 'body', p: [0, 18, 0], s: [
-        ['ell', [0, 21, 0], [17, 16.5, 15.5], 'down', { grad: { a: [0, 32, 0], b: [0, 6, 0], stops: [[0, 'down'], [0.6, 'down2']] } }],
-        ['ell', [0, 15.5, 12], [9.5, 9.5, 8], 'belly', paintOn(['body'])],
-        ...[-7, -3.5, 0, 3.5, 7].map((x) => ['sph', [x, 24.2 - 0.04 * x * x, 12.5], 2.2, 'belly', paintOn(['body'])]),
+      // ---- one round, chubby body (head and body are a single ball, chick-style)
+      { n: 'body', p: [0, 18, 0], noShadow: true, s: [
+        ['ell', [0, 20, 0], [18.5, 17.5, 17.5], 'down', { grad: { a: [0, 40, 0], b: [0, 4, 0], stops: [[0, 'down'], [0.66, 'down2']] } }],
+        ['ell', [0, 33, 2], [14.5, 12.5, 13.5], 'down', { k: 9 }],
+        // fluffy cheek tufts that stick out a little at the sides
+        ...[1, -1].map((sx) => ['ell', [sx * 15.5, 27.5, 5], [4.2, 3.6, 4.2], 'down', { k: 3 }]),
+        ['ell', [0, 15.5, 13.5], [11.5, 10, 7.5], 'belly', paintOn(['body'])],
+        ...[-7.6, -3.8, 0, 3.8, 7.6].map((x) => ['sph', [x, 24.4 - 0.04 * x * x, 14], 2.3, 'belly', paintOn(['body'])]),
+        ...eyeL(E), ...eyeL(-E),
+        // the watery lower lid it always has + rosy cheeks
+        ...[E, -E].map((x) => ['ell', [x, EY - 4.4, EZ + 0.3], [3.2, 0.7, 5], 'tear', paintOn(['body'])]),
+        ...[E + 4.4, -E - 4.4].map((x) => ['ell', [x, 28.6, 12.8], [3.2, 1.9, 4], 'blush', paintOn(['body'])]),
       ] },
-      ...both({ n: 'legL', parent: 'body', p: [7, 8, 1], s: [
-        ['cone', [7, 9, 1], [7.4, 2.2, 2], 2.3, 1.5, 'foot'],
-        ['cone', [7.4, 1.6, 2.4], [6.2, 1, 8], 1.25, 0.85, 'foot'], ['cone', [7.4, 1.6, 2.4], [10.6, 1, 6.8], 1.1, 0.8, 'foot'],
-        ['cone', [7.4, 1.6, 2.4], [3.6, 1, 6.4], 1.1, 0.8, 'foot'], ['cone', [7.4, 1.8, 2], [8, 1.1, -2.4], 1, 0.75, 'foot'],
+      { n: 'lids', parent: 'body', p: [0, EY, EZ], show: 'fierce', s: [lid(E, 14), lid(-E, -14), line(E + 0.4, EY + 3.3, 16, 3.8), line(-E - 0.4, EY + 3.3, -16, 3.8)] },
+      { n: 'eyesClosed', parent: 'body', p: [0, EY, EZ], show: 'closed', s: [line(E, EY - 1, 0), line(-E, EY - 1, 0)] },
+      { n: 'eyesHappy', parent: 'body', p: [0, EY, EZ], show: 'happy', s: [line(E - 1.4, EY, 34, 2), line(E + 1.4, EY, -34, 2), line(-E - 1.4, EY, 34, 2), line(-E + 1.4, EY, -34, 2)] },
+      { n: 'eyesHurt', parent: 'body', p: [0, EY, EZ], show: 'hurt', s: [line(E + 0.6, EY + 1.2, 28, 2.2), line(E + 0.6, EY - 1.2, -28, 2.2), line(-E - 0.6, EY + 1.2, -28, 2.2), line(-E - 0.6, EY - 1.2, 28, 2.2)] },
+      { n: 'eyesKO', parent: 'body', p: [0, EY, EZ], show: 'ko', s: [line(E, EY, 45, 2.6), line(E, EY, -45, 2.6), line(-E, EY, 45, 2.6), line(-E, EY, -45, 2.6)] },
+      { n: 'teary', parent: 'body', p: [0, EY, EZ], show: 'teary', s: [E, -E].map((x) => ['ell', [x, EY - 2.6, EZ + 0.6], [3, 1.6, 5], 'tear', paintOn(['body'])]) },
+      // small beak + jaw
+      { n: 'beak', parent: 'body', p: [0, 28, 16], s: [
+        ['ell', [0, 28.6, 15.8], [3.2, 2.1, 2.5], 'beak'],
+        ['cone', [0, 28.4, 16.2], [0, 26.8, 20.4], 2.5, 0.65, 'beak', { k: 1.4 }],
+      ] },
+      { n: 'jaw', parent: 'beak', p: [0, 26.9, 15.6], s: [['cone', [0, 26.8, 15.8], [0, 25.8, 19], 2.2, 0.6, 'beakD']] },
+      { n: 'mouth', parent: 'beak', p: [0, 27, 16], show: 'mouth:open', s: [['ell', [0, 26.6, 16.4], [2.3, 1.5, 2.3], 'mouthIn'], ['ell', [0, 26, 17.2], [1.3, 0.7, 1.3], 'tongue']] },
+      // three rounded flame feathers on the head
+      { n: 'crest', parent: 'body', p: [0, 44, 1], s: [
+        ['cone', [0, 43, 2], [0.8, 53.5, -0.5], 4.4, 2.1, 'down', { k: 2.6, grad: flameGrad([0, 44, 2], [0.8, 54, -0.5]) }],
+        ['cone', [-4, 42.5, 2.5], [-8.4, 50, 1.4], 3.6, 1.7, 'down', { k: 2.4, grad: flameGrad([-4, 43, 2.5], [-8.4, 50.5, 1.4]) }],
+        ['cone', [4, 42.5, 2.5], [8.6, 49.6, 1.8], 3.6, 1.7, 'down', { k: 2.4, grad: flameGrad([4, 43, 2.5], [8.6, 50, 1.8]) }],
+      ] },
+      // stubby feet
+      ...both({ n: 'legL', parent: 'body', p: [7, 5, 3], s: [
+        ['cone', [7, 5, 3], [7.3, 1.8, 4], 2, 1.6, 'foot'],
+        ['cone', [7.3, 1.4, 4.4], [6.2, 0.9, 9], 1.2, 0.9, 'foot'], ['cone', [7.3, 1.4, 4.4], [10.2, 0.9, 8], 1.1, 0.8, 'foot'], ['cone', [7.3, 1.4, 4.4], [3.8, 0.9, 7.8], 1.1, 0.8, 'foot'],
       ] }),
-      // tail: three flame-tipped feathers
-      { n: 'tail', parent: 'body', p: [0, 14, -13], s: [
-        ['cone', [-3.4, 14, -12], [-9.5, 17, -21], 2.6, 1, 'down', { grad: flameGrad([-3.4, 14, -12], [-9.5, 17, -21]) }],
-        ['cone', [3.4, 14, -12], [9.5, 17, -21], 2.6, 1, 'down', { grad: flameGrad([3.4, 14, -12], [9.5, 17, -21]) }],
+      // flame tail tuft
+      { n: 'tail', parent: 'body', p: [0, 18, -15], s: [
+        ['cone', [-3, 18, -15], [-6.5, 23.5, -23], 2.8, 1.1, 'down', { k: 1.6, grad: flameGrad([-3, 18, -15], [-6.5, 23.5, -23]) }],
+        ['cone', [3, 18, -15], [6.5, 23.5, -23], 2.8, 1.1, 'down', { k: 1.6, grad: flameGrad([3, 18, -15], [6.5, 23.5, -23]) }],
+        ['cone', [0, 19, -16], [0, 26.5, -24], 3, 1.2, 'down', { k: 1.6, grad: flameGrad([0, 19, -16], [0, 26.5, -24]) }],
       ] },
-      ...both({ n: 'wingL', parent: 'body', p: [14, 28, 0], s: [
-        ['ell', [16.2, 22, -1], [4, 9.5, 10.5], 'down', { rot: [12, 0, -12], grad: flameGrad([16, 31, 2], [17, 11, -8]) }],
-        ['ell', [17.4, 14, -6.5], [2, 5, 2.6], 'down2', { rot: [30, 0, -8], k: 1.5, grad: flameGrad([17, 19, -4], [17.4, 8, -9]) }],
+      // stubby wings wrapped around the chili it hugs
+      ...both({ n: 'wingL', parent: 'body', p: [14, 22, 6], s: [
+        ['ell', [14.6, 18, 11], [4, 7.6, 5.6], 'down', { rot: [-34, -26, 26], grad: flameGrad([14, 25, 7], [11, 12, 19]) }],
+        // the wing tip wrapped over the chili's end, like a little hand
+        ['ell', [10.4, 14.4, 20.4], [3.4, 3.8, 2.6], 'down2', { k: 2.2, grad: { a: [11, 18, 20], b: [9, 11, 21], stops: [[0, 'down2'], [0.6, 'ember']] } }],
       ] }),
-      // ---- head (merges into the body)
-      { n: 'head', parent: 'body', p: [0, 34, 2], noShadow: true, s: [
-        ['ell', [0, 45, 3], [15.5, 14.6, 14.6], 'down', { k: 6 }],
-        ...both({ s: [['ell', [10.8, 40.8, 13], [3.4, 2, 4], 'blush', paintOn(['head'])]], n: 'xL', p: [0, 0, 0] }).flatMap((x) => x.s),
+      // the chili: held in its wings (hidden while it is eaten or thrown)
+      { n: 'chiliHand', parent: 'body', p: [0, 18, 19], show: '!noHand', s: [
+        ['chain', POD, 'chiliP', { k: 0.6 }],
+        ['ell', [11.4, 18.4, 17.4], [2.8, 2.2, 2.6], 'leaf', { k: 1 }],
+        ...[0, 1, 2].map((i) => ['cone', [11.4, 18.6, 17.4], [11.4 + [2.8, 0.4, 3.4][i], 18.8 + [-2.2, -2.8, 1][i], 17.4 + [0.6, 2.2, -1.6][i]], 1.5, 0.4, 'leaf', { k: 0.8 }]),
+        ['chain', [[12, 20, 17.2, 0.9], [13.6, 22.8, 16.8, 0.75], [12.6, 25, 16, 0.6]], 'stem', { k: 0.6 }],
       ] },
-      // eyes (painted onto the head so they wrap the 3D surface)
-      { n: 'eyes', parent: 'head', p: [0, EY, EZ], show: ['open', 'fierce', 'teary'], s: [...eyeL(E), ...eyeL(-E),
-        // the watery lower lid it always has
-        ...[E, -E].map((x) => ['ell', [x, EY - 4.4, EZ + 0.3], [3.2, 0.7, 5], 'tear', paintOn(['head'])])] },
-      { n: 'lids', parent: 'head', p: [0, EY, EZ], show: 'fierce', s: [lid(E, 14), lid(-E, -14), line(E + 0.4, EY + 3.3, 16, 3.8), line(-E - 0.4, EY + 3.3, -16, 3.8)] },
-      { n: 'eyesClosed', parent: 'head', p: [0, EY, EZ], show: 'closed', s: [line(E, EY - 1, 0), line(-E, EY - 1, 0)] },
-      { n: 'eyesHappy', parent: 'head', p: [0, EY, EZ], show: 'happy', s: [line(E - 1.4, EY, 34, 2), line(E + 1.4, EY, -34, 2), line(-E - 1.4, EY, 34, 2), line(-E + 1.4, EY, -34, 2)] },
-      { n: 'eyesHurt', parent: 'head', p: [0, EY, EZ], show: 'hurt', s: [line(E + 0.6, EY + 1.2, 28, 2.2), line(E + 0.6, EY - 1.2, -28, 2.2), line(-E - 0.6, EY + 1.2, -28, 2.2), line(-E - 0.6, EY - 1.2, 28, 2.2)] },
-      { n: 'eyesKO', parent: 'head', p: [0, EY, EZ], show: 'ko', s: [line(E, EY, 45, 2.6), line(E, EY, -45, 2.6), line(-E, EY, 45, 2.6), line(-E, EY, -45, 2.6)] },
-      { n: 'teary', parent: 'head', p: [0, EY, EZ], show: 'teary', s: [E, -E].map((x) => ['ell', [x, EY - 2.6, EZ + 0.6], [3, 1.6, 5], 'tear', paintOn(['head'])]) },
-      // beak + jaw
-      { n: 'beak', parent: 'head', p: [0, 40, 17], s: [
-        ['ell', [0, 41.4, 17.4], [3.7, 2.3, 2.8], 'beak'],
-        ['cone', [0, 41.2, 17.8], [0, 39.2, 22.6], 2.8, 0.7, 'beak', { k: 1.4 }],
-      ] },
-      { n: 'jaw', parent: 'beak', p: [0, 39.6, 16.6], s: [['cone', [0, 39.3, 16.8], [0, 38.3, 20.6], 2.5, 0.6, 'beakD']] },
-      { n: 'mouth', parent: 'beak', p: [0, 39.6, 17], show: 'mouth:open', s: [['ell', [0, 39, 17.4], [2.4, 1.6, 2.4], 'mouthIn'], ['ell', [0, 38.4, 18.2], [1.4, 0.7, 1.4], 'tongue']] },
-      // ---- the chili hood: the pod's stem end sits on its forehead, the pod runs over the head and hangs down the back
-      { n: 'hood', parent: 'head', p: [0, 52, 0], s: [
-        ['ell', [0, 47.8, -0.6], [16.6, 16.6, 17.2], 'chili', { minus: ['ell', [0, 43.6, 15.2], [14.6, 12.8, 10], { k: 1.4 }] }],
-        ['ell', [0, 43.6, 15.2], [15.3, 13.5, 10.7], 'chiliIn', paintOn(['hood'])],
-      ] },
-      { n: 'hoodTail', parent: 'hood', p: [0, 46, -14], s: [
-        ['chain', [[0, 47, -11, 8.8], [0, 41.5, -19.5, 6.8], [0, 35, -24.5, 5.2], [0, 30, -30, 4], [0, 30.5, -36.5, 2.9], [0, 35.5, -40, 1.8]], 'chili', { k: 4.5 }],
-      ] },
-      { n: 'flameTip', parent: 'hoodTail', p: [0, 36, -40.2], s: [
-        ['cone', [0, 35.8, -40.2], [0, 43.8, -40.6], 2.6, 0.4, 'fY', { grad: { a: [0, 35.8, -40.2], b: [0, 43.8, -40.6], stops: [[0, 'fCore'], [0.3, 'fY'], [0.7, 'fO']] } }],
-        ['sph', [0, 36.6, -40.2], 2.2, 'fO', { k: 1.5, grad: { a: [0, 35.8, -40.2], b: [0, 43.8, -40.6], stops: [[0, 'fCore'], [0.3, 'fY'], [0.7, 'fO']] } }],
-      ] },
-      // the calyx: a little leafy cap with a curly stem antenna
-      { n: 'calyx', parent: 'hood', p: [0, 62.6, 8], s: [
-        ['ell', [0, 62.8, 8], [6.6, 2.6, 6.4], 'leaf', { k: 1.4 }],
-        ...[0, 72, 144, 216, 288].map((a) => { const r = (a + 36) * Math.PI / 180; return ['cone', [Math.sin(r) * 3.6, 63.2, 8 + Math.cos(r) * 3.6], [Math.sin(r) * 10.2, 59.6 - (Math.cos(r) > 0.3 ? 3 : 0), 8 + Math.cos(r) * 10.2], 2.9, 0.9, 'leaf', { k: 1.6 }]; }),
-      ] },
-      { n: 'stem', parent: 'calyx', p: [0, 64, 8], s: [['chain', [[0, 63.6, 8, 2], [0, 68.4, 9.6, 1.7], [0, 71.4, 12.6, 1.45], [0, 70.8, 15.8, 1.25]], 'stem', { k: 1.2 }]] },
       // ---- props + effects
-      { n: 'tears', parent: 'head', p: [0, 42, 16], show: 'tears', s: [
-        ...[E, -E].map((x) => ['chain', [[x, 41.6, 16.8, 0.9], [x * 1.25, 37, 16, 1.3], [x * 1.4, 32, 14.4, 1.6]], 'tear']),
-        ['sph', [17, 50, 9], 1.4, 'tear'], ['sph', [-17, 51, 9], 1.2, 'tear'], ['sph', [19, 44, 7], 1, 'tear'],
+      { n: 'tears', parent: 'body', p: [0, 29, 15], show: 'tears', s: [
+        ...[E, -E].map((x) => ['chain', [[x, 28.6, 15.6, 0.9], [x * 1.25, 24, 15, 1.3], [x * 1.45, 19, 13.4, 1.6]], 'tear']),
+        ['sph', [19, 38, 7], 1.4, 'tear'], ['sph', [-19, 39, 7], 1.2, 'tear'], ['sph', [21, 32, 5], 1, 'tear'],
       ] },
       ...['fire', 'fire2', 'fire3', 'fire4'].map((n, i) => {
-        const a = [0, 39.4, 21], b = [[0, 42, 74], [6, 50, 58], [-6, 33, 60], [0, 40, 44]][i], r = [[2.2, 11], [1.6, 6.5], [1.6, 6.5], [1.6, 6]][i];
+        const a = [0, 26.6, 20], b = [[0, 29, 73], [6, 37, 57], [-6, 20, 59], [0, 27, 43]][i], r = [[2.2, 11], [1.6, 6.5], [1.6, 6.5], [1.6, 6]][i];
         const g = i === 3 ? { a, b, stops: [[0, 'fCore'], [0.5, 'fY'], [0.9, 'fO']] } : fireGrad(a, b);
         return { n, parent: 'beak', p: a, show: 'fire', s: [
           ['cone', a, b, r[0], r[1], 'fY', { grad: g, wob: 1.6 }],
-          ...(i === 0 ? [['sph', [4, 47, 64], 6.5, 'fO', { k: 5, grad: g, wob: 2 }], ['sph', [-5, 36, 68], 6, 'fO', { k: 5, grad: g, wob: 2 }], ['sph', [1, 43, 80], 6.5, 'fR', { k: 6, grad: g, wob: 2.4 }],
-            ['sph', [6, 53, 76], 3, 'fR', { grad: g, wob: 1 }], ['sph', [-6, 30, 78], 2.6, 'fR', { grad: g, wob: 1 }], ['sph', [2, 55, 88], 1.8, 'fO', { grad: g }]] : []),
+          ...(i === 0 ? [['sph', [4, 34, 63], 6.5, 'fO', { k: 5, grad: g, wob: 2 }], ['sph', [-5, 23, 67], 6, 'fO', { k: 5, grad: g, wob: 2 }], ['sph', [1, 30, 79], 6.5, 'fR', { k: 6, grad: g, wob: 2.4 }],
+            ['sph', [6, 40, 75], 3, 'fR', { grad: g, wob: 1 }], ['sph', [-6, 17, 77], 2.6, 'fR', { grad: g, wob: 1 }]] : []),
         ] };
       }),
-      { n: 'chili', parent: 'beak', p: [0, 39.4, 21], show: 'chili', s: [
-        ['chain', [[0, 39.4, 20.4, 1.6], [1.6, 37.8, 25, 2.7], [3.6, 36.6, 30, 2.5], [5.2, 37.2, 33.4, 1.6]], 'chiliP'],
-        ['sph', [5.4, 37.6, 33.8], 1.9, 'leaf'], ['cone', [5.6, 38, 34.2], [6.8, 41, 36], 0.75, 0.55, 'stem'],
+      { n: 'chili', parent: 'beak', p: [0, 26.6, 20], show: 'chili', s: [
+        ['chain', [[0, 26.6, 19.6, 1.6], [1.6, 25, 24.4, 2.8], [3.6, 23.8, 29.4, 2.6], [5.2, 24.4, 32.8, 1.6]], 'chiliP'],
+        ['sph', [5.4, 24.8, 33.2], 1.9, 'leaf'], ['cone', [5.6, 25.2, 33.6], [6.8, 28.2, 35.4], 0.75, 0.55, 'stem'],
       ] },
-      { n: 'chiliHand', parent: 'wingR', p: [-17, 14, 2], show: 'chiliHand', s: [
-        ['chain', [[-18.6, 12.6, 1.6, 1.5], [-20, 12.2, 6.6, 2.7], [-19.6, 13.4, 11.6, 2.5], [-18.4, 15.6, 15, 1.4]], 'chiliP'],
-        ['sph', [-18.4, 12.8, 0.6], 1.9, 'leaf'], ['cone', [-18.4, 13, -0.4], [-17.6, 15.6, -2.6], 0.75, 0.55, 'stem'],
+      { n: 'chiliFly', p: [0, 30, 24], show: 'chiliFly', s: [
+        ['chain', [[0, 30, 20, 1.5], [0, 28.6, 24.6, 2.7], [0, 29.4, 29.6, 2.5], [0, 31.6, 33, 1.4]], 'chiliP'],
+        ['sph', [0, 30, 19], 1.9, 'leaf'],
       ] },
-      { n: 'chiliFly', p: [0, 40, 24], show: 'chiliFly', s: [
-        ['chain', [[0, 40, 20, 1.5], [0, 38.6, 24.6, 2.7], [0, 39.4, 29.6, 2.5], [0, 41.6, 33, 1.4]], 'chiliP'],
-        ['sph', [0, 40, 19], 1.9, 'leaf'],
-      ] },
-      ...[[6, 22, -12, 12, 30, -42], [-7, 20, -12, -14, 26, -44], [0, 32, -10, 0, 44, -38]].map(([x0, y0, z0, x1, y1, z1], i) => ({ n: 'dashfire' + i, parent: 'body', p: [x0, y0, z0], show: 'dashfire', s: [
+      ...[[6, 20, -12, 12, 28, -42], [-7, 18, -12, -14, 24, -44], [0, 30, -10, 0, 42, -38]].map(([x0, y0, z0, x1, y1, z1], i) => ({ n: 'dashfire' + i, parent: 'body', p: [x0, y0, z0], show: 'dashfire', s: [
         ['cone', [x0, y0, z0], [x1, y1, z1], 5, 1.2, 'fY', { grad: fireGrad([x0, y0, z0], [x1, y1, z1]) }]] })),
-      // spicy buff: a crown of flames flaring up behind it
-      ...[100, 128, 152, 180, 208, 232, 260].map((a, i) => { const r = a * Math.PI / 180, x = Math.sin(r) * 19, z = Math.cos(r) * 15 - 4, h = 40 + (i % 3) * 9 + (i === 3 ? 10 : 0); return { n: 'aura' + i, p: [x, 0, z], show: 'aura', s: [
+      ...[100, 128, 152, 180, 208, 232, 260].map((a, i) => { const r = a * Math.PI / 180, x = Math.sin(r) * 19, z = Math.cos(r) * 15 - 4, h = 36 + (i % 3) * 8 + (i === 3 ? 9 : 0); return { n: 'aura' + i, p: [x, 0, z], show: 'aura', s: [
         ['cone', [x, 4, z], [x * 1.18, h, z * 1.1], 6.4, 0.6, 'fY', { grad: { a: [x, 0, z], b: [x, h, z], stops: [[0, 'fY'], [0.3, 'fO'], [0.7, 'fR']] } }],
         ['cone', [x * 1.05, h * 0.55, z], [x * 1.45, h * 0.86, z * 1.15], 3.2, 0.5, 'fO', { k: 2, grad: { a: [x, 0, z], b: [x, h, z], stops: [[0, 'fY'], [0.3, 'fO'], [0.7, 'fR']] } }]] }; }),
-      ...[[-16, 64, 6, 3.4], [17, 72, 2, 2.8]].map(([x, y, z, r], i) => ({ n: 'heart' + i, p: [x, y, z], bill: true, show: 'hearts', s: [
+      ...[[-17, 54, 6, 3.4], [18, 60, 2, 2.8]].map(([x, y, z, r], i) => ({ n: 'heart' + i, p: [x, y, z], bill: true, show: 'hearts', s: [
         ['sph', [x - r * 0.5, y + r * 0.3, z], r * 0.62, 'heart'], ['sph', [x + r * 0.5, y + r * 0.3, z], r * 0.62, 'heart'],
         ['cone', [x, y + r * 0.1, z], [x, y - r * 1, z], r * 0.75, r * 0.12, 'heart', { k: r * 0.4 }]] })),
-      ...[0, 1, 2].map((i) => ({ n: 'zz' + i, p: [14, 58, 0], bill: true, show: 'zz', s: [
-        ['box', [14, 61, 0], [3, 0.7, 0.7], 0.3, 'zz'], ['box', [14, 55, 0], [3, 0.7, 0.7], 0.3, 'zz'], ['box', [14, 58, 0], [3.9, 0.7, 0.7], 0.3, 'zz', { rot: [0, 0, 52] }]] })),
-      ...[[-16, 60, 4], [16, 62, 2]].map(([x, y, z], i) => ({ n: 'steam' + i, p: [x, y, z], bill: true, show: 'steam', s: [
+      ...[0, 1, 2].map((i) => ({ n: 'zz' + i, p: [14, 48, 0], bill: true, show: 'zz', s: [
+        ['box', [14, 51, 0], [3, 0.7, 0.7], 0.3, 'zz'], ['box', [14, 45, 0], [3, 0.7, 0.7], 0.3, 'zz'], ['box', [14, 48, 0], [3.9, 0.7, 0.7], 0.3, 'zz', { rot: [0, 0, 52] }]] })),
+      ...[[-17, 48, 4], [17, 50, 2]].map(([x, y, z], i) => ({ n: 'steam' + i, p: [x, y, z], bill: true, show: 'steam', s: [
         ['sph', [x, y, z], 3.4, 'steam'], ['sph', [x + 2.6 * Math.sign(x), y + 2.6, z], 2.3, 'steam', { k: 1.5 }], ['sph', [x - 1.2 * Math.sign(x), y + 3.4, z], 2, 'steam', { k: 1.5 }]] })),
     ],
-    bond: { grow: { flameTip: 1.7, tail: 1.15 } },
+    bond: { grow: { crest: 1.45, tail: 1.2 } },
   };
 }
 
