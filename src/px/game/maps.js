@@ -29,6 +29,10 @@ export const MAPS = {
         spawns: { start: [330, 340], stairsL: [80, 228], stairsR: [558, 228], upper: [330, 130], subway: [222, 262] },
         hotspots: [
           { id: 'subway', x: 222, y: 258, label: 'Subway', icon: 'door', bubbleH: 50, act: (app) => say(app, '', 'The Midosuji Line gate is sealed with a bright League notice:', '"Platforms reserved for registered Tokonmon trainers during the Osaka League season."') },
+          { id: 'takoyaki', x: 524, y: 282, r: 26, label: 'Takoyaki', icon: 'bowl', act: (app) => app.shop([['takoyaki', 300], ['ramune', 150]], 'Takoyaki Taisho flips a row of golden balls without looking. "Eight for three hundred! Hot hot hot!"') },
+          { id: 'gacha', x: 98, y: 262, r: 22, label: 'Capsules', icon: 'star', act: (app) => say(app, '', 'Capsule toys: "TOKONMON MINI FIGURE — SERIES 7". The machine is out of order. Someone has stuck a sad face sticker on it.') },
+          { id: 'jizo', x: 302, y: 246, r: 20, label: 'Jizo', icon: 'heart', act: (app) => say(app, '', 'Two little stone jizo in red bibs watch over the plaza. Someone left them two mikan and fresh flowers.', 'Your partner bows its head too.') },
+          { id: 'cat', x: 34, y: 340, r: 18, label: 'Cat', icon: 'heart', act: (app) => say(app, '', 'A stray cat is asleep on the crates, belly to the sun.', 'It opens one eye, decides you are fine, and goes back to sleep.') },
           { id: 'vend', x: 182, y: 142, r: 24, label: 'Vending', icon: 'coin', act: (app) => app.shop([['ramune', 150], ['matcha', 220], ['takoyaki', 300]], 'The machine hums a little jingle.') },
           { id: 'ramen', x: 107, y: 124, r: 20, label: 'Ramen', icon: 'bowl', act: (app) => app.eatAt('ramen') },
           { id: 'kissa', x: 33, y: 124, r: 20, label: 'Kissa', icon: 'bowl', act: (app) => app.eatAt('kissa') },

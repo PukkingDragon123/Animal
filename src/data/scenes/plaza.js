@@ -4,6 +4,7 @@
 import { Scene2D } from '../../px/scene2d.js';
 import { Pen, C, shift, mix, newSurf } from '../../px/paint.js';
 import * as PR from '../../px/props.js';
+import * as PC from '../../px/props_city.js';
 
 export const PLAZA = { w: 640, h: 420 };
 
@@ -93,6 +94,8 @@ export function buildPlaza(o = {}) {
   // weeds growing at the wall's foot + vines
   for (let x = 130; x < 508; x += 7) if (g.chance(0.7)) { const s = PR.weeds({ w: 14, h: g.ri(8, 15), green: g.chance(0.3) }); g.put(s.surf, x, WY + WH - s.surf.h + 2); }
   for (let x = 140; x < 500; x += g.ri(30, 70)) { let vx = x; for (let j = WY + 2; j < WY + g.ri(18, 40); j++) { vx += g.ri(-1, 1); g.px(vx, j, C.green2); if (g.chance(0.3)) g.px(vx + 1, j, C.greenL); } }
+  PC.wallPosters(g, 454, WY + 14, { posters: [['LOST', '#f4ecd8', C.red], ['RANK', C.navy, C.neonC], ['LIVE', '#2a2a4a', C.neonP]], tag: '#5ac8e0' });
+  PC.wallPosters(g, 130, WY + 18, { posters: [['MOCHI', '#fff0e0', '#4a8a3a']] });
 
   // ---------------------------------------------------------------- lower plaza (y 216–420)
   PR.paving(g, 0, WY + WH, PLAZA.w, PLAZA.h - WY - WH, { base: C.sand, slab: 18 });
@@ -101,6 +104,13 @@ export function buildPlaza(o = {}) {
   PR.dirt(g, 40, 250, 110, 60); PR.dirt(g, 480, 330, 120, 70, { base: C.sand3 });
   PR.dirt(g, 260, 236, 90, 40);
   // manhole + puddle
+  // ground life: tactile paving to the subway, a drain along the wall foot, chalk hopscotch, petals under the trees
+  PC.tactilePaving(g, 217, 258, 316); PC.tactilePaving(g, 217, 410, 420);
+  PC.drainGrate(g, 126, 156, WY + WH + 1); PC.drainGrate(g, 290, 512, WY + WH + 1);
+  PC.hopscotch(g, 146, 404);
+  PC.fallenLeaves(g, 455, 316, 34, ['#f4b8d0', '#e890b8', '#fff0f4'], 70);
+  PC.fallenLeaves(g, 560, 388, 30, ['#c8b050', '#9aa84a', '#d88a3a'], 50);
+  PC.fallenLeaves(g, 64, 398, 30, ['#9aa84a', '#c8b050'], 40);
   g.ell(420, 262, 11, 6, C.metal2); g.ell(420, 262, 9, 4.6, C.steel); for (let k = -6; k <= 6; k += 3) g.hl(420 + k - 2, 420 + k + 1, 262, C.metal2);
   g.ell(110, 360, 22, 7, '#8a98b0'); g.ell(106, 358, 14, 3.5, '#b0c0d4'); g.hl(96, 120, 357, '#d8e4f0');
   // weed patches in the plaza
@@ -148,10 +158,27 @@ export function buildPlaza(o = {}) {
   sc.add(PR.streetLamp({ on: night }), 330, 262);
   if (night) sc.glows.push({ x: 344, y: 200, r: 18, color: '#fff0c0', a: 0.55, base: 262, h: 62 });
   sc.add(PR.bench(), 360, 300);
-  sc.add(PR.hydrant(), 300, 262);
-  sc.add(PR.cone(), 520, 268); sc.add(PR.cone(), 534, 272);
-  sc.add(PR.crateStack(), 560, 250);
-  sc.add(PR.trashBags(), 70, 252);
+  sc.add(PR.hydrant(), 296, 266);
+  sc.add(PR.cone(), 404, 268); sc.add(PR.cone(), 437, 270);
+  // street life: Takoyaki Taisho's yatai with stools, crates and bins; capsule toys; a roadside jizo; a sleeping stray
+  sc.add(PC.takoyakiStall({ night }), 528, 268, { foot: [30, 6] });
+  sc.add(PC.stool(C.red), 506, 284); sc.add(PC.stool(C.blue), 524, 288); sc.add(PC.stool(C.red), 542, 286);
+  sc.add(PC.beerCrates(3), 570, 266); sc.add(PC.beerCrates(2), 586, 270);
+  sc.add(PR.crateStack(), 566, 244);
+  sc.add(PC.recyclingBins(), 628, 258);
+  sc.add(PC.gachaRow(4), 98, 252, { foot: [26, 4] });
+  sc.add(PC.jizoShrine(), 302, 234, { foot: [16, 4] });
+  sc.add(PR.trashBags(), 44, 258);
+  sc.add(PC.cat({ lift: 18 }), 31, 330, { solid: false });
+  sc.add(PC.planter(52), 75, 286, { foot: [27, 5] });
+  sc.add(PC.planter(64, { flowers: ['#ff9ac8', C.white, C.yellowL] }), 548, 338, { foot: [33, 5] });
+  sc.add(PC.busStop(), 612, 330, { foot: [3, 2] });
+  sc.add(PR.bicycle({ color: C.red }), 222, 310); sc.add(PR.bicycle({ color: C.blue }), 278, 314);
+  // foreground foliage framing the bottom edge
+  sc.add(PR.bush({ w: 74, h: 36, flowers: C.redL }), 18, 434, { solid: false }); sc.add(PR.bush({ w: 64, h: 32 }), 92, 438, { solid: false });
+  sc.add(PR.bush({ w: 80, h: 38, flowers: C.mustard }), 616, 436, { solid: false });
+  sc.glows.push({ x: 497, y: 225, r: 12, color: '#ffb070', a: 0.45, flicker: true, base: 268, h: 43 }, { x: 558, y: 225, r: 12, color: '#ffb070', a: 0.45, flicker: true, base: 268, h: 43 });
+  sc.glows.push({ x: 98, y: 232, r: 18, color: '#fff0d8', a: 0.25, light: false });
   sc.add(PR.plantPot({ big: true, flowers: C.mustard }), 40, 300);
   sc.add(PR.vendingMachine({ color: C.green }), 600, 250);
   sc.add(PR.bicycle({ color: C.mustard }), 250, 312);

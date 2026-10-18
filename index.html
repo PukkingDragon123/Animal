@@ -17,8 +17,6 @@ canvas{position:fixed;left:0;top:0;display:block;image-rendering:pixelated;image
 <body><canvas id="gl"></canvas><canvas id="ui"></canvas><div id="err"></div>
 <script type="module">
 import { App } from './src/px/game/app.js';
-import { setSupersample } from './src/px/sdf.js';
-const q = new URLSearchParams(location.search); if (q.get('ss')) setSupersample(+q.get('ss'));
 const app = new App();
 app.boot().catch((e) => { console.error(e); const el = document.getElementById('err'); el.style.display = 'block'; el.textContent = 'Boot failed: ' + (e.stack || e); });
 </script></body></html>

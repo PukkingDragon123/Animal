@@ -1,16 +1,16 @@
-// Creature sprites for the game: frames come from the 3D models (sdf.js) and are
-// rendered lazily per (clip, facing, frame) with a small per-tick budget, so a
-// creature turning or starting a new move never stalls the frame loop — until a
-// frame exists the nearest already-rendered one is shown.
-import { renderFrame, CLIPS, FPS, isLoop } from '../sdf.js';
-import { SPRITES } from '../../data/sprites/sdf_starters.js';
+// Creature sprites for the game: every Tokonmon is hand-pixel art drawn by
+// src/px/pixmon.js, rendered lazily per (clip, facing, frame) with a small
+// per-tick budget, so a creature turning or starting a new move never stalls the
+// frame loop — until a frame exists the nearest already-rendered one is shown.
+import { renderFrame, CLIPS, FPS, isLoop } from '../pixmon.js';
+import { SPRITES } from '../../data/sprites/pix_starters.js';
 
 export const DESIGNS = Object.assign({}, SPRITES);
 export const hasDesign = (id) => !!DESIGNS[id];
 // more Tokonmon live in their own modules; load whichever exist
 export async function loadDesigns() {
-  for (const f of ['sdf_friends', 'sdf_wild', 'sdf_evos', 'sdf_rivals', 'sdf_league']) {
-    try { const m = await import(`../../data/sprites/${f}.js`); Object.assign(DESIGNS, m.SPRITES || {}); } catch (e) { /* not designed yet */ }
+  for (const f of ['pix_friends', 'pix_bullies', 'pix_wild', 'pix_evos']) {
+    try { const m = await import(`../../data/sprites/${f}.js`); Object.assign(DESIGNS, m.SPRITES || {}); } catch (e) { /* not drawn yet */ }
   }
 }
 

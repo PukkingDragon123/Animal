@@ -802,7 +802,7 @@ const FORTUNES = [
   ['凶 — Curse!', '"…Tie this paper to the rail and walk away. Bad luck stays on the bridge."'],
 ];
 export const DOTONBORI_MAP = {
-  name: 'Dotonbori', music: 'town',
+  name: 'Dotonbori', music: 'dotonbori',
   post: { night: 0.3, bloom: 0.85, threshold: 0.62, rays: 0, warm: 0.25 },   // suggested HD-2D grade for this map
   build(o) {
     const scene = buildDotonbori({ viewW: o.viewW, viewH: o.viewH, night: o.night });

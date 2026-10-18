@@ -571,7 +571,7 @@ const WISHES = [
   '"Pass the League written exam (the multiple choice part)."',
 ];
 export const CASTLE_PARK_MAP = {
-  name: 'Osaka Castle Park', music: 'town',
+  name: 'Osaka Castle Park', music: 'park',
   build(o) {
     const scene = buildCastlePark({ viewW: o.viewW, viewH: o.viewH, night: o.night });
     for (const s of scene.sprites) {

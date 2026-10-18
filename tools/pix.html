@@ -1,0 +1,33 @@
+<!doctype html><html><head><meta charset="utf-8"><title>pix</title>
+<style>body{margin:0;background:#1a1420;color:#e8d8c0;font:12px monospace;padding:10px}h2{margin:8px 0 4px;font-size:13px;color:#ffd060}.row{display:flex;flex-wrap:wrap;gap:6px;align-items:flex-end;margin-bottom:6px}.c{display:flex;flex-direction:column;align-items:center}canvas{image-rendering:pixelated;background:var(--bg,#3a3248)}#err{color:#f66;white-space:pre}</style>
+</head><body><div id="err"></div><div id="root"></div>
+<script type="module">
+// Hand-pixel creature viewer: ?mod=pix_starters&id=a,b&clips=idle,walk&zoom=4&every=2&views=front,back&bg=#hex
+window.onerror = (m, s, l) => { document.getElementById('err').textContent += m + ' @' + l + '\n'; };
+import { renderFrame, CLIPS } from '../src/px/pixmon.js';
+const q = new URLSearchParams(location.search);
+const mod = await import('../src/data/sprites/' + (q.get('mod') || 'pix_starters') + '.js');
+const ids = q.get('id') ? q.get('id').split(',') : Object.keys(mod.SPRITES);
+const clips = q.get('clips') ? q.get('clips').split(',') : ['idle'];
+const zoom = +(q.get('zoom') || 4), every = +(q.get('every') || 4), views = (q.get('views') || 'front,back').split(',');
+if (q.get('bg')) document.body.style.setProperty('--bg', q.get('bg'));
+const root = document.getElementById('root');
+const t0 = performance.now();
+for (const id of ids) {
+  const d = mod.SPRITES[id]; if (!d) continue;
+  const h = document.createElement('h2'); h.textContent = id; root.append(h);
+  for (const view of views) for (const clip of clips) {
+    const row = document.createElement('div'); row.className = 'row'; row.append(Object.assign(document.createElement('div'), { textContent: clip + ' ' + view, style: 'width:90px' }));
+    const n = q.get('frames') ? +q.get('frames') : CLIPS[clip];
+    for (let f = 0; f < n; f += every) {
+      const s = renderFrame(d, { clip, frame: f, yaw: view === 'back' ? -150 : view === 'right' ? 90 : -45, scale: 0.6 });
+      const cv = document.createElement('canvas'); cv.width = s.w * zoom; cv.height = s.h * zoom;
+      const g = cv.getContext('2d'); g.imageSmoothingEnabled = false; g.drawImage(s.canvas(), 0, 0, cv.width, cv.height);
+      row.append(cv);
+    }
+    root.append(row);
+  }
+}
+console.log('render ms', Math.round(performance.now() - t0));
+document.title = 'ready';
+</script></body></html>
