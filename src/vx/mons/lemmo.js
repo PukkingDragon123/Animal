@@ -4,6 +4,10 @@
 // glossy leaves makes its ears. Squeeze one and you get a jolt of juice and a sour look you will
 // never forget.
 //
+// Music homage (Lemonade, original): a glossy golden peel, a little crown of leaves, a tiny
+// baseball bat it carries on its shoulder and swings through glass ('Hold Up'), honeycomb cells
+// on its back and bat, and a buzzing hive of little bees that orbit it.
+//
 // Build notes: the peel is one ideal ellipsoid painted across the stepped boxes that approximate
 // it (orb()), so the light bands flow over every step. The electrodes sit on one sprung 'rig'
 // bone, so the arc plane between their tips can never come loose; when a clip splays them apart,
@@ -14,7 +18,9 @@ import { shift, h2 } from './kit.js';
 
 const D2R = Math.PI / 180;
 const C = {
-  hi: '#fffbd2', lite: '#fff250', peel: '#ffdf2a', shd: '#fbbd22', deep: '#ec941c', pore: ['#f8d634', '#f2b822', '#e0901c'],
+  hi: '#fffbd0', lite: '#ffee52', peel: '#ffd726', shd: '#f8b41e', deep: '#e88c18', pore: ['#f6cc30', '#eeac1e', '#d88618'],
+  wood: ['#f2cc8e', '#dcaa68', '#b8844a', '#8a5a30'], grip: ['#3e3a42', '#26232a'], hive: ['#ffd84a', '#c8901c', '#7a4a10'],
+  bee: { y: '#ffd23a', k: '#1e1a20', w: '#e8f6ff', W: '#ffffff' }, crown: ['#fff6a0', '#f2d84a', '#c8a42a', '#6a4a14'],
   green: ['#e6f05c', '#d0e246', '#b6cc3a'],
   ink: '#3a200e', lid: '#2a120c', sclera: '#fffbe8', scleraLo: '#e8dcbc',
   leaf: ['#e0f68a', '#9ad458', '#5aa844', '#357a34', '#1e4c26'], rib: '#f2fcc0',
@@ -72,11 +78,11 @@ function poreAt(q) {
   return false;
 }
 const peel = orb(O, R, (l, q, n, i, j) => {
-  let col = band(PEEL, [0.97, 0.42, -0.2, -0.62], l);
+  let col = band(PEEL, [0.97, 0.42, -0.2, -0.74], l);
   // the stem end (−x) keeps a faint green flush, dithered in
   const g = (-q[0] - 8.2) / 2.2;
   if (g > 0) { const B = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5][(i & 3) + (j & 3) * 4]; if (g * 16 > B) col = l > 0.42 ? C.green[0] : l > -0.2 ? C.green[1] : C.green[2]; }
-  if (l > 0.993) col = '#ffffff';
+  if (l > 0.982) col = '#ffffff';
   if (poreAt(q)) col = l > 0.42 ? C.pore[0] : l > -0.2 ? C.pore[1] : C.pore[2];
   return col;
 });
@@ -96,7 +102,14 @@ const backFace = (p, w, h, f, c) => {
   const ink = '#e89a1c', lit = '#fff6a0';
   const [px, py] = T(-2.4, 11.2); for (let k = -2; k <= 2; k++) { p.px(px + k, py, ink); p.px(px, py + k, ink); } p.px(px - 2, py - 1, lit); p.px(px - 1, py - 2, lit);
   const [mx, my] = T(2.4, 11.2); for (let k = -2; k <= 2; k++) p.px(mx + k, my, ink); p.px(mx - 2, my - 1, lit);
+  // a little cluster of honeycomb cells pressed into the peel below them
+  for (const [hx, hy] of [[-0.9, 7.6], [0.9, 7.6], [0, 6.2], [-1.8, 6.2], [1.8, 6.2]]) { const [cx, cy] = T(hx, hy); hexCell(p, cx, cy, ink, C.hive[0]); }
 };
+// a honeycomb cell: a 5 × 4 texel hexagon outline with a honey-lit middle
+function hexCell(p, cx, cy, edge, fill) {
+  for (const [dx, dy] of [[-1, -2], [0, -2], [1, -2], [-2, -1], [2, -1], [-2, 0], [2, 0], [-1, 1], [0, 1], [1, 1]]) p.px(cx + dx, cy + dy, edge);
+  for (const [dx, dy] of [[-1, -1], [0, -1], [1, -1], [-1, 0], [0, 0], [1, 0]]) p.px(cx + dx, cy + dy, fill);
+}
 // the stem end: a nub with a dry five-point calyx scar
 const stemNub = (p, w, h, f, c) => {
   peel(p, w, h, f, c);
@@ -183,12 +196,45 @@ const footP = (toe) => (p, w, h, face) => {
     p.px(i, j, col);
   }
   if (toe && face === 'south') for (const x of [Math.round(w / 3), Math.round((2 * w) / 3)]) for (let j = Math.floor(h * 0.4); j < h - 1; j++) p.px(x, j, F[3]);
+  // soles (seen when it lies feet-up): a paler pad, toe pads at the front (the top rows of a down face)
+  if (face === 'down') for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) {
+    const edge = i === 0 || i === w - 1 || j === h - 1 || (!toe && j === 0);
+    p.px(i, j, edge ? F[3] : toe && i % 3 === 1 ? F[0] : F[1]);
+  }
   if (toe && face === 'up') for (const x of [Math.round(w / 3), Math.round((2 * w) / 3)]) p.px(x, h - 1, F[2]);
 };
+// little nub hands, a thumb pressed round whatever they hold
+const handP = (p, w, h, face) => { footP(false)(p, w, h, face); if (face === 'south' || face === 'up') { p.px(1, face === 'up' ? h - 1 : 1, C.foot[3]); p.px(1, face === 'up' ? h - 2 : 2, C.foot[3]); } };
+// the bat: pale ash with a few grain flecks, black grip tape wound up the handle, honeycomb cells branded on the barrel
+const woodP = (p, w, h, face) => {
+  const W = C.wood;
+  for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) {
+    let col = face === 'up' ? W[0] : face === 'down' ? W[3] : i === 0 ? W[0] : i === w - 1 ? W[2] : W[1];
+    if (face !== 'up' && face !== 'down' && i > 0 && (i * 7 + j * 3) % 11 === 0) col = W[2];
+    p.px(i, j, col);
+  }
+};
+const gripP = (p, w, h, face) => { for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) p.px(i, j, face === 'up' || face === 'down' ? C.grip[1] : (i + j) % 3 === 0 ? C.grip[0] : C.grip[1]); };
+const barrelP = (p, w, h, face) => { woodP(p, w, h, face); if (face !== 'up' && face !== 'down') hexCell(p, Math.floor(w / 2), Math.floor(h * 0.42), C.hive[2], C.hive[0]); };
+// a bee: black-and-gold stripes, a dark head, glassy wings (6 × 4 texels, flying right)
+const BEE = ['..ww..', '.wWWw.', 'ykykkk', '.ykyk.'];
+const beeP = (p) => stamp(p, BEE, C.bee);
+// a crown point: a small pointed golden-green leaf with a bright rib
+const crownLeaf = (p, w, h) => {
+  for (let j = 0; j < h; j++) {
+    const t = 1 - (j + 0.5) / h, hw = (w / 2) * Math.pow(Math.sin(Math.PI * Math.min(1, t * 1.08)), 0.7);
+    for (let i = 0; i < w; i++) { const d = Math.abs(i - (w - 1) / 2); if (d > hw) continue; p.px(i, j, d > hw - 1 ? C.crown[3] : i === Math.floor(w / 2) ? C.crown[0] : d < hw * 0.55 ? C.crown[1] : C.crown[2]); }
+  }
+};
+// XYZ Euler angles (degrees) for "turn by yaw, then lean out by tilt" (Ry(yaw)·Rx(tilt))
+function yawTilt(yaw, tilt) {
+  const y = yaw * D2R, x = tilt * D2R, sy = Math.sin(y), cy = Math.cos(y), sx = Math.sin(x), cx = Math.cos(x);
+  return [Math.atan2(sx, cy * cx) / D2R, Math.asin(Math.max(-1, Math.min(1, sy * cx))) / D2R, Math.atan2(-sy * sx, cy) / D2R];
+}
 
 // ---------------------------------------------------------------- face: eyes and mouth
 // eyes: 11 × 9 texels, outer corner at x = 0 (the left eye is the mirrored plane)
-const EM = { k: C.lid, w: C.sclera, s: C.scleraLo, p: '#1a0a06', c: C.deep };
+const EM = { k: C.lid, w: C.sclera, s: C.scleraLo, p: '#1a0a06', c: C.shd };
 const EYES = {
   // half-lidded and sour: a heavy lid slanting down toward the nose, the pupil pressed under it
   sour: ['kk.........', 'kkkkk......', '.kkkkkkkkk.', '.kssssskkkk', '.kwwwwppwk.', '..kwwwppwk.', '...kwwwwk..', '....kkkk...', '.....ccc...'],
@@ -196,7 +242,8 @@ const EYES = {
   wide: ['...kkkkk...', '..kwwwwwk..', '.kwwwwwwwk.', '.kwwwpwwwk.', '.kwwwwwwwk.', '.kwwwwwwwk.', '..kwwwwwk..', '...kkkkk...', '...........'],
   squeeze: ['...........', 'kk.........', '.kkk.......', '...kkkk....', '......kkkk.', '...kkkk....', '.kkk.......', 'kk.........', '...........'],
   closed: ['...........', '...........', '...........', '...........', 'kkkkkkkkkk.', '.kkkkkkkkkk', '...ccc.....', '...........', '...........'],
-  smug: ['...........', '...........', '...........', '...kkkkk...', '.kkk...kkk.', 'kk.......kk', '...........', '...........', '...........'],
+  // smug: the sour squint with the lower lid pushed up — a satisfied sliver of eye
+  smug: ['...........', 'kk.........', 'kkkkkk.....', '.kkkkkkkkk.', '.kwwwwppkkk', '..kkkkkkkk.', '....ccc....', '...........', '...........'],
   x: ['...........', '.kk.....kk.', '..kk...kk..', '...kk.kk...', '....kkk....', '...kk.kk...', '..kk...kk..', '.kk.....kk.', '...........'],
   swirl: ['...kkkkk...', '..k.....k..', '.k..kkk..k.', '.k.k...k.k.', '.k.k.k.k.k.', '.k..kk..k..', '..k.....k..', '...kkkkk...', '...........'],
 };
@@ -231,6 +278,16 @@ const arcPlanes = (big) => ABC.flatMap((f, k) => [
 const FZ = 6.05;      // the face plane (front of the face box + a hair)
 const eyeStates = (side) => Object.entries(EYES).map(([k, rows]) => P(side < 0 ? [-4.1, 9.4, FZ] : [0.433, 9.4, FZ], [3.667, 3, 0], eyeP(rows), { plane: 'z', mirror: side > 0, id: 'eye-' + k, hide: k !== 'sour' }));
 const LEAF_Y = 15.3, LEAF_Z = -2.6;
+// the bat (held at the grip, BAT_P), drawn standing up from the hand; BAT_REST leans it back over the shoulder
+const BAT_P = [-6.6, 5.6, 4.0], BAT_REST = [-16, 0, 46], BAT_TIP = [-6.6, 14.0, 4.0];
+const batCubes = [
+  P([-7.1, 4.5, 3.5], [1.0, 0.5, 1.0], woodP), P([-6.9, 5.0, 3.7], [0.6, 3.6, 0.6], gripP), P([-7.05, 8.6, 3.55], [0.9, 1.6, 0.9], woodP),
+  P([-7.433, 10.2, 3.167], [1.667, 3.6, 1.667], barrelP), P([-7.267, 13.8, 3.333], [1.333, 0.4, 1.333], woodP),
+];
+// a crown of five small leaves round the sprig
+const crownCubes = [0, 72, 144, 216, 288].map((a) => { const bx = Math.sin(a * D2R) * 1.9, bz = -1.2 + Math.cos(a * D2R) * 1.9; return P([bx - 1.167, 13.9, bz], [2.333, 4.333, 0], crownLeaf, { plane: 'z', pivot: [bx, 13.9, bz], rot: yawTilt(a, 20) }); });
+// the hive: three bees on an orbit round it (shown by the 'bees' slot)
+const beeCubes = [[0, 11.5], [130, 14.5], [250, 9.5]].flatMap(([a, y]) => { const x = Math.sin(a * D2R) * 10, z = Math.cos(a * D2R) * 10; return [P([x - 1, y - 0.667, z], [2, 1.333, 0], beeP, { plane: 'z', id: 'bee', hide: true }), P([x, y - 0.667, z - 1], [0, 1.333, 2], beeP, { plane: 'x', id: 'bee', hide: true })]; });
 const leaf = (side) => [
   P([-2, LEAF_Y, LEAF_Z], [2, 8.333, 0], halfLeaf(side > 0), { plane: 'z', pivot: [0, LEAF_Y, LEAF_Z], rot: [0, 26, 0] }),
   P([0, LEAF_Y, LEAF_Z], [2, 8.333, 0], halfLeaf(side < 0), { plane: 'z', pivot: [0, LEAF_Y, LEAF_Z], rot: [0, -26, 0], mirror: true }),
@@ -257,7 +314,7 @@ export const def = {
       ...eyeStates(-1), ...eyeStates(1),
       ...Object.entries(MOUTHS).map(([k, rows]) => P([-2, 5.6, FZ], [4, 2.667, 0], mouthP(rows), { plane: 'z', id: 'm-' + k, hide: true })),
     ] },
-    { name: 'mouth', parent: 'body', pivot: [0, 6.9, 6.0], cubes: [P([-1.167, 6.067, 5.8], [2.333, 1.667, 0.8], lipsP, { id: 'm-lips' })] },
+    { name: 'mouth', parent: 'body', pivot: [0, 6.9, 6.0], cubes: [P([-1.167, 6.067, 5.85], [2.333, 1.667, 0.667], lipsP, { id: 'm-lips' })] },
     // the electrodes ride one sprung rig so the arc between them always lands on both tips
     { name: 'rig', parent: 'body', pivot: [0, 14.6, 1.4], cubes: [] },
     { name: 'copper', parent: 'rig', pivot: CU.piv, rot: [0, 0, CU.ang], cubes: [P([CU.piv[0] - 0.75, CU.piv[1] - 1.2, CU.piv[2] - 0.25], [1.5, CU.len + 1.2, 0.5], copper)] },
@@ -270,6 +327,12 @@ export const def = {
     { name: 'sprig', parent: 'body', pivot: [0, 14.6, LEAF_Z], cubes: [P([-0.333, 14.0, LEAF_Z - 0.333], [0.667, 1.8, 0.667], stemP)] },
     { name: 'leafR', parent: 'sprig', pivot: [0, LEAF_Y, LEAF_Z], rot: [-16, -14, 58], cubes: leaf(-1) },
     { name: 'leafL', parent: 'sprig', pivot: [0, LEAF_Y, LEAF_Z], rot: [-16, 14, -58], cubes: leaf(1) },
+    { name: 'crown', parent: 'body', pivot: [0, 13.9, -1.2], cubes: crownCubes },
+    // stubby nub hands; the right one carries the bat
+    { name: 'armR', parent: 'body', pivot: [-6.2, 5.6, 4.0], cubes: [P([-7.6, 4.6, 3.0], [2.0, 2.0, 2.0], handP)] },
+    { name: 'bat', parent: 'armR', pivot: BAT_P, rot: BAT_REST, cubes: batCubes },
+    { name: 'armL', parent: 'body', pivot: [6.2, 5.6, 4.0], cubes: [P([5.6, 4.6, 3.0], [2.0, 2.0, 2.0], handP)] },
+    { name: 'bees', parent: 'root', pivot: [0, 11, 0], cubes: beeCubes },
   ],
 };
 
@@ -392,8 +455,8 @@ export const anim = {
       crackle(P, t, charge > 0.2 || fire > 0.1 ? 2 : 1);
       P.face('eyes', charge > 0.15 ? 'fierce' : fire > 0.2 ? 'squeeze' : undefined).face('mouth', charge > 0.4 ? 'grit' : fire > 0.2 ? 'open' : undefined);
       if (charge > 0.2) P.stream('spark', 'rig', TIPS[Math.floor(t * 12) % 2], { rate: 14 * charge }).stream('bolt', 'rig', MID, { rate: 10 * charge, speed: 2 });
-      P.burst(0.86, 'ring', 'rig', MID, { scale: 1.2 }).burst(0.86, 'spark', 'rig', MID, { scale: 1.6 });
-      if (t > 0.86 && t < 1.3) P.stream('bolt', 'rig', MID, { rate: 70, dir: [0, 0.15, 1], speed: 22, spread: 0.18 }).stream('spark', 'rig', MID, { rate: 12, dir: [0, 0.2, 1], speed: 6, spread: 0.3 });
+      P.burst(0.86, 'ring', 'rig', MID, { scale: 1.4 }).burst(0.86, 'spark', 'rig', MID, { scale: 1.8 }).burst(0.86, 'bolt', 'rig', MID, { n: 12, speed: 7, spread: 1 });
+      if (t > 0.86 && t < 1.3) P.stream('bolt', 'rig', MID, { rate: 60, dir: [0, 0.1, 1], speed: 11, spread: 0.22 }).stream('spark', 'rig', MID, { rate: 14, dir: [0, 0.1, 1], speed: 5, spread: 0.3 });
       if (t > 1.2 && t < 1.8) P.stream('smoke', 'rig', TIPS[0], { rate: 4, scale: 0.5 }).stream('smoke', 'rig', TIPS[1], { rate: 4, scale: 0.5, key: 'z' });
     } },
     // squeezed flat, a squirt of juice flies out, pops back sour
@@ -411,7 +474,7 @@ export const anim = {
       const dizzy = seg(t, 0, 0.3) * (1 - seg(t, 0.85, 1.0)), fall = seg(t, 0.9, 1.4, E.bounce);
       P.rot('body', 0, wave(t, 1.5) * 16 * dizzy, wave(t, 2.1) * 10 * dizzy);
       rollBack(P, 72 * fall);
-      P.rot('footR', -40 * fall + wob(t, 1.4, 12, 3, 4), 0, 10 * fall).rot('footL', -30 * fall + wob(t, 1.45, -10, 3, 4), 0, -8 * fall);
+      P.rot('footR', -40 * fall + wob(t, 1.4, 12, 3, 4), 0, -18 * fall).rot('footL', -30 * fall + wob(t, 1.45, -10, 3, 4), 0, 16 * fall);
       splay(P, -10 * fall); ears(P, 30 * fall);
       crackle(P, t, t < 0.9 ? 0.7 - t * 0.6 : 0);
       P.face('eyes', t > 0.25 ? 'swirl' : 'wide').face('mouth', t > 0.25 ? 'open' : undefined); P.blinkOK = false; P.lookW = 0;
@@ -419,8 +482,8 @@ export const anim = {
       P.burst(1.4, 'smoke', 'rig', MID, { n: 6, spread: 1 }).burst(1.0, 'star', 'body', [0, 16, 0], { n: 5 });
     } },
     down: { len: 2.4, loop: true, f(P, t) {
-      rollBack(P, 72);
-      P.rot('footR', -40 + bump(t, 1.2, 1.36) * -14, 0, 10).rot('footL', -30, 0, -8);
+      rollBack(P, 72 + wave(t, 1 / 2.4) * 3);                 // rocking gently on its round back
+      P.rot('footR', -40 + bump(t, 1.2, 1.36) * -14, 0, -18).rot('footL', -30, 0, 16);
       splay(P, -10); ears(P, 30);
       P.face('arc', t > 1.9 && t < 1.97 ? 'a' : 'off');
       P.face('eyes', 'swirl').face('mouth', 'open'); P.blinkOK = false; P.lookW = 0; P.breathW = 0.4;

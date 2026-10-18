@@ -1,0 +1,446 @@
+// Zapanda — Mika's partner (Volto). A roly-poly red panda with a giant panda's build
+// and markings — black ears, black legs and a black shoulder band — and a wink at Pink
+// Floyd's "The Dark Side of the Moon": a little glass prism glints on its forehead, and
+// its huge fluffy ringed tail is a battery whose rings light up as it charges, one band
+// of the spectrum at a time, red at the root to violet at the tip. When it lets go,
+// white light pours out of the prism and fans into a rainbow. Its tear tracks are yellow
+// lightning bolts down white cheeks; its eyes are half-lidded, sly and mischievous, one
+// eyebrow always a little higher than the other, one fang always peeking out.
+import { E, seg, bump, wob, wave, bounce, hop } from '../anim.js';
+import { defineFx } from '../fx.js';
+import { shade, poly, ramp, shift, h2 } from './kit.js';
+
+const C = {
+  coat: '#cc5422', coatHi: '#ee8238', coatLo: '#94381f', coatDeep: '#5c2228', shine: '#ffb070',
+  blk: '#2c2432', blkHi: '#4c4056', blkLo: '#16111c',
+  wht: '#fff6ea', whtLo: '#e4d0c4', whtDeep: '#bfa29c',
+  ring: '#f4d8a8', ringHi: '#fff0cc', ringLo: '#c99a6c',
+  bolt: '#ffd21e', boltHi: '#fff494', boltLo: '#e07a16',
+  ink: '#1a0e12', amber: '#f2a428', amberLo: '#a85e18', glint: '#fff2c0',
+  nose: '#1e1418', tongue: '#e8607a', mouth: '#4a1420', claw: '#d8d0d4',
+  spec: ['#ff3b3b', '#ff9426', '#ffe23a', '#46dc5a', '#3a8cff', '#a05aff'],
+};
+const TAU = Math.PI * 2, R2D = 180 / Math.PI, PPU = 3;
+
+// ---------------------------------------------------------------- painters
+// model-space position of a texel's centre on a face of a cube (honours mirrored cubes), so markings line up across boxes
+function at(face, c, x, y) {
+  const [ox, oy, oz] = c.o, [sx, sy, sz] = c.s, u = (x + 0.5) / PPU, v = (y + 0.5) / PPU, m = !!c.mirror;
+  switch (face) {
+    case 'south': return [m ? ox + sx - u : ox + u, oy + sy - v, oz + sz];
+    case 'north': return [m ? ox + u : ox + sx - u, oy + sy - v, oz];
+    case 'east': return [m ? ox : ox + sx, oy + sy - v, oz + sz - u];
+    case 'west': return [m ? ox + sx : ox, oy + sy - v, oz + u];
+    case 'up': return [m ? ox + sx - u : ox + u, oy + sy, oz + v];
+    case 'down': return [m ? ox + sx - u : ox + u, oy, oz + sz - v];
+    default: return [ox + u, oy + sy - v, oz + sz];
+  }
+}
+// fur: banded light-from-above, with soft clustered flicks (a lit hair over a shadowed one) in staggered rows
+function furCol(cols, face, x, y, h, flick = true) {
+  const [top, mid, bot, deep] = cols;
+  let c = face === 'up' ? top : face === 'down' ? deep : ramp([top, mid, bot], h > 1 ? y / (h - 1) : 0.5, x, y);
+  if (flick && face !== 'down') {
+    const r = y % 4, k = (x + (Math.floor(y / 4) % 2) * 2) % 4;
+    if (r === 2 && k === 0) c = shift(c, -0.2); else if (r === 1 && k === 1) c = shift(c, 0.16);
+  }
+  return c;
+}
+const COAT = [C.coatHi, C.coat, C.coatLo, C.coatDeep], BLACK = [C.blkHi, C.blk, C.blkLo, C.blkLo], WHITE = [C.wht, C.wht, C.whtLo, C.whtDeep];
+const RING = [C.ringHi, C.ring, C.ringLo, C.ringLo];
+// the body coat: rust fur, a black saddle band over the shoulders (running down into the forelegs), a black belly
+function coatP(p, w, h, face, cube) {
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const [X, Y, Z] = at(face, cube, x, y), fringe = ((x + y) & 1) * 0.35;
+    const band = face !== 'south' && Z > 0.4 + fringe && Z < 6, belly = Y < 7.2 + fringe || face === 'down';
+    let c = furCol(band || belly ? BLACK : COAT, face, x, y, h);
+    if (face === 'south' && !belly && Math.abs(X) < 2.6 - (Y - 6) * 0.15 && Y > 8) c = furCol([C.ringHi, C.ring, C.ringLo, C.ringLo], face, x, y, h);   // pale throat ruff
+    p.px(x, y, c);
+  }
+  if (face !== 'up' && face !== 'down') for (let x = 0; x < w; x++) { const [, , Z] = at(face, cube, x, 0); if (face === 'south' || !(Z > 0.4 && Z < 6)) p.px(x, 0, C.shine); }
+}
+const solid = (cols, o = {}) => (p, w, h, face) => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, furCol(cols, face, x, y, h, o.flick !== false)); if (o.rim && face !== 'up' && face !== 'down') for (let x = 0; x < w; x++) p.px(x, 0, o.rim); };
+const blackP = solid(BLACK), whiteP = solid(WHITE), coatSolid = solid(COAT, { rim: C.shine });
+// paws: black, toes split by dark lines, little pale claws along the front edge
+function pawP(p, w, h, face) {
+  solid(BLACK)(p, w, h, face);
+  if (face === 'south') { for (let x = 2; x < w - 1; x += 3) { p.vl(x, 0, h - 1, C.blkLo); p.px(x - 1, h - 1, C.claw); } }
+  if (face === 'up') for (let x = 2; x < w - 1; x += 3) p.px(x, h - 1, C.blkLo);
+}
+// the head: rust fur; the face has white cheek patches under the eyes, yellow lightning tear tracks down them,
+// a soft darker rust round the eyes
+const BOLT = [[0, 0], [2.6, 0], [1.2, 3.6], [3.4, 3.6], [-0.8, 10.4], [0.4, 5.6], [-1.8, 5.6]];
+function headP(p, w, h, face, cube) {
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const [X, Y] = at(face, cube, x, y), ax = Math.abs(X);
+    let c = furCol(COAT, face, x, y, h);
+    const cheek = Y < 17.9 - Math.max(0, ax - 4.6) * 0.9 + ((x + y) & 1) * 0.3 && ax > 1.2;
+    if ((face === 'south' || face === 'east' || face === 'west') && cheek) c = furCol(WHITE, face, x, y, h);
+    if (face === 'south' && !cheek && Y < 18.6 && Y > 17.6 && ax > 2.2 && ax < 5.2) c = C.coatLo;      // a soft shadow under the eyes
+    p.px(x, y, c);
+  }
+  if (face !== 'south') return;
+  for (const s of [-1, 1]) {
+    // from under the inner corner of each eye, a bolt zig-zags down the white cheek toward the mouth
+    const sx = (s * 3.3 - cube.o[0]) * PPU, sy = (cube.o[1] + cube.s[1] - 18.2) * PPU;
+    const pts = BOLT.map(([bx, by]) => [sx + s * bx, sy + by]);
+    poly(p, pts.map(([a, b]) => [a + s * 0.9, b + 0.9]), C.boltLo);
+    poly(p, pts, C.bolt);
+    poly(p, pts.slice(0, 3).map(([a, b], i) => [a - (i === 1 ? s * 0.9 : 0), b]), C.boltHi);
+  }
+}
+// cheek tufts: white fluff flaring out below the ears
+const tuftP = (p, w, h, face) => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { let c = furCol(WHITE, face, x, y, h); if (face !== 'up' && face !== 'down' && y > h - 3 && (x % 3 === 1)) c = 0; p.px(x, y, c); } };
+function muzzleP(p, w, h, face) {
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, furCol(WHITE, face, x, y, h, false));
+  if (face !== 'south') return;
+  const m = Math.floor(w / 2);
+  // the philtrum from the nose, then one crooked line: flat on its right, curling up at its left corner
+  for (let y = 4; y < 8; y++) p.px(m, y, C.ink);
+  [[m - 1, 8], [m - 2, 8], [m - 3, 8], [m - 4, 8], [m - 5, 7], [m + 1, 8], [m + 2, 8], [m + 3, 7], [m + 4, 6], [m + 5, 6], [m + 6, 5]].forEach(([x, y]) => p.px(x, y, C.ink));
+  p.px(m + 5, 7, C.whtLo); p.px(m - 2, 9, C.whtLo); p.px(m + 1, 9, C.whtLo);
+}
+const noseP = (p, w, h, face) => {
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, face === 'up' ? '#4a3c48' : y === 0 ? '#4a3c48' : C.nose);
+  if (face === 'south') { p.px(0, 0, C.wht); p.px(w - 1, 0, C.wht); p.px(0, h - 1, C.wht); p.px(w - 1, h - 1, C.wht); p.px(2, 1, '#8a7a88'); p.px(3, 1, '#6a5a68'); p.px(1, h - 1, '#0e080c'); p.px(w - 2, h - 1, '#0e080c'); }
+};
+const earP = (p, w, h, face) => { solid(BLACK)(p, w, h, face); if (face === 'up') for (let x = 1; x < w - 1; x += 2) p.px(x, h - 1, C.blkHi); };
+const innerEar = (p, w, h) => {
+  const cx = (w - 1) / 2;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const d = Math.abs(x - cx) / (w / 2) + (y / h) * 0.3; if (d < 0.78 && y > 0) p.px(x, y, y > h * 0.55 ? '#3a2e40' : '#58485e'); }
+  for (let k = 0; k < 4; k++) p.px(Math.round(cx - 1.5 + k), h - 1 - (k % 2), '#8a7a90');            // a few pale hairs
+};
+// the tail: rust fur, cream rings; each ring has a glowing twin in its spectrum colour
+const tailP = (cols) => (p, w, h, face) => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { let c = furCol(cols, face, x, y, h); if ((face === 'east' || face === 'west' || face === 'up' || face === 'down') && (x + 2 * y) % 7 === 0) c = shift(c, -0.14); p.px(x, y, c); } };
+const rustT = tailP(COAT), ringT = tailP(RING);
+const glowRing = (col) => (p, w, h, face) => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const e = x === 0 || y === 0 || x === w - 1 || y === h - 1; p.px(x, y, e ? shift(col, -0.25) : (x + y) % 5 === 0 ? '#ffffff' : (x + 2 * y) % 7 === 1 ? shift(col, 0.35) : col); } };
+const tongueP = (p, w, h) => { p.rect(0, 0, w, h, C.tongue); for (let x = 0; x < w; x++) p.px(x, 0, '#ff9aaa'); p.px(Math.floor(w / 2), 1, '#c84060'); };
+const mouthIn = (p, w, h) => { p.rect(0, 0, w, h, C.mouth); p.rect(1, 1, w - 2, h - 2, '#6a1c2c'); };
+const fangP = (p, w, h) => { p.rect(0, 0, w, h, '#fffaf0'); p.px(w - 1, h - 1, '#d8ccc4'); };
+// the forehead prism: a little glass triangle; lit, it blazes white with the spectrum along its right edge
+function prismP(lit) {
+  return (p, w, h) => {
+    const tri = (x, y) => { const v = (y + 0.5) / h, half = v * (w / 2); return Math.abs(x + 0.5 - w / 2) <= half; };
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      if (!tri(x, y)) continue;
+      const edge = !tri(x - 1, y) || !tri(x + 1, y) || y === h - 1, left = x + 0.5 < w / 2;
+      p.px(x, y, lit ? (edge ? '#ffffff' : '#eaf6ff') : edge ? '#ffffff' : left ? '#b8c8e8' : '#7a88b0');
+    }
+    // the split light leaving its right flank
+    const sy = Math.round(h * 0.5);
+    (lit ? C.spec : C.spec.filter((_, i) => i % 2 === 0)).forEach((c, i, a) => p.px(w - 1, Math.min(h - 1, sy + Math.floor(i * 3 / a.length)), c));
+    if (!lit) p.px(Math.floor(w / 2) - 1, Math.floor(h * 0.45), '#ffffff');
+  };
+}
+
+// eyes: 12 × 8 texels, outer corner x = 0 (right eye; the left is mirrored). Half-lidded and sly.
+const EM = { K: C.ink, W: '#fffaf2', A: C.amber, a: C.amberLo, Y: C.glint, L: C.coatLo };
+const grid = (rows, map) => (p) => rows.forEach((r, y) => { for (let x = 0; x < r.length; x++) { const c = map[r[x]]; if (c) p.px(x, y, c); } });
+const EYES = {
+  sly: ['............', '............', 'KKKKKKKKKKK.', '.KWWYAAAKKK.', '..KWAAKKAK..', '...KKAAaK...', '.....KKK....', '............'],
+  focus: ['............', '............', 'KK..........', 'KKKKKKKKKKKK', '.KWWAKKAaK..', '..KKKKKKKK..', '............', '............'],
+  wide: ['...KKKKK....', '..KWWWWWKK..', '.KWWYAAWWWK.', '.KWWAKKAWWK.', '.KWWAKKAWWK.', '.KWWWAAWWK..', '..KKWWWWKK..', '....KKKK....'],
+  smug: ['............', '............', '............', 'KKKKKKKKKKK.', '.KKYAAAKKK..', '...KKKKKK...', '............', '............'],
+  closed: ['............', '............', '............', 'K...........', '.KKKKKKKKKK.', '...KKKKKK...', '............', '............'],
+  x: ['............', '.KK.....KK..', '..KK...KK...', '...KK.KK....', '....KKK.....', '...KK.KK....', '..KK...KK...', '.KK.....KK..'],
+  swirl: ['...KKKKK....', '..K.....K...', '.K..KKK..K..', '.K.K...K.K..', '.K.K.K.K.K..', '.K..KK..K...', '..K.....K...', '...KKKKK....'],
+};
+
+// ---------------------------------------------------------------- the model
+const B = (x0, y0, z0, x1, y1, z1, tex, x = {}) => ({ o: [x0, y0, z0], s: [x1 - x0, y1 - y0, z1 - z0], tex, ...x });
+const flipC = (c) => ({ ...c, o: [-(c.o[0] + c.s[0]), c.o[1], c.o[2]], mirror: c.plane === 'x' ? c.mirror : !c.mirror, ...(c.pivot ? { pivot: [-c.pivot[0], c.pivot[1], c.pivot[2]] } : {}), ...(c.rot ? { rot: [c.rot[0], -c.rot[1], -c.rot[2]] } : {}) });
+const side = (n) => n && n.replace(/R$/, 'L');
+const flipB = (b) => ({ name: side(b.name), parent: side(b.parent), pivot: [-b.pivot[0], b.pivot[1], b.pivot[2]], ...(b.rot ? { rot: [b.rot[0], -b.rot[1], -b.rot[2]] } : {}), cubes: b.cubes.map(flipC) });
+const both = (...bs) => [...bs, ...bs.map(flipB)];
+
+// the tail: six segments, each a stretch of rust fur and a cream ring, curling up behind into a great plume
+const TAIL = [[2.8, 1.8, 6.6, 6.4, 28], [2.8, 1.8, 7.6, 7.4, 24], [2.8, 1.8, 8.2, 8, 20], [2.8, 1.8, 8, 7.8, 16], [2.6, 1.6, 7.2, 7, 12], [2.4, 1.6, 6, 5.8, 8]];
+const TY = 11.6;
+const tailBones = (() => {
+  let z = -9.6;
+  return TAIL.map(([lr, lg, wr, wg, rx], i) => {
+    const z0 = z, cubes = [
+      B(-wr / 2, TY - wr / 2, z0 - lr, wr / 2, TY + wr / 2, z0, rustT),
+      B(-wg / 2, TY - wg / 2, z0 - lr - lg, wg / 2, TY + wg / 2, z0 - lr, ringT),
+      B(-wg / 2, TY - wg / 2, z0 - lr - lg, wg / 2, TY + wg / 2, z0 - lr, glowRing(C.spec[i]), { glow: true, inflate: 0.08, id: 'glow' + (i + 1), hide: true }),
+    ];
+    if (i === TAIL.length - 1) cubes.push(B(-2.2, TY - 2.2, z0 - lr - lg - 2.4, 2.2, TY + 2.2, z0 - lr - lg, rustT), B(-1.1, TY - 1.1, z0 - lr - lg - 3.4, 1.1, TY + 1.1, z0 - lr - lg - 2.4, rustT));
+    z -= lr + lg;
+    return { name: 'tail' + (i + 1), parent: i ? 'tail' + i : 'body', pivot: [0, TY, z0], rot: [rx, 0, 0], cubes };
+  });
+})();
+const eyeParts = () => Object.entries(EYES).map(([k, rows]) => B(-5.4, 18.4, 12.42, -1.4, 21.067, 12.42, grid(rows, EM), { plane: 'z', id: 'eye-' + k, hide: k !== 'sly' }));
+const RIGHT = {
+  legF: { name: 'legFR', parent: 'body', pivot: [-3.8, 8.6, 3], cubes: [
+    B(-5.4, 0.8, 1.4, -2.2, 9.4, 4.6, blackP),
+    B(-5.7, 0, 0.9, -1.9, 1.8, 5.4, pawP),
+  ] },
+  legH: { name: 'legHR', parent: 'body', pivot: [-4.4, 8.6, -5.5], cubes: [
+    B(-7.2, 3.8, -8.6, -3.2, 10.8, -2.6, blackP),                    // the round haunch
+    B(-6.2, 0.8, -6.8, -3, 4.6, -3.6, blackP),
+    B(-6.5, 0, -7.4, -2.7, 1.8, -3, pawP),
+  ] },
+  ear: { name: 'earR', parent: 'head', pivot: [-5, 23.2, 7.2], rot: [0, 0, 16], cubes: [
+    B(-7.4, 22.4, 5.6, -2.8, 26.4, 8.6, earP),
+    B(-6.8, 26.4, 6, -3.4, 28, 8.2, earP),
+    B(-6, 28, 6.4, -4.2, 28.8, 7.8, earP),
+    B(-6.667, 23, 8.62, -3.333, 27, 8.62, innerEar, { plane: 'z' }),
+  ] },
+  brow: { name: 'browR', parent: 'head', pivot: [-2.2, 22.1, 12.5], rot: [0, 0, -12], cubes: [B(-4.8, 21.733, 12.3, -2.2, 22.4, 12.8, whiteP)] },
+};
+
+export const def = {
+  name: 'zapanda', ppu: 3, scale: 0.4, outline: { color: '#2a1014', px: 1.4 },
+  bones: [
+    { name: 'root', pivot: [0, 0, 0], cubes: [] },
+    { name: 'body', parent: 'root', pivot: [0, 8.5, -5.5], cubes: [
+      B(-6, 5.4, -9.2, 6, 15.4, 4.6, coatP),
+      B(-6.8, 7, -8, 6.8, 13.8, 3.4, coatP),
+      B(-5, 15.4, -8.2, 5, 16.4, 3.6, coatP),
+      B(-5, 4.6, -8.2, 5, 5.4, 3.6, coatP),
+      B(-4.8, 6.6, -10.2, 4.8, 14.2, -9.2, coatP),
+      B(-4.6, 6.2, 4.6, 4.6, 13.6, 5.6, coatP),
+    ] },
+    ...both(RIGHT.legF, RIGHT.legH),
+    { name: 'head', parent: 'body', pivot: [0, 13.6, 3.6], cubes: [
+      B(-6.2, 12.6, 3, 6.2, 23.4, 12.4, headP),
+      B(-7, 14.4, 3.8, 7, 21.8, 11.6, headP),
+      B(-5.2, 23.4, 4, 5.2, 24.4, 11.4, headP),
+      B(-5.4, 11.8, 4, 5.4, 12.6, 11.4, headP),
+      B(-8.2, 12.6, 6.4, -6, 16.2, 10.6, tuftP, { pivot: [-6.4, 15.4, 8.4], rot: [0, 0, 30] }),
+      B(6, 12.6, 6.4, 8.2, 16.2, 10.6, tuftP, { pivot: [6.4, 15.4, 8.4], rot: [0, 0, -30], mirror: true }),
+      B(-2.8, 12.6, 12.4, 2.8, 16.8, 15, muzzleP),
+      B(-2.2, 16.8, 12.4, 2.2, 17.6, 14, whiteP),
+      B(-1.4, 15.4, 14.8, 1.4, 16.8, 15.6, noseP),
+      B(-1.9, 12.2, 14.8, -1.233, 12.867, 15.2, fangP, { outline: false }),
+      B(-2.2, 12.3, 12.2, 2.2, 13.2, 14.9, mouthIn, { outline: false }),
+      ...eyeParts(), ...eyeParts().map(flipC),
+      B(-1.333, 21, 12.42, 1.333, 23.333, 12.42, prismP(false), { plane: 'z', id: 'prism' }),
+      B(-1.333, 21, 12.44, 1.333, 23.333, 12.44, prismP(true), { plane: 'z', id: 'prism-lit', glow: true, hide: true }),
+    ] },
+    { name: 'jaw', parent: 'head', pivot: [0, 13.1, 12.2], cubes: [
+      B(-2.6, 11.9, 12, 2.6, 13.1, 14.9, whiteP),
+      B(-1.4, 12.8, 12.4, 1.4, 13.2, 14.4, tongueP, { outline: false }),
+    ] },
+    ...both(RIGHT.ear, RIGHT.brow).map((b) => (b.name === 'browL' ? { ...b, rot: [0, 0, -4] } : b)),
+    ...tailBones,
+  ],
+};
+
+// ---------------------------------------------------------------- animation
+defineFx('zap', { w: 7, h: 9, frames: [0, 1, 2].map((f) => (p) => { let x = 3; for (let y = 0; y < 9; y++) { p.px(x, y, '#ffffff'); p.px(x + 1, y, '#fff27a'); if (y % 3 === 2) x += ((y + f) % 2 ? 2 : -2); x = Math.max(0, Math.min(5, x)); } }), glow: true, life: [0.08, 0.16], size: [0.1, 0.14], speed: [0, 0.4], grav: 0, spread: 1, spin: 6, fps: 30 });
+defineFx('ray', { w: 3, h: 3, paint: (p) => { p.px(1, 0, '#ffffff'); p.px(0, 1, '#ffffff'); p.px(1, 1, '#ffffff'); p.px(2, 1, '#ffffff'); p.px(1, 2, '#ffffff'); }, glow: true, life: [0.26, 0.34], size: [0.07, 0.11], speed: [6.5, 7.5], grav: 0, drag: 0, spread: 0.015 });
+defineFx('beam', { w: 3, h: 3, paint: (p) => { p.rect(0, 0, 3, 3, '#ffffff'); }, glow: true, life: [0.05, 0.06], size: [0.12, 0.08], speed: [6, 6.5], grav: 0, drag: 0, spread: 0.01 });
+const MOUTH = [0, 13.2, 15.6], PRISM = [0, 22.6, 13], CHEEK = { R: [-6.4, 15.6, 11], L: [6.4, 15.6, 11] };
+const LEG = { FR: [-3.8, 8.6, 3], FL: [3.8, 8.6, 3], HR: [-4.4, 8.6, -5.5], HL: [4.4, 8.6, -5.5] }, BP = [0, 8.5, -5.5];
+const ALL = ['FR', 'FL', 'HR', 'HL'];
+// move the body (offsets in units, pitch + = nose down, roll + = toward its right) and keep the listed paws on the ground:
+// each planted leg hangs plumb and stretches or squashes to reach the floor
+function body(P, dx, dy, dz, pitch = 0, roll = 0, legs = ALL, yaw = 0) {
+  P.pos('body', dx, dy, dz).rot('body', pitch, yaw, roll);
+  const p = pitch / R2D, r = roll / R2D;
+  for (const k of legs) {
+    const [x, y, z] = LEG[k], rx = x - BP[0], ry = y - BP[1], rz = z - BP[2];
+    const Y = rx * Math.sin(r) + ry * Math.cos(r), Y2 = Y * Math.cos(p) - rz * Math.sin(p);
+    P.rot('leg' + k, -pitch, -yaw, -roll).scl('leg' + k, 1, Math.max(0.3, (BP[1] + dy + Y2) / y), 1);
+  }
+}
+const tailNames = TAIL.map((_, i) => 'tail' + (i + 1));
+// a lazy travelling S through the tail: amp (deg), hz, lift (deg per segment, + curls up / − droops)
+function swish(P, t, amp = 8, hz = 0.5, lift = 0, ph = 0) {
+  tailNames.forEach((n, i) => P.rot(n, lift, Math.sin(t * TAU * hz - i * 0.7 + ph) * amp * (0.6 + i * 0.12), Math.sin(t * TAU * hz - i * 0.7 + ph + 1.2) * amp * 0.25));
+}
+const charge = (P, n) => P.face('charge', 'c' + Math.max(0, Math.min(6, Math.round(n))));
+const brow = (P, r, l) => P.rot('browR', 0, 0, -r).rot('browL', 0, 0, l);          // + raises (tilts the outer end up)
+
+export const anim = {
+  start: 'idle', seed: 5,
+  breathe: { bone: 'body', amp: 0.018, per: 2.2 },
+  blink: { slot: 'eyes', closed: 'closed', every: [2.0, 4.6], dur: 0.1 },
+  look: { bone: 'head', yaw: 30, pitch: 14, speed: 6 },
+  springs: [
+    { bone: 'earR', tip: [0, 4, 0], k: 220, d: 10, gain: 0.7, max: 22 },
+    { bone: 'earL', tip: [0, 4, 0], k: 230, d: 10, gain: 0.7, max: 22 },
+    { bone: 'tail1', tip: [0, 0, -4.6], k: 170, d: 10, gain: 0.5, max: 14 },
+    { bone: 'tail2', tip: [0, 0, -4.6], k: 150, d: 9, gain: 0.6, max: 16 },
+    { bone: 'tail3', tip: [0, 0, -4.6], k: 130, d: 8, gain: 0.7, max: 18 },
+    { bone: 'tail4', tip: [0, 0, -4.6], k: 120, d: 8, gain: 0.75, max: 20 },
+    { bone: 'tail5', tip: [0, 0, -4.2], k: 110, d: 7, gain: 0.8, max: 22 },
+    { bone: 'tail6', tip: [0, 0, -6], k: 100, d: 7, gain: 0.85, max: 24 },
+  ],
+  faces: {
+    eyes: { default: 'sly', states: Object.fromEntries(Object.keys(EYES).map((k) => [k, ['eye-' + k]])) },
+    charge: { default: 'c0', states: Object.fromEntries([0, 1, 2, 3, 4, 5, 6].map((n) => ['c' + n, Array.from({ length: n }, (_, i) => 'glow' + (i + 1))])) },
+    prism: { default: 'off', states: { off: ['prism'], lit: ['prism-lit'] } },
+  },
+  fidget: { every: [5, 9], clips: ['standup', 'tailcheck'] },
+  clips: {
+    // roly-poly bounce, a cocky head tilt, the tail swishing in a lazy S, the first ring blinking like a standby light
+    idle: { len: 2.0, loop: true, f(P, t) {
+      const b = bounce(t, 1.0, { squash: 0.09, stretch: 0.04 }), sway = Math.sin(t * TAU * 0.5);
+      body(P, 0, b.u * 0.9 - 0.2, 0, 0, sway * 3);
+      P.sq('body', b.sq);
+      P.rot('head', 4 - b.u * 4, sway * 4, -sway * 7).pos('head', 0, -b.u * 0.3, 0);
+      swish(P, t, 9, 0.5);
+      brow(P, 8 + 6 * bump(t, 0.9, 1.3), -2);
+      P.rot('earR', 0, 0, -18 * bump(t, 1.35, 1.5)).rot('earL', 0, 0, 4 * sway);
+      charge(P, t % 1 < 0.5 ? 1 : 0);
+      P.rot('jaw', 2);
+      if (t > 1.62 && t < 1.7) P.stream('zap', 'head', CHEEK.R, { rate: 40, scale: 0.6 });
+    } },
+    // a bustling trot: diagonal pairs, the round body bobbing, the head nodding a beat behind
+    walk: { len: 0.64, loop: true, f(P, t) {
+      const ph = (t / 0.64) * TAU, s = Math.sin(ph), c = Math.cos(ph), up = Math.abs(Math.cos(ph));
+      body(P, 0, up * 0.9 - 0.2, 0, -2, s * 4);
+      P.sq('body', -0.05 * (1 - up) ** 3);
+      for (const [k, g] of [['FR', 1], ['HL', 1], ['FL', -1], ['HR', -1]]) {
+        const sw = s * g, lift = Math.max(0, c * g);
+        P.rot('leg' + k, -sw * 26, 0, 0).scl('leg' + k, 1, 1 - lift * 0.22, 1);
+      }
+      P.rot('head', 3 + Math.sin(ph * 2 - 0.8) * 4, -s * 5, s * 3);
+      swish(P, t, 10, 1 / 0.64, 0, 0);
+      brow(P, 6, 0);
+    } },
+    // entrance: up on its hind legs in the red panda's threat stance, arms flung wide, crackling, every ring flashing
+    cry: { len: 2.2, next: 'idle', f(P, t) {
+      const crouch = seg(t, 0, 0.3, E.inout) * (1 - seg(t, 0.3, 0.4, E.out)), up = seg(t, 0.32, 0.56, E.back) * (1 - seg(t, 1.62, 1.92, E.inout));
+      const land = t > 1.9 ? wob(t, 1.9, 1, 3, 6) : 0;
+      body(P, 0, -1.4 * crouch + 2 * up + land * -0.6, -1.5 * up, 8 * crouch - 64 * up, wave(t, 6) * 2 * up, up > 0.2 ? ['HR', 'HL'] : ALL);
+      P.sq('body', -0.12 * crouch + 0.08 * up * (1 - seg(t, 0.56, 0.7)) + land * -0.1);
+      P.rot('head', 52 * up + 6 * crouch, 0, wave(t, 5) * 4 * up).rot('jaw', 30 * up * (0.8 + 0.2 * wave(t, 9)));
+      for (const [k, g] of [['FR', 1], ['FL', -1]]) P.rot('leg' + k, -70 * up, 0, -g * 70 * up + g * wave(t, 7) * 6 * up);
+      P.rot('earR', 0, 0, 20 * up).rot('earL', 0, 0, -20 * up);
+      swish(P, t, 14 * up + 6, 1.4, -6 * up);
+      brow(P, -14 * up, -14 * up);
+      P.face('eyes', crouch > 0.3 ? 'focus' : up > 0.3 ? 'wide' : undefined).face('prism', up > 0.4 ? 'lit' : 'off');
+      charge(P, up > 0.3 ? (Math.floor(t * 18) % 7) : 0);
+      P.blinkOK = false;
+      if (up > 0.5) P.stream('zap', 'body', [0, 12, 0], { rate: 22, spread: 1, scale: 1.2 }).stream('zap', 'head', CHEEK.R, { rate: 10 }).stream('zap', 'head', CHEEK.L, { rate: 10, key: 'L' });
+      P.burst(0.58, 'spark', 'head', PRISM, { n: 2 }).burst(0.58, 'ring', 'body', [0, 14, 0], { scale: 0.8, tint: [1, 0.95, 0.5] });
+      P.burst(1.94, 'dust', 'root', [0, 0.5, 2], { n: 8, spread: 1, speed: 1.2 });
+    } },
+    // zap swipe: crouch, pounce, a crackling paw swipe, land
+    attack: { len: 1.0, next: 'idle', f(P, t) {
+      const crouch = seg(t, 0, 0.2, E.inout) * (1 - seg(t, 0.2, 0.26, E.out)), air = bump(t, 0.22, 0.5), sw = seg(t, 0.3, 0.42, E.out3) * (1 - seg(t, 0.5, 0.8, E.inout));
+      const fwd = 5.5 * seg(t, 0.2, 0.46, E.out) * (1 - seg(t, 0.62, 0.98, E.inout)), land = t > 0.5 ? wob(t, 0.5, 1, 3, 7) : 0;
+      body(P, 0, -1.6 * crouch + 3 * air - 0.8 * land, 0, 10 * crouch - 18 * air, -10 * sw, air > 0.1 ? ['HR', 'HL', 'FL'] : ALL);
+      P.pos('root', 0, 0, fwd).sq('body', -0.14 * crouch + 0.1 * air - 0.1 * Math.max(0, land));
+      P.rot('legFR', -90 * sw - 20 * air, 30 * sw, 40 * sw).rot('head', -8 * crouch + 10 * air, -8 * sw, 6 * sw).rot('jaw', 20 * sw);
+      swish(P, t, 12, 1.2, 4 * air);
+      brow(P, -12, -12);
+      P.face('eyes', crouch > 0.2 || sw > 0.1 ? 'focus' : undefined); P.blinkOK = false;
+      charge(P, sw > 0.2 ? 3 : 0);
+      P.burst(0.4, 'spark', 'legFR', [-4, 2, 8], { n: 2 }).burst(0.4, 'bolt', 'legFR', [-4, 2, 8], { n: 3 }).burst(0.42, 'zap', 'legFR', [-4, 2, 8], { n: 5, speed: 1.4 });
+      P.burst(0.52, 'dust', 'root', [0, 0.5, 4], { n: 6, spread: 1, speed: 1 });
+    } },
+    // prism beam: charges ring by ring (red → violet), the prism blazes, white light pours out and fans into a rainbow
+    special: { len: 2.7, next: 'idle', f(P, t) {
+      const brace = seg(t, 0, 0.25, E.inout) * (1 - seg(t, 2.1, 2.5, E.inout)), lvl = Math.min(6, Math.floor(seg(t, 0.15, 1.05, E.lin) * 7));
+      const pull = seg(t, 1.05, 1.3, E.inout) * (1 - seg(t, 1.3, 1.36, E.out)), fire = t > 1.34 && t < 2.05 ? 1 : 0, kick = seg(t, 1.34, 1.42, E.out) * (1 - seg(t, 1.5, 2.1, E.inout));
+      const drain = t > 1.34 ? Math.max(0, 6 - Math.floor((t - 1.34) / 0.12)) : lvl;
+      body(P, 0, -1.2 * brace + 0.3 * wave(t, 12) * (lvl / 6) * (1 - fire), -1.8 * kick, 6 * brace - 8 * pull + 10 * kick, 0);
+      P.sq('body', 0.05 * (lvl / 6) * (1 - fire) - 0.08 * kick).scl('body', 1 + 0.04 * (lvl / 6) * (t < 1.34 ? 1 : 0));
+      P.rot('head', -6 * brace - 14 * pull + 8 * kick, 0, 0).rot('jaw', 8 * (lvl / 6) + 26 * fire);
+      swish(P, t, t < 1.34 ? 3 + lvl : 12, t < 1.34 ? 3 : 1, t < 1.34 ? 4 + lvl * 0.8 : -4);
+      brow(P, -16, -16);
+      P.face('eyes', t < 2.1 ? 'focus' : 'smug').face('prism', t > 0.95 && t < 2.1 ? 'lit' : 'off'); P.blinkOK = false;
+      charge(P, t < 1.34 ? lvl : drain);
+      if (t > 0.2 && t < 1.34) P.stream('zap', 'body', [0, 13, -4], { rate: 6 + lvl * 4, spread: 1, scale: 1.1 }).stream('zap', 'tail' + Math.max(1, lvl), [0, TY, -12 - lvl * 4.6], { rate: 6, key: 't' });
+      P.burst(1.0, 'sparkle', 'head', PRISM, { n: 6, speed: 0.8 });
+      if (fire) {
+        P.stream('beam', 'head', PRISM, { rate: 260, dir: [0, -0.02, 1] });
+        C.spec.forEach((c, i) => {
+          const rgb = [1, 3, 5].map((k) => parseInt(c.slice(k, k + 2), 16) / 255);
+          P.stream('ray', 'head', [0, 22.4, 26], { rate: 70, dir: [0, 0.16 - i * 0.065, 1], tint: rgb, key: 'r' + i });
+        });
+        P.stream('zap', 'head', [0, 22.4, 25], { rate: 14, spread: 0.6, key: 'split' });
+      }
+      P.burst(1.34, 'ring', 'head', [0, 22.4, 26], { scale: 0.9 }).burst(1.34, 'spark', 'head', PRISM, { n: 2 });
+      P.burst(2.12, 'steam', 'body', [0, 16, -4], { n: 6, spread: 0.8 });
+    } },
+    // the fur poofs out, the rings flicker off, a jolt back
+    hurt: { len: 0.65, next: 'idle', f(P, t) {
+      const k = seg(t, 0, 0.06, E.out) * (1 - seg(t, 0.2, 0.65, E.inout));
+      body(P, 0, 0.6 * k, -2.4 * k, -10 * k + wob(t, 0.06, 4, 4, 7), wave(t, 15) * 4 * k);
+      P.scl('body', 1 + 0.12 * k, 1 + 0.1 * k, 1 + 0.12 * k).rot('head', -14 * k, 0, wave(t, 13) * 6 * k).rot('jaw', 24 * k);
+      swish(P, t, 18 * k, 4, -10 * k);
+      P.rot('earR', 0, 0, 30 * k).rot('earL', 0, 0, -30 * k);
+      brow(P, 18 * k, 18 * k);
+      P.face('eyes', t < 0.4 ? 'x' : undefined); P.blinkOK = false;
+      charge(P, t < 0.36 ? [3, 0, 5, 1, 0, 2, 0][Math.floor(t * 20) % 7] : 0);
+      P.burst(0.02, 'spark', 'body', [0, 13, 4], { n: 2 }).burst(0.02, 'zap', 'body', [0, 13, 0], { n: 6, speed: 1.6 }).burst(0.04, 'star', 'head', [0, 26, 8], { n: 3 });
+    } },
+    // dizzy wobble, then a roly-poly topple onto its side, paws in the air
+    faint: { len: 2.2, next: 'down', f(P, t) {
+      const dizzy = seg(t, 0, 0.25) * (1 - seg(t, 0.95, 1.05)), fall = seg(t, 0.95, 1.4, E.bounce);
+      body(P, 0, -0.6 * dizzy - 1.6 * fall, 0, 0, wave(t, 1.4) * 8 * dizzy + 98 * fall, fall > 0.05 ? [] : ALL);
+      P.rot('head', 0, wave(t, 1.4, 1) * 14 * dizzy, wave(t, 1.4) * 10 * dizzy - 10 * fall).rot('jaw', 18 * fall);
+      for (const k of ALL) P.rot('leg' + k, -14 * fall, 0, -24 * fall);
+      swish(P, t, 6 * (1 - fall), 0.7, -14 * fall);
+      P.face('eyes', 'swirl').face('prism', 'off'); P.blinkOK = false; P.lookW = 0;
+      charge(P, t < 0.9 ? [2, 1, 0][Math.floor(t * 6) % 3] : 0);
+      P.burst(1.4, 'dust', 'root', [-6, 1, 0], { n: 10, spread: 1, speed: 1.2 }).burst(0.7, 'star', 'head', [0, 27, 8], { n: 5 });
+      P.burst(1.45, 'zap', 'body', [0, 10, 0], { n: 4, speed: 1 });
+    } },
+    down: { len: 2.4, loop: true, f(P, t) {
+      body(P, 0, -1.6, 0, 0, 98, []);
+      P.rot('head', 0, 0, -10).rot('jaw', 18 + wave(t, 0.4) * 4);
+      for (const [k, i] of [['FR', 0], ['FL', 1], ['HR', 2], ['HL', 3]]) P.rot('leg' + k, -14 + wave(t, 0.8, i) * 4, 0, -24);
+      swish(P, t, 2, 0.4, -14);
+      P.face('eyes', 'swirl').face('prism', 'off'); P.blinkOK = false; P.lookW = 0; P.breathW = 0.5;
+      P.burst(0.9, 'zap', 'body', [0, 12, -2], { n: 2, speed: 0.6 }).burst(1.0, 'smoke', 'body', [0, 14, -2], { n: 1, scale: 0.5 });
+    } },
+    // victory: hops up onto its hind legs and pirouettes, rings chasing round the spectrum, then drops with a smug bounce
+    win: { len: 2.3, next: 'idle', f(P, t) {
+      const up = seg(t, 0.1, 0.36, E.back) * (1 - seg(t, 1.8, 2.05, E.inout)), spin = seg(t, 0.5, 1.4, E.inout), hopY = Math.max(0, Math.sin(seg(t, 0.36, 0.6, E.lin) * Math.PI)) * 3;
+      const land = t > 2.05 ? wob(t, 2.05, 1, 3, 6) : 0;
+      body(P, 0, 2 * up + hopY - 0.6 * land, -1.5 * up, -62 * up, 0, up > 0.2 ? ['HR', 'HL'] : ALL);
+      P.rot('root', 0, 360 * spin, 0).sq('body', 0.06 * up * (1 - seg(t, 0.4, 0.6)) - 0.1 * land);
+      P.rot('head', 50 * up, 0, wave(t, 2.5) * 8 * up).rot('jaw', 10 * up);
+      for (const [k, g] of [['FR', 1], ['FL', -1]]) P.rot('leg' + k, -100 * up + wave(t, 3, g) * 14 * up, 0, -g * 30 * up);
+      swish(P, t, 16 * up + 6, 1.2, 6 * up);
+      brow(P, 14 * up, -4 * up);
+      P.face('eyes', up > 0.3 ? 'smug' : undefined).face('prism', up > 0.3 ? 'lit' : 'off'); P.blinkOK = up < 0.3;
+      charge(P, up > 0.3 ? (Math.floor(t * 12) % 7) : 0);
+      P.burst(0.6, 'sparkle', 'head', PRISM, { n: 10, speed: 1.6 }).burst(1.4, 'sparkle', 'body', [0, 20, 0], { n: 8, speed: 1.4 });
+      if (up > 0.5) P.stream('zap', 'body', [0, 14, 0], { rate: 8, spread: 1 });
+    } },
+    // napping in a ball, tail wrapped round like a blanket, the rings slowly refilling
+    sleep: { len: 3.6, loop: true, f(P, t) {
+      const br = Math.sin((t / 3.6) * TAU);
+      body(P, 0, -3 + br * 0.25, 0, 6, 0, []);
+      P.sq('body', -0.04 + br * 0.03);
+      for (const k of ALL) P.scl('leg' + k, 1, 0.55, 1).rot('leg' + k, k[0] === 'F' ? -50 : 40, 0, 0);
+      P.rot('head', 34 + br * 2, 22, 12).rot('earR', 0, 0, 10).rot('earL', 0, 0, -10);
+      tailNames.forEach((n, i) => P.rot(n, -18 - (i < 2 ? 4 : 0), 24, 0));
+      P.face('eyes', 'closed').face('prism', 'off'); P.blinkOK = false; P.lookW = 0; P.breathW = 0;
+      charge(P, Math.floor((t / 3.6) * 7));
+      P.burst(0.5, 'z', 'head', [4, 24, 10], {}).burst(2.2, 'z', 'head', [4, 24, 10], {});
+    } },
+    // fidget: up on its hind legs for a peek, like a startled red panda — then a smug drop
+    standup: { len: 1.6, next: 'idle', f(P, t) {
+      const up = seg(t, 0.05, 0.28, E.back) * (1 - seg(t, 1.15, 1.4, E.inout)), land = t > 1.4 ? wob(t, 1.4, 1, 3, 6) : 0;
+      body(P, 0, 1.6 * up - 0.5 * land, -1.2 * up, -56 * up, 0, up > 0.2 ? ['HR', 'HL'] : ALL);
+      P.sq('body', 0.05 * up - 0.08 * land);
+      P.rot('head', 46 * up, wave(t, 1.2) * 18 * up, 0);
+      for (const [k, g] of [['FR', 1], ['FL', -1]]) P.rot('leg' + k, -60 * up, 0, -g * 50 * up);
+      swish(P, t, 10, 1, 2 * up);
+      brow(P, 16 * up, 2);
+      P.face('eyes', up > 0.5 ? 'wide' : undefined);
+      P.burst(0.3, 'zap', 'body', [0, 14, 0], { n: 3 });
+    } },
+    // fidget: a look back at its own battery — flick, rings 1-2-3 light, then off — and a smirk at you
+    tailcheck: { len: 2.2, next: 'idle', f(P, t) {
+      const look = seg(t, 0.05, 0.4, E.inout) * (1 - seg(t, 1.5, 1.8, E.inout)), flick = bump(t, 0.6, 0.9);
+      body(P, 0, 0, 0, 0, -4 * look, ALL, 12 * look);
+      P.rot('head', -6 * look, 80 * look, 10 * look);
+      tailNames.forEach((n, i) => P.rot(n, 14 * flick * (i / 5), 0, 0));
+      swish(P, t, 6, 0.6);
+      charge(P, t > 0.8 && t < 1.5 ? Math.min(3, Math.floor((t - 0.8) / 0.12) + 1) : 0);
+      brow(P, 6 + 12 * seg(t, 1.6, 1.8), -2);
+      P.face('eyes', t > 1.75 ? 'smug' : undefined);
+      P.burst(0.9, 'zap', 'tail3', [0, TY, -20], { n: 3 });
+    } },
+  },
+};
+def.anim = anim;

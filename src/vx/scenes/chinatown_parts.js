@@ -8,9 +8,11 @@
 // a California Street cable car. Positions are voxels (8 per metre); facades face +z.
 import { GLOW } from '../fine.js';
 import { h3 } from '../kit.js';
+import { glyphs, Pen, newSurf } from '../decals.js';
+import { shift, mix } from '../../px/paint.js';
 
 export const C = {
-  tile: ['#2f7c4d', '#378857', '#2a7246', '#43966a'], tileD: '#1f5838', ridge: '#1c4a31', ridgeHi: '#2f704a', edge: '#215a3a',
+  tile: ['#2c784a', '#3a8c5a', '#2f8050', '#48a06e'], tileD: '#22603c', ridge: '#1c4a31', ridgeHi: '#2f704a', edge: '#1f5636',
   tileR: ['#ac282b', '#ba3331', '#9e2427', '#c4463c'], tileRD: '#6e191c',
   gold: ['#dcae3c', '#f0ca56', '#b98a2c'],
   red: ['#a92428', '#b72c2d', '#9c2125'], redD: '#6a181b',
@@ -77,9 +79,9 @@ export function pagodaRoof(k, o) {
     for (let yy = lo; yy <= h; yy++) {
       let c;
       if (yy === h) {
-        if (d === 0) c = along % 2 ? GD[0] : EG;
+        if (d === 0) c = along % 3 === 1 ? GD[0] : EG;
         else if (hip) c = RG;
-        else c = along % 2 === 0 ? TD : (d % 3 === 0 ? T[2] : pickH(T, x, yy, z));
+        else { const a3 = along % 3; c = a3 === 0 ? TD : d % 4 === 0 ? T[0] : a3 === 1 ? (h3(x, yy, z) < 0.12 ? T[3] : T[1]) : T[2]; }
       } else c = yy === lo ? UN[(along >> 1) % 2 && d < 3 ? 1 : 0] : TD;
       v.set(x, yy, z, c);
     }
@@ -443,7 +445,7 @@ export function tileEave(k, o) {
     let prev = null;
     for (let dz = 0; dz <= D; dz++) {
       const t = 1 - dz / D, h = Math.round(y + rise * Math.pow(t, 1.6)) + up, lo = prev === null ? h - 1 : Math.min(h - 1, prev);
-      for (let yy = lo; yy <= h; yy++) v.set(x, yy, zf + 1 + dz, yy < h ? (yy === lo ? R[0] : TD) : dz === D ? (x % 2 ? GD[0] : EG) : x % 2 === 0 ? TD : pickH(T, x, yy, dz));
+      for (let yy = lo; yy <= h; yy++) v.set(x, yy, zf + 1 + dz, yy < h ? (yy === lo ? R[0] : TD) : dz === D ? (x % 3 === 1 ? GD[0] : EG) : x % 3 === 0 ? TD : x % 3 === 1 ? T[1] : T[2]);
       prev = h;
     }
     if (e === 0) v.set(x, Math.round(y) + up + 1, zf + 1 + D, GD[1]);
@@ -511,7 +513,7 @@ export function trashCan(k, x, y, z) {
 }
 export function bench(k, x, y, z, len = 16, o = {}) {
   const v = k.v, W = many(k, o.wood || ['#8a5a36', '#965f3a', '#7c5030']), I = one(k, o.iron || '#2a3a32');
-  for (const bx of [x, x + len - 1]) { bx(k, bx, y, z - 2, bx, y + 3, z - 2, I); bx(k, bx, y, z + 1, bx, y + 3, z + 1, I); bx(k, bx, y + 4, z + 1, bx, y + 7, z + 1, I); }
+  for (const ex of [x, x + len - 1]) { bx(k, ex, y, z - 2, ex, y + 3, z - 2, I); bx(k, ex, y, z + 1, ex, y + 3, z + 1, I); bx(k, ex, y + 4, z + 1, ex, y + 7, z + 1, I); }
   bx(k, x, y + 3, z - 2, x + len - 1, y + 3, z + 1, (xx, yy, zz) => (zz === z ? undefined : W[(xx >> 2) % 3]));
   bx(k, x, y + 5, z + 1, x + len - 1, y + 5, z + 1, W[1]); bx(k, x, y + 7, z + 1, x + len - 1, y + 7, z + 1, W[0]);
 }
@@ -540,4 +542,349 @@ export function van(k, x, y, z, o = {}) {
 export function shade(hex, f) {
   const n = parseInt(hex.slice(1), 16), c = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((q) => Math.max(0, Math.min(255, Math.round(f < 0 ? q * (1 + f) : q + (255 - q) * f))));
   return '#' + c.map((q) => q.toString(16).padStart(2, '0')).join('');
+}
+
+// ============================================================ painted decals
+// Pixel-art painters for the 2D layer: each returns paint(p, W, H) for decal().
+// Every CJK string used is listed in SIGN_TEXT so prepare() can load its glyphs.
+export const SIGN_TEXT = '天下為公金龍酒家菜單燒鴨叉燒炒麵雲吞點心月滿餅家仁和堂中藥玉蓮珠寶銀雲茶樓福德廟旭日生果幸運餅玉門禮品中華百貨華埠禮品都板街萬事如意四季平安福星高照花開富貴金星茶太極吉屋出租中秋節麻雀月光音樂會蛋撻菠蘿包月餅特價新鮮酒店';
+
+// CJK text fitted and centred in a box (renders, measures the ink, shrinks until it fits)
+export function fit(p, str, bx, by, bw, bh, col, o = {}) {
+  const n = [...str].length, vert = !!o.vertical;
+  let size = Math.floor((vert ? Math.min(bw, bh / n) : Math.min(bh, bw / n)) * (o.k ?? 1.05));
+  for (let t = 0; t < 8 && size >= 5; t++) {
+    const gap = o.gap ?? Math.max(1, Math.round(size * 0.12)), pad = 6 + (o.ow || 1) * 2;
+    const S = newSurf(Math.ceil(vert ? size * 1.7 : (size * 1.5 + gap) * n) + pad * 2, Math.ceil(vert ? (size * 1.5 + gap) * n : size * 1.8) + pad * 2), q = new Pen(S);
+    glyphs(q, str, pad, pad, size, col, { font: o.font || 'serif', vertical: vert, gap, outline: o.outline, outline2: o.outline2, ow: o.ow, shadow: o.shadow, bevel: o.bevel });
+    const b = S.bounds(); if (!b) return null;
+    const w = b.x1 - b.x0 + 1, h = b.y1 - b.y0 + 1;
+    if (w > bw || h > bh) { size = Math.floor(size * Math.min(0.94, bw / w, bh / h)); continue; }
+    p.put(S, Math.round(bx + (bw - w) / 2 - b.x0), Math.round(by + (bh - h) / 2 - b.y0));
+    return { w, h, size };
+  }
+  return null;
+}
+// shaded round blob lit from the upper left: T = [dark, mid, light, highlight]
+function blob(p, cx, cy, rx, ry, T, rim = true) {
+  for (let y = Math.floor(cy - ry); y <= Math.ceil(cy + ry); y++) for (let x = Math.floor(cx - rx); x <= Math.ceil(cx + rx); x++) {
+    const u = (x - cx) / rx, w = (y - cy) / ry, d = u * u + w * w; if (d > 1) continue;
+    const l = -u * 0.6 - w * 0.75 + (1 - d) * 0.5;
+    p.px(x, y, rim && d > 0.78 ? T[0] : l > 0.95 ? T[3] : l > 0.35 ? T[2] : l > -0.3 ? T[1] : T[0]);
+  }
+}
+const glare = (p, W, H, n = 2) => { for (let i = 0; i < n; i++) { const x0 = Math.round(W * (0.15 + i * 0.45)); for (let y = 0; y < H; y++) for (let d = 0; d < 3 + i; d++) { const x = x0 + d - Math.round(y * 0.6); if (x >= 0 && x < W) p.blend(x, y, '#ffffff', 0.13); } } };
+const small = (p, str, x, y, c, o = {}) => p.text(str, x, y, c, o);
+
+export const P = {
+  // a framed horizontal shop board: big CJK name, English below
+  board: (o) => (p, W, H) => {
+    const bg = o.bg, fr = o.frame || '#d8a83a', tx = o.text || '#f6d060', dk = shift(bg, -2.2);
+    p.rect(0, 0, W, H, dk); p.rect(1, 1, W - 2, H - 2, fr);
+    p.hl(1, W - 2, 1, shift(fr, 0.8)); p.vl(1, 1, H - 2, shift(fr, 0.5)); p.hl(1, W - 2, H - 2, shift(fr, -0.9)); p.vl(W - 2, 1, H - 2, shift(fr, -0.7));
+    p.rect(3, 3, W - 6, H - 6, bg);
+    for (let y = 4; y < H - 4; y++) for (let x = 4; x < W - 4; x++) if ((x * 7 + y * 13) % 29 === 0) p.px(x, y, o.bg2 || shift(bg, 0.4));
+    p.frame(5, 5, W - 10, H - 10, shift(fr, -0.6));
+    for (const [cx, cy, sx, sy] of [[7, 7, 1, 1], [W - 8, 7, -1, 1], [7, H - 8, 1, -1], [W - 8, H - 8, -1, -1]]) for (let i = 0; i < 3; i++) { p.px(cx + sx * i, cy, fr); p.px(cx, cy + sy * i, fr); }
+    const en = o.en, sc = en ? (p.textW(en, { scale: 2 }) <= W - 24 && H >= 54 ? 2 : 1) : 0, enH = en ? 7 * sc + 4 : 0;
+    const side = o.small ? 10 : Math.round(W * 0.06);
+    fit(p, o.cjk, side, 7, W - side * 2, H - 13 - enH, tx, { outline: dk, font: 'serif', bevel: false });
+    if (en) small(p, en, Math.floor(W / 2), H - 7 - 7 * sc, o.en2 || tx, { align: 'center', scale: sc, shadow: dk });
+    if (o.dragon) for (const [x0, dir] of [[10, 1], [W - 11, -1]]) for (let i = 0; i < 14; i++) { const x = x0 + dir * i, y = Math.round(H / 2 - 4 + Math.sin(i * 0.9) * 3); p.px(x, y, fr); p.px(x, y + 1, shift(fr, -0.5)); }
+  },
+  // vertical signboard with stacked characters
+  vboard: (o) => (p, W, H) => {
+    const bg = o.bg, fr = o.frame || '#d8a83a', dk = shift(bg, -2.2);
+    p.rect(0, 0, W, H, dk); p.rect(1, 1, W - 2, H - 2, fr); p.rect(3, 3, W - 6, H - 6, bg); p.frame(4, 4, W - 8, H - 8, shift(fr, -0.6));
+    fit(p, o.cjk, 5, 6, W - 10, H - 12, o.col, { vertical: true, outline: o.outline || dk, font: o.font || 'serif' });
+  },
+  // vertical neon: dark box, white-hot tubes with coloured halo
+  vneon: (o) => (p, W, H) => {
+    p.rect(0, 0, W, H, '#1c1416'); p.frame(1, 1, W - 2, H - 2, o.edge); p.frame(3, 3, W - 6, H - 6, shift(o.edge, -1.4));
+    fit(p, o.cjk, 5, 6, W - 10, H - 12, '#fff6dc', { vertical: true, outline: o.col, outline2: shift(o.col, -1.2), ow: 1 });
+  },
+  plaque: (o) => (p, W, H) => {
+    const bg = o.bg, gd = '#e8b83a';
+    p.rect(0, 0, W, H, '#6a4a14'); p.rect(1, 1, W - 2, H - 2, gd); p.hl(1, W - 2, 1, '#fff0a0'); p.hl(1, W - 2, H - 2, '#9a6a1a');
+    p.rect(3, 3, W - 6, H - 6, bg); p.frame(5, 5, W - 10, H - 10, '#c8962c');
+    for (let x = 8; x < W - 8; x += 6) { p.px(x, 3, '#fff0a0'); p.px(x, H - 4, '#9a6a1a'); }
+    fit(p, o.cjk, 8, 6, W - 16, H - 12, gd, { outline: shift(bg, -1.5), font: 'serif' });
+  },
+  couplet: (o) => (p, W, H) => {
+    p.rect(0, 0, W, H, '#4a0c10'); p.rect(1, 1, W - 2, H - 2, '#b8222a'); p.frame(2, 2, W - 4, H - 4, '#e0a838');
+    fit(p, o.cjk, 3, 5, W - 6, H - 10, '#f8d460', { vertical: true, outline: '#5a0e12', font: 'serif' });
+  },
+  fu: (o) => (p, W, H) => {
+    const cx = (W - 1) / 2, cy = (H - 1) / 2, r = Math.min(W, H) / 2 - 0.5;
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      const d = o.round ? Math.hypot(x - cx, y - cy) / r : (Math.abs(x - cx) + Math.abs(y - cy)) / r;
+      if (d <= 1) p.px(x, y, d > 0.86 ? '#e8b83a' : d > 0.8 ? '#7a1418' : '#c8242c');
+    }
+    fit(p, '福', W * 0.22, H * 0.22, W * 0.56, H * 0.56, o.round ? '#f6d060' : '#1e1414', { outline: o.round ? '#6a1014' : undefined, font: 'serif' });
+  },
+  menu: (o) => (p, W, H) => {
+    p.rect(0, 0, W, H, '#2a1e18'); p.frame(0, 0, W, H, '#c8962c'); p.frame(2, 2, W - 4, H - 4, '#6a4a2a');
+    fit(p, o.title, 4, 4, W - 8, 14, '#f6d060', { font: 'serif' });
+    p.hl(6, W - 7, 19, '#c8962c');
+    o.lines.forEach((ln, i) => { const [cj, ...en] = ln.split(' '), y = 23 + i * 11; fit(p, cj, 4, y, 20, 10, '#f0e0c0', { font: 'pixel' }); small(p, en.join(' '), 26, y + 2, '#e8c070', { mini: true }); p.px(W - 6, y + 4, '#c84a3a'); });
+  },
+  ducks: () => (p, W, H) => {
+    p.vgrad(0, 0, W, H, ['#f0b868', '#e09450', '#c87440']);
+    for (let y = Math.floor(H * 0.72); y < H; y++) for (let x = 0; x < W; x++) if (x % 7 === 0 || y % 7 === 0) p.px(x, y, '#b86a3c');
+    p.hl(0, W - 1, 3, '#e8e8ec'); p.hl(0, W - 1, 4, '#8a8a92');
+    const D = ['#5a200c', '#8e3a14', '#c0601e', '#f0a848'];
+    const n = Math.max(3, Math.floor(W / 15)), sp = (W - 8) / n;
+    for (let i = 0; i < n; i++) {
+      const cx = Math.round(5 + sp * (i + 0.5)), top = 6 + (i % 2) * 3;
+      p.vl(cx, 4, top + 2, '#d8d8dc'); p.px(cx + 1, top + 2, '#d8d8dc');
+      blob(p, cx, top + 4, 2, 2, D);                            // head
+      p.rect(cx - 1, top + 5, 3, 6, D[1]); p.vl(cx - 1, top + 5, top + 10, D[2]);
+      blob(p, cx, top + 18, 6.5, 9, D);                         // body
+      p.line(cx - 4, top + 14, cx - 1, top + 24, D[0]); p.line(cx + 4, top + 14, cx + 2, top + 24, D[0]);
+      p.px(cx - 3, top + 13, '#ffe0a0'); p.px(cx - 2, top + 12, '#ffe0a0');
+      p.vl(cx - 2, top + 27, top + 30, D[1]); p.vl(cx + 2, top + 27, top + 30, D[1]);
+      if (i < n - 1) { const sx = Math.round(cx + sp / 2); p.vl(sx, 4, 9, '#d8d8dc'); p.rect(sx - 1, 10, 3, 14, '#a8262a'); p.vl(sx - 1, 10, 23, '#d84a3a'); p.vl(sx + 1, 10, 23, '#6a1414'); p.px(sx, 24, '#6a1414'); }
+    }
+    p.rect(2, H - 8, W - 4, 5, '#d8c8a8'); p.hl(2, W - 3, H - 8, '#f0e4c8'); p.rect(W - 14, H - 12, 9, 4, '#b8bcc4'); p.rect(W - 6, H - 11, 3, 2, '#5a3a20');
+    small(p, '$12', 4, H - 15, '#c8242c', { mini: true });
+    glare(p, W, H);
+  },
+  bakery: () => (p, W, H) => {
+    p.vgrad(0, 0, W, H, ['#fbf0dc', '#f2dec4', '#e8ccb0']);
+    const tart = (x, y) => { blob(p, x, y, 5.5, 3.4, ['#9a5a18', '#d0902e', '#e8b04a', '#f8d070'], true); blob(p, x, y - 0.5, 3.6, 2, ['#f0c838', '#f8dc50', '#ffec80', '#fff8c0'], false); p.px(x - 2, y - 2, '#fffbe0'); p.px(x + 1, y, '#e8b030'); };
+    const bun = (x, y) => { blob(p, x, y - 1, 6, 4.4, ['#a05e14', '#dc962c', '#f0b848', '#fff0a0']); for (const [dx, dy] of [[-3, -2], [-1, -3], [1, -2], [3, -1], [-2, 0], [0, -1], [2, 0]]) p.px(x + dx, y - 1 + dy, '#b8761c'); p.px(x - 2, y - 4, '#fff4b8'); };
+    const cake = (x, y) => { blob(p, x, y, 5.6, 3.8, ['#5a3010', '#94541e', '#b46e2c', '#d89c4c']); p.frame(x - 3, y - 2, 7, 4, '#6a3a14'); p.px(x, y, '#e8b860'); p.px(x - 1, y - 3, '#e8b860'); };
+    const bao = (x, y) => { blob(p, x, y - 1, 5.4, 4, ['#c4bcac', '#e8e0d2', '#f6f2ea', '#ffffff']); p.px(x, y - 4, '#c8402c'); p.px(x + 1, y - 3, '#c8402c'); p.px(x - 1, y - 3, '#a83020'); };
+    const rows = [Math.round(H * 0.33), Math.round(H * 0.62), Math.round(H * 0.92)], kinds = [[tart, tart], [bun, bao], [cake, tart]], tags = [['蛋撻', '$1.50'], ['菠蘿包', '$2'], ['月餅', '$9']];
+    rows.forEach((sy, i) => {
+      p.rect(1, sy, W - 2, 2, '#d0d4dc'); p.hl(1, W - 2, sy + 2, '#8a8e98');
+      const [a, b] = kinds[i];
+      for (let x = 9; x < W - 8; x += 14) a(x, sy - 4);
+      if (i < 2) for (let x = 16; x < W - 8; x += 14) b(x, sy - 11);
+      const tx = W - 30; p.rect(tx, sy - 25 + (i === 2 ? 8 : 0), 27, 11, '#fffaf0'); p.frame(tx, sy - 25 + (i === 2 ? 8 : 0), 27, 11, '#c8364a');
+      fit(p, tags[i][0], tx + 1, sy - 24 + (i === 2 ? 8 : 0), 15, 9, '#c8364a', { font: 'pixel' }); small(p, tags[i][1], tx + 17, sy - 22 + (i === 2 ? 8 : 0), '#3a6a5a', { mini: true });
+    });
+    glare(p, W, H, 3);
+  },
+  herbs: () => (p, W, H) => {
+    p.rect(0, 0, W, H, '#4a2e1c');
+    for (let y = 2; y < H * 0.62; y += 8) for (let x = 2; x < W - 2; x += 11) {
+      p.rect(x, y, 10, 7, '#7a4e2c'); p.hl(x, x + 9, y, '#9a6a3c'); p.vl(x + 9, y, y + 6, '#5a3820');
+      p.rect(x + 3, y + 2, 4, 2, '#efe4c8'); p.px(x + 4, y + 2, '#c8242c'); p.px(x + 5, y + 5, '#d8b440');
+    }
+    const cy = Math.round(H * 0.66); p.rect(0, cy, W, H - cy, '#6a4024'); p.hl(0, W - 1, cy, '#a8784a');
+    const jar = (x, c) => { p.rect(x, cy - 12, 8, 12, '#c8dce4'); p.rect(x + 1, cy - 8, 6, 7, c); p.rect(x + 1, cy - 14, 6, 2, '#c8302c'); p.vl(x + 1, cy - 11, cy - 2, '#ffffff'); };
+    ['#a86a3a', '#d8b860', '#8a2a1e', '#5a6a2a', '#c89a6a', '#e8d8b8'].forEach((c, i) => { const x = 3 + i * Math.floor((W - 8) / 6); if (x + 8 < W) jar(x, c); });
+    for (let i = 0; i < 3; i++) { const x = 6 + i * 22; if (x + 14 < W) { p.rect(x, cy + 4, 16, 6, '#d8c8a0'); p.line(x + 2, cy + 7, x + 13, cy + 5, '#c8a870'); p.line(x + 3, cy + 5, x + 12, cy + 8, '#b89058'); } }
+    glare(p, W, H);
+  },
+  jewels: () => (p, W, H) => {
+    for (let x = 0; x < W; x++) for (let y = 0; y < H; y++) p.px(x, y, x % 6 < 2 ? '#7a1420' : x % 6 < 4 ? '#8e1a26' : '#a0222e');
+    for (let i = 0; i < 4; i++) {
+      const x = 6 + i * Math.floor((W - 10) / 4), y = 8;
+      p.ell(x + 5, y + 6, 4, 5, '#1a1418'); p.rect(x + 1, y + 10, 9, H * 0.4, '#1a1418');
+      for (let t = 0; t < 12; t++) { const a = (t / 11) * Math.PI; p.px(Math.round(x + 5 + Math.cos(a) * 4), Math.round(y + 12 + Math.sin(a) * 6), t % 2 ? '#f8d860' : '#c8962c'); }
+      p.px(x + 5, y + 18, '#3ac87a'); p.px(x + 5, y + 19, '#2a9a5a');
+    }
+    const ty = Math.round(H * 0.7); p.rect(0, ty, W, H - ty, '#2a1a1a'); p.hl(0, W - 1, ty, '#c8962c');
+    for (let x = 6; x < W - 6; x += 9) { p.ell(x, ty + 6, 3.5, 2.2, '#2fae6a'); p.ell(x, ty + 6, 2, 1, '#2a1a1a'); p.px(x - 2, ty + 5, '#a8f0c8'); }
+    for (let i = 0; i < 10; i++) { const x = (i * 37) % W, y = (i * 23) % Math.round(H * 0.6) + 4; p.px(x, y, '#ffffff'); p.px(x - 1, y, '#fff0b0'); p.px(x + 1, y, '#fff0b0'); p.px(x, y - 1, '#fff0b0'); p.px(x, y + 1, '#fff0b0'); }
+    glare(p, W, H);
+  },
+  dimsum: () => (p, W, H) => {
+    p.vgrad(0, 0, W, H, ['#b8282c', '#a02226', '#7a1a1e']);
+    for (let x = 4; x < W - 4; x += 7) { p.rect(x, 3, 4, 18, '#d83a30'); p.vl(x, 3, 20, '#f05a40'); fit(p, '點心', x, 4, 4, 15, '#f8e070', { vertical: true, font: 'pixel', k: 1.2 }); }
+    for (let x = 10; x < W; x += 24) { p.vl(x, 0, 24, '#3a2a20'); blob(p, x, 27, 4, 2.5, ['#c8962c', '#f0c040', '#fff0a0', '#ffffff']); }
+    const ty = Math.round(H * 0.68);
+    for (let x = 14; x < W; x += 30) { p.ell(x, ty, 12, 4, '#f4f0e8'); p.rect(x - 12, ty, 25, 9, '#ece6da'); p.hl(x - 12, x + 12, ty + 8, '#c8c0b0'); for (const dx of [-15, 15]) p.rect(x + dx - 1, ty - 6, 3, 14, '#6a1a1a'); }
+    for (let i = 0; i < 3; i++) for (let j = 0; j < 3 - i; j++) { const x = 4 + j * 9 + i * 4, y = H - 6 - i * 5; p.rect(x, y, 9, 5, '#b88a4a'); p.hl(x, x + 8, y, '#e0b870'); p.hl(x, x + 8, y + 2, '#8a6030'); }
+    glare(p, W, H);
+  },
+  teaWin: () => (p, W, H) => {
+    p.rect(0, 0, W, H, '#3a2418');
+    const tins = ['#c8302c', '#2e7a4a', '#e8b830', '#2e5a9c', '#8a2a6a', '#e86a2a'];
+    for (let s = 0; s < 3; s++) { const y = 6 + s * Math.floor(H / 3.3); p.hl(0, W - 1, y + 13, '#8a5a34'); p.hl(0, W - 1, y + 14, '#5a3820');
+      for (let x = 3, i = s; x < W - 7; x += 9, i++) { const c = tins[i % tins.length]; if ((i + s) % 4 === 3) { blob(p, x + 3, y + 9, 4, 3.5, ['#4a2414', '#7a3e22', '#9a5432', '#c87a4a']); p.rect(x + 7, y + 7, 2, 2, '#7a3e22'); p.px(x + 3, y + 5, '#4a2414'); } else { p.rect(x, y + 2, 7, 11, c); p.vl(x, y + 2, y + 12, shift(c, 0.6)); p.vl(x + 6, y + 2, y + 12, shift(c, -0.8)); p.rect(x, y + 1, 7, 1, '#d8b440'); p.rect(x + 1, y + 6, 5, 3, '#f4ecd8'); } } }
+    small(p, 'TEA', W - 16, H - 9, '#f6d060', { scale: 1 });
+    glare(p, W, H);
+  },
+  gifts: () => (p, W, H) => {
+    p.vgrad(0, 0, W, H, ['#8a2a24', '#7a2420', '#6a1e1c']);
+    for (let i = 0; i < 4; i++) { const cx = 10 + i * Math.floor((W - 16) / 4), cy = 14; for (let a = 0; a <= 10; a++) { const t = Math.PI + (a / 10) * Math.PI; p.line(cx, cy, Math.round(cx + Math.cos(t) * 9), Math.round(cy + Math.sin(t) * 9), a % 2 ? ['#f0c040', '#e8e4dc', '#3a8a6a', '#e86a8a'][i] : shift(['#f0c040', '#e8e4dc', '#3a8a6a', '#e86a8a'][i], -0.8)); } p.px(cx, cy, '#3a2a1a'); }
+    for (let i = 0; i < 5; i++) { const x = 6 + i * Math.floor((W - 10) / 5), y = 30; p.vl(x + 3, y - 4, y, '#d8b440'); blob(p, x + 3, y + 4, 3, 3.5, ['#7a1418', '#c8242c', '#e8483a', '#ffa080']); p.rect(x + 1, y, 5, 1, '#d8b440'); p.rect(x + 1, y + 8, 5, 1, '#d8b440'); p.vl(x + 3, y + 9, y + 12, '#e8b83a'); }
+    const ry = Math.round(H * 0.62);
+    for (let i = 0; i < 4; i++) { const x = 4 + i * 14, c = ['#c8242c', '#2e5a9c', '#e8b830', '#2e7a4a'][i]; if (x + 11 > W) break; p.rect(x, ry, 11, H - ry - 3, c); p.rect(x + 4, ry, 3, 3, shift(c, -0.8)); for (let y = ry + 4; y < H - 4; y += 3) p.px(x + 5, y, '#f0d060'); }
+    const cx = W - 20; if (cx > 50) { p.rect(cx, H - 14, 16, 8, '#a8262a'); p.rect(cx, H - 18, 16, 4, '#f0e4c8'); p.rect(cx + 1, H - 17, 3, 2, '#5a8ab0'); p.rect(cx + 6, H - 17, 3, 2, '#5a8ab0'); p.rect(cx + 11, H - 17, 3, 2, '#5a8ab0'); p.px(cx + 3, H - 6, '#222'); p.px(cx + 12, H - 6, '#222'); }
+    glare(p, W, H);
+  },
+  bazaar: () => (p, W, H) => {
+    p.vgrad(0, 0, W, H, ['#e8dcc4', '#d8c8a8', '#c8b490']);
+    const vase = (x, y, h, c) => { for (let j = 0; j < h; j++) { const t = j / h, r = Math.round(2 + Math.sin(t * Math.PI) * 4 - (t < 0.15 ? 2 : 0)); p.hl(x - r, x + r, y + j, j % 4 === 1 ? '#f4f0e8' : c); p.px(x - r, y + j, shift(c, 0.8)); } };
+    vase(10, H - 26, 22, '#2e5a9c'); vase(W - 12, H - 30, 26, '#2e5a9c');
+    for (let i = 0; i < 3; i++) { const x = 22 + i * 14, c = ['#c8242c', '#e8b830', '#2e7a6a'][i]; if (x + 11 > W - 22) break; p.rect(x, 10, 11, H - 22, c); p.rect(x + 3, 10, 5, 4, shift(c, -0.8)); for (let y = 16; y < H - 14; y += 4) p.px(x + 5, y, '#f8e070'); p.hl(x, x + 10, H - 13, shift(c, -0.6)); }
+    p.rect(Math.round(W / 2) - 16, 2, 32, 9, '#c8242c'); small(p, 'SALE 50%', Math.round(W / 2), 3, '#fff2c0', { align: 'center', mini: true });
+    glare(p, W, H);
+  },
+  ghost: () => (p, W, H) => {
+    p.rect(4, 4, W - 8, H - 8, '#d8cdb8'); p.frame(4, 4, W - 8, H - 8, '#a83a2c'); p.frame(6, 6, W - 12, H - 12, '#a83a2c');
+    fit(p, '金星茶', 10, 9, W - 20, Math.round(H * 0.5), '#a83a2c', { font: 'serif' });
+    small(p, 'GOLDEN STAR TEA', Math.floor(W / 2), Math.round(H * 0.66), '#3a3a6a', { align: 'center', scale: W > 150 ? 2 : 1 });
+    small(p, 'EST. 1912', Math.floor(W / 2), Math.round(H * 0.84), '#a83a2c', { align: 'center' });
+    // weathering: flaked patches let the wall show through
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const n = Math.sin(x * 0.21 + y * 0.07) + Math.sin(y * 0.33 - x * 0.05) + ((x * 7919 + y * 104729) % 97) / 60; if (n > 1.55) p.s.data[y * W + x] = 0; else if (n > 1.2) p.blend(x, y, '#e8dcc8', 0.5); }
+  },
+  mural: () => (p, W, H) => {
+    p.vgrad(0, 0, W, H, ['#2e5a98', '#4a7ab4', '#7aa6cc']);
+    for (let i = 0; i < 6; i++) { const cx = 8 + (i * 41) % (W - 16), cy = 12 + (i * 29) % (H - 30); for (let a = 0; a < 4; a++) p.ell(cx + a * 5 - 6, cy - (a % 2) * 2, 5, 3, '#e6eef4'); p.hl(cx - 9, cx + 12, cy + 3, '#b8cadc'); for (let a = 0; a < 3; a++) p.px(cx - 6 + a * 6, cy - 4, '#ffffff'); }
+    const N = 260, pts = []; for (let i = 0; i <= N; i++) { const t = i / N; pts.push([W * (0.06 + t * 0.74), H * (0.62 + Math.sin(t * Math.PI * 2.2 + 0.4) * 0.2 - t * 0.18), 6.5 - t * 3.5]); }
+    for (const [x, y, r] of pts) p.ell(x, y, r + 1, r + 1, '#14402a');
+    for (const [x, y, r] of pts) p.ell(x, y, r, r, '#2a8a4a');
+    for (let i = 0; i < pts.length; i += 2) { const [x, y, r] = pts[i]; p.px(Math.round(x), Math.round(y - r * 0.5), '#5ab06a'); p.px(Math.round(x), Math.round(y + r * 0.55), '#e8c040'); if (i % 8 === 0) { p.px(Math.round(x), Math.round(y - r - 1), '#c8302c'); p.px(Math.round(x + 1), Math.round(y - r - 2), '#e8502c'); } if (i % 10 === 4) for (let s2 = -1; s2 <= 1; s2++) p.px(Math.round(x + s2), Math.round(y - 1), '#1f6a3a'); }
+    for (const k2 of [60, 150]) { const [x, y, r] = pts[k2]; p.line(x, y + r, x - 3, y + r + 6, '#2a8a4a'); p.line(x - 3, y + r + 6, x - 6, y + r + 7, '#e8c040'); p.line(x - 3, y + r + 6, x - 1, y + r + 8, '#e8c040'); }
+    const [hx, hy] = pts[pts.length - 1];
+    blob(p, hx + 5, hy - 2, 8, 6.5, ['#14402a', '#2a8a4a', '#4aaa5a', '#9ad87a']);
+    p.rect(hx + 9, hy, 9, 4, '#2a8a4a'); p.hl(hx + 9, hx + 17, hy + 3, '#f4f0e8'); p.hl(hx + 10, hx + 16, hy + 5, '#c8302c'); p.px(hx + 18, hy, '#14402a');
+    p.px(hx + 7, hy - 5, '#fff6c0'); p.px(hx + 8, hy - 5, '#1a1a1a'); p.px(hx + 8, hy - 6, '#1a1a1a');
+    p.line(hx + 1, hy - 7, hx - 6, hy - 15, '#e8c040'); p.line(hx + 4, hy - 7, hx + 2, hy - 16, '#e8c040');
+    p.line(hx + 16, hy + 4, hx + 26, hy + 11, '#e8c040'); p.line(hx + 16, hy, hx + 28, hy - 4, '#e8c040');
+    for (let i = 0; i < 6; i++) p.line(hx - 2, hy - 3 + i, hx - 8 - i, hy + 2 + i * 2, i % 2 ? '#c8302c' : '#e8502c');
+    blob(p, hx + 28, hy - 14, 4.5, 4.5, ['#c8302c', '#e85a2a', '#f8a040', '#fff0b0']);
+    for (let i = 0; i < 4; i++) p.line(hx + 26 + i, hy - 18, hx + 24 + i * 2, hy - 24 - (i % 2) * 2, i % 2 ? '#f8a040' : '#e8502c');
+  },
+  notice: () => (p, W, H) => {
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) p.px(x, y, (x * 13 + y * 7) % 11 < 2 ? '#a07848' : (x + y * 3) % 7 === 0 ? '#c8a070' : '#b88c5c');
+    p.frame(0, 0, W, H, '#5a3a22'); p.frame(1, 1, W - 2, H - 2, '#7a5032');
+    const pin = (x, y, c = '#d83a3a') => { p.px(x, y, c); p.px(x, y + 1, '#5a3a22'); };
+    const L = P.league(), M = P.concert();
+    const lw = Math.round(H * 0.68), lh = H - 8; const S1 = newSurf(lw, lh); L(new Pen(S1), lw, lh); p.put(S1, 4, 4); pin(4 + lw / 2, 4);
+    const mw = Math.round(H * 0.62), mh = H - 14; const S2 = newSurf(mw, mh); M(new Pen(S2), mw, mh); p.put(S2, 8 + lw, 8); pin(8 + lw + mw / 2, 8);
+    let x = 12 + lw + mw;
+    const flyers = [['#f4f0e4', '太極', 'TAI CHI 7AM', '#c8242c'], ['#f0d860', '吉屋出租', 'ROOM 4 RENT', '#2a2a2a'], ['#e8f0f8', '中秋節', 'MOON FEST', '#2e5a9c'], ['#f8e0e8', '麻雀', 'MAHJONG', '#8a2a4a']];
+    flyers.forEach(([bg, cj, en, ink], i) => {
+      const fw = 26, fh = 30 + (i % 2) * 6, y = 5 + (i % 2) * 8 + (i > 1 ? 0 : 0); if (x + fw > W - 3) return;
+      p.rect(x, y, fw, fh, bg); p.frame(x, y, fw, fh, shift(bg, -0.6));
+      fit(p, cj, x + 2, y + 2, fw - 4, 12, ink, { font: 'pixel' });
+      small(p, en, x + fw / 2, y + 16, ink, { mini: true, align: 'center' });
+      if (cj === '吉屋出租') for (let t = 0; t < 6; t++) { p.vl(x + 2 + t * 4, y + fh - 8, y + fh - 1, '#c8b040'); p.vl(x + 3 + t * 4, y + fh - 7, y + fh - 2, '#3a3a3a'); }
+      else for (let l = 0; l < 3; l++) p.hl(x + 3, x + fw - 4, y + 23 + l * 3, shift(bg, -0.7));
+      pin(x + fw / 2, y);
+      x += fw + 3;
+    });
+  },
+  // the League battle poster: navy, lightning split, VS, title
+  league: () => (p, W, H) => {
+    p.vgrad(0, 0, W, H, ['#141a3a', '#1e2a5a', '#2a1a4a']);
+    for (let y = 0; y < H; y++) { const sx = Math.round(W / 2 + Math.sin(y * 0.4) * 3 + (y % 7 < 3 ? 2 : -2)); for (let x = 0; x < W; x++) if (x < sx - 1) p.blend(x, y, '#e8302c', 0.35); else if (x > sx + 1) p.blend(x, y, '#2a8ae8', 0.35); else p.px(x, y, '#fff6a0'); }
+    for (let i = 0; i < 18; i++) { const a = (i / 18) * Math.PI * 2, r0 = W * 0.18, r1 = W * 0.42; p.line(Math.round(W / 2 + Math.cos(a) * r0), Math.round(H * 0.45 + Math.sin(a) * r0), Math.round(W / 2 + Math.cos(a) * r1), Math.round(H * 0.45 + Math.sin(a) * r1), i % 2 ? '#fff6a0' : '#f0c040'); }
+    const cx = Math.round(W / 2), cy = Math.round(H * 0.45), r = Math.round(W * 0.17);
+    for (let y = -r; y <= r; y++) for (let x = -r; x <= r; x++) { const d = Math.abs(x) / r + Math.max(0, y) / r; if (y < -r * 0.6 || d > 1) continue; p.px(cx + x, cy + y, d > 0.8 ? '#8a6a14' : x < 0 ? '#f0c040' : '#d8a028'); }
+    for (const [dx, dy] of [[0, -2], [-1, -1], [0, -1], [1, -1], [-2, 0], [-1, 0], [0, 0], [1, 0], [2, 0], [-1, 1], [1, 1], [-1, 2], [1, 2]]) p.px(cx + dx, cy - 1 + dy, '#c8242c');
+    small(p, 'VS', cx, cy + r + 3, '#ffffff', { align: 'center', outline: '#141a3a' });
+    p.rect(0, 2, W, 9, '#f0c040'); small(p, 'TOKONMON', cx, 3, '#141a3a', { align: 'center' });
+    p.rect(0, 11, W, 7, '#141a3a'); small(p, 'LEAGUE', cx, 12, '#f0c040', { align: 'center', mini: true });
+    small(p, 'BATTLE NIGHT', cx, H - 17, '#ffffff', { align: 'center', mini: true });
+    small(p, 'SAT 7PM', cx, H - 11, '#f0c040', { align: 'center', mini: true });
+    p.frame(0, 0, W, H, '#f0c040');
+  },
+  concert: () => (p, W, H) => {
+    p.vgrad(0, 0, W, H, ['#3a1a5a', '#8a2a7a', '#e86a7a']);
+    blob(p, W * 0.66, H * 0.3, W * 0.2, W * 0.2, ['#e8c890', '#f8e0b0', '#fff2d0', '#ffffff'], false);
+    for (let i = 0; i < 5; i++) { const x = 4 + i * Math.floor((W - 6) / 5); p.vl(x + 2, 0, 5 + (i % 2) * 3, '#3a1a1a'); blob(p, x + 2, 9 + (i % 2) * 3, 2.5, 3, ['#7a1418', '#d8342c', '#ff7050', '#ffd0a0']); }
+    fit(p, '月光音樂會', 3, Math.round(H * 0.5), W - 6, Math.round(H * 0.16), '#fff2d0', { font: 'pixel', outline: '#3a1a5a' });
+    small(p, 'MOONLIGHT', W / 2, Math.round(H * 0.7), '#ffffff', { align: 'center', mini: true });
+    small(p, 'CONCERT', W / 2, Math.round(H * 0.7) + 6, '#ffffff', { align: 'center', mini: true });
+    small(p, 'FRI 8PM', W / 2, H - 8, '#3a1a5a', { align: 'center', mini: true });
+    p.frame(0, 0, W, H, '#f8e0b0');
+  },
+  streetSign: (en, cj) => (p, W, H) => {
+    p.rect(0, 0, W, H, '#1f6a3a'); p.frame(0, 0, W, H, '#f4f4ec');
+    small(p, en, 3, Math.round((H - 7) / 2), '#f4f4ec', {});
+    fit(p, cj, W - Math.round(W * 0.34), 2, Math.round(W * 0.32) - 2, H - 4, '#f4f4ec', { font: 'pixel' });
+  },
+  xiangqi: () => (p, W, H) => {
+    p.rect(0, 0, W, H, '#e0c88a'); p.frame(0, 0, W, H, '#8a6a3a');
+    const x0 = 4, y0 = 3, dx = (W - 8) / 8, dy = (H - 6) / 9, L = '#6a4a24';
+    for (let i = 0; i <= 8; i++) { const x = Math.round(x0 + i * dx); p.vl(x, y0, Math.round(y0 + 4 * dy), L); p.vl(x, Math.round(y0 + 5 * dy), Math.round(y0 + 9 * dy), L); }
+    p.vl(x0, y0, Math.round(y0 + 9 * dy), L); p.vl(Math.round(x0 + 8 * dx), y0, Math.round(y0 + 9 * dy), L);
+    for (let j = 0; j <= 9; j++) p.hl(x0, Math.round(x0 + 8 * dx), Math.round(y0 + j * dy), L);
+    for (const yy of [0, 7]) { p.line(Math.round(x0 + 3 * dx), Math.round(y0 + yy * dy), Math.round(x0 + 5 * dx), Math.round(y0 + (yy + 2) * dy), L); p.line(Math.round(x0 + 5 * dx), Math.round(y0 + yy * dy), Math.round(x0 + 3 * dx), Math.round(y0 + (yy + 2) * dy), L); }
+    const piece = (i, j, red) => { const x = Math.round(x0 + i * dx), y = Math.round(y0 + j * dy); p.ell(x, y, 2, 2, '#f4e8c8'); p.frame(x - 1, y - 1, 3, 3, red ? '#c8242c' : '#222222'); p.px(x, y, red ? '#c8242c' : '#222222'); };
+    for (const i of [0, 1, 2, 3, 4, 5, 6, 7, 8]) { if (i % 2 === 0) { piece(i, 3, true); piece(i, 6, false); } }
+    for (const [i, j] of [[0, 0], [2, 0], [4, 0], [6, 1], [8, 0], [1, 2], [7, 2]]) piece(i, j, true);
+    for (const [i, j] of [[0, 9], [3, 9], [4, 9], [8, 9], [1, 7], [5, 5], [7, 8]]) piece(i, j, false);
+  },
+  carBand: () => (p, W, H) => {
+    p.rect(0, 0, W, H, '#ecdcac'); p.hl(0, W - 1, 0, '#d8a838'); p.hl(0, W - 1, H - 1, '#b88a2a');
+    small(p, 'CALIFORNIA ST.', Math.floor(W / 2), Math.floor((H - 7) / 2), '#7c1a20', { align: 'center' });
+  },
+  carDest: () => (p, W, H) => { p.rect(0, 0, W, H, '#141414'); small(p, 'CALIFORNIA', Math.floor(W / 2), 2, '#f4f0d8', { align: 'center', mini: true }); small(p, 'VAN NESS', Math.floor(W / 2), H - 7, '#f0c040', { align: 'center', mini: true }); },
+  openSign: () => (p, W, H) => { p.rect(0, 0, W, H, '#14101a'); p.frame(0, 0, W, H, '#3a8aff'); small(p, 'OPEN', Math.floor(W / 2), Math.floor((H - 5) / 2), '#ff3a4a', { align: 'center', mini: true }); },
+  chalk: () => (p, W, H) => {
+    p.rect(0, 0, W, H, '#2a2e2a'); p.frame(0, 0, W, H, '#8a5a36'); p.frame(1, 1, W - 2, H - 2, '#6a4428');
+    fit(p, '蛋撻', 3, 3, W - 6, 11, '#f4f0e0', { font: 'pixel' });
+    small(p, 'EGG', Math.floor(W / 2), 16, '#f8d860', { align: 'center', mini: true }); small(p, 'TARTS', Math.floor(W / 2), 22, '#f8d860', { align: 'center', mini: true });
+    small(p, '$1.50', Math.floor(W / 2), 30, '#ff9aa8', { align: 'center', mini: true });
+    for (let x = 4; x < W - 4; x += 3) p.px(x, H - 5, '#e8e4d8');
+  },
+  tag: (txt, bg = '#fff6d8', ink = '#c8242c') => (p, W, H) => { p.rect(0, 0, W, H, bg); p.frame(0, 0, W, H, ink); small(p, txt, Math.floor(W / 2), Math.floor((H - 5) / 2), ink, { align: 'center', mini: true }); },
+};
+
+// ------------------------------------------------------------ California Street cable car (runs along z)
+// (x, y, z): left side, rail top + 1, front end. Open grip sections at both ends with
+// outward-facing benches and brass poles, an enclosed saloon in the middle, a clerestory roof.
+export function cableCar(k, x, y, z, o = {}) {
+  const v = k.v, L = 66, W = 20, night = o.night;
+  const M = one(k, '#7c1a20'), M2 = one(k, '#8e2228'), CR = one(k, '#ecdcac'), CR2 = one(k, '#d8c490'), GD = one(k, '#d8a838'), WD = one(k, '#8a5a36'), WD2 = one(k, '#6e4428');
+  const RF = one(k, '#3a3634'), RF2 = one(k, '#4a4643'), BR = one(k, '#d8b850'), UF = one(k, '#241e1c'), WH = one(k, '#1a1a1c'), STEEL = one(k, '#8a8e94');
+  const GL = (i, h) => (night ? one(k, (i + h) % 4 ? '#ffd890' : '#ffe8b8', GLOW) : (i - h + 99) % 7 < 2 ? one(k, '#8ea6c0') : one(k, '#3a4a64'));
+  const P = (i, h, w, c) => v.set(x + w, y + h, z + i, c);
+  const open = (i) => i < 15 || i > L - 16;
+  for (let i = 0; i < L; i++) {
+    const endTaper = i < 2 || i > L - 3 ? 1 : 0;
+    for (let w = endTaper; w < W - endTaper; w++) { P(i, 3, w, UF); P(i, 4, w, i % 3 === 0 ? WD2 : WD); }
+    for (const w of [0, W - 1]) {
+      if (open(i)) { P(i, 5, w, M); P(i, 6, w, CR); if (i % 4 === 0 || i === 14 || i === L - 15) for (let h = 7; h <= 22; h++) P(i, h, w, BR); }
+      else for (let h = 5; h <= 22; h++) P(i, h, w, h <= 6 ? M : h === 7 ? CR : h <= 11 ? ((i - 15) % 6 === 0 ? CR2 : M2) : h <= 20 ? ((i - 15) % 6 === 0 || h === 20 || h === 12 ? WD : GL(i, h)) : CR);
+    }
+    if (open(i)) for (const [w0, w1, wb] of [[1, 3, 3], [W - 4, W - 2, W - 4]]) { for (let w = w0; w <= w1; w++) P(i, 9, w, WD); for (let h = 10; h <= 13; h++) P(i, h, wb, WD2); for (let h = 5; h <= 8; h++) if (i % 5 === 2) P(i, h, wb, WD2); }
+    else if (i === 15 || i === L - 16) for (let w = 1; w < W - 1; w++) for (let h = 5; h <= 22; h++) P(i, h, w, w >= 7 && w <= 12 && h <= 19 ? (h < 6 ? WD : (w === 7 || w === 12 || h === 19 ? WD : GL(w, h))) : h <= 11 ? M2 : h <= 20 ? (w % 5 === 1 ? WD : GL(w + i, h)) : CR);
+    // roof: overhanging, rounded at the ends, clerestory in the middle
+    const rw = i < 1 || i > L - 2 ? 2 : 0;
+    for (let w = -1 + rw; w <= W - rw; w++) { P(i, 23, w, w === -1 || w === W ? RF2 : RF); }
+    if (i > 5 && i < L - 6) for (let w = 5; w <= W - 6; w++) { P(i, 24, w, RF2); P(i, 25, w, (w === 5 || w === W - 6) && i % 3 ? (night ? one(k, '#ffd890', GLOW) : CR2) : RF); }
+  }
+  // end bulkheads: dash panel, headlight, destination box, steps
+  for (const [i, s] of [[0, 1], [L - 1, -1]]) {
+    for (let w = 1; w < W - 1; w++) for (let h = 5; h <= 9; h++) P(i, h, w, h === 9 ? CR : M);
+    for (let w = 6; w <= 13; w++) for (let h = 19; h <= 22; h++) P(i - s, h, w, h === 19 || h === 22 || w === 6 || w === 13 ? WD2 : one(k, '#1a1a1a'));
+    P(i, 8, 9, night ? one(k, '#fff6d8', GLOW) : one(k, '#f4f0e0')); P(i, 8, 10, night ? one(k, '#fff6d8', GLOW) : one(k, '#f4f0e0'));
+    for (let w = 0; w < W; w++) P(i + s, 4, w, STEEL);
+  }
+  // running gear: wheels over the rails, the grip lever in the front section
+  for (const ic of [9, L - 10]) for (const w of [5, 14]) for (let di = -2; di <= 2; di++) for (let h = 0; h <= 3; h++) if (Math.abs(di) + Math.abs(h - 1.5) < 3.2) P(ic + di, h, w, WH);
+  for (let h = 5; h <= 15; h++) P(8, h, 9, one(k, '#3a3a3e')); P(8, 16, 9, BR);
+  return { sign: [[x, y + 20, z + 16, z + L - 17, 'w'], [x + W - 1, y + 20, z + 16, z + L - 17, 'e']], ends: [[x + 6, y + 19, z - 1], [x + 6, y + 19, z + L]], L, W };
+}
+
+// ------------------------------------------------------------ lantern cards (saturated night glow)
+import { sprite, spriteInfo } from '../cards.js';
+function lanternPx(p, W, H, c, lit, o = {}) {
+  const cx = (W - 1) / 2, top = 2, bot = H - 4, cy = (top + bot) / 2, ry = (bot - top) / 2 + 0.5, rx = W / 2, tall = o.tall;
+  p.rect(Math.round(cx) - 1, 0, 3, 1, '#2a2020');
+  for (let y = top; y <= bot; y++) for (let x = 0; x < W; x++) {
+    const u = (x - cx) / rx, v = (y - cy) / ry, d = tall ? Math.max(u * u * 1.15, v * v * v * v) : u * u + v * v; if (d > 1) continue;
+    const rib = (y - top) % 3 === 0 && y !== top;
+    let col;
+    if (lit) { const g = 1 - Math.sqrt(d); col = rib ? (g > 0.4 ? '#e8501c' : '#a8180e') : g > 0.78 ? '#ffd47a' : g > 0.55 ? '#ff8a2a' : g > 0.3 ? (o.hot || '#ff4a1a') : g > 0.1 ? '#e0200e' : '#9a120a'; }
+    else { const l = -u * 0.65 - v * 0.6; col = rib ? shift(c, -0.9) : l > 0.55 ? shift(c, 0.9) : l > 0.05 ? c : l > -0.5 ? shift(c, -0.45) : shift(c, -0.9); }
+    p.px(x, y, col);
+  }
+  const gold = lit ? '#ffd860' : '#d8a830', goldD = lit ? '#e0a030' : '#9a7020';
+  p.rect(Math.round(cx) - 2, top - 1, 5, 2, gold); p.px(Math.round(cx) + 2, top, goldD);
+  p.rect(Math.round(cx) - 2, bot, 5, 2, gold); p.px(Math.round(cx) + 2, bot + 1, goldD);
+  for (let y = bot + 2; y < H; y++) { p.px(Math.round(cx), y, lit ? '#ffd040' : '#e8b830'); if (y > bot + 2) p.px(Math.round(cx) - 1 + ((y & 1) * 2), y, goldD); }
+}
+export function lanternCards() {
+  const mk = (name, W, H, c, o = {}) => { const d = sprite('ct-' + name, W, H, (p) => lanternPx(p, W, H, c, false, o), { ppm: 22 }), n = sprite('ct-' + name + '-lit', W, H, (p) => lanternPx(p, W, H, c, true, o), { ppm: 22 }); spriteInfo(d).night = n; return d; };
+  return { small: [mk('red', 11, 15, '#d8302c'), mk('orange', 11, 15, '#e8582a', { hot: '#ff6a1a' })], big: [mk('bigred', 17, 22, '#d02a2c'), mk('biggold', 17, 22, '#e8a02a', { hot: '#ff8a1a' })], tall: mk('tall', 10, 20, '#d02a2c', { tall: true }) };
 }

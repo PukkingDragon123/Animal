@@ -1,10 +1,12 @@
 // Kanizumo — Coach Gonda's partner (Hydro/Geo). A big red crab standing up on its
-// hind legs like a sumo wrestler in the crouch before the charge: a cream sumo belly
-// hanging over a navy mawashi with stiff white sagari cords, two huge pincers worn
-// like flat open palms for slapping, little walking legs along the shell, cool and
-// steady stalk eyes under heavy lids, a jutting jaw that foams bubbles, a black
-// ginkgo-leaf topknot tied with a white cord, and the stern face of a Heike crab
-// embossed on the back of its shell. Calm, heavy, unshakeable.
+// hind legs like a sumo wrestler in the crouch before the charge — and a wink at the
+// B-52's "Rock Lobster": its topknot is a towering lacquered beehive tied with a red
+// ribbon, its cool, steady stalk eyes wear turquoise 60s cat-eye frames, and its
+// mawashi is loud debut-cover yellow with turquoise stripes. A cream sumo belly hangs
+// over the belt with stiff white sagari cords; two huge pincers are worn like flat
+// open palms for slapping; little walking legs line the shell; a jutting jaw foams
+// bubbles; the stern face of a Heike crab is embossed on its back. Calm, heavy,
+// unshakeable — until the party starts, and then it shimmies.
 import { E, seg, bump, wob, wave, key } from '../anim.js';
 import { defineFx } from '../fx.js';
 import { shade, gradient, poly, ramp, shift, h2 } from './kit.js';
@@ -13,10 +15,11 @@ const C = {
   shell: '#d23a38', shellHi: '#f6765a', shellLo: '#982438', deep: '#5c1430', shine: '#ffc0a2',
   belly: '#ffd8a6', bellyHi: '#fff0d2', bellyLo: '#e2a274', bellyLine: '#c8886a',
   palm: '#ffd4b4', palmHi: '#fff0de', palmLo: '#eaa286', palmLine: '#c87668',
-  belt: '#2e3c7c', beltHi: '#5068b4', beltLo: '#1c2554', beltDeep: '#11163a',
+  belt: '#ffcc2e', beltHi: '#fff07a', beltLo: '#d8941a', beltDeep: '#9a5e12',
+  turq: '#28bcc0', turqHi: '#86f0e6', turqLo: '#167c8c',
   cord: '#f6f6fc', cordLo: '#c6cae2', cordDeep: '#8e94bc',
-  hair: '#231c36', hairHi: '#5e5890', hairLo: '#110c1c',
-  tie: '#fff8e6', tieLo: '#d6ccba',
+  hair: '#282038', hairHi: '#6c62a8', hairLo: '#100c1c', hairGl: '#b0a8e8',
+  ribbon: '#e42a48', ribbonHi: '#ff7a86', ribbonLo: '#981432',
   tip: ['#8e4250', '#5e2638', '#3c1428', '#240a18'],
   ink: '#1e0c18', white: '#ffffff', eyeLo: '#d4d0e2', glint: '#7a96e0',
   mouth: '#3a0c1a',
@@ -125,42 +128,70 @@ const legP = (end = 'east') => (p, w, h, face, cube) => {
   for (let x = 2; x < w - 2; x += 4) { p.px(x, 1, C.shine); p.px(x + 1, 1, C.shellHi); p.px(x, 2, C.shellLo); }
   if (face === 'south' || face === 'north') { const X = (face === 'south') === (end === 'east') ? w - 2 : 1; for (let y = 1; y < h - 1; y++) p.px(X, y, C.shellLo); }
 };
+// the mawashi: loud yellow silk with a turquoise stripe through the middle and turquoise piping
 const beltP = (p, w, h, face) => {
   shade(C.belt, { top: C.beltHi, bottom: C.beltLo, grain: 0 })(p, w, h, face);
   if (face === 'up' || face === 'down') return;
-  for (const f of [0.36, 0.7]) { const y = Math.round(f * (h - 1)); for (let x = 0; x < w; x++) { p.px(x, y, C.beltDeep); p.px(x, y + 1, shift(C.belt, 0.16)); } }
+  const m = Math.round(h * 0.5);
+  for (let x = 0; x < w; x++) {
+    p.px(x, m - 2, C.turqHi); p.px(x, m - 1, C.turq); p.px(x, m, C.turq); p.px(x, m + 1, C.turqLo);
+    if (h > 9) { p.px(x, 1, C.turq); p.px(x, h - 2, C.turqLo); }
+  }
 };
+// sagari: stiff white cords dipped turquoise at the ends
 const cordP = (p, w, h, face) => {
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-    let c = face === 'east' || face === 'north' ? C.cordLo : x === 0 ? C.white : C.cord;
-    if (y % 6 === 5) c = C.cordLo;                          // the twists of the stiffened cord
-    if (y >= h - 2) c = (x + y) & 1 ? C.cordDeep : C.cordLo;
+    const dip = y > h * 0.62, side = face === 'east' || face === 'north';
+    let c = dip ? (side ? C.turqLo : x === 0 ? C.turqHi : C.turq) : side ? C.cordLo : x === 0 ? C.white : C.cord;
+    if (!dip && y % 6 === 5) c = C.cordLo;
+    if (y >= h - 1) c = C.turqLo;
     p.px(x, y, c);
   }
 };
-// the ginkgo fan: glossy black strands radiating from the knot (painted in model space so the slabs line up)
-const FAN0 = [0, 27];
-function fanP(p, w, h, face, cube) {
-  const [ox, oy] = cube.o, [sx, sy] = cube.s, top = oy + sy > 33.5;
+// the beehive: teased, lacquered hair swept round and up — glossy black with a cool violet sheen sweeping across the lit side
+function hiveP(p, w, h, face) {
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-    if (face !== 'south' && face !== 'north') { p.px(x, y, face === 'up' ? (x % 3 ? C.hairHi : C.hair) : (y === h - 1 ? C.hairLo : C.hair)); continue; }
-    const X = face === 'south' ? ox + (x + 0.5) / 3 : ox + sx - (x + 0.5) / 3, Y = oy + sy - (y + 0.5) / 3;
-    const a = Math.atan2(X - FAN0[0], Y - FAN0[1]), r = Math.hypot(X - FAN0[0], Y - FAN0[1]), k = Math.floor(a * 5 + 100);
-    // combed strands fanning out, one glossy band across them, darker at the root
-    let c = k & 1 ? C.hair : shift(C.hair, 0.1);
-    if (r > 4.1 && r < 5.0) c = k & 1 ? shift(C.hairHi, -0.1) : C.hairHi;
-    else if (r > 3.7 && r < 5.4) c = (x + y) & 1 ? shift(C.hair, 0.22) : shift(C.hair, 0.12);
-    if (r < 2) c = C.hairLo;
-    if (top && y === 0 && (Math.abs(X) < 0.7 || x % 4 === 0)) c = C.hairLo;                // the ginkgo notch and the leaf's ragged edge
-    if (top && y === 1 && Math.abs(X) < 0.4) c = C.hairLo;
+    if (face === 'down') { p.px(x, y, C.hairLo); continue; }
+    if (face === 'up') {
+      const cx = (w - 1) / 2, cy = (h - 1) / 2, r = Math.hypot(x - cx, y - cy), a = Math.atan2(y - cy, x - cx);
+      p.px(x, y, Math.floor(r * 0.7 + a * 1.3 + 20) % 3 === 0 ? shift(C.hair, 0.22) : r < 1.5 ? C.hairHi : C.hair); continue;
+    }
+    // swept strands arching round the tower, darker at the edges
+    const u = x / Math.max(1, w - 1), arc = Math.round(Math.sin(u * Math.PI) * 2.2), band = ((y + arc) % 4 + 4) % 4;
+    let c = band === 0 ? shift(C.hair, 0.12) : band === 2 ? C.hairLo : C.hair;
+    if ((face === 'south' || face === 'north') && (u < 0.06 || u > 0.94)) c = C.hairLo;
+    // the lacquer: a lens of sheen on each tier's lit side (front-left, the west face), bright at its core
+    const v = (y + 0.5) / h, lens = Math.sin(v * Math.PI) ** 0.7, cu = face === 'south' ? 0.3 : face === 'west' ? 0.62 : face === 'north' ? 0.78 : -9;
+    const st = Math.abs(u - cu - (v - 0.5) * 0.08) * w;
+    if (st < 0.9 * lens && v > 0.15 && v < 0.85) c = C.hairGl;
+    else if (st < 2.4 * lens) c = C.hairHi;
+    else if (st < 3.6 * lens) c = band === 2 ? C.hair : shift(C.hair, 0.22);
+    if (y === h - 1) c = C.hairLo;
     p.px(x, y, c);
   }
 }
-const hairP = (p, w, h, face) => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, face === 'up' ? C.hairHi : (x & 1) ? C.hair : shift(C.hair, 0.1)); };
-const tieP = (p, w, h, face) => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, face === 'up' ? C.white : (x % 3 === 2 ? C.tieLo : C.tie)); };
+const ribbonP = (p, w, h, face) => {
+  shade(C.ribbon, { top: C.ribbonHi, bottom: C.ribbonLo, grain: 0 })(p, w, h, face);
+  if (face !== 'up' && face !== 'down') for (let x = 0; x < w; x += 3) p.px(x, Math.floor(h / 2), C.ribbonHi);
+};
+// turquoise cat-eye frames: 16 × 12 texels framing the 11 × 8 eye (opening at x 4..14, rows 3..10), the outer wing sweeping up to a point
+function catEye(p, w, h) {
+  const T = C.turq, H = C.turqHi, D = C.turqLo, K = C.ink, Wt = C.white;
+  const put = (x, y, c) => p.px(x, y, c);
+  for (let x = 3; x <= 15; x++) { put(x, 1, H); put(x, 2, T); }              // top rim
+  for (let y = 3; y <= 10; y++) { put(3, y, y < 7 ? T : D); put(15, y, D); } // sides
+  for (let x = 4; x <= 14; x++) put(x, 11, D);                               // bottom rim
+  put(3, 11, 0); put(15, 11, 0); put(15, 1, 0);
+  // the wing: sweeping up and out past the outer corner
+  for (const [x, y] of [[0, 0], [1, 0], [0, 1], [1, 1], [2, 1], [1, 2], [2, 2], [2, 3], [2, 4]]) put(x, y, T);
+  put(0, 0, H); put(1, 0, H);
+  put(1, 1, Wt); put(4, 1, Wt); put(7, 1, Wt);                               // rhinestones
+  for (let x = 4; x <= 14; x++) put(x, 0, x < 12 ? K : 0);                   // a dark upper edge so the frame reads on the shell
+  put(2, 5, K); put(3, 5, T);
+}
 const eyeballP = (p, w, h, face) => {
   // the stalk eye: shell lid over the top, white below
-  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, face === 'up' ? C.shell : face === 'down' ? C.eyeLo : y < h * 0.36 ? (y === 0 ? C.shellHi : C.shell) : y === Math.ceil(h * 0.36) ? C.ink : y >= h - 2 ? C.eyeLo : C.white);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, face === 'up' ? C.shellLo : face === 'down' ? C.eyeLo : y < h * 0.36 ? (y === 0 ? C.shellHi : C.shell) : y === Math.ceil(h * 0.36) ? C.ink : y >= h - 2 ? C.eyeLo : C.white);
 };
 const stalkP = (p, w, h, face) => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, face === 'up' || face === 'down' ? C.shell : (y % 4 === 3 ? C.shellLo : x === 0 ? C.shellHi : C.shell)); };
 const mouthP = (p, w, h, face, cube) => {
@@ -171,12 +202,26 @@ const mouthP = (p, w, h, face, cube) => {
 };
 const jawP = (p, w, h, face, cube) => { crab(C.shell, { top: C.shellHi, bottom: C.deep, bumps: false })(p, w, h, face, cube); if (face === 'up') for (let x = 1; x < w - 1; x += 2) p.px(x, h - 1, C.shine); };
 const mouthIn = (p, w, h) => { p.rect(0, 0, w, h, C.mouth); p.rect(1, 1, w - 2, h - 2, '#5a1424'); };
+// the ground crack left by the shiko: jagged fissures from a crater, wet with seeping water
+const crackP = (p, w, h) => {
+  const cx = w / 2, cy = h / 2, R = (a, b) => h2(a, b, 11), D = '#2a1e1a', L = '#c8b090', Wt = '#5ab8f0';
+  for (let k = 0; k < 9; k++) {
+    let a = (k / 9) * TAU + (R(k, 1) - 0.5) * 0.5, x = cx, y = cy;
+    const len = w * (0.22 + R(k, 2) * 0.26);
+    for (let i = 0; i < len; i++) {
+      a += (R(k * 31 + i, 3) - 0.5) * 0.7; x += Math.cos(a); y += Math.sin(a);
+      p.px(x, y - 1, L); p.px(x, y, i % 6 === 3 ? Wt : D); if (i < len * 0.4) p.px(x + 1, y, D);
+      if (i === Math.round(len * 0.5)) { let bx = x, by = y, ba = a + (R(k, 5) > 0.5 ? 0.9 : -0.9); for (let j = 0; j < len * 0.35; j++) { ba += (R(k * 7 + j, 6) - 0.5) * 0.6; bx += Math.cos(ba); by += Math.sin(ba); p.px(bx, by - 1, L); p.px(bx, by, D); } }
+    }
+  }
+  for (let y = -5; y <= 5; y++) for (let x = -6; x <= 6; x++) { const d = Math.hypot(x / 6, y / 5); if (d > 1) continue; p.px(cx + x, cy + y, d > 0.8 ? L : d > 0.55 ? D : (x + y) & 1 ? '#3a2e28' : Wt); }
+};
 const bubbleP = (p, w, h) => {
   const c = (w - 1) / 2;
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
     const d = Math.hypot(x - c, y - c); if (d > c + 0.4) continue;
-    p.px(x, y, d > c - 0.8 ? (x + y < w - 1 ? '#f4fdff' : '#7ac0e4') : Math.hypot(x - c * 0.55, y - c * 0.55) < 1.7 ? '#ffffff' : (x + y) % 5 === 0 ? '#c8f0ff' : 0);
-    if (d <= c - 0.8 && !(Math.hypot(x - c * 0.55, y - c * 0.55) < 1.7) && (x + y) % 5 !== 0) p.px(x, y, '#d8f6ff');
+    const hl = Math.hypot(x - c * 0.6, y - c * 0.55) < 2;
+    p.px(x, y, d > c - 0.9 ? (x + y < w - 1 ? '#e8faff' : '#5aaad8') : hl ? '#ffffff' : d > c - 2 ? '#a8dcf4' : (x + y) & 1 ? '#8ccbe8' : '#9ad4ee');
   }
 };
 
@@ -247,13 +292,13 @@ const RIGHT = {
     B(-6.9, 24.4, -0.2, -3.9, 25.8, 3, shellP),                                                  // socket
     B(-6.2, 25.4, 0.6, -4.6, 28.8, 2.2, stalkP),
     B(-7.233, 28.333, -0.333, -3.567, 32, 3.333, eyeballP),
-    B(-7.433, 31.2, -0.5, -3.367, 32.2, 3.6, crab(C.shell, { bumps: false })),                  // heavy lid
     ...eyeParts(),
+    B(-8.567, 28, 3.5, -3.233, 32, 3.5, catEye, { plane: 'z', shadow: false }),               // cat-eye frames
   ] },
 };
 
 export const def = {
-  name: 'kanizumo', ppu: 3, scale: 0.5, outline: { color: '#2a0a14', px: 1.4 },
+  name: 'kanizumo', ppu: 3, scale: 0.46, outline: { color: '#2a0a14', px: 1.4 },
   bones: [
     { name: 'root', pivot: [0, 0, 0], cubes: [] },
     ...both(RIGHT.thigh, RIGHT.shin, RIGHT.foot),
@@ -295,21 +340,26 @@ export const def = {
       B(-2.2, 20.4, 3.8, 2.2, 20.8, 5.8, mouthIn, { outline: false }),
     ] },
     { name: 'bub', parent: 'jaw', pivot: [0, 20.4, 6.2], cubes: [
-      B(-1.4, 20.2, 7.2, 2.6, 24.2, 7.2, bubbleP, { plane: 'z', id: 'snot', hide: true, shadow: false }),
-      B(0.6, 20.2, 5.2, 0.6, 24.2, 9.2, bubbleP, { plane: 'x', id: 'snot', hide: true, shadow: false }),
+      B(-2.6, 19.4, 7.6, 4.6, 26.6, 7.6, bubbleP, { plane: 'z', id: 'snot', hide: true, shadow: false, glow: true }),
+      B(1, 19.4, 4, 1, 26.6, 11.2, bubbleP, { plane: 'x', id: 'snot', hide: true, shadow: false, glow: true }),
     ] },
     { name: 'eyes', parent: 'torso', pivot: [0, 25, 1.4], cubes: [] },
+    { name: 'crack', parent: 'root', pivot: [13.6, 0.15, 3], cubes: [B(-2.4, 0.15, -13, 29.6, 0.15, 19, crackP, { plane: 'y', id: 'crack', hide: true, shadow: false })] },
     ...both(RIGHT.stalk),
-    { name: 'knot', parent: 'torso', pivot: [0, 25.8, -2.2], cubes: [
-      B(-1.5, 25.4, -3.6, 1.5, 27.8, -0.8, hairP),
-      B(-1.8, 26.2, -3.9, 1.8, 27, -0.5, tieP),
+    // the towering beehive, tied at the base with a red ribbon and a bow; two springy tiers
+    { name: 'hive', parent: 'torso', pivot: [0, 25.8, -1.6], cubes: [
+      B(-4, 25.4, -5.4, 4, 28.6, 1.8, hiveP),
+      B(-4.3, 25.8, -5.7, 4.3, 27.4, 2.1, ribbonP),
+      // the bow, tied at the front corner of the ribbon
+      B(2.6, 26.4, 1.6, 4.6, 28.6, 2.6, ribbonP, { pivot: [3.6, 26.8, 2.1], rot: [0, -40, 30] }),
+      B(2.6, 25.0, 1.6, 4.6, 27.2, 2.6, ribbonP, { pivot: [3.6, 26.8, 2.1], rot: [0, -40, -40] }),
+      B(3.1, 26.2, 1.8, 4.3, 27.4, 3, ribbonP, { pivot: [3.6, 26.8, 2.1], rot: [0, -40, 0] }),
     ] },
-    { name: 'fan', parent: 'knot', pivot: [0, 27.6, -2.2], rot: [-10, 0, 0], cubes: [
-      B(-1.2, 27.4, -2.9, 1.2, 28.6, -1.5, fanP),
-      B(-2.8, 28.6, -2.9, 2.8, 29.8, -1.5, fanP),
-      B(-4.4, 29.8, -2.9, 4.4, 31, -1.5, fanP),
-      B(-5.6, 31, -2.9, 5.6, 32.4, -1.5, fanP),
-      B(-6, 32.4, -2.9, 6, 33.6, -1.5, fanP),
+    { name: 'hiveTop', parent: 'hive', pivot: [0, 28.4, -1.6], cubes: [
+      B(-4.6, 28.4, -6, 4.6, 32.4, 2.4, hiveP),
+      B(-4.4, 32.4, -5.8, 4.4, 35.4, 2.2, hiveP),
+      B(-3.6, 35.4, -5, 3.6, 37.2, 1.4, hiveP),
+      B(-2.2, 37.2, -3.6, 2.2, 38.2, 0, hiveP),
     ] },
     ...both(RIGHT.arm, RIGHT.fore, RIGHT.claw, RIGHT.pinch),
     ...both(RIGHT.wleg1, RIGHT.wleg2),
@@ -318,6 +368,7 @@ export const def = {
 
 // ---------------------------------------------------------------- animation
 defineFx('salt', { w: 3, h: 3, paint: (p) => { p.px(1, 0, '#ffffff'); p.px(0, 1, '#ffffff'); p.px(1, 1, '#eef4ff'); p.px(2, 1, '#ffffff'); p.px(1, 2, '#c8d4f0'); }, life: [0.8, 1.2], size: [0.035, 0.03], speed: [1.6, 2.8], grav: 5.5, drag: 0.8, spread: 0.45, spin: 6 });
+defineFx('spout', { w: 5, h: 9, paint: (p, w, h) => { for (let y = 0; y < h; y++) { const hw = y < 2 ? 1 : 2; for (let x = 2 - hw; x <= 2 + hw; x++) p.px(x, y, x === 2 - hw ? '#ffffff' : x === 2 + hw ? '#3a9ad8' : y % 3 === 0 ? '#e8faff' : '#8adcff'); } }, life: [0.4, 0.7], size: [0.11, 0.05], speed: [3.2, 4.8], grav: 7.5, drag: 0.4, spread: 0.1 });
 const MOUTH = [0, 21.2, 6.6], PALM = { R: [-16.6, 18.6, 9.4], L: [16.6, 18.6, 9.4] }, FOOT = { R: [-13.6, 0.4, 1.6], L: [13.6, 0.4, 1.6] };
 // two-bone IK in the frontal plane: the hips ride on the pelvis, the feet stay where they are put
 const HIP = 5.5, L1 = 8.1, L2 = 7.4, PY = 10, R2D = 180 / Math.PI, A0 = { R: [-13.6, 2.6], L: [13.6, 2.6] };
@@ -341,16 +392,17 @@ function stance(P, px, py, rz, o = {}) {
 }
 // pincer: open (degrees) — the movable finger swings away from the fixed one
 const pinch = (P, S, a) => P.rot('pinch' + S, 0, 0, S === 'R' ? -a : a);
-// raise an arm: up (deg, the upper arm lifts sideways), fwd (deg, swings forward), tip (deg, forearm tips up)
-function arm(P, S, up = 0, fwd = 0, tip = 0) {
+// pose an arm: up (deg, the upper arm lifts sideways), fwd (deg, swings forward; − swings back),
+// tip (deg, the forearm tips up), spread (deg, the forearm turns outward so the claw opens away from the face)
+function arm(P, S, up = 0, fwd = 0, tip = 0, spread = 0) {
   const g = S === 'R' ? 1 : -1;
-  P.rot('arm' + S, 0, g * fwd, -g * up).rot('fore' + S, -tip, -g * fwd * 0.6, g * up * 0.7);
+  P.rot('arm' + S, 0, g * fwd, -g * up).rot('fore' + S, -tip, -g * (fwd * 0.6 + spread), g * up * 0.7);
 }
 // a palm thrust (tsuppari): k 0..1 drives the claw straight out from the shoulder
 function thrust(P, S, k) {
   const g = S === 'R' ? 1 : -1;
-  P.rot('arm' + S, 0, g * 38 * k, 0).rot('fore' + S, 0, -g * 38 * k, 0).pos('claw' + S, -g * 1.2 * k, 0.6 * k, 4.2 * k).rot('claw' + S, -6 * k, 0, g * 8 * k);
-  pinch(P, S, 10 * k);
+  P.rot('arm' + S, 0, g * 40 * k, 0).rot('fore' + S, 0, -g * 40 * k, 0).pos('claw' + S, g * 0.8 * k, 0.4 * k, 5 * k).rot('claw' + S, -8 * k, -g * 10 * k, g * 6 * k);
+  pinch(P, S, 12 * k);
 }
 // the sumo ready crouch shared by most clips
 function ready(P, t, k = 1) {
@@ -364,14 +416,19 @@ function scuttle(P, t, amp = 1, hz = 2.2) {
     P.rot('wleg' + n + 'L', wave(t, hz, i * 1.9 + 3.1) * 6 * amp, 0, 6 * amp - wave(t, hz, i * 1.9 + 4.1) * 9 * amp);
   });
 }
-function lyingOnBack(P, k, t = 0) {
-  P.rot('root', -84 * k, 0, 0).pos('root', 0, 8.4 * k, -3 * k);
+// knocked out: sat down hard on its backside, tipped back, legs kicked up in the air, claws flopped out, stalks drooping
+function knockedOut(P, k, t = 0, twitch = 1) {
+  const py = -3.2 * k, pz = -2.4 * k;
+  P.pos('pelvis', 0, py, pz).rot('pelvis', -36 * k, 0, 0);
   for (const [S, g] of [['R', -1], ['L', 1]]) {
-    P.rot('thigh' + S, 0, 0, -g * 40 * k + g * wave(t, 1.3, g) * 6 * k).rot('shin' + S, 0, 0, g * 60 * k + wave(t, 1.7, g + 1) * 10 * k);
-    P.rot('wleg1' + S, 0, 0, -g * 30 * k + wave(t, 3.1, g) * 12 * k).rot('wleg2' + S, 0, 0, -g * 36 * k + wave(t, 2.7, g + 2) * 12 * k);
+    P.pos('thigh' + S, 0, py, pz).rot('thigh' + S, 0, -g * 40 * k, g * (34 + wave(t, 0.8, g) * 4 * twitch) * k);
+    P.rot('shin' + S, (-46 + wave(t, 1.1, g + 1) * 10 * twitch) * k, 0, g * 18 * k).rot('foot' + S, (-84 + wave(t, 1.6, g) * 14 * twitch) * k, 0, 0);
+    P.rot('wleg1' + S, 0, 0, -g * (22 + wave(t, 2.3, g) * 10 * twitch) * k).rot('wleg2' + S, 0, 0, -g * (30 + wave(t, 1.9, g + 2) * 10 * twitch) * k);
+    P.rot('stalk' + S, 10 * k, 0, -g * (34 + wave(t, 0.7, g) * 6 * twitch) * k);
   }
-  arm(P, 'R', -20 * k, 0, -30 * k); arm(P, 'L', -20 * k, 0, -30 * k); pinch(P, 'R', 20 * k); pinch(P, 'L', 20 * k);
-  P.rot('stalkR', 24 * k, 0, 14 * k).rot('stalkL', 24 * k, 0, -14 * k).rot('jaw', 22 * k);
+  arm(P, 'R', -24 * k, 10 * k, -26 * k, 34 * k); arm(P, 'L', -24 * k, 10 * k, -26 * k, 34 * k);
+  pinch(P, 'R', 22 * k); pinch(P, 'L', 22 * k);
+  P.rot('torso', -6 * k, 0, 4 * k).rot('jaw', 24 * k).rot('hiveTop', 0, 0, 12 * k);
 }
 
 export const anim = {
@@ -382,7 +439,8 @@ export const anim = {
   springs: [
     { bone: 'stalkR', tip: [0, 6, 0], k: 140, d: 8, gain: 0.9, max: 24 },
     { bone: 'stalkL', tip: [0, 6, 0], k: 150, d: 8, gain: 0.9, max: 24 },
-    { bone: 'fan', tip: [0, 5, 0], k: 220, d: 11, gain: 0.6, max: 14 },
+    { bone: 'hive', tip: [0, 4, 0], k: 200, d: 10, gain: 0.55, max: 10 },
+    { bone: 'hiveTop', tip: [0, 7, 0], k: 150, d: 8, gain: 0.9, max: 16 },
     { bone: 'sagR', tip: [0, -5.5, 0], k: 200, d: 9, gain: 0.8, max: 26, axes: [1, 0.3, 1] },
     { bone: 'sagC', tip: [0, -6, 0], k: 180, d: 8, gain: 0.8, max: 26, axes: [1, 0.3, 1] },
     { bone: 'sagL', tip: [0, -5.5, 0], k: 210, d: 9, gain: 0.8, max: 26, axes: [1, 0.3, 1] },
@@ -395,20 +453,24 @@ export const anim = {
   faces: {
     eyes: { default: 'steady', states: Object.fromEntries(Object.keys(EYES).map((k) => [k, ['eye-' + k]])) },
     bubble: { default: 'off', states: { on: ['snot'], off: [] } },
+    crack: { default: 'off', states: { on: ['crack'], off: [] } },
   },
-  fidget: { every: [6, 10], clips: ['salt', 'slap'] },
+  fidget: { every: [6, 10], clips: ['salt', 'shimmy', 'slap', 'shimmy'] },
   clips: {
     // the sumo crouch: a slow, heavy weight shift from leg to leg, pincers clacking, bubbles at the jaw
     idle: { len: 2.4, loop: true, f(P, t) {
       const ph = (t / 2.4) * TAU, s = Math.sin(ph), sh = Math.sign(s) * Math.abs(s) ** 0.55, dip = Math.abs(s) ** 6;
-      const px = -1.3 * sh, py = -0.35 - 0.7 * dip, rz = 2.2 * sh;
+      const land = wob(t % 1.2, 0.42, -0.9, 2.6, 5.5);                      // settling onto each leg with a little give
+      const px = -2 * sh, py = -0.5 - 1.2 * dip + land, rz = 3 * sh;
       stance(P, px, py, rz);
+      P.sq('torso', land * 0.04);
       ready(P, t);
-      P.rot('torso', 0, wave(t, 1 / 2.4, -0.9) * 3, -1.6 * Math.sin(ph - 0.6)).sq('torso', -0.025 * dip);
-      P.sq('gut', -0.05 * dip + 0.02 * Math.sin(ph * 2 - 1.2));
-      // the claws ride the shift a beat late
-      P.pos('clawR', 0, 0.6 * Math.sin(ph - 1.1), 0).pos('clawL', 0, -0.6 * Math.sin(ph - 1.1), 0);
-      for (const [S, t0] of [['R', 0.55], ['L', 1.75]]) pinch(P, S, -4 * bump(t, t0, t0 + 0.12) + wob(t, t0 + 0.12, 7, 4, 7) + (t > t0 - 0.25 && t < t0 ? 10 * seg(t, t0 - 0.25, t0 - 0.05) : 0));
+      P.rot('torso', 0, wave(t, 1 / 2.4, -0.9) * 3, -1.8 * Math.sin(ph - 0.6)).sq('torso', -0.03 * dip);
+      P.sq('gut', -0.06 * dip + 0.025 * Math.sin(ph * 2 - 1.2));
+      // the claws ride the shift a beat late, opening and closing like hands getting ready
+      P.pos('clawR', 0, 0.7 * Math.sin(ph - 1.1), 0).pos('clawL', 0, -0.7 * Math.sin(ph - 1.1), 0);
+      P.rot('clawR', 0, 0, 3 * Math.sin(ph - 1.4)).rot('clawL', 0, 0, 3 * Math.sin(ph - 1.4));
+      for (const [S, t0] of [['R', 0.55], ['L', 1.75]]) pinch(P, S, -4 * bump(t, t0, t0 + 0.12) + wob(t, t0 + 0.12, 7, 4, 7) + (t > t0 - 0.25 && t < t0 ? 12 * seg(t, t0 - 0.25, t0 - 0.05) : 0));
       scuttle(P, t, 0.6, 1.4);
       P.rot('eyes', 0, wave(t, 0.21) * 5, 0).rot('stalkR', 0, 0, wave(t, 0.4, 0.4) * 2).rot('stalkL', 0, 0, wave(t, 0.4, 2) * 2);
       P.rot('jaw', 4 + Math.max(0, wave(t, 0.83)) * 5);
@@ -417,153 +479,189 @@ export const anim = {
     // a heavy sumo waddle, sliding each foot forward while the body rocks over the planted leg
     walk: { len: 1.0, loop: true, f(P, t) {
       const ph = (t / 1.0) * TAU, s = Math.sin(ph), c = Math.cos(ph), plant = (1 - Math.abs(s)) ** 4;
-      stance(P, 1.4 * s, -0.5 + 0.8 * Math.abs(s) - 0.4 * plant, -4 * s, { f: { R: [0, 2.6 * Math.max(0, s)], L: [0, 2.6 * Math.max(0, -s)] }, z: { R: -1.8 * c, L: 1.8 * c }, toe: { R: -14 * Math.max(0, s), L: -14 * Math.max(0, -s) } });
+      stance(P, 1.6 * s, -0.6 + 1.1 * Math.abs(s) - 0.6 * plant, -5 * s, { f: { R: [-0.6 * Math.max(0, s), 3.4 * Math.max(0, s)], L: [0.6 * Math.max(0, -s), 3.4 * Math.max(0, -s)] }, z: { R: -2 * c, L: 2 * c }, toe: { R: -18 * Math.max(0, s), L: -18 * Math.max(0, -s) } });
       ready(P, t, 0.7);
-      P.sq('torso', -0.04 * plant).rot('torso', 2, 6 * s, 2 * s).sq('gut', -0.07 * plant);
-      P.rot('armR', 0, 10 * c, 0).rot('armL', 0, 10 * c, 0).pos('clawR', 0, 0.8 * Math.abs(s), 0).pos('clawL', 0, 0.8 * Math.abs(s), 0);
-      scuttle(P, t, 1.3, 3);
+      P.sq('torso', -0.05 * plant).rot('torso', 3, 7 * s, 2.5 * s).sq('gut', -0.09 * plant);
+      P.rot('armR', 0, 12 * c, 0).rot('armL', 0, 12 * c, 0).pos('clawR', 0, 1 * Math.abs(s), 0).pos('clawL', 0, 1 * Math.abs(s), 0);
+      scuttle(P, t, 1.4, 3);
       P.rot('eyes', 0, -4 * s, 0);
+      P.burst(0.02, 'dust', 'footL', [FOOT.L[0], 0.5, 2], { n: 2, speed: 0.4, scale: 0.6 }).burst(0.52, 'dust', 'footR', [FOOT.R[0], 0.5, 2], { n: 2, speed: 0.4, scale: 0.6 });
     } },
-    // entrance: sinks into the crouch, erupts up with both claws thrown high clacking and foaming, then slaps its gut
+    // entrance: sinks into the crouch, erupts up with both claws thrown high and wide, clacking and foaming, then slaps its gut
     cry: { len: 2.1, next: 'idle', f(P, t) {
-      const crouch = seg(t, 0, 0.36, E.inout) * (1 - seg(t, 0.36, 0.48, E.out)), up = seg(t, 0.38, 0.6, E.back) * (1 - seg(t, 1.38, 1.56, E.in));
+      const crouch = seg(t, 0, 0.36, E.inout) * (1 - seg(t, 0.36, 0.48, E.out)), up = seg(t, 0.38, 0.6, E.back) * (1 - seg(t, 1.36, 1.5, E.in));
       const slap = seg(t, 1.42, 1.56, E.in3) * (1 - seg(t, 1.75, 2.05, E.inout)), hit = t > 1.56 ? 1 : 0;
-      const py = -2.6 * crouch + 1.4 * up - 1.6 * slap * (t < 1.75 ? 1 : 1 - seg(t, 1.75, 2.0));
+      const py = -2.6 * crouch + 1.6 * up - 1.6 * slap;
       stance(P, 0, py, wave(t, 7) * 1.2 * up);
       ready(P, t, 1 - up);
-      P.sq('torso', -0.08 * crouch + 0.08 * up * (1 - seg(t, 0.6, 0.8)) + wob(t, 1.56, -0.08, 3.5, 6)).rot('torso', 14 * crouch - 10 * up + 12 * slap, 0, 0);
+      P.rot('torso', 0, 0, wave(t, 6.5) * 3.5 * up * seg(t, 0.62, 0.75));
+      P.sq('torso', -0.08 * crouch + 0.08 * up * (1 - seg(t, 0.6, 0.8)) + wob(t, 1.56, -0.08, 3.5, 6)).rot('torso', 14 * crouch - 14 * up + 12 * slap, 0, 0);
       for (const S of ['R', 'L']) {
-        arm(P, S, -14 * crouch + 62 * up - 30 * slap, 0, 6 * crouch + 50 * up - 40 * slap);
-        P.pos('claw' + S, 0, -1.2 * crouch, 0);
+        const g = S === 'R' ? 1 : -1;
+        arm(P, S, -14 * crouch + 58 * up - 20 * slap, -12 * up, 6 * crouch + 34 * up - 30 * slap, 38 * up);
+        P.pos('claw' + S, 0, -1.2 * crouch, 0).rot('claw' + S, 0, 0, g * 14 * up);
         pinch(P, S, 4 + 34 * up * (0.6 + 0.4 * Math.abs(wave(t, 7.5, S === 'R' ? 0 : 1.4))));
-        if (slap > 0) P.rot('arm' + S, 0, (S === 'R' ? 1 : -1) * 36 * slap, 0).rot('fore' + S, 0, (S === 'R' ? -1 : 1) * 20 * slap, 0).pos('claw' + S, (S === 'R' ? 1 : -1) * 3 * slap, -2 * slap, 1.2 * slap);
+        if (slap > 0) P.rot('arm' + S, 0, g * 36 * slap, 0).rot('fore' + S, 0, -g * 20 * slap, 0).pos('claw' + S, g * 3 * slap, -2 * slap, 1.2 * slap);
       }
       P.sq('gut', wob(t, 1.56, -0.22, 4, 4.5) * hit);
-      P.rot('jaw', 6 * crouch + 34 * up).rot('eyes', -8 * up, 0, 0);
+      P.rot('jaw', 6 * crouch + 34 * up).rot('eyes', -10 * up, 0, 0);
       P.face('eyes', crouch > 0.3 ? 'fierce' : up > 0.3 ? 'wide' : t > 1.56 ? 'steady' : undefined);
       P.blinkOK = false;
-      if (t > 0.55 && t < 1.38) P.stream('bubble', 'jaw', MOUTH, { rate: 26, dir: [0, 0.9, 1], speed: 1.6, spread: 0.6, scale: 0.8 });
-      P.burst(0.56, 'splash', 'jaw', MOUTH, { n: 10, dir: [0, 1, 0.6], speed: 1.4 });
-      P.burst(1.56, 'spark', 'gut', [0, 13, 9], { n: 2 }).burst(1.56, 'ring', 'gut', [0, 13, 9], { scale: 0.7 }).burst(1.56, 'drop', 'gut', [0, 13, 9], { n: 8, dir: [0, 0.6, 1], speed: 1.2 });
+      if (t > 0.55 && t < 1.36) P.stream('bubble', 'jaw', MOUTH, { rate: 30, dir: [0, 0.9, 1], speed: 1.7, spread: 0.6, scale: 0.85 });
+      P.burst(0.7, 'note', 'torso', [-10, 34, 2], { n: 1, dir: [-0.5, 1, 0.3], speed: 1.3 }).burst(0.95, 'note', 'torso', [10, 35, 2], { n: 1, dir: [0.5, 1, 0.3], speed: 1.3 });
+      P.burst(0.56, 'splash', 'jaw', MOUTH, { n: 12, dir: [0, 1, 0.6], speed: 1.5 }).burst(0.6, 'dust', 'root', [0, 0.5, 0], { n: 10, spread: 1, speed: 1.6 });
+      P.burst(1.56, 'spark', 'gut', [0, 13, 10], { n: 2 }).burst(1.56, 'ring', 'gut', [0, 13, 10], { scale: 0.8 }).burst(1.56, 'drop', 'gut', [0, 13, 10], { n: 10, dir: [0, 0.6, 1], speed: 1.3 });
     } },
-    // tsuppari barrage: a wind-up, then five open-palm slaps, alternating, each landing with a splash
-    attack: { len: 1.35, next: 'idle', f(P, t) {
-      const wind = seg(t, 0, 0.2, E.out) * (1 - seg(t, 0.2, 0.3, E.in)), go = seg(t, 0.18, 0.3, E.out) * (1 - seg(t, 1.05, 1.32, E.inout));
-      const hits = [0.3, 0.45, 0.6, 0.75, 0.92];
-      let twist = 0;
-      stance(P, 0, -1.2 * wind - 0.8 * go, 0, { z: { R: 0.8 * go, L: 0.8 * go } });
-      P.pos('root', 0, 0, -1.4 * wind + 3.2 * go).rot('torso', -8 * wind + 12 * go, 0, 0).sq('torso', -0.06 * wind);
-      arm(P, 'R', -10 * wind, -20 * wind, 0); arm(P, 'L', -10 * wind, -20 * wind, 0);
+    // tsuppari barrage: a wind-up, then five open-palm slaps driving forward, each landing with a splash
+    attack: { len: 1.4, next: 'idle', f(P, t) {
+      const wind = seg(t, 0, 0.2, E.out) * (1 - seg(t, 0.2, 0.3, E.in)), go = seg(t, 0.2, 0.32, E.out) * (1 - seg(t, 1.08, 1.36, E.inout));
+      const hits = [0.32, 0.46, 0.6, 0.74, 0.92];
+      let twist = 0, bob = 0;
       hits.forEach((h, i) => {
-        const S = i % 2 ? 'L' : 'R', k = seg(t, h - 0.06, h, E.out3) * (1 - seg(t, h + 0.04, h + 0.14, E.inout));
-        thrust(P, S, k); twist += (S === 'R' ? 1 : -1) * 12 * k;
-        P.burst(h, 'spark', 'claw' + S, [PALM[S][0], PALM[S][1], PALM[S][2] + 3.5], { n: 1 }).burst(h, 'splash', 'claw' + S, [PALM[S][0], PALM[S][1], PALM[S][2] + 3], { n: 6, dir: [0, 0.4, 1], speed: 1.1 });
-        P.sq('gut', wob(t, h, -0.06, 5, 9));
+        const S = i % 2 ? 'L' : 'R', last = i === hits.length - 1, k = seg(t, h - 0.065, h, E.out3) * (1 - seg(t, h + 0.04, h + (last ? 0.26 : 0.13), E.inout));
+        thrust(P, S, k * (last ? 1.2 : 1)); twist += (S === 'R' ? 1 : -1) * 16 * k; bob += k;
+        const pl = PALM[S];
+        P.burst(h, 'spark', 'claw' + S, [pl[0], pl[1], pl[2] + 3.6], { n: last ? 3 : 1 }).burst(h, 'splash', 'claw' + S, [pl[0], pl[1], pl[2] + 3], { n: last ? 14 : 6, dir: [0, 0.4, 1], speed: 1.2 });
+        if (last) P.burst(h, 'ring', 'claw' + S, [pl[0], pl[1], pl[2] + 3.6], { scale: 0.9 });
+        P.sq('gut', wob(t, h, -0.07, 5, 9));
       });
-      P.rot('torso', 0, twist, 0).rot('pelvis', 0, twist * 0.4, 0);
+      const adv = 3.6 * go + 1.4 * seg(t, 0.86, 0.92, E.out) * (1 - seg(t, 1.08, 1.36));
+      stance(P, 0, -1.4 * wind - 0.9 * go - 0.3 * bob, 0, { z: { R: 1.2 * go, L: 0.6 * go }, f: { R: [0, 1.4 * bump(t, 0.25, 0.4)], L: [0, 1.2 * bump(t, 0.8, 0.95)] } });
+      P.pos('root', 0, 0, -1.6 * wind + adv).rot('torso', -10 * wind + 14 * go, 0, 0).sq('torso', -0.07 * wind + 0.03 * bob);
+      arm(P, 'R', -12 * wind, -24 * wind, 0, 10 * wind); arm(P, 'L', -12 * wind, -24 * wind, 0, 10 * wind);
+      P.rot('torso', 0, twist, 0).rot('pelvis', 0, twist * 0.45, 0);
       P.face('eyes', go > 0.2 || wind > 0.2 ? 'fierce' : undefined); P.blinkOK = false;
-      P.rot('jaw', 14 * go).rot('eyes', 0, -twist * 0.5, 0);
+      P.rot('jaw', 16 * go).rot('eyes', 0, -twist * 0.5, 0);
+      P.burst(0.3, 'dust', 'root', [0, 0.5, 2], { n: 6, spread: 1, speed: 1 });
     } },
-    // shiko quake: the leg swings high, hangs, slams down; the ground cracks and water bursts up through it
-    special: { len: 2.4, next: 'idle', f(P, t) {
-      const shift = seg(t, 0, 0.32, E.inout) * (1 - seg(t, 1.12, 1.24, E.in)), lift = seg(t, 0.28, 0.82, E.out3) * (1 - seg(t, 1.06, 1.18, E.in3));
-      const slam = t > 1.18 ? 1 : 0, rec = seg(t, 1.6, 2.3, E.inout), tr = t > 0.82 && t < 1.06 ? wave(t, 13) * 0.6 : 0;
-      const py = -0.6 * shift - 2.8 * slam * (1 - rec) + wob(t, 1.18, -1.4, 3, 5);
-      stance(P, 3.4 * shift, py, -7 * shift + tr, { f: { R: [-7 * lift, 15 * lift], L: [0, 0] }, toe: { R: -20 * lift, L: 0 } });
-      P.rot('torso', 10 * lift * 0 + 8 * slam * (1 - rec), 0, -10 * lift).sq('torso', wob(t, 1.18, -0.12, 3.5, 5)).sq('gut', wob(t, 1.18, -0.25, 4, 4));
-      // hands on the knees for balance, then braced wide for the impact
-      arm(P, 'R', -26 * lift + 30 * slam * (1 - rec), 10 * lift, -20 * lift); arm(P, 'L', 30 * lift + 30 * slam * (1 - rec), 0, -10 * lift);
-      pinch(P, 'R', 4 + 26 * slam * (1 - rec)); pinch(P, 'L', 4 + 26 * slam * (1 - rec));
-      P.rot('eyes', 6 * lift, 0, 0).rot('jaw', 22 * slam * (1 - rec) + 8 * lift);
-      P.face('eyes', t < 1.18 && lift > 0.1 ? 'fierce' : slam && !rec ? 'wide' : undefined); P.blinkOK = false;
-      const F = [FOOT.R[0], 0.4, 1.6];
-      P.burst(1.18, 'ring', 'root', [F[0], 0.6, 1], { scale: 1.6, tint: [0.75, 0.9, 1] }).burst(1.18, 'dust', 'root', F, { n: 12, dir: [0, 0.4, 0], spread: 1, speed: 2 });
-      P.burst(1.18, 'rock', 'root', F, { n: 12, dir: [0, 1, 0], speed: 1.4, spread: 0.8 }).burst(1.2, 'shard', 'root', F, { n: 10, dir: [0, 1, 0.4], speed: 1 });
-      for (const [i, dx] of [[0, -8], [1, 5], [2, -2], [3, 12]].map((v) => v)) P.burst(1.32 + i * 0.09, 'splash', 'root', [F[0] + dx, 0.4, 3 - i * 2], { n: 16, dir: [0, 1, 0], speed: 2.4, spread: 0.25 });
-      if (t > 1.3 && t < 1.8) P.stream('bubble', 'root', [F[0] + 2, 1, 2], { rate: 18, dir: [0, 1, 0], speed: 1.6, spread: 0.5 });
-      P.burst(0.86, 'dust', 'footR', [FOOT.R[0], 1, 1], { n: 2, speed: 0.3 });
+    // shiko quake: weight onto one leg, the other swings high, hangs, slams down; the ground cracks and water bursts up through it
+    special: { len: 2.5, next: 'idle', f(P, t) {
+      const lean = seg(t, 0, 0.3, E.inout) * (1 - seg(t, 1.12, 1.22, E.in)), lift = seg(t, 0.24, 0.8, E.out3) * (1 - seg(t, 1.06, 1.18, E.in3));
+      const slam = t > 1.18 ? 1 : 0, rec = seg(t, 1.7, 2.4, E.inout), tr = t > 0.8 && t < 1.06 ? wave(t, 13) * 0.7 : 0, imp = slam * (1 - rec);
+      const py = -0.8 * lean - 3 * imp + wob(t, 1.18, -1.4, 3, 5);
+      stance(P, -4.4 * lean, py, 9 * lean + tr, { f: { L: [-1.6 * lift, 19 * lift] }, toe: { L: -24 * lift } });
+      P.rot('torso', 8 * imp - 4 * lift, 0, 7 * lift).sq('torso', wob(t, 1.18, -0.12, 3.5, 5)).sq('gut', wob(t, 1.18, -0.26, 4, 4));
+      // the raised side's claw swings out of the way, the other braces on its knee; both brace wide for the impact
+      arm(P, 'L', 62 * lift + 24 * imp, -16 * lift, 34 * lift, 30 * lift + 20 * imp);
+      arm(P, 'R', -18 * lift + 24 * imp, 6 * lift, -12 * lift, 10 * lift + 20 * imp);
+      P.rot('clawL', 0, 0, -18 * lift);
+      pinch(P, 'L', 4 + 20 * lift + 26 * imp); pinch(P, 'R', 4 + 26 * imp);
+      P.rot('eyes', 6 * lift, 0, 0).rot('jaw', 22 * imp + 8 * lift);
+      P.face('eyes', t < 1.18 && lift > 0.1 ? 'fierce' : slam && !rec ? 'wide' : undefined).face('crack', t > 1.18 && t < 2.4 ? 'on' : 'off'); P.blinkOK = false;
+      P.scl('crack', Math.min(1, 0.3 + seg(t, 1.18, 1.32, E.out) * 0.7));
+      const F = [FOOT.L[0], 0.4, 2];
+      P.burst(1.18, 'ring', 'root', [F[0], 0.8, 2], { scale: 1.8, tint: [0.8, 0.92, 1] }).burst(1.18, 'dust', 'root', F, { n: 16, dir: [0, 0.3, 0], spread: 1, speed: 2.4 });
+      P.burst(1.18, 'rock', 'root', F, { n: 14, dir: [0, 1, 0.3], speed: 1.5, spread: 0.8 }).burst(1.2, 'shard', 'root', F, { n: 12, dir: [0, 1, 0.4], speed: 1.1 });
+      // geysers bursting up along the cracks, marching toward the foe
+      [[10, 7], [6, 12], [1, 16.5], [-4, 21]].forEach(([x, z], i) => {
+        const tt = 1.26 + i * 0.08;
+        P.burst(tt, 'spout', 'root', [x, 0.3, z], { n: 26, dir: [0, 1, 0], speed: 1.05 + i * 0.08 }).burst(tt, 'splash', 'root', [x, 0.3, z], { n: 10, dir: [0, 1, 0], speed: 1.4 }).burst(tt, 'rock', 'root', [x, 0.3, z], { n: 3, dir: [0, 1, 0], speed: 1 });
+      });
+      if (t > 1.3 && t < 1.9) P.stream('bubble', 'root', [F[0] - 4, 1, 8], { rate: 16, dir: [0, 1, 0], speed: 1.6, spread: 0.6 });
+      P.burst(0.82, 'dust', 'footL', [FOOT.L[0], 1, 1], { n: 3, speed: 0.3 });
     } },
     hurt: { len: 0.7, next: 'idle', f(P, t) {
-      const k = seg(t, 0, 0.07, E.out) * (1 - seg(t, 0.24, 0.7, E.inout)), sc = seg(t, 0.1, 0.42, E.inout);
-      stance(P, -2.2 * sc * (1 - seg(t, 0.45, 0.7)), -1.2 * k, 5 * k + wob(t, 0.08, 3, 4, 6), { f: { R: [0, 1.6 * bump(t, 0.12, 0.3)], L: [0, 1.6 * bump(t, 0.28, 0.46)] } });
-      P.pos('root', -1.4 * sc, 0, -2.4 * k).rot('torso', -14 * k + wob(t, 0.1, 4, 3, 6), 0, wave(t, 14) * 3 * k).sq('torso', -0.1 * k).sq('gut', wob(t, 0.06, -0.2, 4, 5));
-      arm(P, 'R', 30 * k, -10 * k, 24 * k); arm(P, 'L', 30 * k, -10 * k, 24 * k); pinch(P, 'R', 30 * k); pinch(P, 'L', 30 * k);
+      const k = seg(t, 0, 0.07, E.out) * (1 - seg(t, 0.24, 0.7, E.inout)), sc = seg(t, 0.1, 0.42, E.inout) * (1 - seg(t, 0.45, 0.7));
+      stance(P, -2.4 * sc, -1.2 * k, 5 * k + wob(t, 0.08, 3, 4, 6), { f: { R: [0, 1.8 * bump(t, 0.12, 0.3)], L: [0, 1.8 * bump(t, 0.28, 0.46)] } });
+      P.pos('root', -1.6 * sc, 0, -2.6 * k).rot('torso', -16 * k + wob(t, 0.1, 4, 3, 6), 0, wave(t, 14) * 3 * k).sq('torso', -0.1 * k).sq('gut', wob(t, 0.06, -0.22, 4, 5));
+      arm(P, 'R', 30 * k, -10 * k, 24 * k, 20 * k); arm(P, 'L', 30 * k, -10 * k, 24 * k, 20 * k); pinch(P, 'R', 30 * k); pinch(P, 'L', 30 * k);
       scuttle(P, t, 1.8 * k + 0.4, 6);
       P.rot('jaw', 26 * k);
       P.face('eyes', t < 0.42 ? 'x' : undefined); P.blinkOK = false;
-      P.burst(0.02, 'spark', 'torso', [0, 18, 9], { n: 2 }).burst(0.02, 'star', 'torso', [0, 24, 6], { n: 3 }).burst(0.04, 'bubble', 'jaw', MOUTH, { n: 6, speed: 1.4, scale: 0.7 });
+      P.burst(0.02, 'spark', 'torso', [0, 18, 10], { n: 2 }).burst(0.02, 'star', 'torso', [0, 26, 6], { n: 3 }).burst(0.04, 'bubble', 'jaw', MOUTH, { n: 6, speed: 1.4, scale: 0.7 });
     } },
-    // stagger, a few dizzy sidesteps, then over onto its back with the legs in the air
+    // a few dizzy, stumbling sidesteps — then down hard on its backside, legs flung up
     faint: { len: 2.3, next: 'down', f(P, t) {
-      const dizzy = seg(t, 0, 0.3) * (1 - seg(t, 1.0, 1.1)), fall = seg(t, 1.0, 1.5, E.bounce);
-      if (fall < 0.02) stance(P, wave(t, 1.4) * 2 * dizzy, -1.4 * dizzy, wave(t, 1.4, 1) * 6 * dizzy, { f: { R: [0, 1.6 * Math.max(0, wave(t, 2.8))], L: [0, 1.6 * Math.max(0, -wave(t, 2.8))] } });
-      else lyingOnBack(P, fall, t);
+      const dizzy = seg(t, 0, 0.3) * (1 - seg(t, 0.95, 1.05)), fall = seg(t, 0.98, 1.42, E.bounce);
+      stance(P, wave(t, 1.4) * 2.2 * dizzy, -1.4 * dizzy, wave(t, 1.4, 1) * 7 * dizzy, { f: { R: [0, 1.8 * Math.max(0, wave(t, 2.8)) * dizzy], L: [0, 1.8 * Math.max(0, -wave(t, 2.8)) * dizzy] } });
+      if (fall > 0) knockedOut(P, fall, t, seg(t, 1.5, 1.8));
       P.rot('torso', 0, wave(t, 1.1) * 14 * dizzy, wave(t, 1.4, 2) * 6 * dizzy);
-      arm(P, 'R', 20 * dizzy, 0, -20 * dizzy); arm(P, 'L', 20 * dizzy, 0, -20 * dizzy);
+      arm(P, 'R', 20 * dizzy, 0, -20 * dizzy, 20 * dizzy); arm(P, 'L', 20 * dizzy, 0, -20 * dizzy, 20 * dizzy);
       P.rot('stalkR', 0, 0, wave(t, 2.2) * 18 * dizzy).rot('stalkL', 0, 0, wave(t, 2.2, 1) * 18 * dizzy).rot('jaw', 20 * dizzy);
       P.face('eyes', 'swirl'); P.blinkOK = false; P.lookW = 0;
-      P.burst(1.5, 'dust', 'root', [0, 1, -10], { n: 10, spread: 1, speed: 1.4 }).burst(0.9, 'star', 'torso', [0, 30, 0], { n: 5 });
+      P.burst(1.42, 'dust', 'root', [0, 1, -4], { n: 14, spread: 1, speed: 1.6 }).burst(0.7, 'star', 'torso', [0, 31, 0], { n: 5 });
       if (t > 0.3 && t < 1.1) P.stream('bubble', 'jaw', MOUTH, { rate: 8, dir: [0, 1, 0.5], speed: 0.8, scale: 0.6 });
     } },
     down: { len: 2.6, loop: true, f(P, t) {
-      lyingOnBack(P, 1, t);
+      knockedOut(P, 1, t, 1);
       P.face('eyes', 'swirl'); P.blinkOK = false; P.lookW = 0; P.breathW = 0.5;
       P.burst(0.6, 'bubble', 'jaw', MOUTH, { n: 3, dir: [0, 1, 0], speed: 0.6, scale: 0.6 }).burst(1.9, 'bubble', 'jaw', MOUTH, { n: 2, dir: [0, 1, 0], speed: 0.6, scale: 0.5 });
     } },
-    // the winner's tegatana: three hand-knife chops (left, right, centre), then a proud flex
-    win: { len: 2.2, next: 'idle', f(P, t) {
-      const lift = seg(t, 0, 0.2, E.out) * (1 - seg(t, 1.9, 2.2, E.inout));
-      const c1 = bump(t, 0.25, 0.48), c2 = bump(t, 0.5, 0.73), c3 = bump(t, 0.75, 0.98);
-      const flex = seg(t, 1.05, 1.25, E.back) * (1 - seg(t, 1.85, 2.15, E.inout)), h = bump(t, 1.05, 1.45);
-      stance(P, 0, 1.2 * h - 0.4 * flex + wob(t, 1.45, -0.8, 3, 6), 0);
-      P.pos('root', 0, Math.max(0, 3.4 * Math.sin(seg(t, 1.05, 1.45, E.lin) * Math.PI)), 0);
+    // the winner's tegatana: three hand-knife chops (left, right, centre), then a hop into a proud wide flex
+    win: { len: 2.3, next: 'idle', f(P, t) {
+      const lift = seg(t, 0, 0.2, E.out) * (1 - seg(t, 1.02, 1.14, E.inout));
+      const c1 = bump(t, 0.24, 0.46), c2 = bump(t, 0.48, 0.7), c3 = bump(t, 0.72, 0.94);
+      const flex = seg(t, 1.12, 1.3, E.back) * (1 - seg(t, 1.95, 2.25, E.inout)), air = Math.sin(seg(t, 1.02, 1.42, E.lin) * Math.PI);
+      const crouch = bump(t, 0.94, 1.08);
+      stance(P, 0, -1.6 * crouch + wob(t, 1.42, -1, 3, 6), 0);
+      P.pos('root', 0, 4.2 * Math.max(0, air), 0).sq('torso', 0.08 * air - 0.08 * crouch + wob(t, 1.42, -0.08, 3, 6)).sq('gut', wob(t, 1.42, -0.18, 4, 5));
       ready(P, t, 1 - flex);
       // right claw: up in front, then chop left, chop right, chop down the middle
-      arm(P, 'R', 26 * lift - 26 * flex, 30 * lift - 30 * flex, 30 * lift);
+      arm(P, 'R', 22 * lift, 30 * lift, 30 * lift);
       P.rot('clawR', 0, 0, -36 * c1 + 30 * c2).rot('armR', 0, 22 * c1 - 18 * c2, 0).rot('foreR', 40 * c3, 0, 0);
-      arm(P, 'L', 52 * flex, 0, 40 * flex); arm(P, 'R', 52 * flex, 0, 40 * flex);
-      pinch(P, 'R', 14 * flex + 6 * Math.abs(wave(t, 6)) * flex); pinch(P, 'L', 14 * flex + 6 * Math.abs(wave(t, 6, 1)) * flex);
-      P.sq('torso', 0.06 * flex * (1 - seg(t, 1.3, 1.5)) + wob(t, 1.45, -0.07, 3, 6)).sq('gut', wob(t, 1.45, -0.16, 4, 5)).rot('torso', -8 * flex, 0, 0);
-      P.rot('eyes', -6 * flex, 0, 0).rot('jaw', 10 * flex);
+      for (const S of ['R', 'L']) { arm(P, S, 56 * flex, -10 * flex, 34 * flex, 40 * flex); P.rot('claw' + S, 0, 0, (S === 'R' ? 1 : -1) * 16 * flex); }
+      pinch(P, 'R', 16 * flex + 8 * Math.abs(wave(t, 6)) * flex); pinch(P, 'L', 16 * flex + 8 * Math.abs(wave(t, 6, 1)) * flex);
+      const hold = seg(t, 1.42, 1.55) * (1 - seg(t, 1.95, 2.15));
+      P.rot('torso', -10 * flex, wave(t, 2.5) * 10 * hold, wave(t, 6.5) * 4 * hold).rot('pelvis', 0, -wave(t, 2.5) * 8 * hold, 0).rot('eyes', -6 * flex, 0, 0).rot('jaw', 10 * flex);
       P.face('eyes', 'proud'); P.blinkOK = false;
-      P.burst(1.28, 'sparkle', 'torso', [0, 30, 2], { n: 8, speed: 1.4 }).burst(1.45, 'dust', 'root', [0, 0.5, 0], { n: 8, spread: 1, speed: 1.2 });
-      for (const tt of [0.36, 0.61, 0.86]) P.burst(tt, 'salt', 'clawR', [PALM.R[0], 26, PALM.R[2]], { n: 5, dir: [0, 1, 0.3], speed: 0.6 });
+      P.burst(1.5, 'note', 'torso', [-9, 33, 2], { n: 1, dir: [-0.4, 1, 0.3], speed: 1.2 }).burst(1.75, 'note', 'torso', [9, 34, 2], { n: 1, dir: [0.4, 1, 0.3], speed: 1.2 });
+      P.burst(1.3, 'sparkle', 'torso', [0, 31, 2], { n: 10, speed: 1.4 }).burst(1.42, 'dust', 'root', [0, 0.5, 0], { n: 10, spread: 1, speed: 1.4 });
+      for (const tt of [0.35, 0.59, 0.83]) P.burst(tt, 'salt', 'clawR', [PALM.R[0], 26, PALM.R[2]], { n: 6, dir: [0, 1, 0.3], speed: 0.6 });
     } },
-    // dozing in a deep squat: slumped forward, stalks drooping, a bubble swelling and shrinking at the jaw
+    // dozing in a deep squat: slumped forward, stalks drooping apart, a bubble swelling and shrinking at the jaw
     sleep: { len: 3.4, loop: true, f(P, t) {
       const br = Math.sin((t / 3.4) * TAU);
-      stance(P, 0, -3 + br * 0.3, 0);
-      P.rot('torso', 12 + br * 1.5, 0, 0).sq('torso', -0.03 + br * 0.02).sq('gut', 0.03 * br);
-      arm(P, 'R', -26, 8, -30); arm(P, 'L', -26, 8, -30); pinch(P, 'R', 2); pinch(P, 'L', 2);
+      stance(P, 0, -3 + br * 0.35, 0);
+      P.rot('torso', 9 + br * 1.5, 0, 0).sq('torso', -0.03 + br * 0.02).sq('gut', 0.03 * br);
+      arm(P, 'R', -24, 8, -26, 10); arm(P, 'L', -24, 8, -26, 10); pinch(P, 'R', 2); pinch(P, 'L', 2);
       P.pos('clawR', 0, -1.5, -1).pos('clawL', 0, -1.5, -1);
-      P.rot('stalkR', 34, 0, 16).rot('stalkL', 34, 0, -16).rot('eyes', 8, 0, 0).rot('jaw', 6 + Math.max(0, br) * 4);
+      P.rot('stalkR', 8, 0, 30 + br * 3).rot('stalkL', 8, 0, -30 - br * 3).rot('jaw', 6 + Math.max(0, br) * 4).rot('hiveTop', 0, 0, 7);
       P.face('eyes', 'closed').face('bubble', 'on'); P.blinkOK = false; P.lookW = 0; P.breathW = 0;
-      P.scl('bub', 0.35 + 0.65 * (0.5 + 0.5 * br));
+      P.scl('bub', 0.3 + 0.7 * (0.5 + 0.5 * br));
       P.burst(0.5, 'z', 'torso', [6, 30, 4], {}).burst(1.9, 'z', 'torso', [6, 30, 4], {});
     } },
-    // fidget: the salt throw — dips a claw behind for salt and flings it in a sparkling arc
+    // fidget: the salt throw — dips a claw back for salt, then flings it up in a sparkling arc
     salt: { len: 2.0, next: 'idle', f(P, t) {
       const reach = seg(t, 0.05, 0.4, E.inout) * (1 - seg(t, 0.5, 0.72, E.anti)), fling = seg(t, 0.62, 0.8, E.out) * (1 - seg(t, 1.3, 1.8, E.inout));
-      stance(P, -1.2 * reach + 0.8 * fling, -0.6 - 0.6 * reach + 0.6 * fling, 4 * reach - 3 * fling);
+      stance(P, -1.2 * reach + 0.8 * fling, -0.6 - 0.8 * reach + 0.8 * fling, 4 * reach - 3 * fling);
       ready(P, t, 1 - fling * 0.5);
-      arm(P, 'R', -10 * reach + 70 * fling, -50 * reach + 40 * fling, -20 * reach + 30 * fling);
+      arm(P, 'R', -10 * reach + 64 * fling, -50 * reach - 10 * fling, -20 * reach + 30 * fling, 10 * reach + 40 * fling);
       pinch(P, 'R', 2 + 30 * fling);
       P.rot('torso', 0, -14 * reach + 16 * fling, 0).rot('eyes', 0, -18 * reach + 20 * fling, 0);
       P.face('eyes', fling > 0.5 ? 'proud' : undefined);
-      P.burst(0.74, 'salt', 'clawR', [-16, 26, 8], { n: 26, dir: [0.6, 1, 0.8], speed: 1.1, spread: 0.5 }).burst(0.78, 'sparkle', 'clawR', [-16, 27, 8], { n: 6, dir: [0.6, 1, 0.6], speed: 1.6 });
+      P.burst(0.74, 'salt', 'clawR', [-18, 27, 6], { n: 30, dir: [0.7, 1, 0.8], speed: 1.1, spread: 0.5 }).burst(0.78, 'sparkle', 'clawR', [-18, 28, 6], { n: 6, dir: [0.6, 1, 0.6], speed: 1.6 });
     } },
-    // fidget: clacks both pincers, then slaps its own gut twice and settles its belt
+    // fidget: a shimmying party dance (the Twist, crab style) — claws up, hips one way, shoulders the other,
+    // pincers snapping like castanets on the beat, beehive bouncing, notes popping
+    shimmy: { len: 2.8, next: 'idle', f(P, t) {
+      const on = seg(t, 0, 0.3, E.back) * (1 - seg(t, 2.4, 2.8, E.inout)), bt = t * 2.5, beat = bt % 1, hit = Math.exp(-beat * 8) * on;
+      const tw = Math.sin(t * TAU * 1.25) * 18 * on, shake = wave(t, 6.5) * 4.5 * on, sw = Math.sin(t * TAU * 1.25);
+      stance(P, sw * 1.3 * on, -1 * on - 1 * hit, shake * 0.4, { z: { R: 0.05 * tw, L: -0.05 * tw } });
+      P.rot('pelvis', 0, tw, 0).rot('torso', -4 * on, -tw * 1.35, shake).sq('torso', -0.05 * hit).sq('gut', -0.1 * hit + 0.03 * wave(t, 6.5, 1) * on);
+      for (const S of ['R', 'L']) {
+        const alt = Math.sin(t * TAU * 1.25 + (S === 'R' ? 0 : Math.PI));
+        arm(P, S, (50 + 12 * alt) * on, -6 * on, (32 + 10 * alt) * on, 34 * on);
+        P.rot('claw' + S, 0, 0, (S === 'R' ? 1 : -1) * (10 + 8 * alt) * on);
+        pinch(P, S, (4 + 24 * Math.exp(-((bt + (S === 'R' ? 0 : 0.5)) % 1) * 9)) * on);
+      }
+      scuttle(P, t, 1.8 * on, 5);
+      P.rot('eyes', 0, tw * 0.5, 0).rot('stalkR', 0, 0, wave(t, 2.5) * 12 * on).rot('stalkL', 0, 0, wave(t, 2.5, 1.6) * 12 * on).rot('jaw', 10 * on + 6 * hit);
+      P.face('eyes', on > 0.5 ? 'proud' : undefined);
+      [0.42, 0.82, 1.22, 1.62, 2.02].forEach((tt, i) => P.burst(tt, 'note', 'torso', [i % 2 ? 9 : -9, 33, 2], { n: 1, dir: [i % 2 ? 0.4 : -0.4, 1, 0.3], speed: 1.2 }));
+      P.burst(0.4, 'bubble', 'jaw', MOUTH, { n: 4, dir: [0, 1, 0.5], speed: 0.8, scale: 0.6 });
+    } },
+    // fidget: clacks both pincers, slaps its own gut twice, gives a satisfied little nod
     slap: { len: 1.9, next: 'idle', f(P, t) {
-      stance(P, 0, -0.5 - 0.5 * bump(t, 0.9, 1.1) - 0.5 * bump(t, 1.2, 1.4), 0);
+      stance(P, 0, -0.5 - 0.6 * bump(t, 0.9, 1.1) - 0.6 * bump(t, 1.2, 1.4), 0);
       ready(P, t);
-      for (const [S, t0] of [['R', 0.1], ['L', 0.28], ['R', 0.46], ['L', 0.64]]) pinch(P, S, 18 * bump(t, t0, t0 + 0.16));
+      for (const [S, t0] of [['R', 0.1], ['L', 0.28], ['R', 0.46], ['L', 0.64]]) pinch(P, S, 20 * bump(t, t0, t0 + 0.16));
       for (const [S, t0] of [['R', 0.85], ['L', 1.15]]) {
         const k = seg(t, t0, t0 + 0.08, E.in3) * (1 - seg(t, t0 + 0.12, t0 + 0.3, E.inout)), g = S === 'R' ? 1 : -1;
         P.rot('arm' + S, 0, g * 34 * k, 0).rot('fore' + S, 0, -g * 18 * k, 0).pos('claw' + S, g * 3.2 * k, -2.6 * k, 0.6 * k);
-        P.sq('gut', wob(t, t0 + 0.08, -0.16, 4.5, 5)).burst(t0 + 0.08, 'ring', 'gut', [g * -4, 12, 9], { scale: 0.4 });
+        P.sq('gut', wob(t, t0 + 0.08, -0.17, 4.5, 5)).burst(t0 + 0.08, 'ring', 'gut', [g * -4, 13, 10], { scale: 0.45 });
       }
-      P.rot('eyes', 8 * bump(t, 0.8, 1.5), 0, 0).rot('jaw', 8 * bump(t, 0.8, 1.5));
-      P.face('eyes', t > 0.85 && t < 1.5 ? 'proud' : undefined);
+      P.rot('eyes', 8 * bump(t, 0.8, 1.5), 0, 0).rot('jaw', 8 * bump(t, 0.8, 1.5)).rot('torso', 5 * bump(t, 1.45, 1.75), 0, 0);
+      P.face('eyes', t > 0.85 && t < 1.6 ? 'proud' : undefined);
     } },
   },
 };
