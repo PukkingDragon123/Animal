@@ -14,7 +14,14 @@ import { T } from '../../px/game/ui.js';
 import { NavGrid, pick } from './nav.js';
 
 const MON_DEFS = {};
-export async function monDef(species) { if (!MON_DEFS[species]) { try { MON_DEFS[species] = (await import(`../mons/${species}.js`)).def; } catch (e) { console.warn('no model for', species, e); MON_DEFS[species] = (await import('../mons/chilichick.js')).def; } } return MON_DEFS[species]; }
+// a species' model; variants like 'barkorious_forced' fall back to their base model, unknown ones to Chilichick
+export async function monDef(species) {
+  if (!MON_DEFS[species]) {
+    const tries = [species, species.split('_')[0], 'chilichick'];
+    for (const id of tries) { try { MON_DEFS[species] = (await import(`../mons/${id}.js`)).def; break; } catch (e) { if (id === species) console.warn('no model for', species); } }
+  }
+  return MON_DEFS[species];
+}
 const _v = new THREE.Vector3();
 
 // ---------------------------------------------------------------- actors
@@ -73,6 +80,7 @@ export class VxWorld {
     const v = (o.shot && this.shots[o.shot]) || L.view || sc.view;
     this.setCam(v);
     this.hotspots = (L.hotspots || []).map((h) => ({ ...h }));
+    for (const h of this.hotspots) if (h.spotAt) { const p = this.spot(h.spotAt); h.at = [p[0], (p[3] ?? this.ground(p[0], p[1])) + 1.4, p[1]]; h.walk = [p[0], p[1]]; }
     this.ready = true;
     if (o.life !== false) this.spawnLife(L.life || []).catch((e) => console.warn('life', e));
     return sc;

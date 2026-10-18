@@ -76,7 +76,9 @@ export class Story {
   }
   cap(text, sub, dur = 4) { this.caption = { text, sub, dur, t: 0 }; }
   // ------------------------------------------------------------------ Day 1
-  async opening() {
+  // the opening (Day 1) lives in day1.js
+  async opening() { const { day1 } = await import('./day1.js'); await day1(this); }
+  async openingClassic() {
     const app = this.app, w = app.world, home = this.home();
     await app.fade(1, 500);
     await w.load(home, { mood: 'golden' });
@@ -190,5 +192,34 @@ export class Story {
     if (res && res.winner === 0) { S.setFlag(app.state, 'alamo_done'); this.objective = 'Explore the city'; }
     void w;
   }
+  // ---- free-roam places and side quests
+  async goHome() {
+    const app = this.app;
+    if (app.world.id === 'apartment') return app.travel('chinatown', { at: 'home' });
+    await app.travel('apartment', { at: 'door' });
+    if (app.quests.at('tarts') === 1) {
+      const w = app.world, mom = await w.addMon('mom', 'wheezowl', w.spot('seatMom'), { clip: 'talk' });
+      await app.say('Mom', 'Hoo! Egg tarts from Lucky Moon? Still warm! You\'re a good kid.', '*wheeze* …Here, take a little something for the cable car.');
+      app.quests.complete('tarts'); mom.play('hug');
+    }
+  }
+  async bakery() {
+    const app = this.app, Q = app.quests;
+    if (Q.at('tarts') === 0) {
+      await app.say('Baker', 'Fresh egg tarts, flaky as a cloud! For your mom? Ha — tell her it\'s on the house this time.');
+      app.toast('Got a box of egg tarts', { icon: 'bowl', color: T.amber, dur: 2.2 }); Q.next('tarts');
+    } else await app.say('Baker', 'Come back tomorrow — the pineapple buns are coming out at six!');
+  }
+  async chessUncle() {
+    const app = this.app, Q = app.quests;
+    if (Q.at('chess') !== 0) { await app.say('Uncle Ho', 'Again tomorrow, young one. These old bones need a nap.'); return; }
+    await app.say('Uncle Ho', 'Ho! A young trainer. Xiangqi is slow — let\'s play the fast kind. Beat my partner and I\'ll teach you a thing or two.');
+    if (!app.state.party.length) { await app.say('Uncle Ho', '…You don\'t have a partner yet? Come back when you do.'); return; }
+    const res = await app.startBattle({ foe: { name: 'Uncle Ho', team: [['kappachi', 6]] }, title: 'UNCLE HO', subtitle: 'Portsmouth Square', canLose: true, partySize: 2 });
+    await app.fade(0, 400);
+    if (res && res.winner === 0) { await app.say('Uncle Ho', 'Hah! The board is yours today. Take this — you earned it.'); Q.next('chess'); Q.complete('chess'); }
+    else await app.say('Uncle Ho', 'Patience, young one. Patience wins wars.');
+  }
+  async tramStop() { const app = this.app; await app.say('', 'A brass sign: CALIFORNIA ST. CABLE CAR. Stops you\'ve visited are on your phone\'s map.'); app.phone.tab = 'map'; app.phone.open = true; }
   async rest() { const app = this.app; await app.say('', 'You sit for a while. The fog rolls in over the hills.'); S.healParty(app.state, 1); app.toast('Team rested', { icon: 'heart', color: T.green }); app.save(); }
 }

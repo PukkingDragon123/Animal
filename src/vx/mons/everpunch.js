@@ -506,7 +506,7 @@ export const anim = {
     stagedive: { len: 3.6, next: 'idle', f(P, t, c) {
       const crouch = seg(t, 0, 0.42, E.inout) * (1 - seg(t, 0.42, 0.52, E.out)), fly = seg(t, 0.45, 0.95, E.out) * (1 - seg(t, 2.45, 2.95, E.inout));
       const surf = seg(t, 0.8, 1.1) * (1 - seg(t, 2.4, 2.6)), bob = Math.sin(t * 5) * surf, land = t > 2.95 ? wob(t, 2.95, -1.6, 3, 6) : 0;
-      const rx = -78 * fly, ry0 = 20 * fly + 14 * bob, rz = 8 * Math.sin(t * 3.1) * surf;
+      const rx = -78 * fly, rz = 8 * Math.sin(t * 3.1) * surf;
       stance(P, { dy: -4.0 * crouch + Math.min(0, land), rx: 14 * crouch });
       P.pos('root', 0, 22 * fly + 1.2 * bob, -2 * fly).rot('root', rx, 0, rz);
       for (const S of ['R', 'L']) { const g = S === 'R' ? 1 : -1; cock(P, S, crouch); flex(P, S, fly); P.rot('arm' + S, -20 * surf * Math.max(0, Math.sin(t * 6 + g)), 0, 0); P.rot('thigh' + S, -40 * fly, 0, -g * 10 * fly).rot('shin' + S, 60 * fly, 0, 0); }
@@ -514,7 +514,7 @@ export const anim = {
       ex(P, crouch > 0.3 ? 'angry' : surf > 0.5 ? (Math.floor(t * 2) % 3 === 0 ? 'happy' : 'star') : fly > 0.3 ? 'wide' : t > 3.0 ? 'smug' : undefined, crouch > 0.3 ? 'grin' : fly > 0.2 ? 'o' : t > 3.0 ? 'grin' : undefined); P.blinkOK = false;
       // the saucers slide in under its back: three points down its spine, carried by the root's tilt and lift
       const dive = [[-4, 20], [4, 30], [0, 40]].map(([x, y], i) => { const v = rotXYZ([x, y, -9.5], rx, 0, rz); return [surf, [v[0], v[1] + 22 * fly + 1.2 * bob - 2.5, v[2] - 2 * fly]]; });
-      ufos(P, c.time, { dive });
+      ufos(P, c.time, { dive }); for (let i = 1; i <= 3; i++) P.scl('ufo' + i, 1 + 0.9 * surf);
       if (surf > 0.5) P.stream('note', 'root', [0, 26, -30], { rate: 5, spread: 1, speed: 1 }).stream(FX.orb, 'root', [0, 18, -24], { rate: 30, spread: 1 });
       P.burst(0.5, 'dust', 'root', [0, 0.5, 0], { n: 12, spread: 1, speed: 1.6 }).burst(2.95, 'dust', 'root', [0, 0.5, 0], { n: 14, spread: 1, speed: 1.8 }).burst(1.0, 'sparkle', 'root', [0, 24, -26], { n: 14, speed: 1.6 });
     } },

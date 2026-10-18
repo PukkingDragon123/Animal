@@ -42,8 +42,9 @@ export const LOCATIONS = {
     ],
   },
   // the opening's places (interiors carry their own spots, shots, arenas and lights)
-  apartment: { name: 'Home', scene: 'apartment', mood: 'night', hidden: true, parent: 'chinatown' },
-  dojo: { name: 'Golden Claw Dojo', scene: 'dojo', mood: 'golden', map: [0.68, 0.22], blurb: 'Coach Gonda\'s kung-fu hall behind Grant Avenue.' },
+  apartment: { name: 'Home', scene: 'apartment', mood: 'golden', hidden: true, parent: 'chinatown', follow: { dist: 9, pitch: 26, yaw: 0, h: 1.0 },
+    hotspots: [{ id: 'out', label: 'Go outside', icon: 'door', at: [0, 0, 0], spotAt: 'door', act: async (app) => app.story.goHome() }] },
+  dojo: { name: 'Golden Claw Dojo', scene: 'dojo', mood: 'golden', map: [0.68, 0.22], blurb: 'Coach Gonda\'s kung-fu hall behind Grant Avenue.', tram: { spot: null }, follow: { dist: 12, pitch: 30, yaw: 0, h: 1.0 } },
   tram: { name: 'Cable car', scene: 'tram', mood: 'day', hidden: true },
   arena: { name: 'Street Arena', scene: 'arena', mood: 'golden', map: [0.62, 0.2], blurb: 'Painted rings under the freeway: where rookies fight.' },
   pier39: { name: 'Pier 39', scene: 'pier39', mood: 'golden', map: [0.63, 0.1], blurb: 'Sea lions, sourdough and street performers.' },
