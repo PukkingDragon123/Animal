@@ -32,7 +32,7 @@ const C = {
   chrome: '#cfd5df', chromeLo: '#7c8494', chromeDeep: '#3c4250',
   ink: '#170b08',
   // the sweater: loud 90s luxury knit
-  kBlue: '#2a47bd', kTeal: '#13a197', kRed: '#d92d36', kGold: '#f3b52b', kPurple: '#7b3aa6', kCream: '#f6ebd2', kInk: '#1d1529', kOrange: '#f17a27',
+  kBlue: '#2a47bd', kTeal: '#13a197', kRed: '#d92d36', kGold: '#f3b52b', kPurple: '#7b3aa6', kCream: '#f6ebd2', kInk: '#1d1529',
 };
 
 // ---------------------------------------------------------------- painters
@@ -42,7 +42,7 @@ const isSide = (f) => f === 'south' || f === 'north' || f === 'east' || f === 'w
 const wrapX = (face, cube) => { const w = tx(cube.s[0]), d = tx(cube.s[2]); return face === 'south' ? d : face === 'east' ? d + w : face === 'north' ? 2 * d + w : 0; };
 const fill = (p, w, h, fn) => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, fn(x, y)); };
 
-// glossy hide: clean top-lit bands, a lit rim, a broken wet sheen with hot specks, a dark seam
+// glossy hide: clean top-lit bands, a lit rim, a soft wet sheen band with hot specks, a dark seam
 function hide(o = {}) {
   const c = o.c || C.hide, hi = o.hi || C.hideHi, lo = o.lo || C.hideLo, gl = o.gloss || C.gloss, sp = o.spec || C.spec, k = o.seed || 1, top = mix(hi, c, 0.35);
   return (p, w, h, face) => {
@@ -390,7 +390,7 @@ const HOOD = { id: 'hood', hide: true }, HX = -18.75, HZ = 5.5;
 const leather = hide({ seed: 14, c: C.flip, hi: C.flipHi, lo: C.flipLo, gloss: '#8a6650', spec: '#d8b898', under: C.flipUnder });
 
 export const def = {
-  name: 'barkorious', ppu: 3, scale: 1.1, outline: { color: '#140a07', px: 1.5 },
+  name: 'barkorious', ppu: 3, scale: 1.15, outline: { color: '#140a07', px: 1.5 },
   bones: [
     { name: 'root', pivot: [0, 0, 0], cubes: [] },
     // the hindquarters lie on the dock, sloping down to the tail; the front props up on the fore flippers
@@ -452,7 +452,7 @@ export const def = {
       B([1.67, 20.83, 11.5], [0.5, 0.67, 0.5], toothP, { outline: false }),
       B([0.33, 19, 11.83], [1.67, 0.5, 3.33], tongueP, { id: 'tongue-out', hide: true, outline: false, pivot: [1.17, 20.83, 11.83], rot: [62, 0, -10] }),
     ] },
-    ...twin({ name: 'browR', parent: 'head', pivot: [-3.5, 28, 8.4], cubes: [B([-5.33, 27.67, 8], [3.67, 0.83, 0.83], browP)] }),
+    ...twin({ name: 'browR', parent: 'head', pivot: [-3.5, 28, 8.4], rot: [0, 0, -7], cubes: [B([-5.33, 27.67, 8], [3.67, 0.83, 0.83], browP)] }),
     ...twin({ name: 'whiskR', parent: 'head', pivot: [-4.13, 21.83, 10.5], cubes: [B([-11.13, 19.5, 10.5], [7, 4.67, 0], whiskP, { plane: 'z', pivot: [-4.13, 21.83, 10.5], rot: [0, -22, 0] })] }),
     { name: 'crown', parent: 'head', pivot: [CR.x, CR.y, CR.z], rot: [-4, 0, 13], cubes: CROWN },
     // the victory prop: a black car-hood rock that rises out of the dock (hidden otherwise)
@@ -587,7 +587,7 @@ export const anim = {
       const reach = key([[0, 0.1], [0.22, 1, 'out'], [0.38, 0.75, 'in'], [0.92, 0, 'inout'], [1, 0.1]], u);
       const land = wob(u, 0.38, 1, 3, 8), hump = key([[0, 0], [0.42, 0], [0.63, 1, 'out'], [0.84, 0, 'in'], [1, 0]], u), thump = wob(u, 0.84, 1, 3, 8);
       P.pos('body', 0, 2.2 * up - 0.3 * hump, 1.4 * up).rot('body', -8 * up + 4 * hump, 0, 0).rot('torso', 3 * hump, 0, 0);
-      squash(P, 0.06 * up - 0.12 * Math.max(0, land) - 0.03 * hump);
+      squash(P, 0.08 * up - 0.15 * Math.max(0, land) - 0.03 * hump);
       P.rot('neck', 7 * up - 5 * land - 3 * hump).rot('head', 4 * up - 5 * land, 0, 0);
       P.rot('armR', -30 * reach - 6 * up, 0, -6 * up).rot('armL', -30 * reach - 6 * up, 0, 6 * up);
       P.rot('flipR', 14 * up, 0, 0).rot('flipL', 14 * up, 0, 0);
@@ -655,7 +655,7 @@ export const anim = {
         if (k % 2 === 0) P.burst(tk, 'barkring', 'head', MOUTH, { dir: [0, 0.2, 1] });
       }
       if (live) P.stream('drop', 'head', MOUTH, { rate: 40, dir: [0, 0.4, 1], speed: 2, spread: 0.3, scale: 1.6 });
-      P.burst(2.22, 'barkring', 'head', MOUTH, { scale: 2, dir: [0, 0.4, 1] }).burst(2.22, 'goldnote', 'head', [0, 30, 9], { n: 10, spread: 1, speed: 2 }).burst(2.22, 'splash', 'head', MOUTH, { n: 36, dir: [0, 1, 0.5], speed: 2.4, spread: 0.6 });
+      P.burst(2.22, 'barkring', 'head', MOUTH, { scale: 2, dir: [0, 0.4, 1] }).burst(2.22, 'goldnote', 'head', [0, 30, 9], { n: 10, spread: 1, speed: 2 }).burst(2.22, 'splash', 'head', MOUTH, { n: 40, dir: [0, 1, 0.5], speed: 2.6, spread: 0.6, scale: 1.8 });
     } },
     hurt: { len: 0.65, next: 'idle', f(P, t) {
       const k = seg(t, 0, 0.07, E.out) * (1 - seg(t, 0.2, 0.65, E.inout));
@@ -738,7 +738,7 @@ export const anim = {
       P.rot('armR', -48 * reach, 0, 30 * reach);
       P.pos('chain', 0, 0.8 * tug, 0.3 * tug).rot('chain', -4 * tug, 0, 6 * bump(t, 0.6, 1.2));
       P.rot('head', 16 * reach - 6 * seg(t, 1.4, 1.7) * (1 - seg(t, 1.9, 2.2)), -10 * reach, 0).rot('neck', 6 * reach);
-      P.rot('medal', 0, 360 * seg(t, 0.9, 1.3, E.out), 0);
+      const flip = seg(t, 0.9, 1.3, E.out); P.rot('medal', 0, flip < 1 ? 360 * flip : 0, 0);   // one full turn, then back to 0 (same look) so the hand-off doesn't unspin
       P.burst(1.3, 'bling', 'medal', [0, 5.6, 10], {}).burst(1.32, 'sparkle', 'medal', [0, 5, 10], { n: 5 });
       P.rot('browL', 0, 0, 12 * seg(t, 1.4, 1.6) * (1 - seg(t, 2, 2.3))).pos('browL', 0, 0.45 * seg(t, 1.4, 1.6) * (1 - seg(t, 2, 2.3)), 0);
       if (t > 1.4 && t < 2.0) { P.face('eyes', 'happy'); P.blinkOK = false; }
