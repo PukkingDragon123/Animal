@@ -1,8 +1,8 @@
 // Beatlet — Taro's partner (Bio). A chubby little rhinoceros beetle and a wink at the
 // Beatles: its glossy head shell is a 1960s mop-top bowl cut with a fringe down to its
-// eyes, it wears a hot-pink band-jacket collar with gold frogging and gold epaulettes, its
-// belly segments are striped like a zebra crossing, and its six stubby feet are pointed,
-// heeled boots. A small forked horn rises from its crown with a leaf sprout growing in the
+// eyes, it wears a hot-pink band-jacket collar with gold frogging, its
+// belly segments are striped like a zebra crossing, and its six stubby feet end in pointed toes
+// with a little heel spur. A small forked horn rises from its crown with a leaf sprout growing in the
 // fork. It is sunny and always singing; it walks with a long, easy crosswalk stride, shakes
 // its mop-top on the high notes, and takes a deep bow at the end of every show.
 import { E, seg, bump, wob, wave, bounce } from '../anim.js';
@@ -16,7 +16,6 @@ const C = {
   satin: '#ff4fa3', satinHi: '#ff9ccc', satinLo: '#c42a78', satinDeep: '#8a1a56',
   gold: '#ffd23e', goldHi: '#fff6b0', goldLo: '#d0902a', goldDeep: '#8a561a',
   leg: '#4e283c', legHi: '#7a4650', legLo: '#2a1220',
-  boot: '#201820', bootHi: '#5a4a56', bootLo: '#100a10',
   zb: '#24222c', zw: '#f4f2ea', zwLo: '#c4c2ba',
   horn: ['#9a5440', '#622c32', '#3e1826', '#260c1a'],
   leaf: '#7ad04a', leafHi: '#d8ff8a', leafLo: '#3e9a36',
@@ -96,15 +95,16 @@ function mopP(p, w, h, face, cube) {
     p.px(x, y, c);
   }
 }
-// the fringe: straight-cut strands hanging into the eyes, a lit band near the top, the tips ragged
+// the fringe: straight-cut strands hanging into the eyes, a broken, wavy line of shine near the top, the tips ragged
 function fringeP(p, w, h, face) {
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-    let c = face === 'up' ? C.hair : face === 'down' ? C.hairLo : y < 2 ? C.hair : C.hairLo;
+    let c = face === 'up' ? C.hair : face === 'down' ? C.hairLo : y < 3 ? C.hair : C.hairLo;
     if (face !== 'up' && face !== 'down') {
-      const part = x % 3 === 0;
-      if (y >= 2 && y <= 4) c = part ? C.hairHi : face === 'south' ? C.hairGl : C.hairHi;
+      const part = (x + Math.floor(jit(Math.floor(x / 3)) * 2)) % 3 === 0, sh = 2 + (Math.sin(x * 0.7) > 0.3 ? 1 : 0);
+      if (y === sh && !part && jit(x + 5) > 0.15) c = face === 'south' ? C.hairGl : C.hairHi;
+      else if (y === sh + 1 && !part) c = C.hairHi;
       else if (part) c = shift(c, -0.14);
-      if (y >= h - 1 && x % 3 !== 1) c = 0;
+      if (y >= h - 1 && (x + Math.floor(jit(x) * 3)) % 3 !== 1) c = 0;
       if (y >= h - 2 && x % 6 === 3) c = 0;
     }
     p.px(x, y, c);
@@ -130,28 +130,51 @@ function collarP(p, w, h, face, cube) {
     p.px(Math.round(m), row, C.goldHi); p.px(Math.round(m), row + 1, C.goldLo);                       // the toggle
   }
 }
-const goldP = (p, w, h, face) => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, (x + y) % 4 === 0 && face !== 'down' ? C.goldHi : band(GOLD, face, x, y, h)); };
-const tasselP = (p, w, h) => { for (let x = 0; x < w; x++) if (x % 2 === 0) for (let y = 0; y < h - (x % 4 === 0 ? 0 : 1); y++) p.px(x, y, y === 0 ? C.goldHi : y > h - 3 ? C.goldLo : C.gold); };
 const legP = (p, w, h, face) => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, band(LEG, face, x, y, h)); if (face !== 'up' && face !== 'down') for (let x = 1; x < w - 1; x += 3) p.px(x, 1, C.legHi); };
-const bootP = (p, w, h, face) => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, face === 'up' ? ((x + y) % 3 ? C.boot : C.bootHi) : y === 0 ? C.bootHi : y === h - 1 ? C.bootLo : C.boot); if (face !== 'up' && face !== 'down') { p.px(1, 1, '#9a8a96'); p.px(2, 1, C.bootHi); } };
-const heelP = (p, w, h) => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, y === 0 ? '#6a4a3a' : '#3a2620'); };
+const bootP = (p, w, h, face) => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, face === 'up' ? C.legHi : y === h - 1 ? C.legLo : band(LEG, face, x, y, h)); };
+const heelP = (p, w, h) => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, y === 0 ? C.leg : C.legLo); };
 const hornP = (p, w, h, face) => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, face === 'up' ? C.horn[0] : ramp(C.horn, h > 1 ? y / (h - 1) : 0.5, x, y)); if (face !== 'up' && face !== 'down') { p.px(0, 0, '#ffd8c0'); p.px(1, 0, '#c07a50'); } };
 const leafP = (p, w, h, face) => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, face === 'up' ? C.leafHi : y === Math.floor(h / 2) && face !== 'down' ? C.leafLo : ramp([C.leafHi, C.leaf, C.leafLo], h > 1 ? y / (h - 1) : 0.5, x, y)); };
 const stemP = (p, w, h) => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, x === 0 ? C.leafHi : C.leafLo); };
 const clubP = (p, w, h, face) => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, face === 'up' ? C.legHi : band(LEG, face, x, y, h)); if (face === 'south') p.px(1, 1, '#a07a86'); };
 
-// eyes: simple Pokémon-style shapes, 8 × 6 texels peeking from under the fringe (outer corner x = 0; the left eye is mirrored)
-const EM = { K: C.ink, W: '#ffffff' };
+// kawaii eyes (Gen 8–9 style): a big soft teardrop with a 1-texel dark outline, a dark iris tinted with the accent,
+// a lighter accent gradient in its lower third, one big catchlight high on the outer side and a 1-texel glint low on
+// the inner side. Expressions in the same style: open, angry (flat lid tilted in), sad (lid tilted out), sly, happy (^),
+// closed (a soft curve), hurt (> <), x, swirl. Painted as the right eye (outer corner at x = 0); the left eye mirrors it.
+const SWIRL = { 11: ['...#####...', '..#.....#..', '.#..###..#.', '#..#...#..#', '#.#..#..#.#', '#.#.#.#.#.#', '#.#..##..#.', '#..#.....#.', '.#..#####..', '..##.......', '...........', '...........'], 9: ['..#####..', '.#.....#.', '#..###..#', '#.#...#.#', '#.#.#.#.#', '#.#..##.#', '#..#....#', '.#..####.', '..##.....', '.........'],
+  7: ['.#####.', '#.....#', '#.###.#', '#.#.#.#', '#.#..##', '#..#...', '.###...', '.......'] };
+function eyeArt(W, H, kind, pal) {
+  return (p) => {
+    const cx = (W - 1) / 2, cy = (H - 1) / 2, rx = W / 2, ry = H / 2, L = pal.line;
+    const put = (x, y, c) => { if (x >= 0 && y >= 0 && x < W && y < H) p.px(x, y, c); };
+    if (kind === 'happy') { for (let x = 0; x < W; x++) { const t = (x - cx) / rx, yy = Math.round(H * 0.6 - Math.sqrt(Math.max(0, 1 - t * t)) * H * 0.4); put(x, yy, L); put(x, yy + 1, L); } return; }
+    if (kind === 'closed') { for (let x = 0; x < W; x++) { const t = (x - cx) / rx, yy = Math.round(H * 0.44 + Math.sqrt(Math.max(0, 1 - t * t)) * H * 0.2); put(x, yy, L); if (Math.abs(t) < 0.75) put(x, yy + 1, L); } return; }
+    if (kind === 'hurt') { for (let y = 1; y < H - 1; y++) { const t = Math.abs(y - cy) / (cy - 1), x = Math.round(1 + (1 - t) * (W - 3)); put(x, y, L); put(x - 1, y, L); } return; }
+    if (kind === 'x') { for (let i = 0; i <= 40; i++) { const a = i / 40, x = Math.round(a * (W - 2)), y = Math.round(a * (H - 2)); put(x, y, L); put(x + 1, y, L); put(W - 2 - x, y, L); put(W - 1 - x, y, L); } return; }
+    if (kind === 'swirl') { const g = SWIRL[W >= 11 ? 11 : W >= 9 ? 9 : 7], ox = Math.floor((W - g[0].length) / 2); g.forEach((r, y) => { for (let x = 0; x < r.length; x++) if (r[x] === '#') put(ox + x, y, L); }); return; }
+    const tear = pal.tear ?? 0.1, ell = (x, y) => { const v = (y - cy) / ry; return ((x - cx) / (rx * (1 + tear * v))) ** 2 + v * v <= 1.02; };
+    const lid = kind === 'angry' ? [0.1, 0.42] : kind === 'sad' ? [0.42, 0.1] : kind === 'sly' ? [0.12, 0.3] : null;
+    const lidY = (x) => (lid ? (lid[0] + (lid[1] - lid[0]) * (x / (W - 1))) * H : -9);
+    const inside = (x, y) => x >= 0 && y >= 0 && x < W && y < H && ell(x, y) && y + 0.5 >= lidY(x);
+    const edge = (x, y) => !inside(x - 1, y) || !inside(x + 1, y) || !inside(x, y - 1) || !inside(x, y + 1);
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      if (!inside(x, y)) continue;
+      const v = y / (H - 1);
+      put(x, y, edge(x, y) ? L : v > 0.8 ? pal.low : v > 0.62 ? (((x + y) & 1) && v < 0.7 ? pal.iris : pal.mid) : pal.iris);
+    }
+    if (lid) for (let x = 0; x < W; x++) for (let y = 0; y < H; y++) if (inside(x, y) && !inside(x, y - 1)) { if (inside(x, y + 1) && x > W * 0.45 === (kind !== 'sad')) put(x, y + 1, L); break; }
+    const cs = W >= 9 ? 3 : 2, ok = (x0, y0) => { for (let j = 0; j < cs; j++) for (let i = 0; i < cs; i++) if (!inside(x0 + i, y0 + j) || edge(x0 + i, y0 + j)) return false; return true; };
+    let best = null, bd = 1e9;                                                            // the catchlight: as near the high outer spot as fits
+    for (let y0 = 1; y0 < H - cs; y0++) for (let x0 = 1; x0 < W - cs; x0++) if (ok(x0, y0)) { const d = (x0 - W * 0.2) ** 2 + 1.6 * (y0 - H * 0.14) ** 2; if (d < bd) { bd = d; best = [x0, y0]; } }
+    if (best) for (let j = 0; j < cs; j++) for (let i = 0; i < cs; i++) put(best[0] + i, best[1] + j, pal.hi);
+    const gx = W - 1 - Math.max(2, Math.round(W * 0.26)), gy = H - 1 - Math.max(2, Math.round(H * 0.22));
+    if (inside(gx, gy) && !edge(gx, gy)) put(gx, gy, pal.hi);
+  };
+}
+const EYE_KINDS = ['open', 'angry', 'sad', 'sly', 'happy', 'closed', 'hurt', 'x', 'swirl'];
+const EYE_PAL = { line: '#14100c', iris: '#1a2414', mid: '#2e7a2a', low: '#86dc52', hi: '#ffffff', tear: 0.1 };
 const grid = (rows, map) => (p) => rows.forEach((r, y) => { for (let x = 0; x < r.length; x++) { const c = map[r[x]]; if (c) p.px(x, y, c); } });
-const EYES = {
-  peek: ['.KKKKKK.', 'KKKKKKKK', 'KKWKKKKK', 'KKKKKKKK', '.KKKKKK.', '..KKKK..'],
-  sharp: ['........', 'KK......', 'KKKKK...', 'KKWKKKKK', '.KKKKKKK', '...KKKK.'],
-  wide: ['..KKKK..', '.KKKKKK.', 'KKWWKKKK', 'KKWKKKKK', '.KKKKKK.', '..KKKK..'],
-  happy: ['........', '...KK...', '..K..K..', '.K....K.', 'K......K', '........'],
-  closed: ['........', '........', 'K......K', '.K....K.', '..KKKK..', '........'],
-  x: ['KK....KK', '.KK..KK.', '..KKKK..', '.KK..KK.', 'KK....KK', '........'],
-  swirl: ['.KKKKKK.', 'K......K', 'K.KKKK.K', 'K.K..K.K', 'K..KK..K', '.KKKKKK.'],
-};
 // mouth: 10 × 4 texels on the face below the eyes
 const MM = { K: C.ink, M: C.mouth, T: C.tongue, W: '#fffaf0' };
 const MOUTHS = {
@@ -168,7 +191,7 @@ const side = (n) => n && n.replace(/R$/, 'L');
 const flipB = (b) => ({ name: side(b.name), parent: side(b.parent), pivot: [-b.pivot[0], b.pivot[1], b.pivot[2]], ...(b.rot ? { rot: [b.rot[0], -b.rot[1], -b.rot[2]] } : {}), cubes: b.cubes.map(flipC) });
 const both = (...bs) => [...bs, ...bs.map(flipB)];
 
-const eyeParts = () => Object.entries(EYES).map(([k, rows]) => B(-4.4, 12.9, 11.62, -1.733, 14.9, 11.62, grid(rows, EM), { plane: 'z', id: 'eye-' + k, hide: k !== 'peek' }));
+const eyeParts = () => EYE_KINDS.map((k) => B(-4.067, 12.2, 11.62, -1.733, 14.867, 11.62, eyeArt(7, 8, k, EYE_PAL), { plane: 'z', id: 'eye-' + k, hide: k !== 'open' }));
 const mouthParts = () => Object.entries(MOUTHS).map(([k, rows]) => B(-1.667, 9.8, 11.62, 1.667, 11.133, 11.62, grid(rows, MM), { plane: 'z', id: 'mouth-' + k, hide: k !== 'smile' }));
 // a stubby leg: thigh out from the body, shin down, a pointed Beatle boot with a Cuban heel (z0..z1: the boot's length)
 const leg = (name, hx, hy, hz, fx, z0, z1) => ({ name, parent: 'body', pivot: [hx, hy, hz], cubes: [
@@ -211,10 +234,8 @@ export const def = {
       B(-7, 2.2, -10.4, 7, 10.8, 4.4, bodyP),
       B(-7.6, 3.2, -9.4, 7.6, 9.8, 3.6, bodyP),
       B(-5.6, 1.6, -8.8, 5.6, 2.2, 3, bodyP),
-      // the band-jacket collar (the pronotum), with gold epaulettes and their fringe
+      // the band-jacket collar (the pronotum), with its gold frogging
       B(-6.4, 4.0, 2.4, 6.4, 10.6, 6.4, collarP),
-      B(-7.8, 9.8, 2.8, -5.6, 10.9, 5.8, goldP), B(5.6, 9.8, 2.8, 7.8, 10.9, 5.8, goldP, { mirror: true }),
-      B(-7.82, 8.6, 2.8, -7.82, 9.8, 5.8, tasselP, { plane: 'x' }), B(7.82, 8.6, 2.8, 7.82, 9.8, 5.8, tasselP, { plane: 'x' }),
     ] },
     ...both(RIGHT.elytra, RIGHT.arm, RIGHT.fore, RIGHT.mid, RIGHT.hind),
     { name: 'head', parent: 'body', pivot: [0, 9.6, 6], cubes: [
@@ -242,6 +263,14 @@ export const def = {
     ] },
     ...both(RIGHT.ant),
   ],
+};
+
+// where buyable gear sits (model units; size = the width of that part)
+def.attach = {
+  head: { bone: 'head', at: [0, 23.2, 6.6], size: 7.6 },
+  face: { bone: 'head', at: [0, 13.6, 11.65], size: 10.4 },
+  neck: { bone: 'body', at: [0, 7.4, 6.45], size: 12.8 },
+  back: { bone: 'body', at: [0, 12.9, -4.2], size: 12.4 },
 };
 
 // ---------------------------------------------------------------- animation
@@ -287,7 +316,7 @@ export const anim = {
     { bone: 'antL', tip: [3.6, 0, 0], k: 170, d: 8, gain: 0.9, max: 28 },
   ],
   faces: {
-    eyes: { default: 'peek', states: Object.fromEntries(Object.keys(EYES).map((k) => [k, ['eye-' + k]])) },
+    eyes: { default: 'open', states: Object.fromEntries(EYE_KINDS.map((k) => [k, ['eye-' + k]])) },
     mouth: { default: 'smile', states: Object.fromEntries(Object.keys(MOUTHS).map((k) => [k, ['mouth-' + k]])) },
   },
   fidget: { every: [5, 8], clips: ['mopshake', 'strum'] },
@@ -326,7 +355,7 @@ export const anim = {
       P.rot('head', 10 * crouch + 18 * up - 16 * fin, 0, 0); shake(P, t, sh);
       arms(P, 'R', 50 * up + 30 * fin, 10 * up, 30 * up - 20 * fin); arms(P, 'L', 50 * up + 30 * fin, 10 * up, 30 * up - 20 * fin);
       P.rot('elytraR', 0, 0, 12 * fin).rot('elytraL', 0, 0, -12 * fin);
-      P.face('eyes', sh > 0.3 || fin > 0.3 ? 'happy' : up > 0.3 ? 'wide' : undefined); mouth(P, up > 0.2 ? (sh > 0.3 ? 'sing' : 'belt') : 'smile'); P.blinkOK = false;
+      P.face('eyes', sh > 0.3 || fin > 0.3 ? 'happy' : up > 0.3 ? 'open' : undefined); mouth(P, up > 0.2 ? (sh > 0.3 ? 'sing' : 'belt') : 'smile'); P.blinkOK = false;
       for (const [i, t0] of [0.55, 0.75, 0.95].entries()) P.burst(t0, i % 2 ? 'goldnote' : 'note', 'head', [i % 2 ? 6 : -6, 21, 8], { n: 2, dir: [i % 2 ? 0.6 : -0.6, 1, 0.3], speed: 1.3 });
       P.burst(1.3, 'goldnote', 'head', MOUTH, { n: 6, dir: [0, 1, 0.6], speed: 1.6, spread: 0.8 }).burst(1.3, 'note', 'head', MOUTH, { n: 5, dir: [0, 1, 0.6], speed: 1.4, spread: 0.9 }).burst(1.3, 'sparkle', 'head', [0, 23, 6], { n: 8, speed: 1.4 });
     } },
@@ -338,7 +367,7 @@ export const anim = {
       P.pos('root', 0, 0, fwd).sq('body', -0.08 * low + 0.06 * flip);
       P.rot('head', 26 * low - 40 * flip, 0, 0).rot('horn', -16 * flip, 0, 0);
       for (const [k, i] of [['armR', 0], ['armL', 3], ['midR', 1], ['midL', 4], ['hindR', 2], ['hindL', 5]]) P.rot(k, wave(t, 7, i * 1.1) * 26 * low - 10 * flip, 0, 0);
-      P.face('eyes', low > 0.2 || flip > 0.2 ? 'sharp' : undefined); mouth(P, flip > 0.3 ? 'belt' : 'smile'); P.blinkOK = false;
+      P.face('eyes', low > 0.2 || flip > 0.2 ? 'angry' : undefined); mouth(P, flip > 0.3 ? 'belt' : 'smile'); P.blinkOK = false;
       P.burst(0.42, 'spark', 'horn', HORN, { n: 2 }).burst(0.42, 'leaf', 'horn', HORN, { n: 8, speed: 1.6 }).burst(0.44, 'goldnote', 'horn', HORN, { n: 1, speed: 1.2 }).burst(0.18, 'dust', 'root', [0, 0.5, 0], { n: 6, spread: 1, speed: 1 });
     } },
     // harmony: a big breath, the wing cases flare and buzz, and a wave of song rolls out — rings of sound, a stream of notes, leaves
@@ -362,7 +391,7 @@ export const anim = {
       const k = seg(t, 0, 0.06, E.out) * (1 - seg(t, 0.2, 0.65, E.inout));
       body(P, 0, 0.4 * k, -2.2 * k, -12 * k + wob(t, 0.06, 4, 4, 7), wave(t, 14) * 4 * k);
       P.sq('body', -0.1 * k).rot('head', -18 * k, 0, wave(t, 12) * 6 * k).rot('fringe', -40 * k, 0, 0);
-      P.face('eyes', t < 0.42 ? 'x' : undefined); mouth(P, t < 0.5 ? 'ow' : 'smile'); P.blinkOK = false;
+      P.face('eyes', t < 0.42 ? 'hurt' : undefined); mouth(P, t < 0.5 ? 'ow' : 'smile'); P.blinkOK = false;
       P.burst(0.02, 'spark', 'head', [0, 14, 13], { n: 2 }).burst(0.03, 'note', 'head', [0, 21, 6], { n: 4, speed: 1.6, spread: 1 }).burst(0.03, 'star', 'head', [0, 24, 6], { n: 3 });
     } },
     // wobbles, then tips over onto its side — six boots kicking at the sky, the zebra belly showing
@@ -383,8 +412,8 @@ export const anim = {
     win: { len: 2.6, next: 'idle', f(P, t) {
       const hopY = Math.max(0, Math.sin(seg(t, 0.12, 0.5, E.lin) * Math.PI)) * 4, crouch = bump(t, 0, 0.14) + bump(t, 0.5, 0.64);
       const showy = seg(t, 0.12, 0.3, E.back) * (1 - seg(t, 1.0, 1.2, E.inout)), bow = seg(t, 1.2, 1.5, E.inout) * (1 - seg(t, 2.0, 2.35, E.back));
-      body(P, 0, hopY - 1.2 * crouch - 0.8 * bow, 0, 30 * bow - 10 * showy, 0, hopY > 0.2 ? [] : showy > 0.1 ? FOUR : ALL);
-      P.sq('body', -0.1 * crouch + 0.06 * (hopY > 0.2 ? 1 : 0)).rot('head', 26 * bow - 10 * showy, 0, wave(t, 3) * 6 * showy);
+      body(P, 0, hopY - 1.2 * crouch + 0.6 * bow, 0, 14 * bow - 10 * showy, 0, hopY > 0.2 ? [] : showy > 0.1 ? FOUR : ALL);
+      P.sq('body', -0.1 * crouch + 0.06 * (hopY > 0.2 ? 1 : 0)).rot('head', 24 * bow - 10 * showy, 0, wave(t, 3) * 6 * showy);
       arms(P, 'R', 76 * showy, 0, 20 * showy); arms(P, 'L', 76 * showy, 0, 20 * showy);
       P.rot('elytraR', 0, 0, 14 * showy).rot('elytraL', 0, 0, -14 * showy);
       P.face('eyes', bow > 0.3 || showy > 0.3 ? 'happy' : undefined); mouth(P, showy > 0.3 ? 'belt' : bow > 0.3 ? 'smile' : 'sing'); P.blinkOK = false;

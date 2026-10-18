@@ -230,8 +230,9 @@ function eyeArt(W, H, kind, pal) {
     }
     if (lid) for (let x = 0; x < W; x++) for (let y = 0; y < H; y++) if (inside(x, y) && !inside(x, y - 1)) { if (inside(x, y + 1) && x > W * 0.45 === (kind !== 'sad')) put(x, y + 1, L); break; }
     const cs = W >= 9 ? 3 : 2, ok = (x0, y0) => { for (let j = 0; j < cs; j++) for (let i = 0; i < cs; i++) if (!inside(x0 + i, y0 + j) || edge(x0 + i, y0 + j)) return false; return true; };
-    let done = false;
-    for (let x0 = 1; x0 <= cx && !done; x0++) for (let y0 = 1; y0 <= Math.round(H * 0.42) && !done; y0++) if (ok(x0, y0)) { for (let j = 0; j < cs; j++) for (let i = 0; i < cs; i++) put(x0 + i, y0 + j, pal.hi); done = true; }
+    let best = null, bd = 1e9;                                                            // the catchlight: as near the high outer spot as fits
+    for (let y0 = 1; y0 < H - cs; y0++) for (let x0 = 1; x0 < W - cs; x0++) if (ok(x0, y0)) { const d = (x0 - W * 0.2) ** 2 + 1.6 * (y0 - H * 0.14) ** 2; if (d < bd) { bd = d; best = [x0, y0]; } }
+    if (best) for (let j = 0; j < cs; j++) for (let i = 0; i < cs; i++) put(best[0] + i, best[1] + j, pal.hi);
     const gx = W - 1 - Math.max(2, Math.round(W * 0.26)), gy = H - 1 - Math.max(2, Math.round(H * 0.22));
     if (inside(gx, gy) && !edge(gx, gy)) put(gx, gy, pal.hi);
   };
@@ -383,7 +384,7 @@ defineFx('bigbubble', { w: 26, h: 26, paint: (p, w, h) => {
     const rim = d > c - 1.2, hl = Math.hypot(x - c * 0.55, y - c * 0.5) < 2.8, hl2 = Math.hypot(x - c * 1.42, y - c * 1.45) < 1.2;
     p.px(x, y, rim ? (x + y < w - 2 ? '#f0fcff' : '#4a9ad0') : hl || hl2 ? '#ffffff' : d > c - 3 ? '#9ad8f4' : (x * 3 + y * 5) % 17 === 0 ? '#d8f6ff' : '#7cc4e8');
   }
-}, life: [1.1, 1.1], size: [0.34, 0.62], speed: [2.2, 2.2], grav: -0.2, drag: 0.3, spread: 0, wob: 0.5 });
+}, life: [1.1, 1.1], size: [0.4, 0.78], speed: [2.0, 2.0], grav: -0.2, drag: 0.3, spread: 0, wob: 0.5 });
 const ORB = [0, 19, 17.4];
 const MOUTH = [0, 21.2, 6.6], PALM = { R: [-16.6, 18.6, 9.4], L: [16.6, 18.6, 9.4] }, FOOT = { R: [-13.6, 0.4, 1.6], L: [13.6, 0.4, 1.6] };
 // two-bone IK in the frontal plane: the hips ride on the pelvis, the feet stay where they are put
@@ -577,6 +578,7 @@ export const anim = {
       if (t > 0.88 && t < 1.45) P.stream('bubble', 'torso', O, { rate: 70, dir: [0, 0.08, 1], speed: 3.2, spread: 0.32, key: 't' }).stream('splash', 'torso', O, { rate: 50, dir: [0, 0.1, 1], speed: 2.2, spread: 0.25, key: 's' });
       if (t > 0.9 && t < 1.6) P.stream('drop', 'torso', [0, 16, 13], { rate: 14, dir: [0, -0.3, 0.4], speed: 0.6, key: 'd' });
       P.burst(0.88, 'dust', 'root', [0, 0.5, -2], { n: 10, spread: 1, speed: 1.4 });
+      P.burst(1.93, 'splash', 'root', [0, 24, 80], { n: 30, speed: 1.8, spread: 1 }).burst(1.93, 'ring', 'root', [0, 24, 80], { scale: 1.4, tint: [0.7, 0.9, 1] });   // …and it bursts on the foe
     } },
     hurt: { len: 0.7, next: 'idle', f(P, t) {
       const k = seg(t, 0, 0.07, E.out) * (1 - seg(t, 0.24, 0.7, E.inout)), sc = seg(t, 0.1, 0.42, E.inout) * (1 - seg(t, 0.45, 0.7));
