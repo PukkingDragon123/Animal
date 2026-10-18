@@ -15,7 +15,7 @@ const allSrc = srcFiles.map((f) => [f, read(f)]);
 
 section('hand-pixel Tokonmon: every design renders every clip, front and back');
 const DESIGNS = {};
-for (const f of ['pix_starters', 'pix_friends', 'pix_bullies', 'pix_wild', 'pix_evos']) {
+for (const f of ['pix_starters', 'pix_friends', 'pix_bullies', 'pix_wild', 'pix_evos_a', 'pix_evos_b']) {
   try { Object.assign(DESIGNS, (await import(`../src/data/sprites/${f}.js`)).SPRITES); } catch (e) { if (f === 'pix_starters') throw e; }
 }
 for (const [id, d] of Object.entries(DESIGNS)) {
