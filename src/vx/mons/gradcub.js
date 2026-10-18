@@ -6,7 +6,7 @@
 // nodding its head; it dozes off in class and throws its cap when it wins. An original design
 // that winks at a rapper's college albums — never their mascot.
 import { E, seg, bump, wob, wave, key, bounce, hop } from '../anim.js';
-import { fur, fringe, halo, gold, GOLD, chain, rib, shutter, fill, wrapX, isSide, edgeLine, plant, cyc, tx } from './bear_parts.js';
+import { fur, fringe, halo, gold, GOLD, chain, rib, shutter, eye, fill, wrapX, isSide, edgeLine, plant, cyc, tx } from './bear_parts.js';
 import { poly, ramp, shift, mix, h2 } from './kit.js';
 
 const C = {
@@ -24,7 +24,6 @@ const C = {
   pack: '#1ea0ac', packHi: '#62d6d8', packLo: '#13707e', packLine: '#0b4450',
   cap: '#2c2744', capHi: '#4e4870', capLo: '#17131f', capSheen: '#6a6290',
   ink: '#1e120c', mouth: '#3e0e16', tongue: '#d85a6a',
-  sclera: '#f6efe2', iris: '#3a1e0e', glint: '#ffffff',
 };
 
 // ---------------------------------------------------------------- painters
@@ -160,15 +159,17 @@ const pawP = (seed) => { const f = furP(seed, { s: 7, tipH: 3 }); return (p, w, 
 }; };
 const mouthP = (p, w, h) => { fill(p, w, h, (x, y) => (y === 0 ? C.mouth : x > 0 && x < w - 1 && y > 0 ? C.tongue : '#5a1420')); };
 
-// eyes (under the shades): 10 × 6 texels, outer corner at x = 0. Flat, heavy upper lids — cool, never cute
-const EYEB = (p) => { poly(p, [[0, 1], [10, 1.4], [10, 4.4], [8, 5.6], [2.5, 5.6], [0.4, 3.6]], C.ink); poly(p, [[1.2, 2.4], [9, 2.4], [9, 4.2], [7.6, 4.8], [2.8, 4.8], [1.4, 3.6]], C.sclera); };
+// eyes (under the shades): simple Pokémon-style — solid dark shapes with one glint; the lid is just the
+// flat-cut top of the shape (6 × 6 texels, outer corner at x = 0)
+const EI = { ink: '#1a0e08' };
 const EYES = {
-  cool: (p) => { EYEB(p); p.rect(5, 2, 3, 3, C.iris); p.px(5, 2, C.glint); p.hl(0, 9, 1, C.ink); p.hl(1, 9, 2, C.ink); },
-  wide: (p) => { poly(p, [[0, 0.4], [10, 0.6], [10, 4.6], [8, 5.8], [2.5, 5.8], [0.4, 4]], C.ink); poly(p, [[1.2, 1.4], [9, 1.4], [9, 4.4], [7.6, 5], [2.8, 5], [1.4, 3.8]], C.sclera); p.rect(5, 2, 2, 2, C.iris); },
-  glare: (p) => { p.hl(0, 9, 2, C.ink); p.hl(0, 9, 3, C.ink); p.hl(2, 8, 4, C.ink); p.hl(2, 8, 3, C.sclera); p.rect(5, 3, 2, 1, C.iris); p.px(0, 1, C.ink); },
-  closed: (p) => { for (let x = 0; x < 10; x++) p.px(x, 3 + (x > 2 && x < 8 ? 1 : 0), C.ink); for (let x = 1; x < 9; x++) p.px(x, 4 + (x > 3 && x < 7 ? 1 : 0), C.ink); },
-  swirl: (p) => { EYEB(p); p.hl(1, 9, 1, C.ink); for (let a = 0; a < 13; a += 0.3) { const r = a * 0.22, x = Math.round(5 + Math.cos(a) * r * 1.4), y = Math.round(3.4 + Math.sin(a) * r * 0.75); if (r < 2.8) p.px(x, y, C.ink); } },
-  x: (p) => { for (let i = 0; i < 5; i++) { p.px(3 + i, 1 + i, C.ink); p.px(4 + i, 1 + i, C.ink); p.px(7 - i, 1 + i, C.ink); p.px(8 - i, 1 + i, C.ink); } },
+  cool: eye('cut', { ...EI, cut: 0.3, slope: 0.3 }),
+  wide: eye('oval', EI),
+  glare: eye('cut', { ...EI, cut: 0.38, slope: -0.5 }),
+  closed: eye('closed', { ...EI, bend: 0.16 }),
+  happy: eye('happy', EI),
+  swirl: eye('swirl', EI),
+  x: eye('x', EI),
 };
 // shutter-shade lenses: the default smoky slats, a diagonal shine, and a hot flash
 const lens = (kind) => shutter({ frame: C.shade, hi: C.shadeHi, lo: C.shadeLo, gap: C.lensGap, gapLo: '#4a1a40', bar: 2, round: 4, bridge: 1.5,
@@ -182,7 +183,7 @@ const barP = (p, w, h, face) => { fill(p, w, h, (x, y) => (face === 'up' ? C.sha
 
 // ---------------------------------------------------------------- the model
 const B = (o, s, tex, x = {}) => ({ o, s, tex, ...x });
-const eyeStates = (side) => Object.entries(EYES).map(([k, fn]) => B(side < 0 ? [-4.25, 16.9, 5.43] : [1.05, 16.9, 5.43], [3.2, 2.0, 0], fn, { plane: 'z', mirror: side > 0, id: (side < 0 ? 'eyeR-' : 'eyeL-') + k, hide: k !== 'cool' }));
+const eyeStates = (side) => Object.entries(EYES).map(([k, fn]) => B(side < 0 ? [-3.7, 16.95, 5.43] : [1.7, 16.95, 5.43], [2.0, 2.0, 0], fn, { plane: 'z', mirror: side > 0, id: (side < 0 ? 'eyeR-' : 'eyeL-') + k, hide: k !== 'cool' }));
 const LENS = ['dark', 'cool', 'shine', 'flash'];
 const CHAIN = chain([[-3.3, 10.9, 3.4], [-3.05, 9.7, 4.55], [-2.0, 8.4, 4.72], [0, 7.75, 4.78], [2.0, 8.4, 4.72], [3.05, 9.7, 4.55], [3.3, 10.9, 3.4]], { len: 1.15, w: 0.78, t: 0.36, step: 0.86 });
 export const def = {
@@ -326,16 +327,16 @@ export const anim = {
   fidget: { every: [5, 9], clips: ['shades', 'polish', 'flick'] },
   clips: {
     // a laid-back head-nod groove: dip on the beat, the head nods a beat-fraction later, a lazy sway
-    idle: { len: 1.6, loop: true, f(P, t) {
+    idle: { len: 3.2, loop: true, f(P, t) {
       const per = 0.8, ph = (t % per) / per, g = groove(ph), gh = groove(((t - 0.07) % per + per) % per / per);
-      const sway = wave(t, 1 / 1.6), sway2 = wave(t, 1 / 1.6, 1.2);
-      P.pos('body', 0, -0.55 * g, 0).sq('body', -0.045 * g + 0.012 * (1 - g)).rot('body', 1.5 * g, sway2 * 4, sway * 2.4);
-      P.rot('head', 7 * gh - 2, -sway2 * 3, -sway * 2.5);
-      arms(P, 3 + 4 * gh + sway * 2, -3 + sway * 6, 3 + 4 * gh - sway * 2, -3 - sway * 6);
-      P.rot('legR', 0, 0, 0).pos('legR', 0, 0, 0);
-      P.rot('browL', 0, 0, -9 * bump(t, 0.85, 1.45)).pos('browL', 0, 0.35 * bump(t, 0.85, 1.45), 0);
-      P.rot('jaw', 3 * gh);
-      P.face('lens', t > 0.9 && t < 1.05 ? 'cool' : undefined);
+      const sway = wave(t, 1 / 1.6), sway2 = wave(t, 1 / 1.6, 1.2), lean = bump(t, 2.35, 3.2) ** 0.7;
+      P.pos('body', 0, -0.6 * g, 0).sq('body', -0.05 * g + 0.012 * (1 - g)).rot('body', 1.5 * g - 5 * lean, sway2 * 4 + 6 * lean, sway * 2.4);
+      P.rot('head', 8 * gh - 2 - 7 * lean, -sway2 * 3 - 4 * lean, -sway * 2.5 + 3 * lean);
+      arms(P, 3 + 5 * gh + sway * 2 + 4 * lean, -3 + sway * 6 + 8 * lean, 3 + 5 * gh - sway * 2 + 4 * lean, -3 - sway * 6 + 8 * lean);
+      P.rot('legR', 0, -4 * lean, 0).rot('legL', 0, 4 * lean, 0);
+      P.rot('browL', 0, 0, -10 * lean).pos('browL', 0, 0.45 * lean, 0).rot('browR', 0, 0, 3 * lean);
+      P.rot('jaw', 3 * gh + 4 * lean);
+      P.face('lens', t > 2.62 && t < 2.8 ? 'shine' : t > 0.9 && t < 1.02 ? 'cool' : undefined);
     } },
     // a swaggering strut: bounce on every step, shoulders roll, arms swing loose
     walk: { len: 0.72, loop: true, f(P, t) {
@@ -424,7 +425,7 @@ export const anim = {
     // graduation day: the cap goes up, a little shimmy, the cap comes down — then the cool pose
     win: { len: 2.8, next: 'idle', f(P, t) {
       const grab = seg(t, 0.05, 0.3, E.inout) * (1 - seg(t, 0.42, 0.62, E.inout)), toss = bump(t, 0.3, 0.62);
-      const capT = seg(t, 0.36, 1.62, E.lin), capY = capT > 0 && capT < 1 ? Math.sin(capT * Math.PI) * 17 : 0;
+      const capT = seg(t, 0.36, 1.62, E.lin), capY = capT > 0 && capT < 1 ? Math.sin(capT * Math.PI) * 12 : 0;
       P.pos('cap', 0, capY, 0).rot('cap', 360 * seg(t, 0.36, 1.62, E.inout), 540 * seg(t, 0.36, 1.62), 0);
       if (t > 1.62) P.pos('cap', 0, wob(t, 1.62, -0.7, 3, 7), 0).sq('head', wob(t, 1.62, -0.06, 3, 7));
       P.rot('armR', -40 * grab - 50 * toss, 0, -100 * grab - 20 * toss);

@@ -1,10 +1,9 @@
-// Studrat — Team Metallica's scrappy street rat (Ferro). Up on its hind legs in a
-// boxer's crouch: a mohawk of chrome spikes it sharpens on train rails, a blood-red
-// studded collar, a scrap of denim battle vest sewn to its flank, a safety pin
-// through its torn ear and a scaly tail that ends in chain links. Sly red eyes under
-// heavy lids, one chipped steel tooth, pink fists in tape wraps held up in a guard.
-// It bounces on its toes like a prize fighter and nibbles stolen cheese when it
-// thinks nobody is looking.
+// Studrat — Team Metallica's scrappy street rat (Ferro). Up on its hind legs in a boxer's crouch:
+// a mohawk of chrome spikes it sharpens on train rails, a blood-red ruff of fur round its neck, a
+// denim-blue patch dyed into the fur of its flank with a red splash on it, a torn ear and a scaly tail
+// whose tip is banded like steel chain. Big red eyes under a hard, angry lid, one chipped steel tooth,
+// pink fists up in a guard — and its little sledgehammer (a Kill 'Em All nod) slung across its back.
+// It bounces on its toes like a prize fighter and nibbles stolen cheese when it thinks nobody is looking.
 import { E, seg, bump, wob, wave, key, bounce, hop } from '../anim.js';
 import { defineFx } from '../fx.js';
 import { shade, gradient, layer, on, poly, ramp, shift, mix, h2 } from './kit.js';
@@ -59,20 +58,6 @@ function chromeP(o = {}) {
 const chrome = chromeP();
 // a little domed stud (3×3 texels) at x, y
 function stud(p, x, y) { p.px(x, y, CHROME[1]); p.px(x + 1, y, '#ffffff'); p.px(x + 2, y, CHROME[2]); p.px(x, y + 1, CHROME[2]); p.px(x + 1, y + 1, CHROME[1]); p.px(x + 2, y + 1, CHROME[3]); p.px(x, y + 2, CHROME[3]); p.px(x + 1, y + 2, CHROME[3]); p.px(x + 2, y + 2, '#3a3e5a'); }
-const leather = (p, w, h, face) => {
-  shade(C.red, { top: C.redHi, bottom: C.redLo, grain: 0 })(p, w, h, face);
-  if (face === 'up' || face === 'down') return;
-  for (let x = 1; x < w - 1; x += 2) { p.px(x, 1, shift(C.redHi, 0.1)); if (h > 4) p.px(x, h - 2, C.redLo); }   // stitching
-};
-// the front of the collar: leather with a row of domed studs
-const collarFront = (p, w, h, face) => { leather(p, w, h, face); if (face !== 'south' && face !== 'north' && face !== 'east' && face !== 'west') return; for (let x = 2; x < w - 3; x += 5) stud(p, x, Math.max(0, (h >> 1) - 1)); };
-const tapeP = (p, w, h, face) => {
-  shade(C.tape, { top: '#ffffff', bottom: C.tapeLo, grain: 0 })(p, w, h, face);
-  if (face === 'up' || face === 'down') return;
-  for (let x = 0; x < w; x++) { if ((x + 1) % 4 === 0) for (let y = 1; y < h - 1; y++) p.px(x, y, C.tapeLo); }       // wraps
-  for (let x = 0; x < w; x++) p.px(x, h - 2, '#c8303e');                                                              // a red stripe
-  p.px(2, 2, '#d8c8a8'); p.px(w - 3, 1, '#d8c8a8');                                                                      // grime
-};
 const skinP = shade(C.skin, { top: C.skinHi, bottom: C.skinLo, grain: 0 });
 // fists: four knuckle bumps on the end face, finger creases on the palm side, the thumb across the inner side
 const fist = (p, w, h, face) => {
@@ -102,11 +87,21 @@ const footP = (p, w, h, face) => {
 const tailP = (p, w, h, face) => {
   shade(C.skin, { top: C.skinHi, bottom: C.skinLo, grain: 0, rim: false })(p, w, h, face);
   if (face === 'north' || face === 'south') return;
-  // along the tail: the long axis is the face's width on the side faces and its height on up/down
   const along = face === 'up' || face === 'down' ? h : w;
   for (let i = 2; i < along; i += 3) {
     if (face === 'up' || face === 'down') { for (let x = 0; x < w; x++) p.px(x, i, x % 2 ? C.skinLo : shift(C.skin, -0.12)); }
     else for (let y = 0; y < h; y++) p.px(i, y, y === 0 ? C.skinHi : C.skinLo);
+  }
+};
+// the tail's tip: its last scales grow hard and steel-grey, banded like a length of chain
+const tailTipP = (p, w, h, face) => {
+  tailP(p, w, h, face);
+  if (face === 'north' || face === 'south') { if (face === 'north') for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, CHROME[x + y < 2 ? 0 : 2]); return; }
+  const along = face === 'up' || face === 'down' ? h : w, tipAtEnd = face === 'up' || face === 'west';
+  for (let i = 0; i < along; i++) {
+    const k = tipAtEnd ? i : along - 1 - i; if (k < along * 0.45) continue;
+    const band = (k % 4), col = band === 0 ? '#3a3e5a' : band === 1 ? CHROME[0] : band === 2 ? CHROME[1] : CHROME[2];
+    if (face === 'up' || face === 'down') for (let x = 0; x < w; x++) p.px(x, i, col); else for (let y = 0; y < h; y++) p.px(i, y, y === h - 1 && band ? CHROME[3] : col);
   }
 };
 // the hips' front: fur framing a pale belly with a ragged fur edge
@@ -129,30 +124,29 @@ const chestFront = (p, w, h, face) => {
     p.px(x, y, Math.abs(x - cx) > hw - 1.2 ? C.creamLo : y < 4 ? C.creamHi : C.cream);
   }
 };
-// denim battle-vest scrap: twill, golden stitching, a frayed hem, two studs and an original glyph
-// (a tiny skull wearing a mohawk)
-const denimP = (p, w, h, face) => {
+// the flank: a denim-blue patch dyed into the fur (the battle-vest nod) with a blood-red splash on it
+const flankP = (p, w, h, face) => {
+  fur(p, w, h, face);
+  const cx = w * 0.5, cy = h * 0.52;
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-    const t = y / Math.max(1, h - 1), base = ramp([C.denimHi, C.denim, C.denimLo], 0.15 + t * 0.85, x, y);
-    p.px(x, y, (x + y) % 3 === 0 ? shift(base, -0.12) : base);
+    const u = (x - cx) / (w * 0.42), v = (y - cy) / (h * 0.42), d = Math.max(Math.abs(u), Math.abs(v)) * 0.8 + Math.hypot(u, v) * 0.25 + ((x * 3 + y * 5) % 4 === 0 ? 0.07 : 0);
+    if (d > 1) continue;
+    p.px(x, y, d > 0.9 ? C.denimLo : (x + 2 * y) % 7 === 0 ? shift(C.denim, -0.12) : ramp([C.denimHi, C.denim, C.denimLo], 0.15 + (y / h) * 0.7, x, y));
   }
-  if (face !== 'east' && face !== 'west') return;
-  for (let x = 1; x < w - 1; x++) if (x % 2) { p.px(x, 1, C.stitch); }
-  for (let y = 2; y < h - 2; y++) if (y % 2) { p.px(1, y, C.stitch); p.px(w - 2, y, C.stitch); }
-  for (let x = 0; x < w; x++) { if ((x * 7) % 5 < 2) p.px(x, h - 1, 0); else p.px(x, h - 1, '#9ab8e8'); }    // frayed hem
-  stud(p, 3, 3); stud(p, w - 6, 3);
-  // the patch: a red paint splash with a little white sledgehammer lying in it (an original nod)
-  const cx = Math.floor(w / 2), cy = Math.floor(h / 2) + 1;
-  for (let y = -4; y <= 4; y++) for (let x = -6; x <= 6; x++) {
-    const a = Math.atan2(y, x), r = 3.4 + 1.3 * Math.abs(Math.sin(a * 3 + 0.6)) + (Math.abs(Math.sin(a * 5)) > 0.85 ? 1.2 : 0);
-    const d = Math.hypot(x, y * 1.35);
-    if (d <= r) p.px(cx + x, cy + y, d > r - 1 ? '#a01426' : x + y < -3 ? '#f04a52' : '#d81e32');
+  const sx = Math.round(cx), sy = Math.round(cy);
+  for (let y = -5; y <= 5; y++) for (let x = -6; x <= 6; x++) {
+    const a = Math.atan2(y, x), r = 2.6 + 1.2 * Math.abs(Math.sin(a * 3 + 0.6)) + (Math.abs(Math.sin(a * 5)) > 0.86 ? 1.1 : 0), d = Math.hypot(x, y * 1.3);
+    if (d <= r) p.px(sx + x, sy + y, d > r - 1 ? C.redLo : x + y < -2 ? C.redHi : C.red);
   }
-  for (const [dx, dy] of [[-7, -3], [7, 2], [5, -5], [-5, 4]]) p.px(cx + dx, cy + dy, '#d81e32');
-  for (let x = -3; x <= 2; x++) p.px(cx + x, cy, '#f4ecdc');
-  p.rect(cx + 2, cy - 1, 2, 3, '#f4ecdc'); p.px(cx + 3, cy + 1, '#c8c0b0'); p.px(cx - 3, cy + 1, '#8a2030');
+  for (const [dx, dy] of [[-6, -3], [6, 2], [4, -5], [-4, 4]]) p.px(sx + dx, sy + dy, C.red);
 };
-const fray = (p, w, h) => { for (let x = 0; x < w; x++) { const l = 1 + ((x * 5) % 3); for (let y = 0; y < l && y < h; y++) if ((x + y) % 2 === 0 || y === 0) p.px(x, y, y === 0 ? C.denimLo : '#8aa8dc'); } };
+// the neck ruff: blood-red fur, darker tufts, a jagged fringe falling over the chest
+const ruffP = (p, w, h, face) => {
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, face === 'up' ? C.redHi : face === 'down' ? C.redDeep : ramp([C.redHi, C.red, C.redLo], y / Math.max(1, h - 1), x, y));
+  if (face === 'up' || face === 'down') return;
+  for (let x = 1; x < w - 1; x += 3) { p.px(x, 2, C.redLo); p.px(x + 1, 1, '#ff7a70'); }
+  for (let x = 0; x < w; x++) { const l = 1 + (x % 3 === 1 ? 1 : 0); for (let y = h - l; y < h; y++) p.px(x, y, (x % 3 === 1) ? C.redDeep : 0); }
+};
 // cranium front: fur, a darker socket around each eye, scruffy bangs under the mohawk
 const furCalm = furP(C.fur, { top: C.furHi, bottom: C.furLo, sx: 9, sy: 6 });
 const faceP = (p, w, h, face) => {
@@ -214,7 +208,6 @@ const earP = (torn, back) => (p, w, h) => {
 };
 function poly2(x, y, pts) { let c = false; for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) { const [xi, yi] = pts[i], [xj, yj] = pts[j]; if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) c = !c; } return c; }
 const whiskerP = (p, w, h) => { for (const [y0, sl] of [[h * 0.3, -0.12], [h * 0.75, 0.1]]) for (let x = 1; x < w; x++) { const y = Math.round(y0 + (w - x) * sl); p.px(x, y, x > w * 0.75 ? '#9a8ea8' : x < w * 0.3 ? '#f4eef6' : '#d8d0e0'); } };
-const ringP = (p, w, h) => { const cx = (w - 1) / 2, cy = (h - 1) / 2, r = Math.min(w, h) / 2; for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const d = Math.hypot((x - cx), (y - cy) * w / h); if (d > r || d < r - 1.6) continue; p.px(x, y, x + y < w * 0.7 ? '#ffffff' : y > cy ? CHROME[3] : CHROME[1]); } };
 const cheeseP = (bitten) => (p, w, h, face) => {
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, face === 'up' ? C.cheeseHi : ramp([C.cheeseHi, C.cheese, C.cheeseLo], y / Math.max(1, h - 1), x, y));
   if (face === 'up' || face === 'down') return;
@@ -236,33 +229,49 @@ const hammerHead = (p, w, h, face) => {
 const handleP = (p, w, h, face) => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, face === 'up' ? '#d8a868' : x === 0 ? '#e0b070' : x === w - 1 ? '#8a5a30' : (y % 7 === 3 ? '#9a6a3a' : '#b88450')); };
 const gripP = (p, w, h, face) => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, (y + (x > 0 ? 1 : 0)) % 3 === 0 ? '#c8303e' : '#2a1e2a'); };
 
-// eyes: 11 × 8 texels; outer corner at x = 0, inner corner (toward the snout) at x = 10.
-// Heavy lids lie flat across the top of a red iris; the pupil is a short dark slit. No glints.
-function eyeShape(p, lid, o = {}) {
-  const top = (x) => lid + (o.slope ?? 0.18) * x, bot = (x) => 6.4 - Math.abs(x - 5.4) ** 2 * 0.07;
-  const ix = o.ix ?? 6.2, iy = o.iy ?? 4.3, ir = o.ir ?? 2.3;
-  for (let y = 0; y < 8; y++) for (let x = 0; x < 11; x++) {
+// kawaii eyes (Gen 8–9 style), painted into a w × h plane with the outer corner at x = 0: a big rounded
+// eye with a 1-texel dark outline, a dark tinted iris with a lighter accent gradient in its lower third,
+// one big white catchlight high on the outer side and a 1-texel glint low on the inner side.
+// lid: [y at the outer edge, slope] — the tough default: a flat dark lid line cutting the top of the
+// eye, tilted down toward the nose. The other expressions are simple strokes: ^ ^, a soft curve, > <, X, swirl.
+function kawaii(p, w, h, o) {
+  const cx = o.cx ?? w / 2, cy = o.cy ?? h / 2, rx = o.rx ?? w / 2 - 0.15, ry = o.ry ?? h / 2 - 0.15, I = o.iris, lw = o.lidW ?? 1.4;
+  const inE = (x, y) => ((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2 <= 1;
+  const lid = o.lid ? (x) => o.lid[0] + o.lid[1] * x : () => -1e9;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
     const X = x + 0.5, Y = y + 0.5;
-    if (Y < top(X) - 1.4 || Y > bot(X) + 1) continue;
-    if (Y < top(X) || Y > bot(X) || x === 0 || x === 10) { p.px(x, y, C.ink); continue; }
-    const d = Math.hypot(X - ix, (Y - iy) * 1.1);
-    if (d < ir) { const v = (Y - top(X)) / 3; p.px(x, y, d < 0.9 && Math.abs(X - ix) < 0.8 ? '#1a0610' : v < 0.35 ? C.eyeLo : d > ir - 0.7 ? '#b81830' : v > 0.9 ? C.eyeHi : C.eye); }
-    else p.px(x, y, Y < top(X) + 1 ? '#c8bcae' : C.sclera);
+    if (!inE(X, Y) || Y < lid(X)) continue;
+    if (!inE(X - 1, Y) || !inE(X + 1, Y) || !inE(X, Y - 1) || !inE(X, Y + 1) || Y < lid(X) + lw) { p.px(x, y, o.ink); continue; }
+    const t = (Y - (cy - ry)) / (2 * ry);
+    p.px(x, y, t > 0.83 ? I[2] : t > 0.71 ? I[1] : t > 0.64 && (x + y) % 2 ? I[1] : I[0]);
   }
-  // the thick lid line (two texels) with a lash flick at the outer corner
-  for (let x = 0; x < 11; x++) { const y = Math.floor(top(x + 0.5)) - 1; p.px(x, y, C.ink); }
-  if (o.flick !== false) { p.px(0, Math.floor(top(0.5)) - 2, C.ink); }
+  const fill = (x, y) => { const X = x + 0.5, Y = y + 0.5; return inE(X - 1, Y) && inE(X + 1, Y) && inE(X, Y - 1) && inE(X, Y + 1) && Y >= lid(X) + lw; };
+  const b = o.big ?? 2, bx = Math.round(cx - rx * 0.52 - b / 2 + 0.5);
+  let by = Math.round(cy - ry * 0.56);
+  while (by < h && ![0, b - 1].every((i) => fill(bx + i, by))) by++;
+  for (let j = 0; j < b; j++) for (let i = 0; i < b; i++) if (fill(bx + i, by + j) && !(b === 3 && i === 2 && j === 2)) p.px(bx + i, by + j, '#ffffff');
+  const gx = Math.round(cx + rx * 0.42), gy = Math.round(cy + ry * 0.4);
+  if (fill(gx, gy)) p.px(gx, gy, '#ffffff');
 }
-const EYES = {
-  sly: (p) => eyeShape(p, 2.7, { slope: 0.04, ix: 6.8, iy: 4.6, ir: 2.4 }),
-  glare: (p) => eyeShape(p, 2.6, { slope: 0.26, ix: 6.4, ir: 2.1 }),
-  smug: (p) => eyeShape(p, 3.6, { slope: -0.04, ix: 6.4, iy: 5.0 }),
-  wide: (p) => eyeShape(p, 1.2, { slope: 0.04, ix: 5.6, iy: 3.9, ir: 1.9 }),
-  closed: (p) => { for (let x = 0; x < 11; x++) { const y = Math.round(4.2 + Math.abs(x - 5) * 0.12 + x * 0.08); p.px(x, y, C.ink); p.px(x, y - 1, x > 1 && x < 10 ? C.ink : 0); } p.px(0, 2, C.ink); },
-  hurt: (p) => { for (let i = 0; i < 5; i++) { p.px(2 + i, 1 + i, C.ink); p.px(3 + i, 1 + i, C.ink); p.px(2 + i, 7 - i, C.ink); p.px(3 + i, 7 - i, C.ink); } p.px(8, 4, C.ink); },
-  x: (p) => { for (let i = 0; i < 7; i++) { p.px(2 + i, 0 + i, C.ink); p.px(3 + i, 0 + i, C.ink); p.px(8 - i, 0 + i, C.ink); p.px(9 - i, 0 + i, C.ink); } },
-  swirl: (p) => { for (let a = 0; a < 13; a += 0.22) { const r = a * 0.3, x = Math.round(5.5 + Math.cos(a) * r * 1.2), y = Math.round(4 + Math.sin(a) * r * 0.85); if (r < 4) p.px(x, y, C.ink); } },
-};
+// thick strokes for the line-drawn expressions
+function stroke(p, pts, c, th = 2) { for (let i = 0; i + 1 < pts.length; i++) { const [x0, y0] = pts[i], [x1, y1] = pts[i + 1]; for (let k = 0; k < th; k++) p.line(Math.round(x0), Math.round(y0) + k, Math.round(x1), Math.round(y1) + k, c); } }
+const arc = (x0, x1, f, n = 12) => Array.from({ length: n + 1 }, (_, i) => { const x = x0 + ((x1 - x0) * i) / n; return [x, f(x)]; });
+function eyeSet(w, h, o) {
+  const cx = w / 2, cy = h / 2, rx = w / 2 - 0.15, ry = h / 2 - 0.15, ink = o.ink, th = o.th ?? 2;
+  const base = { ink, iris: o.iris, big: o.big, cy: o.cy };
+  return {
+    angry: (p) => kawaii(p, w, h, { ...base, lid: o.lid }),
+    glare: (p) => kawaii(p, w, h, { ...base, lid: [o.lid[0] + h * 0.1, o.lid[1] * 1.35] }),
+    wide: (p) => kawaii(p, w, h, { ...base }),
+    happy: (p) => stroke(p, arc(cx - rx * 0.86, cx + rx * 0.62, (x) => cy + ry * 0.3 - (1 - ((x - cx + rx * 0.12) / (rx * 0.74)) ** 2) * ry * 0.7), ink, th),
+    closed: (p) => stroke(p, arc(cx - rx * 0.88, cx + rx * 0.7, (x) => cy + ry * 0.05 + (1 - ((x - cx + rx * 0.09) / (rx * 0.79)) ** 2) * ry * 0.32), ink, th),
+    hurt: (p) => stroke(p, [[cx - rx * 0.62, cy - ry * 0.62], [cx + rx * 0.55, cy - th / 2], [cx - rx * 0.62, cy + ry * 0.62 - th + 1]], ink, th),
+    x: (p) => { stroke(p, [[cx - rx * 0.62, cy - ry * 0.62], [cx + rx * 0.6, cy + ry * 0.62 - th + 1]], ink, th); stroke(p, [[cx + rx * 0.6, cy - ry * 0.62], [cx - rx * 0.62, cy + ry * 0.62 - th + 1]], ink, th); },
+    swirl: (p) => { for (let a = 0; a < 15; a += 0.12) { const r = a / 15, x = Math.round(cx + Math.cos(a) * r * rx * 0.85 - 0.5), y = Math.round(cy + Math.sin(a) * r * ry * 0.85 - 0.5); p.px(x, y, ink); if (r > 0.45) p.px(x + 1, y, ink); } },
+  };
+}
+// Studrat's eyes: 10 × 9 texels, a dark red-black iris glowing crimson at the bottom
+const EYES = eyeSet(10, 9, { ink: C.ink, iris: ['#2a0a16', '#8a1830', '#f0404c'], lid: [2.6, 0.32], big: 2 });
 
 // ---------------------------------------------------------------- model
 const P = (o, s, tex, x = {}) => ({ o, s, tex, ...x });
@@ -286,24 +295,10 @@ function spike(y, z, h, w = 2.6) {
     ...[0, 60, 120].map((a) => P([-w / 2, y + 0.3, z], [w, h, 0], spikeTri, { plane: 'z', pivot: [0, y, z], rot: [0, a, 0] })),
   ];
 }
-// a stud growing out of the back fur: two tiers pointing backward, turned to a diamond
-const backStud = (y, z) => [P([-0.7, y - 0.7, z - 0.5], [1.4, 1.4, 0.6], chromeP({ from: 0.4, to: 1 }), { pivot: [0, y, z], rot: [0, 0, 45] }), P([-0.35, y - 0.35, z - 1.0], [0.7, 0.7, 0.6], chromeP({ from: 0, to: 0.5 }), { pivot: [0, y, z], rot: [0, 0, 45] })];
-// a chain link along −z from (0, y, z): flat (ring in the x–z plane) or upright (ring in the y–z plane)
-function link(y, z, upright) {
-  const L = 3.0, Wd = 2.2, b = 0.6, a = Wd / 2;
-  return upright ? [
-    P([-b / 2, y + a - b, z - L], [b, b, L], chrome), P([-b / 2, y - a, z - L], [b, b, L], chrome),
-    P([-b / 2, y - a + b, z - L], [b, Wd - 2 * b, b], chrome), P([-b / 2, y - a + b, z - b], [b, Wd - 2 * b, b], chrome),
-  ] : [
-    P([a - b, y - b / 2, z - L], [b, b, L], chrome), P([-a, y - b / 2, z - L], [b, b, L], chrome),
-    P([-a + b, y - b / 2, z - L], [Wd - 2 * b, b, b], chrome), P([-a + b, y - b / 2, z - b], [Wd - 2 * b, b, b], chrome),
-  ];
-}
-const eyeStates = (side) => Object.entries(EYES).map(([k, fn]) => P(side < 0 ? [-4.3, 18.9, 4.42] : [0.5, 18.9, 4.42], [3.8, 2.8, 0], fn, { plane: 'z', mirror: side > 0, id: 'eye-' + k, hide: k !== 'sly' }));
+const eyeStates = (side) => Object.entries(EYES).map(([k, fn]) => P(side < 0 ? [-4.3, 18.6, 4.42] : [0.9, 18.6, 4.42], [3.4, 3.0, 0], fn, { plane: 'z', mirror: side > 0, id: 'eye-' + k, hide: k !== 'angry' }));
 const armCubes = [P([-6.0, 9.0, -0.8], [2.4, 4.8, 2.4], fur)];
 const foreCubes = [
-  P([-5.9, 5.8, -0.7], [2.2, 3.9, 2.2], fur),
-  P([-6.1, 5.0, -0.9], [2.6, 1.4, 2.6], tapeP),
+  P([-5.9, 4.8, -0.7], [2.2, 4.9, 2.2], fur),
   P([-6.3, 2.3, -1.1], [3.0, 2.8, 3.0], fist),
 ];
 const hipCubes = [
@@ -321,24 +316,11 @@ export const def = {
     { name: 'legL', parent: 'root', pivot: [4.0, 6.6, -0.4], cubes: hipCubes.map(mirrorCube) },
     { name: 'body', parent: 'root', pivot: [0, 6.0, -0.4], rot: [17, 0, 0], cubes: [
       P([-5.0, 2.8, -3.8], [10.0, 7.4, 7.8], fur, { faces: { south: bellyFront, north: furDark } }),
-      P([-5.5, 3.6, -3.3], [11.0, 5.8, 6.8], fur, { faces: { south: bellyFront, north: furDark } }),
+      P([-5.5, 3.6, -3.3], [11.0, 5.8, 6.8], fur, { faces: { south: bellyFront, north: furDark, east: flankP } }),
       P([-4.4, 9.8, -3.0], [8.8, 4.8, 6.4], fur, { faces: { south: chestFront, north: furDark } }),
       P([-4.8, 10.4, -2.6], [9.6, 3.6, 5.6], fur, { faces: { south: chestFront, north: furDark } }),
-      P([-3.2, 13.8, -2.4], [6.4, 2.2, 5.0], fur),
-      // the collar: a leather ring round the neck, studs, two short spikes and a steel ring
-      P([-3.7, 14.2, 2.6], [7.4, 1.7, 0.6], collarFront),
-      P([-3.7, 14.2, -3.0], [7.4, 1.7, 0.6], collarFront),
-      P([-3.7, 14.2, -2.4], [0.5, 1.7, 5.0], collarFront),
-      P([3.2, 14.2, -2.4], [0.5, 1.7, 5.0], collarFront),
-      P([-4.0, 14.6, 2.2], [1.0, 1.0, 1.0], chromeP({ from: 0.3, to: 1 }), { pivot: [-3.7, 15.1, 2.8], rot: [0, 40, 45] }),
-      P([-4.6, 14.85, 2.45], [0.5, 0.5, 0.5], chromeP({ from: 0, to: 0.3 }), { pivot: [-3.7, 15.1, 2.8], rot: [0, 40, 45] }),
-      P([3.0, 14.6, 2.2], [1.0, 1.0, 1.0], chromeP({ from: 0.3, to: 1 }), { pivot: [3.7, 15.1, 2.8], rot: [0, -40, -45] }),
-      P([4.1, 14.85, 2.45], [0.5, 0.5, 0.5], chromeP({ from: 0, to: 0.3 }), { pivot: [3.7, 15.1, 2.8], rot: [0, -40, -45] }),
-      P([-0.8, 12.9, 3.25], [1.6, 1.7, 0], ringP, { plane: 'z' }),
-      ...backStud(6.6, -3.8), ...backStud(9.2, -3.8), ...backStud(12.0, -3.0),
-      // the denim scrap on the left flank, its frayed hem
-      P([5.45, 6.2, -2.9], [0.45, 4.6, 5.8], denimP),
-      P([5.7, 5.0, -2.9], [0, 1.2, 5.8], fray, { plane: 'x' }),
+      // the blood-red ruff of fur round its neck
+      P([-3.6, 13.4, -2.8], [7.2, 2.7, 5.8], ruffP),
     ] },
     { name: 'hammer', parent: 'body', pivot: [2.6, 12.0, -4.6], rot: [8, 0, -42], cubes: [
       P([2.2, 6.2, -5.0], [0.8, 11.6, 0.8], handleP, { id: 'hb' }),
@@ -347,10 +329,7 @@ export const def = {
     ] },
     { name: 'tail1', parent: 'body', pivot: [0, 4.4, -3.6], rot: [-26, -42, 0], cubes: [P([-0.9, 3.5, -8.8], [1.8, 1.8, 5.4], tailP)] },
     { name: 'tail2', parent: 'tail1', pivot: [0, 4.4, -8.6], rot: [18, -48, 0], cubes: [P([-0.75, 3.65, -13.4], [1.5, 1.5, 5.0], tailP)] },
-    { name: 'tail3', parent: 'tail2', pivot: [0, 4.4, -13.2], rot: [58, -14, 0], cubes: [P([-0.6, 3.8, -17.2], [1.2, 1.2, 4.2], tailP)] },
-    { name: 'link1', parent: 'tail3', pivot: [0, 4.4, -17.0], rot: [14, 0, 0], cubes: link(4.4, -16.7, false) },
-    { name: 'link2', parent: 'link1', pivot: [0, 4.4, -19.3], rot: [8, 0, 0], cubes: link(4.4, -19.0, true) },
-    { name: 'link3', parent: 'link2', pivot: [0, 4.4, -21.6], rot: [6, 0, 0], cubes: link(4.4, -21.3, false) },
+    { name: 'tail3', parent: 'tail2', pivot: [0, 4.4, -13.2], rot: [58, -14, 0], cubes: [P([-0.6, 3.8, -18.8], [1.2, 1.2, 5.8], tailTipP)] },
     { name: 'armR', parent: 'body', pivot: [-4.8, 13.4, 0.4], rot: [-60, 0, 11], cubes: armCubes },
     { name: 'foreR', parent: 'armR', pivot: [-4.8, 9.4, 0.4], rot: [-90, 0, 0], cubes: [
       ...foreCubes,
@@ -402,10 +381,6 @@ export const def = {
     { name: 'earL', parent: 'head', pivot: [3.8, 21.4, 0.4], rot: [0, -16, -10], cubes: [
       P([3.6, 20.2, 0.4], [5.8, 6.0, 0], earP(true, false), { plane: 'z', mirror: true }),
       P([3.6, 20.2, 0.2], [5.8, 6.0, 0], earP(true, true), { plane: 'z', mirror: true }),
-      // the safety pin through the rim
-      P([7.7, 20.6, 0.1], [0.4, 2.6, 0.4], chrome, { pivot: [7.9, 22, 0.3], rot: [0, 0, -20] }),
-      P([7.5, 23.0, -0.1], [0.8, 0.8, 1.0], chrome, { pivot: [7.9, 22, 0.3], rot: [0, 0, -20] }),
-      P([7.65, 20.2, 0.3], [0.5, 0.5, 0.5], chrome, { pivot: [7.9, 22, 0.3], rot: [0, 0, -20], outline: false }),
     ] },
     { name: 'mo1', parent: 'head', pivot: [0, 22.6, 3.2], rot: [6, 0, 12], cubes: spike(22.6, 3.2, 4.4, 3.0) },
     { name: 'mo2', parent: 'head', pivot: [0, 22.6, 1.0], rot: [-8, 0, -13], cubes: spike(22.6, 1.0, 6.0, 3.4) },
@@ -460,14 +435,11 @@ export const anim = {
     { bone: 'earL', tip: [2.8, 2.4, 0], k: 160, d: 9, gain: 0.7, max: 20 },
     { bone: 'tail2', tip: [0, 0, -5], k: 140, d: 10, gain: 0.5, max: 10 },
     { bone: 'tail3', tip: [0, 0, -4], k: 130, d: 9, gain: 0.6, max: 12 },
-    { bone: 'link1', tip: [0, 0, -3], k: 110, d: 8, gain: 0.8, max: 16 },
-    { bone: 'link2', tip: [0, 0, -3], k: 100, d: 7, gain: 0.8, max: 18 },
-    { bone: 'link3', tip: [0, 0, -3], k: 90, d: 6.5, gain: 0.9, max: 20 },
     { bone: 'mo3', tip: [0, 5, 0], k: 420, d: 10, gain: 0.25, max: 6 },
     { bone: 'hammer', tip: [0, 5, 0], k: 300, d: 12, gain: 0.25, max: 5 },
   ],
   faces: {
-    eyes: { default: 'sly', states: Object.fromEntries(Object.keys(EYES).map((k) => [k, ['eye-' + k]])) },
+    eyes: { default: 'angry', states: Object.fromEntries(Object.keys(EYES).map((k) => [k, ['eye-' + k]])) },
     cheese: { default: 'off', states: { off: [], whole: ['cheese-a'], bitten: ['cheese-b'] } },
     hand: { default: 'fist', states: { fist: [], horns: ['horns'] } },
     hammer: { default: 'back', states: { back: ['hb'], hand: ['hh'] } },
@@ -562,7 +534,7 @@ export const anim = {
       pose(P, 'dangle', 0.4 * bang);
       P.rot('jaw', 26 * rear + 32 * bang);
       const dy = -1.0 * bang - 0.7 * rear; plant(P, dy);
-      P.face('eyes', t > 0.62 && t < 1.6 ? 'glare' : t > 0.15 && t < 0.62 ? 'smug' : undefined); P.lookW = 1 - Math.max(grab, rear, bang);
+      P.face('eyes', t > 0.62 && t < 1.6 ? 'glare' : t > 0.15 && t < 0.62 ? 'happy' : undefined); P.lookW = 1 - Math.max(grab, rear, bang);
       P.sq('body', wob(t, 1.5, 0.05, 3, 6)); shing(P, t, 1.5, 0.8);
       P.rot('head', 0, wave(t, 6) * 10 * bump(t, 1.5, 1.85), 0);
     } },
@@ -584,14 +556,14 @@ export const anim = {
       const dy = -1.6 * dizzy; P.pos('body', 0, dy, 0); plant(P, dy);
       P.rot('root', 0, 0, 88 * fall).pos('root', 6 * fall, 6.4 * fall, 0);
       P.rot('legR', -24 * fall, 0, 0).rot('legL', 30 * fall, 0, -20 * fall).rot('jaw', 24 * fall).rot('earR', 0, -30 * fall, 50 * fall);
-      P.rot('tail1', 0, 46 * fall, 0).rot('tail2', 0, 48 * fall, 0).rot('tail3', -52 * fall, 0, 0).rot('link1', -14 * fall, 0, 0);
+      P.rot('tail1', 0, 46 * fall, 0).rot('tail2', 0, 48 * fall, 0).rot('tail3', -52 * fall, 0, 0);
       P.face('eyes', t < 0.85 ? 'swirl' : 'x'); P.blinkOK = false; P.lookW = 1 - Math.max(dizzy, fall);
       P.burst(1.3, 'dust', 'root', [0, 1, 0], { n: 8, spread: 1 }).burst(0.3, 'star', 'head', [0, 28, 0], { n: 5 });
     } },
     down: { len: 2.4, loop: true, f(P, t) {
       P.rot('root', 0, 0, 88).pos('root', 6, 6.4, 0);
       pose(P, 'dangle', 1);
-      P.rot('legR', -24 + wave(t, 0.42) * 3, 0, 0).rot('legL', 30, 0, -20).rot('jaw', 24 + wave(t, 0.42) * 3).rot('earR', 0, -30, 50).rot('tail1', 0, 46, 0).rot('tail2', 0, 48, 0).rot('tail3', -52 + 8 * bump(t, 0.8, 1.2), 0, 0).rot('link1', -14, 0, 0);
+      P.rot('legR', -24 + wave(t, 0.42) * 3, 0, 0).rot('legL', 30, 0, -20).rot('jaw', 24 + wave(t, 0.42) * 3).rot('earR', 0, -30, 50).rot('tail1', 0, 46, 0).rot('tail2', 0, 48, 0).rot('tail3', -52 + 8 * bump(t, 0.8, 1.2), 0, 0);
       P.rot('footL', -10 * bump(t, 1.2, 1.5) * wave(t, 6), 0, 0);
       P.face('eyes', 'x'); P.blinkOK = false; P.lookW = 0; P.breathW = 0.5;
       P.burst(0.4, 'star', 'head', [0, 28, 0], { n: 2 });
@@ -619,7 +591,7 @@ export const anim = {
       pose(P, 'horns', horns).scl('foreR', 1, 1 + 0.25 * horns, 1); P.face('hand', horns > 0.3 ? 'horns' : 'fist');
       const nod = bump(t, 1.8, 1.98) + bump(t, 2.02, 2.2);
       P.rot('head', -10 * horns + 22 * nod, 0, 6 * horns).rot('jaw', 22 * horns + 30 * over).rot('body', 4 * nod, 0, 0);
-      P.face('eyes', over > 0.3 || slam > 0.3 ? 'glare' : t > 1.4 ? 'smug' : undefined); P.lookW = 1 - Math.max(over, slam);
+      P.face('eyes', over > 0.3 || slam > 0.3 ? 'glare' : t > 1.4 ? 'happy' : undefined); P.lookW = 1 - Math.max(over, slam);
       P.burst(1.14, 'ring', 'mallet', MALLET, { scale: 0.8 }).burst(1.14, 'dust', 'mallet', MALLET, { n: 10, spread: 1, speed: 1.2 }).burst(1.14, 'rock', 'mallet', MALLET, { n: 6, dir: [0, 1, 0], speed: 0.9 }).burst(1.14, 'spark', 'mallet', MALLET, { scale: 1.2 });
       P.burst(1.78, 'sparkle', 'head', TOOTH, { n: 3, spread: 0.6 }).burst(1.8, 'note', 'head', [5, 28, 2], {}).burst(2.02, 'note', 'head', [-5, 28, 2], {});
       shing(P, t, 1.15, 1.2); P.burst(0.55, 'dust', 'root', [0, 0.5, 0], { n: 3, speed: 0.6 });
@@ -640,7 +612,7 @@ export const anim = {
     nibble: { len: 2.7, next: 'idle', f(P, t) {
       const look = Math.sin(seg(t, 0.0, 0.5, E.lin) * Math.PI * 2);
       P.rot('head', 0, 26 * look * (1 - seg(t, 0.45, 0.55)), 0);
-      P.face('eyes', t < 0.5 ? 'sly' : undefined);
+      P.face('eyes', t < 0.5 ? 'glare' : undefined);
       const dip = bump(t, 0.4, 0.74), eat = seg(t, 0.66, 0.86, E.out3) * (1 - seg(t, 1.9, 2.0, E.out));
       P.rot('armR', 46 * dip, 0, -16 * dip).rot('foreR', -36 * dip);
       pose(P, 'eat', eat).rot('head', 16 * eat, 0, 0).rot('body', 8 * eat, 0, 0);
@@ -654,7 +626,7 @@ export const anim = {
       const startle = seg(t, 1.88, 1.94, E.out) * (1 - seg(t, 2.35, 2.6, E.inout));
       const hide = bump(t, 1.98, 2.38);
       P.rot('armR', 70 * hide, 0, -20 * hide).rot('foreR', -60 * hide);
-      P.face('eyes', startle > 0.3 ? 'wide' : eat > 0.5 ? 'smug' : undefined); P.lookW = Math.max(1 - eat, startle);
+      P.face('eyes', startle > 0.3 ? 'wide' : eat > 0.5 ? 'happy' : undefined); P.lookW = Math.max(1 - eat, startle);
       P.rot('earR', 0, 0, -20 * startle).rot('earL', 0, 0, 20 * startle).pos('body', 0, 1.0 * startle, 0).rot('head', -10 * startle, 0, 0).sq('body', 0.06 * startle);
       P.burst(1.9, 'sweat', 'head', [5.5, 24, 4], { n: 2, dir: [1, 0.6, 0] });
       tailSway(P, t, 1.4, 0.6 + 1.5 * startle);
@@ -669,10 +641,17 @@ export const anim = {
       const roll = bump(t, 0.8, 1.2), roll2 = bump(t, 1.05, 1.45);
       P.rot('armR', -10 * roll, 0, -12 * roll).rot('armL', -10 * roll2, 0, 12 * roll2).rot('body', 0, 9 * roll - 9 * roll2, 5 * roll - 5 * roll2);
       P.rot('head', 0, 0, 10 * roll - 10 * roll2);
-      P.face('eyes', t > 0.3 && t < 1.6 ? 'smug' : undefined).rot('jaw', 6 * bump(t, 1.2, 1.7));
+      P.face('eyes', t > 0.3 && t < 1.6 ? 'happy' : undefined).rot('jaw', 6 * bump(t, 1.2, 1.7));
       P.burst(1.25, 'sparkle', 'head', TOOTH, { n: 2, spread: 0.5 });
       const b = bounce(t, 0.6, { squash: 0.05, stretch: 0.02 }), dy = b.u * 0.6 - 0.3; P.pos('body', 0, dy, 0).sq('body', b.sq); plant(P, dy);
     } },
   },
 };
 def.anim = anim;
+// buyable gear: where hats, glasses, scarves and backpacks sit (model units, rest pose)
+def.attach = {
+  head: { bone: 'head', at: [0, 22.8, 0.4], size: 9.0 },
+  face: { bone: 'head', at: [0, 20.0, 4.5], size: 8.6 },
+  neck: { bone: 'body', at: [0, 14.7, 3.1], size: 7.2 },
+  back: { bone: 'body', at: [0, 8.6, -3.9], size: 10.0 },
+};

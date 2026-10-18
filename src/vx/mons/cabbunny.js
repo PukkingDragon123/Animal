@@ -3,9 +3,9 @@
 // top, with a soft cream bunny face peeking out between them. Its ears are the two tallest outer
 // leaves, veined and floppy at the tips. Half-lidded, sly and sleepy.
 //
-// Music homage (Bad Bunny, original): heart-shaped shades worn low on the nose so the sly eyes
-// peer over them (pushed up for its game face), painted claw tips, a tropical flower and a palm
-// frond tucked by one ear for a summer-without-you vibe, and a dembow swagger in its idle.
+// Music homage (Bad Bunny, original): its one signature item — heart-shaped shades worn low on the
+// nose so the eyes peer over them (pushed up for its game face) — painted claw tips, a summer burst of
+// petals in its specials, and a dembow swagger in its idle.
 //
 // Build notes: the ball is a stepped sphere painted as one sphere in model space (heart whorl on
 // top, two shingled rows of wrap leaves below). Each cupping leaf hangs on two bones — a yaw
@@ -197,22 +197,65 @@ const palmP = (p, w, h) => {
   }
 };
 
+// ---------------------------------------------------------------- kawaii eyes
+// Gen 8–9 style eyes: a big soft oval with a 1-texel outline, a dark iris tinted with an accent, a lighter
+// accent gradient in the lower third, a big catchlight high on the outer side (x small) and a 1-texel glint
+// low on the inner side. lid: [y (fraction of the height), slope] cuts the top with a flat lid (angry: slope
+// > 0, tilted in; sad: < 0). Other expressions are single-colour strokes: ^ (happy), ◡ (closed), > (hurt).
+function eyeOpen(W, H, K, lid) {
+  return (p) => {
+    const cx = (W - 1) / 2, cy = (H - 1) / 2, rx = W / 2 - 0.02, ry = H / 2 - 0.02;
+    const lidAt = (x) => (lid ? lid[0] * H + lid[1] * (x - cx) : -9);
+    const inside = (x, y) => ((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2 <= 1 && y >= lidAt(x) - 0.01;
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      if (!inside(x, y)) continue;
+      const edge = !inside(x - 1, y) || !inside(x + 1, y) || !inside(x, y - 1) || !inside(x, y + 1) || (lid && y < lidAt(x) + 1.2);
+      const t = y / (H - 1);
+      p.px(x, y, edge ? K.line : t > 0.8 ? K.acc[1] : t > 0.62 ? K.acc[0] : K.dark);
+    }
+    const k = W >= 9 && !lid ? 3 : 2, x0 = Math.round(cx - rx * 0.55 + 0.5);
+    const y0 = Math.max(Math.round(cy - ry * 0.55 + 0.5), lid ? Math.ceil(lidAt(x0 + 1) + 1.2) : 0);
+    for (let j = 0; j < k; j++) for (let i = 0; i < k; i++) if (inside(x0 + i, y0 + j) && !(k === 3 && (i === 2 && j === 2))) p.px(x0 + i, y0 + j, '#ffffff');
+    const gx = Math.round(cx + rx * 0.5), gy = Math.round(cy + ry * 0.48);
+    if (inside(gx, gy)) p.px(gx, gy, '#ffffff');
+  };
+}
+// ^ happy (bulging up) or ◡ closed (bulging down): a 2-texel stroke
+const eyeArc = (W, H, K, up) => (p) => {
+  const cx = (W - 1) / 2, rx = W / 2 - 0.5;
+  for (let x = 0; x < W; x++) {
+    const u = (x - cx) / rx; if (Math.abs(u) > 1.02) continue;
+    const s = Math.sqrt(Math.max(0, 1 - u * u)), y = Math.round(up ? H * 0.62 - H * 0.36 * s : H * 0.4 + H * 0.26 * s);
+    p.px(x, y, K.line); p.px(x, y + 1, K.line);
+  }
+};
+// > (hurt): apex on the inner side; the mirrored eye reads <
+const eyeHurt = (W, H, K) => (p) => {
+  for (let k = 0; k <= 10; k++) {
+    const t = k / 10, x = Math.round(1 + t * (W - 3)), a = Math.round(1 + t * ((H - 1) / 2 - 1)), b = Math.round(H - 2 - t * ((H - 1) / 2 - 1));
+    p.px(x, a, K.line); p.px(x, a + 1, K.line); p.px(x, b, K.line); p.px(x, b - 1, K.line);
+  }
+};
+const eyeX = (W, H, K) => (p) => { for (let k = 0; k < W - 2; k++) { const y = Math.round(1 + (k * (H - 3)) / (W - 3)); p.px(1 + k, y, K.line); p.px(W - 2 - k, y, K.line); p.px(1 + k, y + 1, K.line); p.px(W - 2 - k, y + 1, K.line); } };
+const eyeSwirl = (W, H, K) => (p) => { const cx = (W - 1) / 2, cy = (H - 1) / 2; for (let a = 0; a < 15; a += 0.2) { const r = a * (Math.min(W, H) / 2 - 0.5) / 15; p.px(Math.round(cx + Math.cos(a) * r), Math.round(cy + Math.sin(a) * r), K.line); } };
+
 // ---------------------------------------------------------------- face: eyes and mouth
-// eyes: 9 × 7 texels, outer corner at x = 0. Heavy, sly lids with a flick at the outer corner;
-// a leaf-green iris and a small dark pupil, placed high so they peer over the low-slung shades.
-const EM = { k: C.lid, w: '#f8fff2', s: '#cfe0c4', g: '#5aa86a', G: '#3e7e52', p: '#0e1a12' };
+// eyes: 9 × 7 texels, outer corner at x = 0, placed high so they peer over the low-slung shades
+const EK = { line: '#0a1810', dark: '#16281e', acc: ['#2a7a4e', '#7ad890'] }, EW = 9, EH = 7;
 const EYES = {
-  sly: ['k........', '.kkkkkk..', '.kkkkkkkk', '.kGGpGGsk', '.kgggggk.', '..kkkkk..', '.........'],
-  heavy: ['.........', 'k........', '.kkkkkkk.', '.kGGpGGsk', '.kgggggk.', '..kkkkk..', '.........'],
-  sharp: ['k........', '.kk......', '..kkkk...', '..kkkkkkk', '..kGpGGkk', '...kggk..', '....kk...'],
-  wide: ['..kkkkk..', '.kwwwwwk.', 'kwwwgwwwk', 'kwwgpgwwk', 'kwwwgwwwk', '.kwwwwwk.', '..kkkkk..'],
-  smirk: ['.........', 'kk.......', '.kkkkkkk.', '.kkkkkkkk', '..kGGpGkk', '...kkkkk.', '.........'],
-  closed: ['.........', '.........', 'kkkkkkkk.', '.kkkkkkkk', '..k..k...', '.........', '.........'],
-  x: ['.........', '.kk...kk.', '..kk.kk..', '...kkk...', '..kk.kk..', '.kk...kk.', '.........'],
-  swirl: ['..kkkkk..', '.k.....k.', 'k..kkk..k', 'k.k..k..k', 'k.k.kk.k.', '.k.....k.', '..kkkk...'],
+  sly: eyeOpen(EW, EH, EK, [0.16, 0.12]),                // sleepy-sly: a heavy lid, barely tilted in
+  heavy: eyeOpen(EW, EH, EK, [0.36, 0.06]),
+  sharp: eyeOpen(EW, EH, EK, [0.26, 0.38]),
+  wide: eyeOpen(EW, EH, EK),
+  smirk: eyeOpen(EW, EH, EK, [0.34, -0.06]),
+  happy: eyeArc(EW, EH, EK, true),
+  closed: eyeArc(EW, EH, EK, false),
+  hurt: eyeHurt(EW, EH, EK),
+  x: eyeX(EW, EH, EK),
+  swirl: eyeSwirl(EW, EH, EK),
 };
 // states are per eye so it can wink
-const EYE_SLOTS = { ...Object.fromEntries(Object.keys(EYES).map((k) => [k, ['eR-' + k, 'eL-' + k]])), wink: ['eR-closed', 'eL-smirk'] };
+const EYE_SLOTS = { ...Object.fromEntries(Object.keys(EYES).map((k) => [k, ['eR-' + k, 'eL-' + k]])), wink: ['eR-happy', 'eL-smirk'] };
 const MM = { k: '#5a2a32', m: '#3a1420', t: '#ff8aa8', w: '#ffffff', W: '#e4e0d8' };
 const MOUTHS = {
   shut: ['....kk....', '.kkk..kkk.', '....wW....', '....wW....', '..........'],
@@ -223,7 +266,7 @@ const MOUTHS = {
 // ---------------------------------------------------------------- geometry
 const P = (o, s, tex, x = {}) => ({ o, s, tex, ...x });
 const FZ = 6.83;      // the face plane
-const eyeStates = (side) => Object.entries(EYES).map(([k, rows]) => P(side < 0 ? [-3.25, 7.9, FZ] : [0.25, 7.9, FZ], [3, 2.333, 0], (p) => stamp(p, rows, EM), { plane: 'z', mirror: side > 0, id: (side < 0 ? 'eR-' : 'eL-') + k, hide: k !== 'sly' }));
+const eyeStates = (side) => Object.entries(EYES).map(([k, fn]) => P(side < 0 ? [-3.25, 8.2, FZ] : [0.25, 8.2, FZ], [3, 2.333, 0], fn, { plane: 'z', mirror: side > 0, id: (side < 0 ? 'eR-' : 'eL-') + k, hide: k !== 'sly' }));
 // five waxy cupping leaves round the ball: [name, yaw, tilt, width, height]
 const CUPS = [['A', -64, 30, 8.6, 7.2], ['B', 64, 30, 8.6, 7.2], ['C', -128, 28, 9.2, 8.6], ['D', 128, 28, 9.2, 8.6], ['E', 180, 24, 9.2, 8.2], ['F', -26, 40, 6.0, 4.6], ['G', 26, 40, 6.0, 4.6]];
 const cupBones = CUPS.flatMap(([n, yaw, tilt, W, H]) => [
@@ -257,8 +300,8 @@ export const def = {
     ...cupBones,
     // the bunny face peeking out of the leaves
     { name: 'face', parent: 'body', pivot: [0, 8.4, 0], cubes: [
-      P([-3.4, 4.0, 4.2], [6.8, 6.4, 2.6], faceP),
-      P([-2.4, 10.4, 4.0], [4.8, 0.533, 2.4], furP),                                          // the brow, rounding the top
+      P([-3.4, 4.0, 4.2], [6.8, 6.8, 2.6], faceP),
+      P([-2.4, 10.8, 4.0], [4.8, 0.533, 2.4], furP),                                          // the brow, rounding the top
       P([-4.2, 3.8, 4.4], [1.6, 3.0, 2.0], furP), P([2.6, 3.8, 4.4], [1.6, 3.0, 2.0], furP),     // cheek puffs
       ...eyeStates(-1), ...eyeStates(1),
       ...Object.entries(MOUTHS).map(([k, rows]) => P([-1.667, 5.95 - rows.length / 3, 6.84], [3.333, rows.length / 3, 0], (p) => stamp(p, rows, MM), { plane: 'z', id: 'm-' + k, hide: k !== 'shut' })),
@@ -266,22 +309,23 @@ export const def = {
     { name: 'nose', parent: 'face', pivot: [0, 6.4, 7.1], cubes: [P([-0.667, 6.0, 6.7], [1.333, 0.8, 0.6], noseP)] },
     // heart shades, worn low on the nose (P.pos('shades', 0, 1.7) puts them on properly)
     { name: 'shades', parent: 'face', pivot: [0, 8.4, 5.6], cubes: [
-      P([-3.6, 5.9, 7.62], [3.333, 2.667, 0], lensP, { plane: 'z' }),
-      P([0.267, 5.9, 7.62], [3.333, 2.667, 0], lensP, { plane: 'z', mirror: true }),
-      P([-0.5, 8.1, 7.36], [1.0, 0.4, 0.4], frameP),
-      P([-3.9, 8.1, 4.0], [0.4, 0.4, 3.6], frameP), P([3.5, 8.1, 4.0], [0.4, 0.4, 3.6], frameP),
+      P([-3.6, 5.6, 7.62], [3.333, 2.667, 0], lensP, { plane: 'z' }),
+      P([0.267, 5.6, 7.62], [3.333, 2.667, 0], lensP, { plane: 'z', mirror: true }),
+      P([-0.5, 7.8, 7.36], [1.0, 0.4, 0.4], frameP),
+      P([-3.9, 7.8, 4.0], [0.4, 0.4, 3.6], frameP), P([3.5, 7.8, 4.0], [0.4, 0.4, 3.6], frameP),
     ] },
     { name: 'pawR', parent: 'body', pivot: [-1.7, 4.4, 5.8], cubes: [P([-2.6, 2.7, 5.8], [1.8, 1.6, 2.0], pawP), ...nails(-2.5, 2.7, 7.75, 3, 0)] },
     { name: 'pawL', parent: 'body', pivot: [1.7, 4.4, 5.8], cubes: [P([0.8, 2.7, 5.8], [1.8, 1.6, 2.0], pawP), ...nails(0.9, 2.7, 7.75, 3, 1)] },
     { name: 'tail', parent: 'body', pivot: [0, 6.6, -6.4], cubes: [P([-1.6, 5.6, -9.0], [3.2, 2.8, 2.2], tailP), P([-1.2, 5.2, -8.6], [2.4, 3.6, 2.0], tailP), P([-1.2, 5.8, -9.6], [2.4, 2.4, 1.0], tailP)] },
     ...ear(-1), ...ear(1),
-    // tucked behind the left ear: a tropical flower over a palm frond
-    { name: 'flower', parent: 'earL', pivot: [3.4, 14.4, 0.6], rot: [0, -24, -14], cubes: [
-      P([2.4, 14.2, 0.0], [6.0, 2.333, 0], palmP, { plane: 'z' }),
-      P([1.4, 12.6, 0.8], [4.0, 4.0, 0], flowerP, { plane: 'z' }),
-      P([1.4, 14.6, -1.2], [4.0, 0, 4.0], flowerP, { plane: 'y' }),
-    ] },
   ],
+};
+// gear anchors (model units)
+def.attach = {
+  head: { bone: 'body', at: [0, 14.8, 0], size: 7.6 },
+  face: { bone: 'face', at: [0, 9.4, 6.9], size: 6.8 },
+  neck: { bone: 'body', at: [0, 4.2, 6.2], size: 6.0 },
+  back: { bone: 'body', at: [0, 8.4, -6.4], size: 9.6 },
 };
 
 // ---------------------------------------------------------------- effects of its own
@@ -326,7 +370,6 @@ export const anim = {
     { bone: 'earR', tip: [0, 5, 0], k: 190, d: 10, gain: 0.6, max: 14 },
     { bone: 'earL', tip: [0, 5, 0], k: 195, d: 10, gain: 0.6, max: 14 },
     { bone: 'tail', tip: [0, 0, -2.4], k: 220, d: 10, gain: 0.8, max: 20 },
-    { bone: 'flower', tip: [0, 2, 0], k: 240, d: 11, gain: 0.6, max: 16 },
     ...CUPN.map((n, k) => ({ bone: 'leaf' + n, tip: [0, 7, 0], k: 200 + k * 9, d: 10, gain: 0.45, max: 12, axes: [1, 0, 0.4] })),
   ],
   faces: {
@@ -416,7 +459,7 @@ export const anim = {
       feet(P, -1 * k);
       shades(P, 0, 22 * skew).pos('shades', 0.4 * skew, -0.9 * skew, 0);
       flare(P, 24 * k); ears(P, 20 * k, -18 * k);
-      P.face('eyes', t < 0.45 ? 'x' : undefined).face('mouth', t < 0.42 ? 'open' : undefined);
+      P.face('eyes', t < 0.45 ? 'hurt' : undefined).face('mouth', t < 0.42 ? 'open' : undefined);
       P.burst(0.03, 'cabbageleaf', 'body', [0, 9, 0], { n: 5, speed: 1.6 }).burst(0.03, 'spark', 'body', [0, 9, 7], {});
     } },
     // dizzy, it keels over onto its side; the shades slide off its nose, ears flopped across the ground

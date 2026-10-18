@@ -167,32 +167,25 @@ const chestP = (p, w, h, face) => {
 const petalsP = (p, w, h) => { const cx = (w - 1) / 2, cy = (h - 1) / 2; for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const a = Math.atan2(y - cy, x - cx), r = Math.hypot(x - cx, y - cy), R = (w / 2) * (0.62 + 0.38 * Math.abs(Math.cos(a * 2.5))); if (r > R) continue; p.px(x, y, r < 1.3 ? '#ffe060' : r > R - 1 ? '#e8608e' : x + y < w - 1 ? '#ffe6f0' : '#ff9ac0'); } };
 const stemP = (p, w, h) => { const m = Math.floor(w / 2); for (let y = 0; y < h; y++) p.px(m, y, '#3f8e3a'); for (let k = 0; k < 3; k++) { p.px(m - 1 - k, Math.round(h * 0.5) + k, '#80c64a'); p.px(m + 1 + k, Math.round(h * 0.7) - k, '#3f8e3a'); } };
 
-// eyes: 17 × 11 texels, outer corner at x = 0. Big, calm and warm: a relaxed upper lid, a round
-// amber iris, a dark pupil, one soft (not white) catchlight. The heavy stone brow does the glaring.
+// eyes: 17 × 11 texels, outer corner at x = 0. Simple Pokémon-style eyes: one solid, warm near-black
+// oval with a single white glint. Calm is a slightly drooping top, fierce a hard slanted cut; the heavy
+// stone brow above does the glaring.
 const EW = 17, EH = 11;
 function eyeShape(p, o = {}) {
-  const lid = o.lid ?? 2.6, sl = o.slope ?? -0.05, ix = o.ix ?? 8.8, iy = o.iy ?? 6.4, ir = o.ir ?? 3.8;
-  const top = (x) => lid + sl * x + Math.abs(x - 8.5) ** 2 * 0.022, bot = (x) => 9.7 - Math.abs(x - 8.5) ** 2 * 0.042;
-  for (let y = 0; y < EH; y++) for (let x = 0; x < EW; x++) {
-    const X = x + 0.5, Y = y + 0.5;
-    if (Y < top(X) - 1.2 || Y > bot(X) + 1) continue;
-    if (Y < top(X) || Y > bot(X) || x === 0 || x === EW - 1) { p.px(x, y, C.ink); continue; }
-    const d = Math.hypot(X - ix, Y - iy);
-    if (d < ir) p.px(x, y, d < 1.5 ? '#1a0c08' : Y < top(X) + 1.4 ? C.eyeLo : d > ir - 0.9 ? '#8a4a1c' : Y > iy + 1.2 ? C.eyeHi : C.eye);
-    else p.px(x, y, Y < top(X) + 1.3 ? '#d8cabc' : '#f6eee2');
-  }
-  for (let x = 0; x < EW; x++) { const y = Math.floor(top(x + 0.5)) - 1; p.px(x, y, C.ink); }
-  if (o.glint !== false) { p.px(Math.round(ix - 2), Math.round(iy - 1), '#f0d4b0'); }
+  const cx = o.cx ?? 8.5, cy = o.cy ?? 6.0, rx = o.rx ?? 4.6, ry = o.ry ?? 4.4, top = (x) => (o.top ?? 0) + (o.slope ?? 0) * (x - cx);
+  const inside = (x, y) => ((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2 <= 1 && y >= top(x);
+  for (let y = 0; y < EH; y++) for (let x = 0; x < EW; x++) { if (inside(x + 0.5, y + 0.5)) p.px(x, y, '#24121a'); }
+  if (o.glint !== false) { const gx = o.gx ?? 7, gy = o.gy ?? Math.max(Math.ceil(top(7) + 0.7), Math.round(cy - ry * 0.55)); p.px(gx, gy, '#ffffff'); }
 }
 const EYES = {
-  calm: (p) => eyeShape(p, { lid: 3.6, slope: -0.03, ir: 3.9, iy: 6.8 }),
-  fierce: (p) => eyeShape(p, { lid: 4.4, slope: 0.16, ir: 3.2, iy: 7.0 }),
-  wide: (p) => eyeShape(p, { lid: 1.4, slope: 0, ir: 3.3, iy: 6.0, ix: 8.5 }),
-  content: (p) => { for (let x = 1; x < 16; x++) { const y = Math.round(5.6 + Math.abs(x - 8) ** 2 * 0.045); p.px(x, y, C.ink); if (x > 2 && x < 14) p.px(x, y + 1, C.ink); } },
-  closed: (p) => { for (let x = 0; x < 17; x++) { const y = Math.round(6.6 - Math.abs(x - 8.5) ** 2 * 0.03); p.px(x, y, C.ink); p.px(x, y + 1, x > 1 && x < 15 ? C.ink : 0); } },
-  hurt: (p) => { for (let i = 0; i < 6; i++) { p.px(4 + i, 1 + i, C.ink); p.px(5 + i, 1 + i, C.ink); p.px(4 + i, 10 - i, C.ink); p.px(5 + i, 10 - i, C.ink); } },
-  x: (p) => { for (let i = 0; i < 10; i++) { p.px(3 + i, i, C.ink); p.px(4 + i, i, C.ink); p.px(12 - i, i, C.ink); p.px(13 - i, i, C.ink); } },
-  swirl: (p) => { for (let a = 0; a < 14; a += 0.18) { const r = a * 0.38, x = Math.round(8.5 + Math.cos(a) * r * 1.25), y = Math.round(5.5 + Math.sin(a) * r * 0.95); if (r < 5.2) p.px(x, y, C.ink); } },
+  calm: (p) => eyeShape(p, { top: 3.0, slope: -0.18 }),
+  fierce: (p) => eyeShape(p, { top: 4.4, slope: 0.36, cy: 6.4, ry: 4.0 }),
+  wide: (p) => eyeShape(p, { cy: 5.6, rx: 4.4, ry: 4.6 }),
+  content: (p) => { for (let x = 3; x < 14; x++) { const y = Math.round(5.6 + Math.abs(x - 8.5) ** 2 * 0.06); p.px(x, y, '#24121a'); if (x > 4 && x < 12) p.px(x, y + 1, '#24121a'); } },
+  closed: (p) => { for (let x = 2; x < 15; x++) { const y = Math.round(6.6 - Math.abs(x - 8.5) ** 2 * 0.025); p.px(x, y, '#24121a'); p.px(x, y + 1, x > 3 && x < 13 ? '#24121a' : 0); } },
+  hurt: (p) => { for (let i = 0; i < 5; i++) { p.px(5 + i, 1 + i, '#24121a'); p.px(6 + i, 1 + i, '#24121a'); p.px(5 + i, 9 - i, '#24121a'); p.px(6 + i, 9 - i, '#24121a'); } },
+  x: (p) => { for (let i = 0; i < 9; i++) { p.px(4 + i, 1 + i, '#24121a'); p.px(5 + i, 1 + i, '#24121a'); p.px(12 - i, 1 + i, '#24121a'); p.px(13 - i, 1 + i, '#24121a'); } },
+  swirl: (p) => { for (let a = 0; a < 14; a += 0.18) { const r = a * 0.36, x = Math.round(8.5 + Math.cos(a) * r * 1.15), y = Math.round(5.5 + Math.sin(a) * r * 0.95); if (r < 4.8) p.px(x, y, '#24121a'); } },
 };
 
 // ---------------------------------------------------------------- geometry helpers

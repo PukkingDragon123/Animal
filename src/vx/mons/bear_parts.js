@@ -12,15 +12,17 @@ export const tx = (u) => Math.round(u * 3);                       // units → t
 export const isSide = (f) => f === 'south' || f === 'north' || f === 'east' || f === 'west';
 // x offset of a face inside its box-UV strip (west | south | east | north), so patterns run on round corners
 export const wrapX = (face, cube) => { const w = tx(cube.s[0]), d = tx(cube.s[2]); return face === 'south' ? d : face === 'east' ? d + w : face === 'north' ? 2 * d + w : 0; };
+const SH = new Map();
+export const sh = (c, k) => { const key = c + k; let v = SH.get(key); if (!v) { v = shift(c, k); SH.set(key, v); } return v; };
 export const fill = (p, w, h, fn) => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const c = fn(x, y); if (c) p.px(x, y, c); } };
 const alphaAt = (S, x, y) => x >= 0 && y >= 0 && x < S.w && y < S.h && (S.data[y * S.w + x] >>> 24) > 0;
 // darken the opaque texels whose neighbour below (and optionally beside) is empty: a soft
 // in-texture outline for cut-out planes, which get no outline hull
 export function edgeLine(p, col, o = {}) {
   const S = p.s, src = { w: S.w, h: S.h, data: S.data.slice() };
-  for (let y = o.skipTop ? 1 : 0; y < S.h; y++) for (let x = 0; x < S.w; x++) {
+  for (let y = o.skipTop ? 1 : 0; y < S.h - (o.skipBottom ? 1 : 0); y++) for (let x = 0; x < S.w; x++) {
     if (!alphaAt(src, x, y)) continue;
-    const below = !alphaAt(src, x, y + 1), side = o.sides && (!alphaAt(src, x - 1, y) || !alphaAt(src, x + 1, y)), above = o.top && !alphaAt(src, x, y - 1);
+    const below = o.below !== false && !alphaAt(src, x, y + 1), side = o.sides && (!alphaAt(src, x - 1, y) || !alphaAt(src, x + 1, y)), above = o.top && !alphaAt(src, x, y - 1);
     if (below || side || above) p.px(x, y, col);
   }
 }
@@ -34,9 +36,12 @@ export function fur(c, o = {}) {
   const hi = o.hi || shift(c, 0.2), lo = o.lo || shift(c, -0.28), line = o.line || shift(lo, -0.12), lite = o.lite || shift(c, 0.12);
   const s = o.s || 10, rowH = o.rowH || Math.round(s * 0.7), tipH = o.tipH ?? s * 0.5, pt = o.pt ?? 0.75, seed = o.seed || 1, tip = o.tip || null;
   return (p, w, h, face, cube) => {
-    const base = (x, y) => (face === 'up' ? (o.upC || hi) : face === 'down' ? shift(lo, -0.14) : ramp(o.ramp || [hi, c, c, lo], h > 1 ? y / (h - 1) : 0.5, x, y));
+    const U = o.under ? o.under(face, cube, w, h) : null;          // a pattern in the fur: (x, y) → colour | null
+    const ramped = (x, y) => (face === 'up' ? (o.upC || hi) : face === 'down' ? shift(lo, -0.14) : ramp(o.ramp || [hi, c, c, lo], h > 1 ? y / (h - 1) : 0.5, x, y));
+    const base = (x, y) => (U && U(x, y)) || ramped(x, y);
+    const V = (x, y, k, fixed) => { const u = U && U(x, y); return u ? sh(u, k) : fixed; };   // edge colours follow the pattern
     fill(p, w, h, base);
-    if (face === 'down' && !o.under) return;
+    if (face === 'down') return;
     const ox = cube && isSide(face) && o.wrap !== false ? wrapX(face, cube) : 0, top = face === 'up';
     const rows = Math.ceil(h / rowH) + 1;
     // clumps: scallops with a pointed tip, laid bottom-up so each row overlaps the one beneath.
@@ -52,9 +57,9 @@ export function fur(c, o = {}) {
           if (yy > bottom) continue;
           let col = base(X, Y);
           // the rim: only along the lower arc (not up the flanks, so neighbours' lines never join into a lattice)
-          if (yy > bottom - 1.2 && yy > rowH * 0.6) col = uc < -0.25 ? (top ? shift(hi, 0.1) : lite) : top ? shift(col, -0.18) : line;
-          else if (yy > bottom - 2.3 && uc > 0.3 && yy > rowH * 0.6) col = shift(col, -0.1);
-          else if (tip && yy > bottom - 2.6 && Math.abs(uc) < 0.34) col = tip;
+          if (yy > bottom - 1.2 && yy > rowH * 0.6) col = uc < -0.25 ? V(X, Y, 0.14, top ? shift(hi, 0.1) : lite) : top ? sh(col, -0.18) : V(X, Y, -0.34, line);
+          else if (yy > bottom - 2.3 && uc > 0.3 && yy > rowH * 0.6) col = sh(col, -0.1);
+          else if (tip && yy > bottom - 2.6 && Math.abs(uc) < 0.34) col = V(X, Y, 0.18, tip);
           p.px(X, Y, col);
         }
       }
@@ -68,7 +73,8 @@ export function fur(c, o = {}) {
 // o: hi, lo, line, tip, tw (tuft width), lean, jit, fat, pow, seed, short (front-row min length 0..1)
 export function fringe(c, o = {}) {
   const hi = o.hi || shift(c, 0.2), lo = o.lo || shift(c, -0.28), line = o.line || shift(lo, -0.3);
-  return (p, w, h) => {
+  return (p0, w, h) => {
+    const p = o.up ? { px: (x, y, c) => p0.px(x, h - 1 - y, c), s: p0.s } : p0;
     const tw = o.tw || 4, n = Math.max(1, Math.round(w / tw)), seed = o.seed || 5, st = w / n;
     for (const front of [0, 1]) for (let i = -1; i <= n; i++) {
       const cx = (i + (front ? 0.5 : 0)) * st + (h2(i, front, seed) - 0.5) * st * 0.4;
@@ -86,7 +92,7 @@ export function fringe(c, o = {}) {
         }
       }
     }
-    edgeLine(p, line, { skipTop: true });
+    if (o.up) edgeLine(p0, line, { top: true, below: false, skipBottom: true }); else edgeLine(p0, line, { skipTop: true });
   };
 }
 
@@ -192,6 +198,47 @@ export function shutter(o) {
   };
 }
 
+// ---------------------------------------------------------------- kawaii eyes
+// Big rounded eyes in the recent-generation style: a 1-texel dark outline, a near-black iris tinted with
+// an accent colour, a lighter accent gradient in the lower third, one big white catchlight high on the
+// outer side and a small glint low on the inner side. Painted on a plane with the OUTER corner at x = 0
+// (mirror the plane for the other eye). States: open, angry (a flat lid cutting the top, tilted in),
+// sad (the lid tilted out), happy (^), closed (a soft curve), hurt (>), swirl, x.
+// o: ink, iris, acc [mid, light], shape ('oval' | 'tear'), lid (0..1 of the height), tilt, cl (catchlight size)
+export function kawaii(state, o = {}) {
+  const ink = o.ink || '#1a1016', iris = o.iris || '#22142a', acc = o.acc || ['#5a3a8a', '#a07ad8'], W = '#ffffff';
+  return (p, w, h) => {
+    const cx = (w - 1) / 2, cy = (h - 1) / 2, rx = w / 2, ry = h / 2;
+    const ins = (x, y) => { if (x < 0 || y < 0 || x >= w || y >= h) return false; const k = o.shape === 'tear' ? 0.84 + 0.16 * ((y + 0.5) / h) : 1; return ((x - cx) / (rx * k)) ** 2 + ((y - cy) / ry) ** 2 <= 1.0; };
+    const line = (x0, y0, x1, y1, th = 2) => { const n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0)) * 2 + 1; for (let i = 0; i <= n; i++) { const x = Math.round(x0 + ((x1 - x0) * i) / n), y = Math.round(y0 + ((y1 - y0) * i) / n); p.px(x, y, ink); if (th > 1) p.px(x, y + 1, ink); } };
+    if (state === 'open' || state === 'angry' || state === 'sad') {
+      const L = state === 'open' ? -1 : h * (o.lid ?? 0.34), tl = (o.tilt ?? 0.32) * h;
+      const lidY = (x) => (state === 'angry' ? L - tl / 2 + (x / (w - 1)) * tl : L + tl / 2 - (x / (w - 1)) * tl);    // angry: inner side lower; sad: outer side lower
+      const inEye = (x, y) => ins(x, y) && (state === 'open' || y >= Math.round(lidY(x)));
+      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+        if (!inEye(x, y)) continue;
+        const edge = !inEye(x - 1, y) || !inEye(x + 1, y) || !inEye(x, y - 1) || !inEye(x, y + 1), t = (y + 0.5) / h;
+        p.px(x, y, edge ? ink : t > 0.86 ? acc[1] : t > 0.7 ? acc[0] : iris);
+      }
+      // the catchlight: big, high on the outer side (just under the lid when there is one); a small glint low inside
+      const cl = o.cl ?? (w >= 8 ? 3 : 2), y0 = state === 'open' ? 1 + (h > 8 ? 1 : 0) : Math.round(lidY(1)) + 1, x0 = 1;
+      for (let y = y0; y < y0 + cl; y++) for (let x = x0; x < x0 + cl; x++) if (inEye(x, y) && inEye(x - 1, y) && inEye(x, y - 1)) p.px(x, y, W);
+      const gx = w - 3, gy = h - 3; if (inEye(gx, gy) && inEye(gx + 1, gy) && inEye(gx, gy + 1)) p.px(gx, gy, W);
+    } else if (state === 'happy') {
+      for (let x = 0; x < w; x++) { const u = (x - cx) / rx, y = Math.round(h * 0.62 - (1 - u * u) * h * 0.38); p.px(x, y, ink); p.px(x, y + 1, ink); }
+    } else if (state === 'closed') {
+      for (let x = 0; x < w; x++) { const u = (x - cx) / rx, y = Math.round(h * 0.52 + (1 - u * u) * h * 0.16); p.px(x, y, ink); if (Math.abs(u) < 0.75) p.px(x, y + 1, ink); }
+    } else if (state === 'hurt') {
+      line(0, Math.round(h * 0.18), w - 2, Math.round(cy)); line(0, Math.round(h * 0.82) - 1, w - 2, Math.round(cy));
+    } else if (state === 'swirl') {
+      for (let a = 0; a < 16; a += 0.18) { const r = (a / 16) * Math.min(rx, ry) * 1.02, x = Math.round(cx + Math.cos(a) * r), y = Math.round(cy + Math.sin(a) * r * (ry / rx)); p.px(x, y, ink); }
+    } else if (state === 'x') {
+      line(0, Math.round(h * 0.15), w - 1, Math.round(h * 0.85) - 1); line(0, Math.round(h * 0.85) - 1, w - 1, Math.round(h * 0.15));
+    }
+  };
+}
+export const KAWAII = ['open', 'angry', 'sad', 'happy', 'closed', 'hurt', 'swirl', 'x'];
+
 // ---------------------------------------------------------------- motion helpers
 // keep feet planted while the hips rise or sink by dy units: the legs shift and stretch
 export function plant(P, dy, legs, hip) { for (const s of legs) { P.pos(s, 0, dy, 0); P.scl(s, 1, Math.max(0.35, (hip + dy) / hip), 1); } }
@@ -224,16 +271,15 @@ defineFx('bear-star', {
   glow: true, life: [0.5, 0.9], size: [0.13, 0.04], speed: [0.6, 1.6], grav: 0.4, drag: 1.4, spread: 1, spin: 3, fade: true,
 });
 // the auto-tune shockwave: a ring whose edge is quantised into steps, like a corrected pitch line
-defineFx('bear-tune', {
-  w: 48, h: 48, frames: [['#e8f0ff', '#8ab0ff'], ['#ffe0e6', '#ff5a6e']].map(([a, b]) => (p, w, h) => {
-    const c = (w - 1) / 2;
-    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-      const ang = Math.atan2(y - c, x - c), step = Math.round(Math.sin(ang * 9) * 2.2) * 0.9, R = c - 3 + step, d = Math.hypot(x - c, y - c);
-      if (d < R + 0.7 && d > R - 1.6) p.px(x, y, d > R - 0.4 ? a : b);
-    }
-  }),
-  glow: true, life: [0.75, 0.9], size: [0.25, 2.6], speed: [0, 0], grav: 0, fade: true,
-});
+const tuneRing = ([a, b]) => (p, w, h) => {
+  const c = (w - 1) / 2;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const ang = Math.atan2(y - c, x - c), step = Math.round(Math.sin(ang * 9) * 2.2) * 0.9, R = c - 3 + step, d = Math.hypot(x - c, y - c);
+    if (d < R + 0.7 && d > R - 1.6) p.px(x, y, d > R - 0.4 ? a : b);
+  }
+};
+defineFx('bear-tune', { w: 48, h: 48, frames: [tuneRing(['#eef4ff', '#8ab0ff'])], glow: true, life: [0.75, 0.9], size: [0.25, 2.6], speed: [0, 0], grav: 0, fade: true });
+defineFx('bear-tunered', { w: 48, h: 48, frames: [tuneRing(['#ffe4e8', '#ff4a5e'])], glow: true, life: [0.75, 0.9], size: [0.25, 2.6], speed: [0, 0], grav: 0, fade: true });
 // crystal shards: long bright diamonds that spin and glint
 defineFx('bear-crystal', {
   w: 5, h: 10, frames: [['#ffffff', '#cfe8ff', '#7aa8d8'], ['#ffffff', '#ffd0dc', '#d87a9a'], ['#ffffff', '#e8e0ff', '#9a8ad8']].map(([a, b, c]) => (p, w, h) => {

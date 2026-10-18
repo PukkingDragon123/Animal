@@ -9,7 +9,7 @@
 // water boils into cavitation bubbles that pop with a flash of light.
 import { E, seg, bump, wob, wave, key, bounce, hop } from '../anim.js';
 import { shade, gradient, layer, on, poly, ramp, shift, mix, h2 } from './kit.js';
-import { B, both, armour, spots, rainbowPlate, bands, hair, blade, grid, EYE_ROWS, eyeMap, eyeballP, eyeShutP, rayGun, MUZZLE, FX, legRig, step, saccade, clamp } from './shrimp_parts.js';
+import { B, both, armour, spots, rainbowPlate, bands, hair, hairLocks, blade, grid, EYE_STATES, kawaiiEye, eyeHousingP, rayGun, MUZZLE, FX, legRig, step, saccade, clamp } from './shrimp_parts.js';
 
 const C = {
   ink: '#120e1e',
@@ -18,16 +18,17 @@ const C = {
   back: ['#22a690', '#1d8fae', '#2a6cc8'], tail: ['#2a5ad0', '#4a40c6'],
   arm: '#e8467a', armHi: '#ff8cae', armLo: '#a8285e', armSpot: '#80184c',
   fore: '#ff6c8e', foreHi: '#ffa8c0', foreLo: '#c8386a',
-  club: '#f6ead2', clubHi: '#ffffff', clubLo: '#d2b690', clubBand: '#ff5a4a', clubBandLo: '#c02a3a',
+  club: '#f6ead2', clubHi: '#ffffff', clubLo: '#d2b690', clubBand: '#ff7c9a', clubBandLo: '#c8386a',
   leg: '#ff8a2a', legHi: '#ffc860', legLo: '#c4501e',
   scale: '#ff9a2a', scaleHi: '#ffd060', scaleEdge: '#e0388e',
   hair: { base: '#2e2a5c', hi: '#5654a6', lo: '#17132f', sheen: '#8c96f4' },
   belt: '#24357a', beltHi: '#4060b8', beltLo: '#141e4a', beltStripe: '#ff8a2a',
-  eye: '#3a9c96', eyeHi: '#86dccc', eyeLo: '#1f5c66', eyeShade: '#14303e', band: ['#ff3e9a', '#ffe23a', '#3ae8ff'],
+  band: ['#ff3e9a', '#ffe23a', '#3ae8ff'],
+  eye: { line: '#140a22', iris: '#2e1446', mid: '#9a2a8e', light: '#ff6ad2', white: '#ffffff' },
   stalk: ['#ffb43a', '#f08a2c'], mouth: '#2a0c1e', bristle: '#fff0c8',
   fan: { root: '#2a5ad0', base: '#3a46c8', edge: '#ff6a3a', rim: '#ff9a3a', keel: '#1a2a7a', eye: '#ffd23a', eyeRing: '#16124a', eyeCore: '#ff3e9a', spine: '#fff0c8' },
 };
-const EYEP = { ink: C.ink, eye: C.eye, eyeHi: C.eyeHi, eyeLo: C.eyeLo, eyeShade: C.eyeShade, band: C.band, lid: C.shell };
+const EYEP = { band: C.band, lid: C.shell };
 
 // ---------------------------------------------------------------- painters
 const shellP = layer(armour(C.shell, { top: C.shellHi, bottom: C.shellLo, dots: 6, sheen: C.sheen }), spots(C.spot, { every: 6, skip: 0.5, core: C.shellLo }));
@@ -42,7 +43,7 @@ const faceP = (p, w, h, face, cube) => {
   for (let x = Math.round(m - 4); x <= Math.round(m + 4); x++) p.px(x, my, C.mouth);
   p.px(Math.round(m - 5), my + 1, C.mouth); p.px(Math.round(m + 5), my + 1, C.mouth);
 };
-const plates = C.rb.map((c, i) => rainbowPlate(c, i ? C.rb[i - 1] : '#ffffff'));
+const plates = [...C.rb, '#a046d8'].map((c, i, a) => rainbowPlate(c, i ? a[i - 1] : '#ffffff'));
 const backPs = C.back.map((c, i) => armour(c, { keel: true, sheen: C.back[i + 1] || C.tail[0], dots: 5, seed: i + 2 }));
 const tailPs = C.tail.map((c, i) => armour(c, { keel: true, dots: 4, sheen: '#8ab0ff', seed: i + 7 }));
 const armP = layer(armour(C.arm, { top: C.armHi, bottom: C.armLo }), spots(C.armSpot, { every: 4, skip: 0.42, core: C.armLo }));
@@ -85,7 +86,6 @@ const beardP = hair(C.hair, { lock: 2 });
 const beardTipP = (p, w, h) => { const m = (w - 1) / 2; for (let y = 0; y < h; y++) { const half = (w / 2) * (1 - (y / h) ** 1.4); for (let x = 0; x < w; x++) { const d = Math.abs(x - m); if (d > half) continue; p.px(x, y, d > half - 1 ? C.hair.lo : (x + (y >> 1)) % 3 === 0 ? C.hair.hi : C.hair.base); } } };
 const stalkP = bands(C.stalk, { every: 2, lit: true });
 const browP = armour(C.shell, { top: C.shellHi, bottom: C.shellDeep });
-const ringP = (p, w, h, face) => { const rows = [C.ink, C.band[0], C.band[1], C.band[2], C.ink]; for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, face === 'up' || face === 'down' ? C.ink : rows[Math.min(4, Math.floor(y * 5 / h))]); };
 const scaleP = (p, w, h) => {        // the antennal scale: an orange paddle with a magenta fringe and setae lines
   const cx = (w - 1) / 2, cy = (h - 1) / 2;
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
@@ -117,25 +117,8 @@ const telsonP = (p, w, h, face) => { armour('#2a4ac8', { top: '#6a8aff', bottom:
 const pleoP = (p, w, h) => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { if (y > h - 2 && x % 2) continue; p.px(x, y, (x + y) % 3 === 0 ? '#ffb0c8' : y < 2 ? '#c8386a' : '#ff6c8e'); } };
 
 // ---------------------------------------------------------------- the model
-const EM = eyeMap(EYEP);
-const cut = (fn) => (p, w, h, f) => { fn(p, w, h, f); for (const [x, y] of [[0, 0], [w - 1, 0], [0, h - 1], [w - 1, h - 1]]) p.px(x, y, 0); };   // round the corners off
-const eyeStates = () => Object.keys(EYE_ROWS).filter((k) => k !== 'closed').map((k) => B(-4.733, 23.0, 3.25, -1.067, 27.333, 3.25, cut(grid(EYE_ROWS[k], EM)), { plane: 'z', id: 'eye-' + k, hide: k !== 'glare' }));
-// shaggy hair: a row of locks, each its own outlined slab with a narrower tip, splayed a little so
-// the outlines separate them and the silhouette frays. spec: [a0, a1, bottom, splay°, lift°, depth]
-// axis 'z' = a side curtain (locks along z at x = at), axis 'x' = the back curtain (locks along x at z = at)
-function locks(axis, at, th, top, spec, seed = 1, side = -1) {
-  const out = [];
-  spec.forEach(([a0, a1, bot, splay = 0, lift = 0, dd = 0], i) => {
-    const P = hair(C.hair, { lock: 3, seed: seed + i, band: 0.16, off: i }), m = (a0 + a1) / 2;
-    const rot = axis === 'z' ? [lift, 0, side * splay] : [lift, 0, splay];
-    const pivot = axis === 'z' ? [at + th / 2 + side * dd, top, m] : [m, top, at + th / 2 + dd];
-    const box = (u0, u1, y0, y1) => (axis === 'z' ? B(at + side * dd, y0, u0, at + th + side * dd, y1, u1, P, { pivot, rot }) : B(u0, y0, at + dd, u1, y1, at + th + dd, P, { pivot, rot }));
-    out.push(box(a0, a1, bot, top));
-    const w = a1 - a0, k = Math.min(0.55, w * 0.28);
-    out.push(box(a0 + k * (i % 2 ? 1.3 : 0.7), a1 - k * (i % 2 ? 0.7 : 1.3), bot - 1.1, bot + 0.01));
-  });
-  return out;
-}
+const eyeStates = () => EYE_STATES.map((k) => B(-4.733, 23.0, 3.25, -1.067, 27.333, 3.25, kawaiiEye(k, C.eye), { plane: 'z', id: 'eye-' + k, hide: k !== 'open' }));
+const locks = (axis, at, th, top, spec, seed, side) => hairLocks(C.hair, axis, at, th, top, spec, seed, side);
 const RIGHT = {
   thigh: { name: 'thighR', parent: 'root', pivot: [-2.8, 7.4, -0.6], cubes: [B(-4.0, 4.0, -1.8, -1.6, 7.8, 0.6, legP)] },
   shin: { name: 'shinR', parent: 'thighR', pivot: [-2.8, 4.2, -0.6], cubes: [
@@ -149,7 +132,8 @@ const RIGHT = {
     B(-3.4, 0, -3.0, -2.2, 0.8, -2.2, clawTipP),
   ] },
   shoulder: { name: 'coxaR', parent: 'body', pivot: [-4.4, 12.8, 1.0], cubes: [B(-5.2, 11.7, -0.3, -3.8, 14.2, 2.2, armP)] },
-  arm: { name: 'armR', parent: 'body', pivot: [-4.4, 12.8, 1.0], rot: [24, -6, 0], cubes: [B(-6.0, 11.6, -0.2, -3.4, 14.0, 4.6, armP)] },
+  arm: { name: 'armR', parent: 'body', pivot: [-4.4, 12.8, 1.0], rot: [24, -6, 0], cubes: [B(-6.0, 11.6, -0.2, -3.4, 14.0, 4.6, armP), B(-5.3, 14.0, 1.0, -4.7, 14.6, 1.6, spineP), B(-5.3, 14.0, 2.6, -4.7, 14.6, 3.2, spineP)] },
+  wleg: { name: 'wlegR', parent: 'body', pivot: [-4.3, 8.8, -2.6], rot: [0, 0, -10], cubes: [B(-6.6, 8.45, -2.95, -4.1, 9.15, -2.25, legP), B(-6.6, 5.4, -2.95, -5.9, 8.6, -2.25, legP), B(-6.5, 4.6, -2.85, -6.0, 5.4, -2.35, clawTipP)] },
   fore: { name: 'foreR', parent: 'armR', pivot: [-4.7, 12.8, 4.1], rot: [-26, 0, 6], cubes: [
     B(-5.85, 11.8, 2.95, -3.55, 16.0, 5.25, foreP),
     B(-5.25, 12.6, 5.25, -4.15, 15.4, 5.75, armP),                     // the folded dactyl blade along the front
@@ -161,10 +145,8 @@ const RIGHT = {
   ] },
   stalk: { name: 'stalkR', parent: 'head', pivot: [-2.9, 20.4, 1.4], rot: [0, 0, 8], cubes: [
     B(-3.45, 19.8, 0.85, -2.35, 23.4, 1.95, stalkP),
-    B(-4.733, 23.333, -0.433, -1.067, 27.0, 3.233, eyeballP(EYEP)),
-    B(-4.4, 23.0, -0.1, -1.4, 27.333, 3.233, eyeballP(EYEP)),
-    B(-4.9, 24.0, -0.6, -0.9, 25.667, 3.233, ringP),
-    B(-4.9, 22.85, -0.6, -0.9, 27.5, 3.4, eyeShutP(EYEP), { id: 'eye-shut', hide: true }),
+    B(-4.733, 23.333, -0.433, -1.067, 27.0, 3.233, eyeHousingP(EYEP, 24.333, 25.333)),
+    B(-4.4, 23.0, -0.1, -1.4, 27.333, 3.233, eyeHousingP(EYEP, 24.333, 25.333)),
     ...eyeStates(),
   ] },
   brow: { name: 'browR', parent: 'stalkR', pivot: [-2.9, 27.2, -0.1], rot: [14, 0, -12], cubes: [B(-4.85, 27.05, -0.3, -0.95, 27.65, 3.65, browP)] },
@@ -193,11 +175,10 @@ export const def = {
       B(-3.8, 12.4, -3.95, 3.8, 14.6, -3.0, backPs[0]),
       B(-3.7, 10.2, -3.85, 3.7, 12.5, -3.0, backPs[1]),
       B(-3.6, 8.0, -3.75, 3.6, 10.3, -3.0, backPs[2]),
-      // waistband with the ray gun tucked in, and its saucer buckle
-      B(-4.7, 6.0, -3.7, 4.7, 7.6, 3.5, beltP),
-      B(-1.0, 5.85, 3.4, 1.0, 7.75, 3.9, buckleP),
+      // the waist: a last pair of rainbow sternites, magenta → violet, down to the hips
+      B(-3.2, 6.0, 2.2, 3.2, 7.6, 3.3, plates[4]),
+      B(-4.5, 5.9, -3.5, 4.5, 6.3, 3.0, shellP),
     ] },
-    { name: 'gunH', parent: 'body', pivot: [5.2, 7.0, -0.6], rot: [52, 12, 0], cubes: [...rayGun([5.2, 7.0, -0.6], 'gun-h', { k: 0.72 }), B(4.25, 6.3, -2.2, 6.15, 7.3, -0.4, beltP, { id: 'gun-h' })] },
     { name: 'head', parent: 'body', pivot: [0, 14.6, 0.2], cubes: [
       B(-3.8, 14.5, -2.8, 3.8, 19.5, 3.5, shellP, { faces: { south: faceP } }),
       B(-0.75, 16.5, 3.4, 0.75, 18.3, 4.1, rostrumP),
@@ -216,7 +197,8 @@ export const def = {
       B(0, 10.6, 3.2, 0, 13.0, 4.5, beardTipP, { plane: 'x' }),
     ] },
     ...both(RIGHT.stalk, RIGHT.brow, RIGHT.scale, RIGHT.ant, RIGHT.ant2, RIGHT.hair, RIGHT.max),
-    ...both(RIGHT.shoulder, RIGHT.arm, RIGHT.fore, RIGHT.club),
+    ...both(RIGHT.shoulder, RIGHT.arm, RIGHT.fore, RIGHT.club, RIGHT.wleg),
+    { name: 'gunH', parent: 'wlegL', pivot: [6.25, 5.5, -2.6], rot: [14, 0, -8], cubes: rayGun([6.25, 5.5, -2.6], 'gun-h', { k: 0.72 }) },
     { name: 'gunG', parent: 'clubL', pivot: [4.7, 16.6, 2.5], rot: [-90, 0, 0], cubes: rayGun([4.7, 16.6, 2.5], 'gun-g', { k: 0.8 }).map((c) => ({ ...c, hide: true })) },
     { name: 'tail1', parent: 'body', pivot: [0, 7.2, -3.0], rot: [-38, 0, 0], cubes: [
       B(-3.0, 5.4, -7.4, 3.0, 8.8, -2.6, tailPs[0]),
@@ -233,6 +215,14 @@ export const def = {
     ] },
     ...both(RIGHT.pleo),
   ],
+};
+// where buyable gear sits (model units, rest pose): crown of the mop, between the stalk eyes, the front
+// of the neck above the chest plates, the middle of the back
+def.attach = {
+  head: { bone: 'head', at: [0, 20.3, 0.05], size: 8.2 },
+  face: { bone: 'head', at: [0, 25.1, 3.3], size: 9.0 },
+  neck: { bone: 'body', at: [0, 14.5, 3.9], size: 7.6 },
+  back: { bone: 'body', at: [0, 11.0, -3.95], size: 7.6 },
 };
 
 // ---------------------------------------------------------------- animation
@@ -282,10 +272,12 @@ export const anim = {
     { bone: 'stalkL', tip: [0, 4.5, 0], k: 260, d: 11, gain: 0.5, max: 14 },
     { bone: 'fan', tip: [0, 0, -4.4], k: 160, d: 8, gain: 0.9, max: 22 },
     { bone: 'pleoR', tip: [0, -2, 0], k: 200, d: 8, gain: 0.8, max: 26 },
+    { bone: 'wlegR', tip: [-2.4, -3, 0], k: 230, d: 9, gain: 0.7, max: 18 },
+    { bone: 'wlegL', tip: [2.4, -3, 0], k: 230, d: 9, gain: 0.7, max: 18 },
     { bone: 'pleoL', tip: [0, -2, 0], k: 200, d: 8, gain: 0.8, max: 26 },
   ],
   faces: {
-    eyes: { default: 'glare', states: { ...Object.fromEntries(Object.keys(EYE_ROWS).filter((k) => k !== 'closed').map((k) => [k, ['eye-' + k]])), closed: ['eye-shut'] } },
+    eyes: { default: 'open', states: Object.fromEntries(EYE_STATES.map((k) => [k, ['eye-' + k]])) },
     gun: { default: 'holster', states: { holster: ['gun-h'], hand: ['gun-g'] } },
   },
   fidget: { every: [4.5, 8], clips: ['airdrum', 'hairflip', 'shadowbox'] },
@@ -294,7 +286,8 @@ export const anim = {
     // late, eyes flicking about on their own (mantis-shrimp saccades), antennae twitching, mandibles working
     idle: { len: 2.0, loop: true, f(P, t) {
       const b = bounce(t, 0.5, { squash: 0.07, stretch: 0.035 }), sway = wave(t, 0.5), dy = -0.75 + b.u * 1.0;
-      stance(P, { dy, dx: 0.45 * sway, rz: -2.4 * sway, rx: 5, ry: 7 * wave(t, 0.5, 1.2) });
+      stance(P, { dy, dx: 0.45 * sway, rz: -2.4 * sway, rx: 5, ry: 9 + 6 * wave(t, 0.5, 1.2), f: { R: [-0.2, 0, -0.9], L: [0.2, 0, 1.1] }, toe: { R: 0, L: 0 } });
+      P.rot('wlegR', 0, 0, 6 * b.u).rot('wlegL', 0, 0, -6 * b.u);
       P.sq('body', b.sq);
       const lag = bounce(t - 0.07, 0.5).u;
       for (const [S, ph] of [['R', 0], ['L', Math.PI]]) {
@@ -335,11 +328,11 @@ export const anim = {
         const g = S === 'R' ? 1 : -1;
         P.rot('arm' + S, 20 * crouch, 0, -g * 8 * crouch + tr * 2).rot('fore' + S, -20 * crouch, 0, 0); flex(P, S, up); P.rot('club' + S, -10 * up, 0, -g * 10 * up);
         P.rot('arm' + S, -10 * clack, g * 26 * clack, g * 4 * clack).rot('fore' + S, 20 * clack, 0, 0);
-        P.rot('scale' + S, 0, 0, -g * 22 * up).rot('stalk' + S, -10 * up, g * 8 * up, -g * 22 * up + tr);
+        P.rot('scale' + S, 0, 0, -g * 22 * up).rot('stalk' + S, -10 * up, g * 8 * up, g * 22 * up + tr);
       }
       P.rot('head', 12 * crouch - 26 * up + tr * 2, 0, 0).rot('jaw', 6 * crouch + 38 * up);
       P.rot('fan', 30 * up, 0, 0).rot('tail1', 10 * crouch - 6 * up, 0, 0);
-      P.face('eyes', crouch > 0.3 ? 'focus' : up > 0.3 ? 'wide' : undefined); P.blinkOK = false;
+      P.face('eyes', crouch > 0.3 ? 'angry' : up > 0.3 ? 'open' : undefined); P.blinkOK = false;
       if (t > 0.52 && t < 1.3) P.stream(FX.bub, 'jaw', MOUTH, { rate: 40, dir: [0, 0.6, 1], speed: 0.9, spread: 0.6 }).stream('bubble', 'jaw', MOUTH, { rate: 8, dir: [0, 0.8, 1], speed: 1.2, spread: 0.6, scale: 0.7 });
       P.burst(0.54, FX.ring, 'jaw', MOUTH, { scale: 0.7 }).burst(0.6, 'anger', 'head', [-6, 25, 3], {}).burst(0.72, 'anger', 'head', [6, 24, 3], {});
       P.burst(1.58, 'spark', 'body', [0, 20, 9], { n: 3 }).burst(1.58, FX.flash, 'body', [0, 20, 9], { scale: 0.45 });
@@ -357,7 +350,7 @@ export const anim = {
       cock(P, 'L', 0.3 * hit);
       P.rot('head', 6 * wind - 6 * hit, -10 * wind + 14 * hit, 0).rot('jaw', 22 * hit);
       eyes(P, 6 * hit, 4 * wind, -6 * hit, 4 * wind);
-      P.face('eyes', wind > 0.1 || hit > 0.1 ? 'focus' : undefined); P.blinkOK = false;
+      P.face('eyes', wind > 0.1 || hit > 0.1 ? 'angry' : undefined); P.blinkOK = false;
       P.rot('fan', 20 * hit, 0, 0);
       const pad = CLUB.R;
       P.burst(0.26, FX.flash, 'clubR', pad, {}).burst(0.26, FX.ring, 'clubR', pad, {}).burst(0.27, FX.ring, 'clubR', pad, { scale: 0.55 });
@@ -378,7 +371,7 @@ export const anim = {
       cock(P, 'R', 0.5 * aim);
       P.rot('head', -4 * aim + 10 * reach, 18 * aim, 0);
       eyes(P, -10 * aim + 14 * reach, 20 * reach, -16 * aim + 18 * reach, 24 * reach, 4 * aim);
-      P.face('gun', drawn ? 'hand' : 'holster').face('eyes', aim > 0.5 ? 'focus' : t > 1.8 && t < 2.2 ? 'smug' : undefined); P.blinkOK = false;
+      P.face('gun', drawn ? 'hand' : 'holster').face('eyes', aim > 0.5 ? 'angry' : t > 1.8 && t < 2.2 ? 'happy' : undefined); P.blinkOK = false;
       if (t > 0.8 && t < 1.45) P.stream(FX.zap, 'gunG', MZ, { rate: 140, dir: [0, 0, 1], spread: 0.03 });
       for (const k of [0.86, 1.08, 1.3]) P.burst(k, FX.zapring, 'gunG', MZ, { n: 3, dir: [0, 0, 1], spread: 0.02 }).burst(k, 'spark', 'gunG', MZ, { n: 1, scale: 0.5 }).burst(k + 0.06, FX.zapring, 'gunG', MZ, { n: 2, dir: [0, 0, 1], spread: 0.02 });
       if (t > 1.45 && t < 1.8) P.stream('steam', 'gunG', MZ, { rate: 10, dir: [0, 1, 0], spread: 0.4, scale: 0.5 });
@@ -388,16 +381,16 @@ export const anim = {
       const k = seg(t, 0, 0.06, E.out) * (1 - seg(t, 0.2, 0.65, E.inout));
       stance(P, { dz: -2.2 * k, dy: -0.9 * k, rx: -16 * k + wob(t, 0.16, 4, 3, 6), rz: wave(t, 15) * 4 * k, f: { R: [0, 1.2 * bump(t, 0.05, 0.25), -0.8 * k], L: [0, 0, -0.6 * k] } });
       P.sq('body', -0.12 * k);
-      for (const S of ['R', 'L']) { const g = S === 'R' ? 1 : -1; P.rot('arm' + S, -30 * k, 0, -g * 34 * k).rot('fore' + S, 30 * k, 0, 0); P.rot('stalk' + S, -14 * k, 0, -g * 18 * k); }
+      for (const S of ['R', 'L']) { const g = S === 'R' ? 1 : -1; P.rot('arm' + S, -30 * k, 0, g * 34 * k).rot('fore' + S, 30 * k, 0, 0); P.rot('stalk' + S, -14 * k, 0, g * 18 * k); }
       P.rot('head', -16 * k, 0, 8 * k).rot('jaw', 30 * k).rot('fan', 26 * k, 0, 0);
-      P.face('eyes', t < 0.4 ? 'x' : undefined); P.blinkOK = false;
+      P.face('eyes', t < 0.4 ? 'hurt' : undefined); P.blinkOK = false;
       P.burst(0.02, 'spark', 'body', [0, 12, 6], { n: 2 }).burst(0.02, 'star', 'head', [0, 24, 2], { n: 3 }).burst(0.03, FX.bub, 'body', [0, 12, 5], { n: 8, speed: 1 });
     } },
     // reels, eyes spinning on their stalks… and topples over sideways, little legs in the air
     faint: { len: 2.2, next: 'down', f(P, t) {
       const dizzy = seg(t, 0, 0.3) * (1 - seg(t, 0.95, 1.05)), fall = seg(t, 0.95, 1.4, E.bounce);
       stance(P, { dy: -1.2 * dizzy, rz: wave(t, 1.6) * 8 * dizzy, ry: wave(t, 1.1) * 14 * dizzy, rx: 6 * dizzy });
-      for (const S of ['R', 'L']) { const g = S === 'R' ? 1 : -1; P.rot('arm' + S, 30 * dizzy, 0, -g * 10 * dizzy).rot('fore' + S, 20 * dizzy, 0, 0); P.rot('stalk' + S, 0, wave(t, 2.2, g) * 30 * dizzy, -g * 18 * dizzy); }
+      for (const S of ['R', 'L']) { const g = S === 'R' ? 1 : -1; P.rot('arm' + S, 30 * dizzy, 0, g * 10 * dizzy).rot('fore' + S, 20 * dizzy, 0, 0); P.rot('stalk' + S, 0, wave(t, 2.2, g) * 30 * dizzy, g * 18 * dizzy); }
       if (fall > 0) knockedOut(P, fall, t);
       P.face('eyes', 'swirl'); P.blinkOK = false; P.lookW = 0;
       P.burst(0.4, 'star', 'head', [0, 27, 0], { n: 5 }).burst(1.4, 'dust', 'root', [-8, 1, 0], { n: 10, spread: 1, speed: 1.2 });
@@ -423,7 +416,7 @@ export const anim = {
       P.rot('pleoR', 50 * flap, 0, 0).rot('pleoL', 50 * flap, 0, 0).rot('fan', 26 * flap + 20 * hang, 0, 0).rot('tail1', 10 * hang, 0, 0);
       P.rot('head', -14 * fist, 0, 0).rot('jaw', 24 * fist);
       eyes(P, 0, -12 * fist, 0, -12 * fist, 10 * fist);
-      P.face('eyes', fist > 0.3 ? 'smug' : undefined); P.blinkOK = false;
+      P.face('eyes', fist > 0.3 ? 'happy' : undefined); P.blinkOK = false;
       if (t > 0.36 && t < 0.98) P.stream(FX.bub, 'tail2', [0, 5, -11], { rate: 30, dir: [0, -1, -0.5], speed: 0.8, spread: 0.6 });
       P.burst(1.2, 'dust', 'root', [0, 0.5, 0], { n: 10, spread: 1, speed: 1.2 }).burst(1.7, 'spark', 'body', [0, 20, 9], { n: 2 }).burst(1.7, FX.flash, 'body', [0, 20, 9], { scale: 0.4 });
       P.burst(0.5, 'sparkle', 'clubR', CLUB.R, { n: 8, speed: 1.2 });
@@ -433,7 +426,7 @@ export const anim = {
       const br = Math.sin((t / 3.2) * Math.PI * 2);
       stance(P, { dy: -2.6 + br * 0.25, dz: -0.6, rx: 14 + br * 2, f: { R: [0.4, 0, 1.4], L: [-0.4, 0, 1.4] } });
       P.sq('body', -0.04 + br * 0.03);
-      for (const S of ['R', 'L']) { const g = S === 'R' ? 1 : -1; P.rot('arm' + S, 34, g * 14, -g * 4).rot('fore' + S, 24, 0, 0).rot('club' + S, 10, 0, 0); P.rot('stalk' + S, 14 + br * 3, 0, -g * (52 + br * 4)); P.rot('scale' + S, 0, 0, g * 20); P.rot('brow' + S, 16, 0, 0); }
+      for (const S of ['R', 'L']) { const g = S === 'R' ? 1 : -1; P.rot('arm' + S, 34, g * 14, -g * 4).rot('fore' + S, 24, 0, 0).rot('club' + S, 10, 0, 0); P.rot('stalk' + S, 28 + br * 3, 0, g * (26 + br * 3)); P.rot('scale' + S, 0, 0, g * 20); P.rot('brow' + S, 16, 0, 0); }
       P.rot('head', 16 + br * 3, 0, 4).rot('jaw', 6 + Math.max(0, br) * 4).rot('fan', -20, 0, 0).rot('tail1', 14, 0, 0);
       P.face('eyes', 'closed'); P.blinkOK = false; P.lookW = 0; P.breathW = 0;
       P.burst(0.4, 'z', 'head', [3, 24, 4], {}).burst(1.6, 'z', 'head', [3, 24, 4], {});
@@ -451,10 +444,10 @@ export const anim = {
         P.rot('arm' + S, -30 * k + 16 * down, g * (14 - tom * 10) * k, 0).rot('fore' + S, 40 * k + 30 * down, 0, 0);
         P.burst(h, 'note', 'club' + S, CLUB[S], { n: 1, scale: 0.7, speed: 0.6 });
       });
-      for (const S of ['R', 'L']) { const g = S === 'R' ? 1 : -1; P.rot('arm' + S, -60 * crash, -g * 20 * crash, -g * 50 * crash).rot('fore' + S, 30 * crash, 0, 0); }
+      for (const S of ['R', 'L']) { flex(P, S, crash); P.rot('arm' + S, -20 * crash, 0, 0).rot('club' + S, -20 * crash, 0, 0); }
       const nod = Math.abs(wave(t, 4.2)) * seg(t, 0.15, 0.3) * (1 - seg(t, 1.25, 1.35));
       P.rot('head', 10 * nod - 18 * crash, 0, 0).rot('jaw', 8 * nod + 30 * crash);
-      P.face('eyes', crash > 0.3 ? 'wide' : t > 0.15 && t < 1.25 ? 'focus' : undefined); P.blinkOK = false;
+      P.face('eyes', crash > 0.3 ? 'open' : t > 0.15 && t < 1.25 ? 'angry' : undefined); P.blinkOK = false;
       P.burst(1.34, 'spark', 'body', [0, 26, 4], { n: 3 }).burst(1.34, 'note', 'head', [0, 27, 2], { n: 4, speed: 1.4 }).burst(1.34, FX.ring, 'head', [0, 24, 4], { scale: 0.6 });
     } },
     // fidget: dips its head and whips the hair back out of its eyes, then a cocky shake
@@ -462,9 +455,9 @@ export const anim = {
       const dip = seg(t, 0, 0.25, E.inout) * (1 - seg(t, 0.25, 0.36, E.in3)), whip = seg(t, 0.26, 0.4, E.out) * (1 - seg(t, 0.8, 1.2, E.inout));
       stance(P, { dy: -0.8 - 0.6 * dip, rx: 16 * dip - 10 * whip });
       P.rot('head', 30 * dip - 34 * whip, 0, 0).rot('head', 0, wave(t, 5) * 10 * seg(t, 0.85, 0.95) * (1 - seg(t, 1.1, 1.3)), 0);
-      for (const S of ['R', 'L']) { const g = S === 'R' ? 1 : -1; P.rot('arm' + S, 8 * dip - 12 * whip, 0, -g * 10 * whip); P.rot('stalk' + S, 0, 0, -g * 14 * whip); }
+      for (const S of ['R', 'L']) { const g = S === 'R' ? 1 : -1; P.rot('arm' + S, 8 * dip - 12 * whip, 0, g * 10 * whip); P.rot('stalk' + S, 0, 0, g * 14 * whip); }
       P.rot('jaw', 14 * whip);
-      P.face('eyes', whip > 0.4 ? 'smug' : undefined); P.blinkOK = false;
+      P.face('eyes', whip > 0.4 ? 'happy' : undefined); P.blinkOK = false;
       P.burst(0.36, FX.bub, 'head', [0, 22, -4], { n: 6, dir: [0, 0.5, -1], speed: 1 });
     } },
     // fidget: shadowboxing — jab, jab, cross at nothing in particular
@@ -473,7 +466,7 @@ export const anim = {
       stance(P, { dy: -0.9, ry: 10 * (j1 + j2) - 20 * cr, dz: 0.6 * (j1 + j2) + 1.2 * cr, rx: 6 });
       punch(P, 'L', 0.75 * (j1 + j2), -8); punch(P, 'R', cr, 12);
       P.rot('head', 0, 6 * (j1 + j2) - 10 * cr, 0);
-      P.face('eyes', 'focus'); P.blinkOK = false;
+      P.face('eyes', 'angry'); P.blinkOK = false;
       P.burst(0.21, FX.bub, 'clubL', CLUB.L, { n: 4, speed: 0.8 }).burst(0.43, FX.bub, 'clubL', CLUB.L, { n: 4, speed: 0.8 }).burst(0.68, FX.bub, 'clubR', CLUB.R, { n: 8, speed: 1 }).burst(0.68, FX.ring, 'clubR', CLUB.R, { scale: 0.5 });
     } },
   },
@@ -483,8 +476,8 @@ function knockedOut(P, k, t = 0) {
   P.rot('root', 0, 0, 84 * k).pos('root', -7.6 * k, 4.6 * k, 0);
   for (const [S, g] of [['R', 1], ['L', -1]]) {
     P.rot('thigh' + S, (-40 + wave(t, 0.8, g) * 8) * k, 0, -g * 10 * k).rot('shin' + S, 50 * k, 0, 0);
-    P.rot('arm' + S, 40 * k, 0, -g * 30 * k).rot('fore' + S, 50 * k, 0, 0);
-    P.rot('stalk' + S, 30 * k, 0, (-g * 30 + wave(t, 0.6, g) * 6) * k);
+    P.rot('arm' + S, 40 * k, 0, g * 30 * k).rot('fore' + S, 50 * k, 0, 0);
+    P.rot('stalk' + S, 30 * k, 0, (g * 30 + wave(t, 0.6, g) * 6) * k);
   }
   P.rot('head', 0, 0, 10 * k).rot('jaw', 26 * k).rot('fan', -30 * k, 0, 0).rot('tail1', 0, 0, -10 * k);
 }

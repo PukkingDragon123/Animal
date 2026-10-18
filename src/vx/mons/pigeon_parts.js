@@ -1,13 +1,16 @@
 // Shared parts for the Guns N' Roses street-pigeon line: Pidgun ♂ (pidgun.js) and ♀
 // (pidrose.js) → Jungeon ♂ / ♀ (jungeon.js, jungeon_rose.js) → Paradove (paradove.js).
-//  · plumage painted as one lit form across the stepped boxes (shingled feathers, clean bands),
-//    the iridescent green-to-violet neck, the slate wing with two black bars and dark primaries,
-//    the banded tail, coral legs, the dark beak with its white cere,
-//  · sharp orange-red pigeon eyes (never cute: lids cut across the iris, dot pupils),
+//  · plumage painted as one lit form across the stepped boxes (shingled feathers, clean bands), in two
+//    colour morphs — the classic blue-bar (slate, black wing bars, green-to-violet neck) and ash-red
+//    (rosy cream, wine-red bars, a pink-violet neck) — with the banded tail, coral legs, the dark bill
+//    and its white cere,
+//  · kawaii eyes in the recent-generation Pokémon style (big dark accent-tinted eyes, a catchlight and a
+//    glint) with the full expression set: lid-line glare, ^ ^, soft closed curve, > <, swirls, X,
 //  · props: the antique six-shooter (nickel, engraved, ivory grips with a rose inlay) and the
-//    long-stemmed rose; bandana prints, leather and chrome studs, chain links,
+//    long-stemmed rose,
 //  · particles: pigeon feathers, bread crumbs, rose petals, muzzle flash, gun smoke,
-//  · motion: planted feet, the head-bob (thrust and hold) and the strut.
+//  · motion: planted feet, the head-bob (thrust and hold) and the strut,
+//  · gear attach points (def.attach) for the buyable accessories.
 import { defineFx } from '../fx.js';
 import { E, seg, bump, wave } from '../anim.js';
 import { poly, dith, shift, mix, h2 } from './kit.js';
@@ -23,14 +26,14 @@ export const mx = (a, b, t) => { const key = a + b + t; let v = memoM.get(key); 
 // ---------------------------------------------------------------- colours
 export const C = {
   ink: '#1a1626',
-  // feral-pigeon slate, light → dark
+  // the classic blue-bar feral pigeon, light → dark
   slate: ['#e2e6ee', '#c0c6d5', '#a0a8bd', '#838ba4', '#666d88'],
   belly: ['#cdd2de', '#adb4c6', '#9097ae', '#757c96', '#5a607a'],
   pale: ['#f6f7fa', '#e0e3ea', '#c2c7d4', '#9ea4b8', '#7c8298'],
   covert: ['#eef1f6', '#d6dbe5', '#b9c0cf', '#9aa2b7', '#7d849b'],
   bar: ['#4a4c60', '#323446', '#22232f', '#16161f'],
   prim: ['#a0a6bc', '#80869f', '#646a84', '#4b506a', '#363a52'],
-  head: ['#b0b7cc', '#9097b0', '#767d98', '#5f6580', '#4a4f68'],
+  head: ['#d2d8e5', '#b2b9cc', '#959db4', '#7b839c', '#626982'],
   // the neck's sheen, each [lit, base, shade]: green → teal → violet → magenta
   irG: ['#a8eac4', '#56b88e', '#357a6c'],
   irT: ['#9adcdc', '#3fa2aa', '#2a6878'],
@@ -39,10 +42,7 @@ export const C = {
   leg: ['#ffc0b0', '#f6828a', '#d85466', '#a43450', '#6c2034'],
   claw: '#2a2028',
   beak: ['#8e8898', '#605a6c', '#433e4e', '#2c2834', '#1c1922'],
-  cere: ['#ffffff', '#f4f0ec', '#dcd4d4', '#b6acb2'],
-  iris: { rim: '#a8221a', out: '#f04a1e', mid: '#ff7a24', core: '#ffbe46', pupil: '#120608' },
-  red: ['#ff7a68', '#ec3440', '#bc1c32', '#7e1026', '#4c0a1c'],                 // bandana
-  leather: ['#7a7690', '#4c485c', '#322e3e', '#211e2a', '#13111a'],
+  cere: ['#f6f0f0', '#e2d8da', '#c8bcc2', '#a69aa4'],
   chrome: ['#ffffff', '#dfe6f4', '#aab4d0', '#5c6488', '#7c86aa', '#9aa4c4'],
   nickel: ['#ffffff', '#e6e9f0', '#bcc1cf', '#7e8498', '#565c72', '#9aa0b4'],
   blued: ['#a8b4d8', '#6a789e', '#465274', '#2c3450', '#1a1f34'],
@@ -50,6 +50,20 @@ export const C = {
   ivory: ['#fffcf2', '#f4ead6', '#dccdae', '#b8a684', '#8a7658'],
   rose: ['#ff8a92', '#ff4054', '#dc1634', '#a00c28', '#62061c', '#3a0412'],
   leaf: ['#b4e67a', '#6cbc4c', '#3e8c3a', '#24602e', '#14401e'],
+};
+// colour morphs: everything a painter needs for one plumage
+export const MORPH = {
+  blue: { slate: C.slate, belly: C.belly, pale: C.pale, covert: C.covert, bar: C.bar, prim: C.prim, head: C.head, ir: [C.irG, C.irT, C.irV, C.irM] },
+  ash: {
+    slate: ['#f4eaea', '#dccacc', '#c2aab0', '#a48c94', '#866e7a'],
+    belly: ['#e8dadc', '#cfbbc0', '#b49ca4', '#98808c', '#7a6472'],
+    pale: ['#fffafa', '#f4e8e8', '#e0cfd2', '#c4adb4', '#a48e98'],
+    covert: ['#fff6f2', '#f0e0dc', '#dcc4c2', '#c2a6a8', '#a48a90'],
+    bar: ['#a84a54', '#86303e', '#64202e', '#44141e'],
+    prim: ['#cab2b0', '#a89090', '#8a7276', '#6c585e', '#4e4048'],
+    head: ['#ecd8da', '#d2b8bc', '#b6989e', '#987c86', '#7a626e'],
+    ir: [['#ffd0ea', '#e898c8', '#b0689a'], ['#f4bce6', '#cc80c4', '#92589a'], ['#dcb6f4', '#a476d0', '#6e4e9a'], ['#c8e2c8', '#8cb898', '#5e8670']],
+  },
 };
 
 // ---------------------------------------------------------------- painting core
@@ -136,8 +150,8 @@ export function featherCol(cols, l, A, B, S = 8, RH = 5, face = 'south') {
   return cols[k];
 }
 // iridescent sheen: t 0 → 1 runs green → teal → violet → magenta, dithered where hues meet
-export function sheen(t, l, x, y) {
-  const H = [C.irG, C.irT, C.irV, C.irM], s = clamp(t) * 3, i = Math.min(2, Math.floor(s)), f = s - i;
+export function sheen(t, l, x, y, H = MORPH.blue.ir) {
+  const s = clamp(t) * 3, i = Math.min(2, Math.floor(s)), f = s - i;
   const k = l > 0.55 ? 0 : l > -0.15 ? 1 : 2;
   return dith(H[i][k], H[i + 1][k], clamp((f - 0.35) / 0.3), x, y);
 }
@@ -159,11 +173,12 @@ export function neckP(o) {
     const t = (o.yTop - q[1]) / (o.yTop - o.yBot);
     if (t < -0.05) return featherCol(o.cols || C.head, l, A, B, 6, 4, face);
     if (t > 1.15) return featherCol(o.below || C.slate, l, A, B, 8, 5, face);
-    if (face === 'down') return C.irV[2];
+    const IR = o.ir || MORPH.blue.ir;
+    if (face === 'down') return IR[2][2];
     // clean bands of sheen (green at the nape → violet at the crop), brightest where the neck turns to
     // the side; seen square-on the slate shows through. Only the feather rims break the bands.
     const side = Math.abs(n[0]) > 0.42 || face === 'east' || face === 'west';
-    const lk = l > 0.55 ? 0 : l > -0.1 ? 1 : 2, H = [C.irG, C.irT, C.irV, C.irM], hi = Math.min(3, Math.floor(clamp(t) * 3.2));
+    const lk = l > 0.55 ? 0 : l > -0.1 ? 1 : 2, H = IR, hi = Math.min(3, Math.floor(clamp((t - 0.12) * 1.9 + Math.abs(n[0]) * 0.35) * 3.4));
     let col = H[hi][lk];
     if (!side) col = mx(col, (o.cols || C.head)[lk + 1], 0.45);
     if (shingle(A, B, 7, 4) === 1) col = mx(col, H[hi][2], 0.6);
@@ -180,7 +195,7 @@ const dot3 = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 //      kind: 'arm' (scapulars, light coverts, two black bars) | 'hand' (long dark primaries split at the tip),
 //      sleeve(along, across, face) → a colour (clothes) }
 export function wingSegP(o) {
-  const cov = o.covert || C.covert, pr = o.prim || C.prim, sl = o.slate || C.slate;
+  const cov = o.covert || C.covert, pr = o.prim || C.prim, sl = o.slate || C.slate, BAR = o.bar || C.bar;
   const b1 = o.bar1 ?? 0.5, b2 = o.bar2 ?? 0.72, bw = o.barW ?? 0.1;
   return (p, w, h, face, c) => {
     const fl = faceLit(face), fk = fl > 0.6 ? 0 : fl > 0.15 ? 1 : fl > -0.25 ? 2 : 3;
@@ -202,8 +217,8 @@ export function wingSegP(o) {
       } else {
         const t = along + across * 0.06;
         if (across < 0.16 || along < 0.1) col = featherCol(sl, 0.75 - k * 0.38, A, B, 6, 4);
-        else if (t > b1 && t < b1 + bw) col = C.bar[Math.min(3, (k > 1 ? 1 : 0) + (A % 4 === 0 ? 1 : 0))];
-        else if (t > b2 && t < b2 + bw) col = C.bar[Math.min(3, (k > 1 ? 1 : 0) + (A % 4 === 0 ? 1 : 0))];
+        else if (t > b1 && t < b1 + bw) col = BAR[Math.min(3, (k > 1 ? 1 : 0) + (A % 4 === 0 ? 1 : 0))];
+        else if (t > b2 && t < b2 + bw) col = BAR[Math.min(3, (k > 1 ? 1 : 0) + (A % 4 === 0 ? 1 : 0))];
         else if (t > b2 + bw) col = featherCol(sl, 0.5 - k * 0.38, A, B, 7, 5);
         else col = featherCol(cov, 0.8 - k * 0.38, A, B, 6, 4);
         if (c.s && face !== 'up' && face !== 'down' && along > 0.97) col = cov[Math.min(4, k + 2)];
@@ -238,17 +253,17 @@ export function tipsP(o = {}) {
 // Returns { arm, hand, wrist } cube lists for two bones
 export function foldedWing(s, sh0, o = {}) {
   const [x, y, z] = sh0, T = o.thick ?? 1.3, ax = s < 0 ? x - T : x, armLen = o.arm ?? 8.6, chord = o.chord ?? 5.8, handLen = o.hand ?? 9.4, hc = o.hchord ?? 4.4;
-  const mid = s < 0 ? x - T / 2 : x + T / 2, y0 = y + 0.6 - chord, zb = z + 0.4 - armLen, zh = zb - handLen;
-  const arm = wingSegP({ base: [x, y + 0.6, z + 0.4], dir: [0, 0, -1], len: armLen, cdir: [0, -1, 0], chord, kind: 'arm', sleeve: o.sleeve });
-  const hand = wingSegP({ base: [x, y - 0.4, zb], dir: [0, 0, -1], len: handLen, cdir: [0, -1, 0], chord: hc, kind: 'hand' });
+  const M = o.M || MORPH.blue, mid = s < 0 ? x - T / 2 : x + T / 2, y0 = y + 0.6 - chord, zb = z + 0.4 - armLen, zh = zb - handLen;
+  const arm = wingSegP({ ...M, base: [x, y + 0.6, z + 0.4], dir: [0, 0, -1], len: armLen, cdir: [0, -1, 0], chord, kind: 'arm', sleeve: o.sleeve });
+  const hand = wingSegP({ ...M, base: [x, y - 0.4, zb], dir: [0, 0, -1], len: handLen, cdir: [0, -1, 0], chord: hc, kind: 'hand' });
   return {
     arm: [
       P([ax, y0, zb], [T, chord, armLen], arm),
-      P([mid, y0 - 1.5, zb + 0.4], [0, 2.2, armLen - 1.2], tipsP({ n: 5, cols: C.slate }), { plane: 'x' }),
+      P([mid, y0 - 1.5, zb + 0.4], [0, 2.2, armLen - 1.2], tipsP({ n: 5, cols: M.slate }), { plane: 'x' }),
     ],
     hand: [
       P([s < 0 ? x - T * 0.85 : x + T * 0.15, y - 0.4 - hc, zh], [T * 0.7, hc, handLen], hand),
-      P([mid, y - 0.4 - hc + 0.6, zh - 2.4], [0, hc - 0.8, 3.0], tipsP({ n: 3, long: true, cols: C.prim, dir: 'back' }), { plane: 'x' }),
+      P([mid, y - 0.4 - hc + 0.6, zh - 2.4], [0, hc - 0.8, 3.0], tipsP({ n: 3, long: true, cols: M.prim, dir: 'back' }), { plane: 'x' }),
     ],
     wrist: [s < 0 ? x - 0.7 : x + 0.7, y - 1.2, zb + 0.4],
   };
@@ -271,7 +286,7 @@ export function footCubes(x, z, k = 1) {
 // the tail: long feathers with a black terminal band and a pale tip edge. The tail box runs along z
 // (back end at z0). fan: on a 'y' plane the tip is rounded into a fan
 export function tailP(o = {}) {
-  const cols = o.cols || C.slate;
+  const cols = o.cols || C.slate, BAR = o.bar || C.bar;
   return (p, w, h, face, c) => {
     for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) {
       const q = at(c, face, i, j, w, h), z0 = c.o[2], along = (q[2] - z0) / c.s[2];   // 0 = tip, 1 = root
@@ -281,7 +296,7 @@ export function tailP(o = {}) {
       const fx = Math.floor(q[0] * 3 + 100);
       if ((face === 'up' || face === 'plane' || face === 'down') && fx % 4 === 0) col = cols[Math.min(4, k + 1)];   // feather edges
       if ((face === 'up' || face === 'plane') && fx % 4 === 1) col = cols[Math.max(0, k - 1)];
-      if (along < 0.26 && along > 0.08) col = C.bar[Math.min(3, (face === 'down' ? 2 : 1) + (fx % 4 === 0 ? 1 : 0))];
+      if (along < 0.26 && along > 0.08) col = BAR[Math.min(3, (face === 'down' ? 2 : 1) + (fx % 4 === 0 ? 1 : 0))];
       if (along <= 0.08) col = cols[face === 'down' ? 3 : 2];
       if (o.fan && (face === 'up' || face === 'plane' || face === 'down')) {
         const cx = c.o[0] + c.s[0] / 2, rx = c.s[0] / 2, dx = (q[0] - cx) / rx, tip = 0.08 + dx * dx * 0.12;
@@ -336,65 +351,63 @@ export const mouthP = (p, w, h) => { p.rect(0, 0, w, h, '#3a0c18'); p.rect(1, 0,
 export const tongueP = (p, w, h) => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, x === 0 || x === w - 1 ? '#b8405a' : y === 0 ? '#ff9aac' : '#e86a82'); };
 
 // ---------------------------------------------------------------- eyes
-// pigeon eyes sit on the sides of the head, so each eye wraps round the head's front corner: a 14 × 9
-// canvas, columns 0–4 on the side face (0 = back), 5–13 on the front face (13 = toward the bill). A round
-// orange-red iris with an amber core and a black dot pupil (looking forward); the lid cuts straight
-// across the top of the iris for the glare. Never cute: no sparkles, no blush. o.flick: eyeliner (♀)
-export const EYE_W = 14, EYE_H = 9, EYE_SIDE = 5;
-function eyeMask(o) {
-  const cx = o.cx ?? 7.0, cy = o.cy ?? 4.7, rx = o.rx ?? 5.5, ry = o.ry ?? 4.1, M = [];
-  const lid = o.lid || (() => -1), low = o.low || (() => 99);
-  for (let y = 0; y < EYE_H; y++) for (let x = 0; x < EYE_W; x++) {
-    const X = x + 0.5, Y = y + 0.5, d = ((X - cx) / rx) ** 2 + ((Y - cy) / ry) ** 2;
-    M.push(d <= 1 && Y >= lid(X) && Y <= low(X));
-  }
-  return M;
-}
-function eyeDraw(p, o = {}) {
-  const M = eyeMask(o), on = (x, y) => x >= 0 && y >= 0 && x < EYE_W && y < EYE_H && M[y * EYE_W + x];
-  const pcx = o.px ?? 9.4, pcy = o.py ?? 5.0, I = o.iris || C.iris;
-  for (let y = 0; y < EYE_H; y++) for (let x = 0; x < EYE_W; x++) {
-    if (!on(x, y)) continue;
-    const edge = !on(x - 1, y) || !on(x + 1, y) || !on(x, y - 1) || !on(x, y + 1);
-    if (edge) { p.px(x, y, C.ink); continue; }
-    const d = Math.hypot(x + 0.5 - pcx, (y + 0.5 - pcy) * 1.1);
-    p.px(x, y, d < (o.pr ?? 1.15) ? I.pupil : d < 2.1 ? I.core : d < 3.1 ? I.mid : d < 4.3 ? I.out : I.rim);
-  }
-  // the heavy lid: a second ink row under the cut
-  if (o.heavy ?? true) for (let x = 0; x < EYE_W; x++) { let top = -1; for (let y = 0; y < EYE_H; y++) if (on(x, y)) { top = y; break; } if (top >= 0 && top + 1 < EYE_H && on(x, top + 1)) p.px(x, top + 1, C.ink); }
-  if (o.flick) { p.px(1, 2, C.ink); p.px(0, 1, C.ink); p.px(2, 2, C.ink); p.px(1, 1, C.ink); p.px(2, 3, C.ink); }
-}
-export function pigeonEyes(o = {}) {
-  const fl = !!o.flick, I = o.iris;
+// Kawaii eyes in the recent-generation Pokémon style: a big rounded eye with a 1-texel dark outline, filled
+// mostly with a near-black iris tinted by the accent colour, a lighter accent gradient in its lower third, one
+// big white catchlight high on the outer side and a 1-texel glint low on the inner side. Expressions keep the
+// style: a flat dark lid line cutting the top, tilted in (glare / cool / squint), ^ ^ (happy), a soft curve
+// (closed), > < (hurt), swirls or X (faint). Canvas W × H, outer corner at x = 0. o.flick: one tiny lash flick
+export function kawaiiEyes(o = {}) {
+  const W = o.w || 7, H = o.h || 8, ink = o.ink || C.ink;
+  const fill = o.fill || ['#2c1218', '#3c181e'], acc = o.accent || ['#6e2418', '#c4481e', '#ff9a3c'];
+  const inM = (x, y) => { if (x < 0 || y < 0 || x >= W || y >= H) return false; const X = (x + 0.5 - W / 2) / (W / 2), Y = (y + 0.5 - H / 2) / (H / 2); return X * X + Y * Y <= 1.12; };
+  const eye = (lid, flick) => (p) => {
+    const vis = (x, y) => inM(x, y) && (!lid || y + 0.5 >= lid(x + 0.5));
+    let top = H, bot = 0;
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (vis(x, y)) { top = Math.min(top, y); bot = Math.max(bot, y); }
+    const inner = [];
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      if (!vis(x, y)) continue;
+      if (!vis(x - 1, y) || !vis(x + 1, y) || !vis(x, y - 1) || !vis(x, y + 1)) { p.px(x, y, ink); continue; }
+      const t = (y - top - 1) / Math.max(1, bot - top - 2);
+      p.px(x, y, t >= 0.95 ? acc[2] : t >= 0.7 ? acc[1] : t >= 0.5 ? acc[0] : y - top <= 1 ? fill[1] : fill[0]);
+      inner.push([x, y]);
+    }
+    if (lid) for (let x = 0; x < W; x++) { let y0 = -1; for (let y = 0; y < H; y++) if (vis(x, y)) { y0 = y; break; } if (y0 >= 0 && y0 + 1 < H && vis(x, y0 + 1) && x > 0 && x < W - 1) p.px(x, y0 + 1, ink); }
+    // the catchlight: up to 2 × 2 high on the outer side, under any lid; the glint low on the inner side
+    const free = (x, y) => inner.some(([a, b]) => a === x && b === y) && !(lid && y <= lid(x + 0.5) + 1);
+    let cy = -1; for (let y = 0; y < H && cy < 0; y++) if (free(1, y) && free(2, y)) cy = y;
+    if (cy >= 0) { p.px(1, cy, '#ffffff'); p.px(2, cy, '#ffffff'); if (free(1, cy + 1)) p.px(1, cy + 1, '#ffffff'); if (free(2, cy + 1) && !lid) p.px(2, cy + 1, '#ffffff'); }
+    for (let y = H - 1; y >= 0; y--) if (free(W - 2, y)) { p.px(W - 2, y - 1 >= 0 && free(W - 2, y - 1) ? y - 1 : y, '#ffffff'); break; }
+    if (flick) { p.px(0, Math.max(0, top - 0) , ink); }
+  };
+  const line = (p, pts) => { for (const [x, y] of pts) p.px(x, y, ink); };
+  const c = (W - 1) / 2;
   return {
-    glare: (p) => eyeDraw(p, { lid: (X) => 0.7 + X * 0.3, flick: fl, iris: I }),
-    cool: (p) => eyeDraw(p, { lid: () => 3.2, py: 5.4, flick: fl, iris: I }),
-    squint: (p) => eyeDraw(p, { lid: (X) => 2.4 + X * 0.2, low: () => 7.0, py: 5.2, flick: fl, iris: I }),
-    wide: (p) => eyeDraw(p, { lid: () => 0.4, pr: 0.8, px: 8.8, py: 4.6, heavy: false, flick: fl, iris: I }),
-    sly: (p) => eyeDraw(p, { lid: (X) => 2.0 + X * 0.18, px: 10.0, py: 5.4, flick: true, iris: I }),
-    closed: (p) => { for (let x = 1; x < EYE_W; x++) { const y = Math.round(5.0 - Math.abs(x - 7) * 0.13); p.px(x, y, C.ink); if (x > 1 && x < EYE_W - 1) p.px(x, y - 1, C.ink); } if (fl) { p.px(0, 3, C.ink); p.px(1, 2, C.ink); } },
-    hurt: (p) => { for (let i = 0; i < 4; i++) { p.px(5 + i, 1 + i, C.ink); p.px(6 + i, 1 + i, C.ink); p.px(5 + i, 8 - i, C.ink); p.px(6 + i, 8 - i, C.ink); } p.px(10, 4, C.ink); p.px(11, 4, C.ink); p.px(10, 5, C.ink); },
-    x: (p) => { for (let i = 0; i < 8; i++) { p.px(3 + i, i, C.ink); p.px(4 + i, i, C.ink); p.px(11 - i, i, C.ink); p.px(10 - i, i, C.ink); } },
-    swirl: (p) => { for (let a = 0; a < 14; a += 0.2) { const r = a * 0.31, x = Math.round(7.2 + Math.cos(a) * r * 1.2), y = Math.round(4.5 + Math.sin(a) * r * 0.85); if (r < 4.6) p.px(x, y, C.ink); } },
+    open: eye(null, o.flick),
+    glare: eye((x) => 0.8 + (x / W) * (H * 0.26), o.flick),
+    cool: eye((x) => H * 0.3 + (x / W) * 0.5, o.flick),
+    squint: eye((x) => H * 0.36 + (x / W) * (H * 0.22), false),
+    happy: (p) => { const pts = []; for (let x = 0; x < W; x++) { const u = (x - c) / c, y = Math.round(H * 0.3 + Math.abs(u) ** 1.2 * H * 0.42); pts.push([x, y], [x, y + 1]); } line(p, pts); },
+    closed: (p) => { const pts = []; for (let x = 0; x < W; x++) { const u = (x - c) / c, y = Math.round(H * 0.42 + (1 - u * u) * H * 0.22); pts.push([x, y]); if (x > 0 && x < W - 1) pts.push([x, y + 1]); } line(p, pts); if (o.flick) p.px(0, Math.round(H * 0.42) - 1, ink); },
+    hurt: (p) => { const pts = []; const m = Math.floor(H / 2); for (let i = 0; i <= m; i++) { const x = Math.round(0.5 + (i / m) * (W - 2.5)); pts.push([x, i + 0.0], [x, H - 1 - i]); pts.push([x + 1, i], [x + 1, H - 1 - i]); } line(p, pts.map(([x, y]) => [x, Math.round(y)])); },
+    x: (p) => { const pts = []; for (let i = 0; i < H; i++) { const x = Math.round((i / (H - 1)) * (W - 1)); pts.push([x, i], [W - 1 - x, i]); } line(p, pts); },
+    swirl: (p) => { for (let a = 0; a < 12; a += 0.15) { const r = a * 0.26, x = Math.round(c + Math.cos(a) * r * (W / H) * 1.05), y = Math.round((H - 1) / 2 + Math.sin(a) * r); if (r < H / 2) p.px(x, y, ink); } },
   };
 }
-// one part of the eye canvas on a plane (off 0: the side part, off EYE_SIDE: the front part)
-const eyePart = (fn, off, w) => (p) => fn({ px: (x, y, c) => { if (x - off >= 0 && x - off < w) p.px(x - off, y, c); } });
-// both eyes as expression planes. o: { xs: half-width of the head (its side faces), zf: z of its front face, y: bottom of the eye, def }
+// both eyes as expression planes on the front face: the right eye (−x) at −(x0 + w) … −x0, the left mirrored.
+// o: { x0, y (bottom), z (front face), w, h (units), def }
 export function eyeCubes(EYES, o) {
-  const out = [], H = EYE_H / 3, ws = EYE_SIDE / 3, wf = (EYE_W - EYE_SIDE) / 3;
+  const out = [];
   for (const [k, fn] of Object.entries(EYES)) {
-    const x = { id: 'eye-' + k, hide: k !== o.def }, side = eyePart(fn, 0, EYE_SIDE), front = eyePart(fn, EYE_SIDE, EYE_W - EYE_SIDE);
-    out.push(P([-o.xs - 0.07, o.y, o.zf - ws], [0, H, ws], side, { plane: 'x', ...x }));
-    out.push(P([-o.xs, o.y, o.zf + 0.07], [wf, H, 0], front, { plane: 'z', ...x }));
-    out.push(P([o.xs + 0.07, o.y, o.zf - ws], [0, H, ws], side, { plane: 'x', ...x }));
-    out.push(P([o.xs - wf, o.y, o.zf + 0.07], [wf, H, 0], front, { plane: 'z', mirror: true, ...x }));
+    const x = { id: 'eye-' + k, hide: k !== o.def };
+    out.push(P([-o.x0 - o.w, o.y, o.z + 0.07], [o.w, o.h, 0], fn, { plane: 'z', ...x }));
+    out.push(P([o.x0, o.y, o.z + 0.07], [o.w, o.h, 0], fn, { plane: 'z', mirror: true, ...x }));
   }
   return out;
 }
 export const eyeFaces = (EYES, def) => ({ default: def, states: Object.fromEntries(Object.keys(EYES).map((k) => [k, ['eye-' + k]])) });
 
-// ---------------------------------------------------------------- metal, leather, cloth
+// ---------------------------------------------------------------- metal
 // polished metal: bright sky above a dark horizon band, the ground reflected below; `from`/`to` = the
 // slice of the whole piece this box covers (0 top, 1 bottom) so stacked boxes read as one form
 export function metalP(cols, o = {}) {
@@ -409,64 +422,6 @@ export function metalP(cols, o = {}) {
     }
     if (o.after) o.after(p, w, h, face, c);
   };
-}
-// a domed chrome stud (3 × 3 texels) at x, y
-export function stud(p, x, y, cols = C.chrome) { p.px(x, y, cols[1]); p.px(x + 1, y, '#ffffff'); p.px(x + 2, y, cols[2]); p.px(x, y + 1, cols[2]); p.px(x + 1, y + 1, cols[1]); p.px(x + 2, y + 1, cols[3]); p.px(x, y + 2, cols[3]); p.px(x + 1, y + 2, cols[3]); p.px(x + 2, y + 2, '#2a2e44'); }
-// a small pyramid stud (2 × 2)
-export function stud2(p, x, y) { p.px(x, y, '#ffffff'); p.px(x + 1, y, C.chrome[2]); p.px(x, y + 1, C.chrome[2]); p.px(x + 1, y + 1, C.chrome[3]); }
-// black leather: soft top-lit bands, a broken sheen line near the top, stitched seams; o.studs: a row of studs
-export function leatherP(o = {}) {
-  const L = o.cols || C.leather;
-  return (p, w, h, face) => {
-    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-      const t = h > 1 ? y / (h - 1) : 0.5;
-      let k = face === 'up' ? 1 : face === 'down' ? 4 : t < 0.3 ? 1 : t < 0.75 ? 2 : 3;
-      if (face === 'east' || face === 'north') k = Math.min(4, k + 1);
-      p.px(x, y, L[k]);
-    }
-    if (face === 'up' || face === 'down') return;
-    const gy = Math.min(h - 1, Math.max(1, Math.round(h * 0.18)));
-    for (let x = 0; x < w; x++) if (h2(x >> 2, gy, 9) < 0.6) p.px(x, gy, L[0]);
-    if (o.stitch !== false && h > 4) for (let x = 1; x < w - 1; x += 2) p.px(x, h - 2, L[0]);
-    if (o.studs && h >= 3) for (let x = 1; x + 2 < w; x += o.studs) stud(p, x, Math.max(0, (h >> 1) - 1));
-    if (o.after) o.after(p, w, h, face);
-  };
-}
-// bandana print: an original paisley — teardrops with an eye and a curl — on red, a white rule along
-// the edges; narrow strips just get the rule and a row of dots
-export function bandanaP(o = {}) {
-  const R = o.cols || C.red, ink = o.ink || '#3a0a16', wht = o.white || '#fff4ec';
-  const drop = ['.ww.', 'wwww', 'wiww', 'wwww', '.www', '..ww', '...w'];
-  return (p, w, h, face) => {
-    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-      const t = h > 1 ? y / (h - 1) : 0.5;
-      let k = face === 'up' ? 1 : face === 'down' ? 3 : t < 0.25 ? 1 : t < 0.8 ? 2 : 3;
-      if (face === 'east' || face === 'north') k = Math.min(4, k + 1);
-      p.px(x, y, R[k]);
-    }
-    if (h >= 9 && w >= 9) {
-      for (let gy = 1, r = 0; gy < h - 6; gy += 9, r++) for (let gx = 1 + (r & 1) * 5; gx < w - 3; gx += 10) {
-        drop.forEach((row, dy) => [...row].forEach((ch, dx) => { if (ch === 'w') p.px(gx + dx, gy + dy, wht); else if (ch === 'i') p.px(gx + dx, gy + dy, ink); }));
-        p.px(gx + 6, gy + 1, wht); p.px(gx + 6, gy + 5, wht); p.px(gx - 1, gy + 4, ink);
-      }
-      return;
-    }
-    if (face === 'up' || face === 'down') return;
-    if (o.border !== false && h >= 3) for (let x = 0; x < w; x++) p.px(x, h - 2, x % 4 === 3 ? R[2] : wht);
-    if (h >= 5) for (let x = 2; x < w; x += 5) p.px(x, 1, wht);
-    if (o.rip) for (let x = 0; x < w; x++) { const l = (x * 7) % 5 < 2 ? 1 + ((x * 3) % 2) : 0; for (let y = h - l; y < h; y++) p.px(x, y, 0); }
-  };
-}
-// chain links (chrome) hanging along −y from (x, y, z): a 'flat' link lies in the x–y plane, an upright one in the z–y plane
-export function link(x, y, z, upright, k = 1, tex = metalP(C.chrome)) {
-  const L = 2.2 * k, Wd = 1.5 * k, b = 0.45 * k, a = Wd / 2;
-  return upright ? [
-    P([x - b / 2, y - L, z + a - b], [b, L, b], tex), P([x - b / 2, y - L, z - a], [b, L, b], tex),
-    P([x - b / 2, y - b, z - a + b], [b, b, Wd - 2 * b], tex), P([x - b / 2, y - L, z - a + b], [b, b, Wd - 2 * b], tex),
-  ] : [
-    P([x + a - b, y - L, z - b / 2], [b, L, b], tex), P([x - a, y - L, z - b / 2], [b, L, b], tex),
-    P([x - a + b, y - b, z - b / 2], [Wd - 2 * b, b, b], tex), P([x - a + b, y - L, z - b / 2], [Wd - 2 * b, b, b], tex),
-  ];
 }
 
 // ---------------------------------------------------------------- the six-shooter
@@ -658,34 +613,41 @@ export { E, seg, bump, wave };
 
 // ---------------------------------------------------------------- stage 1: the street pigeon (Pidgun ♂ / ♀)
 // The body is a plump egg pitched nose-up: its boxes are authored as a level egg and each one is tilted
-// about the egg's centre (eggBox), so every bone stays in a level frame. Outfits that must follow the egg
-// go on a bone with the same tilt (eggBone).
+// about the egg's centre (eggBox), so every bone stays in a level frame.
 export const S1 = {
   EC: [0, 9.8, -1.2], R: [6.3, 5.8, 9.8], pitch: -20,
   neck: { pivot: [0, 15.0, 3.0], O: [0, 16.8, 3.0], R: [4.8, 4.0, 4.2], yTop: 20.2, yBot: 13.6 },
-  head: { pivot: [0, 19.6, 3.2], O: [0, 21.9, 3.0], R: [4.4, 3.5, 4.0] },
-  eyes: { xs: 3.9, zf: 6.8, y: 21.0 },
+  head: { pivot: [0, 19.6, 3.2], O: [0, 22.4, 3.0], R: [4.4, 4.0, 4.0] },
+  eyes: { x0: 1.3, y: 21.4, z: 6.8, w: 7 / 3, h: 8 / 3 },
   mouth: [0, 20.4, 9.7], shoulder: [6.0, 14.6, 3.6],
 };
 export const eggBox = (o, s, tex, x = {}) => P(o, s, tex, { pivot: S1.EC, rot: [S1.pitch, 0, 0], ...x });
 export const eggBone = (name, cubes) => ({ name, parent: 'body', pivot: S1.EC, rot: [S1.pitch, 0, 0], cubes });
-// the bare pigeon: a pale rump, a darker belly, the neck's violet sheen spilling onto the top of the breast
-export function pigeonBody(q, face, n, l, A, B) {
+// the bare pigeon: a pale rump, a darker belly, the neck's sheen spilling onto the top of the breast
+export const pigeonBody = (M = MORPH.blue) => (q, face, n, l, A, B) => {
   const [, y, z] = q, E0 = S1.EC;
-  if (z < E0[2] - 6.6 && y > E0[1] - 0.8) return featherCol(C.pale, l, A, B, 8, 5, face);
-  if (y < E0[1] - 2.8) return featherCol(C.belly, l, A, B, 8, 5, face);
+  if (z < E0[2] - 6.6 && y > E0[1] - 0.8) return featherCol(M.pale, l, A, B, 8, 5, face);
+  if (y < E0[1] - 2.8) return featherCol(M.belly, l, A, B, 8, 5, face);
   const br = (y - E0[1] - 2.4) / 1.8 + (z - E0[2] - 4) / 6;
-  if (br > 0 && face !== 'down') { const g = featherCol(C.slate, l, A, B, 8, 5, face), v = sheen(0.7, l, A, B); return br > 0.9 ? mx(v, g, 0.35) : br > 0.4 ? mx(v, g, 0.6) : mx(v, g, 0.8); }
+  if (br > 0 && face !== 'down') { const g = featherCol(M.slate, l, A, B, 8, 5, face), v = sheen(0.7, l, A, B, M.ir); return br > 0.9 ? mx(v, g, 0.35) : br > 0.4 ? mx(v, g, 0.6) : mx(v, g, 0.8); }
   return undefined;
-}
+};
+// gear attach points for the buyable accessories (model units; neck and back ride the bones they sit on)
+export const ATTACH_S1 = {
+  head: { bone: 'head', at: [0, 25.8, 2.8], size: 7.8 },
+  face: { bone: 'head', at: [0, 22.8, 6.9], size: 7.8 },
+  neck: { bone: 'neck', at: [0, 17.0, 6.6], size: 8.8 },
+  back: { bone: 'body', at: [0, 14.6, -4.6], size: 12.6 },
+};
 export function stage1(o = {}) {
-  const region = o.bodyRegion ? (...a) => { const r = o.bodyRegion(...a); return r !== undefined ? r : pigeonBody(...a); } : pigeonBody;
-  const bodyP = plumage({ O: S1.EC, R: S1.R, cols: o.slate || C.slate, region });
-  const neckPt = neckP({ ...S1.neck, region: o.neckRegion });
-  const headPt = plumage({ O: S1.head.O, R: S1.head.R, cols: o.headCols || C.head, S: 6, RH: 4, region: o.headRegion });
-  const EYES = o.eyes || pigeonEyes();
+  const M = o.M || MORPH.blue, base = pigeonBody(M);
+  const region = o.bodyRegion ? (...a) => { const r = o.bodyRegion(...a); return r !== undefined ? r : base(...a); } : base;
+  const bodyP = plumage({ O: S1.EC, R: S1.R, cols: M.slate, region });
+  const neckPt = neckP({ ...S1.neck, cols: M.head, below: M.slate, ir: M.ir, region: o.neckRegion });
+  const headPt = plumage({ O: S1.head.O, R: S1.head.R, cols: M.head, S: 6, RH: 4, region: o.headRegion });
+  const EYES = o.eyes || kawaiiEyes();
   const [sx, sy, sz] = S1.shoulder;
-  const leg = (s) => [P([s * 2.7 - 0.55, 0.3, 0.65], [1.1, 4.0, 1.1], legP), P([s * 2.7 - 1.45, 3.1, -0.25], [2.9, 2.3, 2.9], thighP(o.belly || C.belly))];
+  const leg = (s) => [P([s * 2.7 - 0.55, 0.3, 0.65], [1.1, 4.0, 1.1], legP), P([s * 2.7 - 1.45, 3.1, -0.25], [2.9, 2.3, 2.9], thighP(M.belly))];
   const bones = [
     { name: 'root', pivot: [0, 0, 0], cubes: [] },
     { name: 'footR', parent: 'root', pivot: [-2.7, 0, 1.2], cubes: footCubes(-2.7, 1.2) },
@@ -697,13 +659,13 @@ export function stage1(o = {}) {
       eggBox([-6.3, 5.6, -7.6], [12.6, 8.4, 12.8], bodyP),
       eggBox([-4.7, 4.0, -6.6], [9.4, 11.6, 10.8], bodyP),
       eggBox([-5.6, 4.8, -5.0], [11.2, 10.0, 7.6], bodyP),
-      eggBox([-3.8, 6.6, 8.4], [7.6, 6.4, 1.4], bodyP),
+      eggBox([-3.4, 7.2, 8.4], [6.8, 5.2, 0.9], bodyP),
       eggBox([-3.4, 7.0, -12.4], [6.8, 5.6, 1.6], bodyP),
       ...(o.bodyExtra || []),
     ] },
     { name: 'tail', parent: 'body', pivot: [0, 7.8, -10.2], rot: [-12, 0, 0], cubes: [
-      P([-2.8, 7.3, -19.6], [5.6, 1.0, 9.4], tailP({ fan: true })),
-      P([-2.2, 6.9, -15.6], [4.4, 0.5, 5.2], tailP({ cols: C.belly })),
+      P([-2.8, 7.3, -19.6], [5.6, 1.0, 9.4], tailP({ fan: true, cols: M.slate, bar: M.bar })),
+      P([-2.2, 6.9, -15.6], [4.4, 0.5, 5.2], tailP({ cols: M.belly, bar: M.bar })),
     ] },
     { name: 'neck', parent: 'body', pivot: S1.neck.pivot, cubes: [
       P([-4.4, 12.8, -0.6], [8.8, 5.0, 7.2], neckPt),
@@ -711,13 +673,13 @@ export function stage1(o = {}) {
       ...(o.neckExtra || []),
     ] },
     { name: 'head', parent: 'neck', pivot: S1.head.pivot, cubes: [
-      P([-3.9, 19.0, 0.0], [7.8, 5.4, 6.8], headPt),
-      P([-3.3, 19.6, -0.5], [6.6, 5.4, 6.7], headPt),
+      P([-3.9, 19.0, 0.0], [7.8, 5.8, 6.8], headPt),
+      P([-3.2, 19.4, -0.6], [6.4, 6.4, 6.9], headPt),
       P([-4.2, 19.1, 0.6], [8.4, 1.9, 5.6], headPt),
-      P([-0.95, 21.1, 6.7], [1.9, 1.0, 1.6], cereP),
+      P([-0.8, 21.1, 6.7], [1.6, 0.9, 1.5], cereP),
       P([-0.7, 20.4, 6.8], [1.4, 0.95, 2.9], beakP(6.8, 9.7)),
       P([-0.55, 20.05, 9.3], [1.1, 0.85, 0.85], beakP(6.8, 9.7), { pivot: [0, 20.8, 9.6], rot: [18, 0, 0] }),
-      ...eyeCubes(EYES, { ...S1.eyes, def: o.eyeDef || 'glare' }),
+      ...eyeCubes(EYES, { ...S1.eyes, def: o.eyeDef || 'open' }),
       ...(o.headExtra || []),
     ] },
     { name: 'jaw', parent: 'head', pivot: [0, 20.4, 6.9], cubes: [
@@ -727,7 +689,7 @@ export function stage1(o = {}) {
   ];
   for (const s of [-1, 1]) {
     const nm = s < 0 ? 'R' : 'L'; if (o['wing' + nm] === false) continue;
-    const W = foldedWing(s, [s * sx, sy, sz], o.wingOpts || {});
+    const W = foldedWing(s, [s * sx, sy, sz], { M, ...(o.wingOpts || {}) });
     bones.push({ name: 'wing' + nm, parent: 'body', pivot: [s * sx, sy, sz], rot: [-14, 0, s * 3], cubes: W.arm });
     bones.push({ name: 'hand' + nm, parent: 'wing' + nm, pivot: W.wrist, cubes: W.hand });
   }

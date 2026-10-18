@@ -16,7 +16,7 @@ export const PAL = {
   trash: {
     c: '#928b8c', hi: '#bdb5b2', lo: '#6b6367', deep: '#463f47', tip: '#d8d0cc',
     cream: '#ece6db', creamHi: '#fffbf3', creamLo: '#bdb3a8',
-    mask: '#28232e', maskHi: '#433d4b', maskLo: '#17131b',
+    mask: '#2f2934', maskHi: '#48414f', maskLo: '#1d1922',
     belly: '#c2b8b2', bellyHi: '#ddd4cc', bellyLo: '#9a8f8c',
     paw: '#4a434c', pawHi: '#6c646e', pawLo: '#2e2930',
     ringD: '#2e282e', ringL: '#c2bab6', bolt: '#e8c870',
@@ -160,11 +160,12 @@ export const bangsP = (F, o = {}) => (p, w, h) => {
 // brows arching over it, the dark forehead stripe, pale cheeks. o: { ex, ey (eye centre: texels
 // from the face centre / from the top), mask: 'domino' | 'bar' (a censor bar), scar }
 export function skullP(F, o = {}) {
-  const fur = furP(F, { sx: 8, sy: 6 });
+  const furSide = furP(F, { sx: 8, sy: 6 }), furFront = furP(F, { sx: 99, sy: 99 });
+  const fur = (p, w, h, face, cube) => (face === 'south' ? furFront : furSide)(p, w, h, face, cube);
   const ex = o.ex ?? 7.5, ey = o.ey ?? 9.5, bar = o.mask === 'bar';
   const mh = o.mh ?? 4.6;
   const mtop = (dx) => (bar ? ey - mh : dx < 1.5 ? ey - mh + 2.4 : ey - mh + Math.max(0, dx - ex - 2.5) * 0.5);
-  const mbot = (dx) => (bar ? ey + mh - 0.6 : dx < 1.2 ? ey + mh + 1 : ey + mh - 0.4 + Math.max(0, dx - ex) * 0.6);
+  const mbot = (dx) => (bar ? ey + mh - 0.6 : dx < 1.2 ? ey + mh + 1 : ey + mh - 0.4 + Math.max(0, dx - ex) * (o.droop ?? 0.3));
   return (p, w, h, face, cube) => {
     fur(p, w, h, face, cube);
     if (face === 'south') {
@@ -191,7 +192,7 @@ export function skullP(F, o = {}) {
       for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
         const f = face === 'east' ? x : w - 1 - x, lim = w * (bar ? 0.3 : 0.4);
         if (f > lim) continue;
-        const t = mtop(edge) + f * 0.3, b = mbot(edge) - f * 0.55;
+        const t = mtop(edge) + f * 0.25, b = Math.min(mbot(edge), mtop(edge) + 6) - f * 0.6;
         if (t > b) continue;
         if (y >= t && y <= b) p.px(x, y, F.mask);
         else if (y > b && y < h - 1) p.px(x, y, ramp([F.cream, F.creamLo], (y - b) / Math.max(1, h - b), x, y));
@@ -235,51 +236,62 @@ export const earP = (F, part) => (p, w, h, face) => {
   else if (face === 'north') fill(p, w, h, (x, y) => (x === 0 || x === w - 1 || (part === 'tip' && y < 2) ? F.cream : ramp([F.c, F.lo], y / Math.max(1, h - 1), x, y)));
   else if (face === 'east' || face === 'west') fill(p, w, h, (x, y) => (y === 0 && part === 'tip' ? F.creamHi : x === 0 || x === w - 1 ? F.cream : F.c));
 };
+// ear planes: a rounded triangle, rimmed in white; the front is dark inside, the back grey fur
+export const earPlaneP = (F, back) => (p, w, h) => {
+  const cx = (w - 1) / 2;
+  for (let y = 0; y < h; y++) {
+    const v = y / Math.max(1, h - 1), hw = (Math.sqrt(v) * 0.85 + 0.18) * (w / 2);
+    for (let x = 0; x < w; x++) {
+      const dx = Math.abs(x - cx); if (dx > hw) continue;
+      const rim = dx > hw - 1.25 || y < 1;
+      p.px(x, y, rim ? (back ? F.cream : F.creamHi) : back ? ramp([F.c, F.c, F.lo], v, x, y) : dx < hw * 0.55 && v > 0.25 ? F.mask : F.maskHi);
+    }
+  }
+};
 // whiskers: long pale strands, darker roots
 export const whiskerP = (p, w, h) => { for (const [y0, sl] of [[h * 0.25, -0.12], [h * 0.85, 0.06]]) for (let x = 0; x < w; x++) { const y = Math.round(y0 + (w - x) * sl); if (x < w - 1 || y % 2) p.px(x, y, x > w * 0.75 ? '#a8a0a8' : '#f6f2ee'); } };
 
 // ---------------------------------------------------------------- eyes
-// sharp bandit eyes: an almond with a straight hard upper lid that slants toward the snout, a
-// lash flick at the outer corner, a small slit pupil. Shapes are authored in a 10 × 7 space and
-// scaled to the plane's texture; x = 0 is the outer corner. o: { lid (lid row at the outer
-// corner), slope, low (lower-lid row), curve, ix, iy, ir (iris), pupil: 'slit' | 'dot', glint }
-export function eyeShape(p, o = {}) {
-  const W = p.w, H = p.h, kx = 10 / W, ky = 7 / H;
-  const lid = o.lid ?? 1.6, slope = o.slope ?? 0.2, low = o.low ?? 5.6;
-  const top = (X) => lid + slope * X, bot = (X) => low - Math.abs(X - (o.lowAt ?? 5.5)) ** 2 * (o.curve ?? 0.05);
-  const ix = o.ix ?? 6, iy = o.iy ?? 3.6, ir = o.ir ?? 2.2;
-  const G = o.colors || EYE_TRASH.colors;
-  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
-    const X = (x + 0.5) * kx, Y = (y + 0.5) * ky, t = top(X), b = bot(X);
-    if (Y < t - ky || Y > b + ky) continue;
-    if (Y < t || Y > b || x === 0 || x === W - 1) { p.px(x, y, G.ink); continue; }
-    const dx = (X - ix) / kx, dy = (Y - iy) / ky, d = Math.hypot(dx, dy), R = ir / kx;
-    if (d < R) {
-      const pupil = o.pupil === 'dot' ? d < 1.2 : Math.abs(dx) < 0.62 && Math.abs(dy) < (o.slitH ?? 1.1) / ky;
-      p.px(x, y, pupil ? G.pupil : d > R - 0.9 ? G.irisLo : dy > 0.5 ? G.irisHi : G.iris);
-    } else p.px(x, y, Y < t + ky ? G.scleraLo : G.sclera);
-  }
-  for (let x = 0; x < W; x++) p.px(x, Math.floor(top((x + 0.5) * kx) / ky) - 1, G.ink);              // the hard lid line
-  if (o.flick !== false) { const y0 = Math.floor(top(0.5 * kx) / ky) - 2; p.px(0, y0, G.ink); p.px(1, y0, G.ink); p.px(0, y0 - 1, G.ink); }
-  if (o.glint && G.glint !== null) p.px(Math.round((ix - ir * 0.5) / kx), Math.round((iy - ir * 0.45) / ky), G.glint || '#ffffff');
-}
-// the full set of expression textures for one eye style
-export function eyeSet(style = {}) {
-  const C = style.colors, ink = (C && C.ink) || '#120e15';
-  const base = (o) => (p) => eyeShape(p, { colors: C, pupil: style.pupil, glint: style.glint, ...o });
+// Kawaii eyes (recent-generation Pokémon style): a big soft oval with a 1-texel dark outline, a
+// dark iris tinted with an accent colour that lightens through its lower third, one big white
+// catchlight high on the outer side and a 1-texel glint low on the inner side. No whites, veins,
+// creases, ringed irises or lashes. x = 0 of the texture is the outer corner (the left eye is
+// mirrored). The angry lid of the later stages is a flat dark line cutting the top of the eye,
+// tilted down toward the snout. Line expressions (^ ^, closed, > <, X, swirl) are pale strokes so
+// they still read on the dark mask. o: { ink, dark, mid, light, line, lid: { at, slope } (default lid) }
+export function kawaiiEyes(o = {}) {
+  const ink = o.ink || '#0c090e', dark = o.dark || '#3a2412', mid = o.mid || '#8c5418', light = o.light || '#eaa22e', line = o.line || '#ece4d8', K = o.round ?? 2.5;
+  const inO = (W, H, x, y) => x >= 0 && y >= 0 && x < W && y < H && Math.abs((x + 0.5 - W / 2) / (W / 2)) ** K + Math.abs((y + 0.5 - H / 2) / (H / 2)) ** K <= 1;
+  const eye = (q = {}) => (p) => {
+    const W = p.w, H = p.h, lid = q.lid === null ? null : q.lid || o.lid || null;
+    const lidY = (x) => (lid ? lid.at + lid.slope * x : -9);
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      if (!inO(W, H, x, y) || y + 0.5 < lidY(x + 0.5)) continue;
+      const edge = !inO(W, H, x - 1, y) || !inO(W, H, x + 1, y) || !inO(W, H, x, y - 1) || !inO(W, H, x, y + 1) || y - 0.5 < lidY(x + 0.5);
+      const t = (y + 0.5) / H;
+      p.px(x, y, edge ? ink : t > 0.8 ? light : t > 0.62 ? mid : dark);
+    }
+    const cs = q.cs ?? (W >= 9 ? 3 : 2), top = Math.max(1, Math.ceil(lidY(1.5) + 0.6));
+    for (let j = 0; j < cs; j++) for (let i = 0; i < cs; i++) if (!(cs === 3 && i === 2 && j === 2)) p.px(1 + i + (q.cx || 0), top + j, '#ffffff');
+    if (q.glint !== false) p.px(W - 3, H - 3, '#ffffff');
+  };
+  const stroke = (pts) => (p) => {
+    const W = p.w, H = p.h;
+    for (let i = 0; i + 1 < pts.length; i++) {
+      const [x0, y0] = pts[i], [x1, y1] = pts[i + 1], n = Math.ceil(Math.max(Math.abs(x1 - x0) * W, Math.abs(y1 - y0) * H)) * 2 + 1;
+      for (let k = 0; k <= n; k++) { const x = Math.round((x0 + (x1 - x0) * (k / n)) * (W - 1)), y = Math.round((y0 + (y1 - y0) * (k / n)) * (H - 1)); p.px(x, y, line); p.px(x, y + 1, line); }
+    }
+  };
   return {
-    sly: base({ lid: 1.5, slope: 0.2, low: 6.1, lowAt: 4.5, curve: 0.07, ix: 5.9, iy: 4.1, ir: 2.35 }),
-    glare: base({ lid: 1.2, slope: 0.36, low: 6.0, lowAt: 4.0, curve: 0.06, ix: 5.6, iy: 4.5, ir: 2.1, slitH: 0.9 }),
-    wide: base({ lid: 0.6, slope: 0.04, low: 6.5, curve: 0.06, ix: 5.2, iy: 3.6, ir: 1.9, pupil: 'dot', flick: false, glint: false }),
-    smug: base({ lid: 2.7, slope: -0.02, low: 5.8, lowAt: 5, curve: 0.1, ix: 5.6, iy: 4.6, ir: 2.2 }),
-    closed: (p) => { const W = p.w, H = p.h; for (let x = 0; x < W; x++) { const y = Math.round((3.4 + Math.abs(x * 10 / W - 5) * 0.1 + x * 10 / W * 0.12) * H / 7); p.px(x, y, ink); if (x > 0 && x < W - 1) p.px(x, y - 1, ink); } p.px(0, Math.round(2 * H / 7), ink); p.px(1, Math.round(2 * H / 7), ink); },
-    hurt: (p) => { const W = p.w, H = p.h, m = Math.round(H / 2); for (let i = 0; i < m; i++) { const x = Math.round(W * 0.2) + i; p.px(x, m - 1 - i, ink); p.px(x + 1, m - 1 - i, ink); p.px(x, m + i - 1, ink); p.px(x + 1, m + i - 1, ink); } },
-    x: (p) => { const W = p.w, H = p.h, n = Math.min(W, H) - 1, x0 = Math.round((W - n) / 2); for (let i = 0; i < n; i++) { p.px(x0 + i, i, ink); p.px(x0 + i + 1, i, ink); p.px(x0 + n - i, i, ink); p.px(x0 + n - i - 1, i, ink); } },
-    swirl: (p) => { const W = p.w, H = p.h; for (let a = 0; a < 14; a += 0.15) { const r = a * 0.26, x = Math.round(W / 2 + Math.cos(a) * r * W / 9), y = Math.round(H / 2 + Math.sin(a) * r * H / 8); if (r < 3.6) p.px(x, y, style.swirl || '#e8e2d6'); } },
+    open: eye(), angry: eye({ lid: o.angry || { at: 1.6, slope: 0.42 } }), wide: eye({ lid: null, cs: 3 }), half: eye({ lid: { at: H2(o), slope: 0.06 } }),
+    happy: stroke([[0.08, 0.72], [0.5, 0.28], [0.92, 0.72]]),
+    closed: stroke([[0.06, 0.42], [0.3, 0.6], [0.7, 0.6], [0.94, 0.42]]),
+    hurt: stroke([[0.18, 0.15], [0.84, 0.5], [0.18, 0.85]]),
+    x: (p) => { stroke([[0.15, 0.12], [0.85, 0.86]])(p); stroke([[0.85, 0.12], [0.15, 0.86]])(p); },
+    swirl: (p) => { const W = p.w, H = p.h; for (let a = 0; a < 15; a += 0.1) { const r = a * 0.25, x = Math.round(W / 2 - 0.5 + Math.cos(a) * r * W / 8.5), y = Math.round(H / 2 - 0.5 + Math.sin(a) * r * H / 8.5); if (r < 3.7) p.px(x, y, line); } },
   };
 }
-// pale eye-whites read inside the black mask; glowing eyes (stages 2–3) have no whites at all
-export const EYE_TRASH = { colors: { sclera: '#f2ead4', scleraLo: '#c9bda6', iris: '#e8a42c', irisHi: '#ffd664', irisLo: '#9c5a14', pupil: '#1a1012', ink: '#120e15', glint: '#ffffff' }, glint: true };
+const H2 = (o) => o.halfAt ?? 3.2;
 
 // ---------------------------------------------------------------- the ringed tail
 // rings alternate dark / pale along the tail with a tiny zig-zag edge; every dark ring carries a
@@ -351,10 +363,11 @@ export function cardP(o = {}) {
       const x0 = Math.round(a * w), x1 = Math.round(b * w);
       for (let y = 0; y < h; y++) for (let x = x0; x <= x1; x++) p.px(x, y, x === x0 || x === x1 ? J.tapeLo : (y + x) % 7 === 0 ? J.tapeHi : J.tape);
     }
-    if (o.arrows && (face === 'east' || face === 'west') && h >= 6 && w >= 12) {   // the "this way up" mark: two arrows over a bar
-      const y0 = 1, y1 = h - 2, x0 = Math.round(w * (o.arrowsAt ?? 0.3));
-      for (const ax of [x0, x0 + 4]) { p.vl(ax, y0 + 1, y1 - 1, J.print); p.px(ax, y0, J.print); p.px(ax - 1, y0 + 1, J.print); p.px(ax + 1, y0 + 1, J.print); }
-      p.hl(x0 - 2, x0 + 6, y1, J.print);
+    if (o.label && (face === 'east' || face === 'west') && h >= 5 && w >= 14) {   // a shipping label with a barcode
+      const x0 = Math.round(w * (o.labelAt ?? 0.3)), y0 = 1, lw = 9, lh = h - 2;
+      p.rect(x0, y0, lw, lh, '#f2eee4'); p.hl(x0, x0 + lw - 1, y0 + lh - 1, '#c8c0b0');
+      [1, 2, 4, 5, 7].forEach((dx, i) => p.vl(x0 + dx, y0 + 1, y0 + lh - (i % 2 ? 3 : 2), J.marker));
+      p.hl(x0 + 1, x0 + 3, y0 + lh - 2, J.print);
     }
   };
 }
@@ -459,7 +472,13 @@ export function rig(def) {
     setAbs(P, arm, wA); setAbs(P, fore, wF);
     return E;
   }
-  return { B, frame, at, reach, V };
+  // move bone n (by its position offset) so its pivot sits at `pos` (model space)
+  function place(P, n, pos) {
+    const b = B[n], par = b.parent ? B[b.parent] : null, pp = par ? par.pivot : [0, 0, 0];
+    const L = par ? pos.clone().applyMatrix4(frame(P, par.name).invert()) : pos.clone();
+    const o = P.b[n]; o.p[0] = L.x - (b.pivot[0] - pp[0]); o.p[1] = L.y - (b.pivot[1] - pp[1]); o.p[2] = L.z - (b.pivot[2] - pp[2]);
+  }
+  return { B, frame, at, reach, place, V };
 }
 
 // ---------------------------------------------------------------- shared effects

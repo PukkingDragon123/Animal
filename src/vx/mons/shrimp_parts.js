@@ -120,6 +120,22 @@ export function hair(cs, o = {}) {
     }
   };
 }
+// shaggy hair: a row of locks, each its own outlined slab with a narrower tip, splayed a little so
+// the outlines separate them and the silhouette frays. spec: [a0, a1, bottom, splay°, lift°, depth]
+// axis 'z' = a side curtain (locks along z at x = at), axis 'x' = a back curtain (locks along x at z = at)
+export function hairLocks(cs, axis, at, th, top, spec, seed = 1, side = -1) {
+  const out = [];
+  spec.forEach(([a0, a1, bot, splay = 0, lift = 0, dd = 0], i) => {
+    const P = hair(cs, { lock: 3, seed: seed + i, band: 0.16, off: i }), m = (a0 + a1) / 2;
+    const rot = axis === 'z' ? [lift, 0, side * splay] : [lift, 0, splay];
+    const pivot = axis === 'z' ? [at + th / 2 + side * dd, top, m] : [m, top, at + th / 2 + dd];
+    const box = (u0, u1, y0, y1) => (axis === 'z' ? B(at + side * dd, y0, u0, at + th + side * dd, y1, u1, P, { pivot, rot }) : B(u0, y0, at + dd, u1, y1, at + th + dd, P, { pivot, rot }));
+    out.push(box(a0, a1, bot, top));
+    const w = a1 - a0, k = Math.min(0.55, w * 0.28);
+    out.push(box(a0 + k * (i % 2 ? 1.3 : 0.7), a1 - k * (i % 2 ? 0.7 : 1.3), bot - 1.1, bot + 0.01));
+  });
+  return out;
+}
 // a fan blade (uropod / telson) for flat planes: rounded paddle, keel line, a peacock eyespot and
 // a fringe of spines along the far edge. Drawn with the blade's root at y = 0 (painter row 0).
 export function blade(cs, o = {}) {
@@ -144,40 +160,51 @@ export function blade(cs, o = {}) {
   };
 }
 
-// ---------------------------------------------------------------- the stalked eye
-// 11 × 13 texels; outer side x = 0, inner side x = 10 (right eye; the left one is mirrored).
-// The mantis-shrimp eye: two dark hemispheres split by a striped midband, and the three
-// pseudopupils that line up into one slit when it stares at you. Cool and alien — never cute.
-export const EYE_W = 11, EYE_H = 13;
-export const EYE_ROWS = {
-  glare: ['SSSSSSSSSSS', 'dSSSSSSSSSd', 'dHhHHHKHHHd', 'dHHHHHKHHHd', 'dHHHHKKKHHd', 'KKKKKKKKKKK', 'MMMMMMKMMMM', 'YYYYYYKYYYY', 'CCCCCCKCCCC', 'KKKKKKKKKKK', 'dHHHHKKKHHd', 'dHHHHHKHHHd', 'ddddddddddd'],
-  focus: ['KKKKKKKKKKK', 'SSSSSSSSSSS', 'SSSSSSSSSSS', 'dSSSSSSSSSd', 'dHHHHHKHHHd', 'KKKKKKKKKKK', 'MMMMMMKMMMM', 'WWWWWWKWWWW', 'CCCCCCKCCCC', 'KKKKKKKKKKK', 'dHHHHHKHHHd', 'dSSSSSSSSSd', 'KKKKKKKKKKK'],
-  wide: ['dhhhhhhhhhd', 'hHHHHHHHHHh', 'hHHHHKKHHHh', 'hHHHHKKHHHh', 'hHHHHHHHHHh', 'KKKKKKKKKKK', 'MMMMMMMMMMM', 'YYYYYKKYYYY', 'CCCCCCCCCCC', 'KKKKKKKKKKK', 'hHHHHKKHHHh', 'hHHHHKKHHHh', 'dhhhhhhhhhd'],
-  smug: ['LLLLLLLLLLL', 'LLLLLLLLLLL', 'LLLLLLLLLLL', 'lllllllllll', 'KKKKKKKKKKK', 'dHHHHHKHHHd', 'MMMMMMKMMMM', 'YYYYYYKYYYY', 'CCCCCCKCCCC', 'KKKKKKKKKKK', 'lllllllllll', 'LLLLLLLLLLL', 'LLLLLLLLLLL'],
-  closed: ['LLLLLLLLLLL', 'LLLLLLLLLLL', 'LLLLLLLLLLL', 'LLLLLLLLLLL', 'LLLLLLLLLLL', 'lllllllllll', 'KKKKKKKKKKK', 'lllllllllll', 'LLLLLLLLLLL', 'LLLLLLLLLLL', 'LLLLLLLLLLL', 'LLLLLLLLLLL', 'lllllllllll'],
-  x: ['dHHHHHHHHHd', 'KKHHHHHHHKK', 'HKKHHHHHKKH', 'HHKKHHHKKHH', 'HHHKKHKKHHH', 'HHHHKKKHHHH', 'HHHHHKHHHHH', 'HHHHKKKHHHH', 'HHHKKHKKHHH', 'HHKKHHHKKHH', 'HKKHHHHHKKH', 'KKHHHHHHHKK', 'dHHHHHHHHHd'],
-  swirl: ['dHHHHHHHHHd', 'HHKKKKKKKHH', 'HKHHHHHHHKH', 'KHHKKKKKHHK', 'KHKHHHHHKHK', 'KHKHKKKHKHK', 'KHKHKHKHKHK', 'KHKHKKHHKHK', 'KHKHHHHKHHK', 'KHHKKKKHHKH', 'HKHHHHHHKHH', 'HHKKKKKKHHH', 'dHHHHHHHHHd'],
-};
-export const eyeMap = (P) => ({ K: P.ink, H: P.eye, h: P.eyeHi, d: P.eyeLo, S: P.eyeShade, M: P.band[0], Y: P.band[1], C: P.band[2], W: '#ffffff', L: P.lid, l: shift(P.lid, -0.35) });
-// the eyeball box: hemispheres with the midband wrapping all the way round
-export const eyeballP = (P) => (p, w, h, face) => {
-  const b0 = Math.round(h * 5 / 13), b1 = Math.round(h * 10 / 13) - 1;
-  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-    let c;
-    if (face === 'up') c = (x === 1 && y === 1) || (x === 2 && y === 1) ? P.eyeHi : (x === 0 || y === 0 || x === w - 1 || y === h - 1) ? P.eyeLo : P.eye;
-    else if (face === 'down') c = P.eyeLo;
-    else if (y === b0 || y === b1) c = P.ink;
-    else if (y > b0 && y < b1) c = P.band[Math.min(2, y - b0 - 1)];
-    else c = x === 0 || x === w - 1 || y === 0 || y === h - 1 ? P.eyeLo : (y === 1 && x < 3 ? P.eyeHi : P.eye);
-    if (face === 'east' || face === 'north') c = shift(c, -0.12);
-    p.px(x, y, c);
-  }
-};
-// the cover that closes over the whole eyeball (sleep, blinks): shell with a lid seam
-export const eyeShutP = (P) => (p, w, h, face) => {
-  armour(P.lid, { top: shift(P.lid, 0.3), bottom: shift(P.lid, -0.3), rim: false })(p, w, h, face);
-  if (face === 'up' || face === 'down') return;
-  const y = Math.round(h * 0.55); for (let x = 0; x < w; x++) { p.px(x, y, P.ink); p.px(x, y - 1, shift(P.lid, -0.35)); }
+// ---------------------------------------------------------------- the stalked eye (kawaii, Gen 8–9 style)
+// One big rounded eye on each stalk: a 1-texel dark outline, a dark iris tinted with the accent colour,
+// a lighter accent gradient in the lower third, one big white catchlight high on the outer side and a
+// small glint low on the inner side. Expressions are simple shapes in the outline colour drawn straight
+// onto the stalk's shell: happy ^, closed ‿, hurt > <, faint swirl or X, angry = a flat lid line
+// cutting off the top of the eye. Outer side x = 0, inner side x = w − 1 (right eye; the left is mirrored).
+export const EYE_STATES = ['open', 'angry', 'happy', 'closed', 'hurt', 'swirl', 'x'];
+export function kawaiiEye(state, P) {          // P: { line, iris, mid, light, white }
+  return (p, w, h) => {
+    const cx = (w - 1) / 2, cy = (h - 1) / 2, rx = w / 2, ry = h / 2;
+    const inside = (x, y) => x >= 0 && y >= 0 && x < w && y < h && ((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2 <= 1;
+    const dot = (x, y) => { x = Math.round(x); y = Math.round(y); if (x >= 0 && y >= 0 && x < w && y < h) p.px(x, y, P.line); };
+    const line = (x0, y0, x1, y1, th = 2) => { const n = Math.ceil(Math.hypot(x1 - x0, y1 - y0) * 2); for (let i = 0; i <= n; i++) { const x = x0 + ((x1 - x0) * i) / n, y = y0 + ((y1 - y0) * i) / n; for (let k = 0; k < th; k++) dot(x, y + k); } };
+    if (state === 'open' || state === 'angry') {
+      const cut = state === 'angry' ? Math.round(h * 0.34) : -1;          // the flat lid line
+      for (let y = Math.max(0, cut); y < h; y++) for (let x = 0; x < w; x++) {
+        if (!inside(x, y)) continue;
+        const edge = y === cut || !inside(x - 1, y) || !inside(x + 1, y) || !inside(x, y - 1) || !inside(x, y + 1);
+        const t = (y + 0.5 - h * 0.64) / (h * 0.36);                       // the lower third
+        p.px(x, y, edge ? P.line : t > 0.5 ? P.light : t > 0 ? P.mid : P.iris);
+      }
+      const big = w >= 11 ? 3 : 2, y0 = cut >= 0 ? cut + 1 : Math.round(h * 0.15), x0 = Math.round(w * 0.18);
+      for (let j = 0; j < big - (cut >= 0 ? 1 : 0); j++) for (let i = 0; i < big; i++) p.px(x0 + i, y0 + j, P.white);
+      p.px(w - 1 - x0 - 1, Math.round(h * 0.7), P.white);                // the little glint, low on the inner side
+    } else if (state === 'happy') {                                     // ^
+      for (let x = 1; x < w - 1; x++) { const d = Math.abs(x - cx) / (cx - 1 || 1); dot(x, cy - 2 + d * d * 4); dot(x, cy - 1 + d * d * 4); }
+    } else if (state === 'closed') {                                    // ‿ a soft curve
+      for (let x = 1; x < w - 1; x++) { const d = Math.abs(x - cx) / (cx - 1 || 1); dot(x, cy + 2 - d * d * 3); }
+      dot(1, cy - 1); dot(w - 2, cy - 1);
+    } else if (state === 'hurt') {                                      // > (the left eye mirrors it to <)
+      line(1.5, h * 0.2, w - 2.5, cy - 0.5); line(w - 2.5, cy - 0.5, 1.5, h * 0.8 - 1);
+    } else if (state === 'swirl') {
+      for (let a = 0; a < Math.PI * 4.2; a += 0.12) { const r = a * (Math.min(rx, ry) - 0.6) / (Math.PI * 4.2); dot(cx + Math.cos(a) * r, cy + Math.sin(a) * r * (ry / rx)); }
+    } else if (state === 'x') {
+      line(1.5, h * 0.22, w - 2.5, h * 0.78 - 1); line(w - 2.5, h * 0.22, 1.5, h * 0.78 - 1);
+    }
+  };
+}
+// the eye's housing on the stalk: shell, with the mantis shrimp's midband as a flat three-stripe band
+// round the sides and back (model height [y0, y1]); the front stays plain for the eye
+export const eyeHousingP = (P, y0, y1, ppu = 3) => (p, w, h, face, cube) => {
+  const top = cube.o[1] + cube.s[1];
+  armour(P.lid, { top: shift(P.lid, 0.3), bottom: shift(P.lid, -0.3), rim: false, seam: false })(p, w, h, face);
+  if (face === 'up' || face === 'down' || face === 'south') return;
+  for (let y = 0; y < h; y++) { const my = top - (y + 0.5) / ppu, k = Math.floor(((my - y0) / (y1 - y0)) * 3); if (k >= 0 && k <= 2) for (let x = 0; x < w; x++) p.px(x, y, P.band[2 - k]); }
 };
 
 // ---------------------------------------------------------------- the retro toy ray gun

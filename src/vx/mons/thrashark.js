@@ -84,6 +84,10 @@ const teethP = (up, n = 0) => (p, w, h) => {
     for (let x = x0; x < x0 + tw && x < w; x++) { const dx = x - (x0 + (tw - 1) / 2); if (Math.abs(dx) > half) continue; p.px(x, y, dx > 0.3 ? C.toothLo : C.tooth); }
   }
 };
+// the head's front face: blue, darker hollows round the eyes
+const headFront = (p, w, h, face) => { skinHigh(p, w, h, face); };
+// the snout: blue above, white below the lip line, two small nostril slits on the front
+const snoutP = (p, w, h, face) => { skinP({ line: 0.66 })(p, w, h, face); if (face === 'south') { const ny = Math.round(h * 0.3); p.px(Math.round(w * 0.3), ny, C.skinDeep); p.px(Math.round(w * 0.3) + 1, ny, C.skinDeep); p.px(Math.round(w * 0.7) - 1, ny, C.skinDeep); p.px(Math.round(w * 0.7), ny, C.skinDeep); for (let x = 2; x < w - 2; x++) p.px(x, 1, C.skinHi); } };
 const browP = shade(C.skinDeep, { top: C.skinLo, bottom: '#1a1e48', grain: 0 });
 function chromeP(o = {}) {
   const f0 = o.from ?? 0, f1 = o.to ?? 1;
@@ -98,6 +102,7 @@ const leatherP = (p, w, h, face) => {
   if (face === 'up' || face === 'down') return;
   for (let x = 1; x < w - 2; x += 4) { const y = Math.floor(h / 2) - 1; p.px(x, y, CHROME[1]); p.px(x + 1, y, '#ffffff'); p.px(x, y + 1, CHROME[3]); p.px(x + 1, y + 1, CHROME[2]); }
 };
+const smallFinP = (p, w, h) => { for (let y = 0; y < h; y++) { const v = (h - 1 - y) / h; for (let x = 0; x < w; x++) { const u = x / w; if (u < 0.35 + v * 0.35 - 0.35 * (1 - v) || u > 0.35 + v * 0.65) continue; p.px(x, y, u > 0.3 + v * 0.65 ? C.finDeep : v > 0.6 ? C.finHi : C.fin); } } };
 // the caudal fin: a crescent, lit along its leading edge
 const tailFinP = (p, w, h) => {
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
@@ -123,8 +128,9 @@ const sawP = (p, w, h) => {
     if (r > toothR - 1.1) col = r > Rg ? (k < 0.5 ? '#ffffff' : '#3a3e60') : '#3a3e60';
     else if (r > Rg - 0.4) col = k < 0.35 ? CHROME[0] : CHROME[1];
     else {
-      const sheen = Math.cos(2 * (a + 0.8)) * 0.5 + 0.5, ring = Math.floor(r / 2.2) % 2;
-      col = sheen > 0.7 ? (ring ? CHROME[0] : CHROME[1]) : sheen > 0.3 ? (ring ? CHROME[1] : CHROME[2]) : (ring ? CHROME[2] : CHROME[5]);
+      const sheen = Math.cos(2 * (a + 0.8)) * 0.5 + 0.5;
+      col = r > Rg - 1.6 ? CHROME[1] : sheen > 0.75 ? CHROME[0] : sheen > 0.4 ? '#eef2fa' : sheen > 0.12 ? CHROME[1] : '#c4cce0';
+      if (Math.abs(r - Rg * 0.72) < 0.5) col = CHROME[2];
     }
     p.px(x, y, col);
   }
@@ -151,49 +157,44 @@ const crackP = (f) => (p, w, h) => {
     for (let i = 0; i < 6; i++) { fx += Math.cos(af) * 1.2 + (rnd(arc * 7 + i) - 0.5) * 1.6; fy += Math.sin(af) * 1.2 + (rnd(arc * 9 + i) - 0.5) * 1.6; p.px(Math.round(fx), Math.round(fy), i < 3 ? C.zapW : C.zapC); }
   }
 };
-// the flank bolts lit up with stored charge (glow overlay planes for the special)
-const flankGlowP = (f) => (p, w, h) => {
-  const amp = h * 0.16, per = 9, th = 3.6, y0 = h * 0.32, y1 = h * 0.5;
+// the flank bolts lit up with stored charge (a glow box over the bolt box, its flanks only)
+const blankP = () => {};
+const flankGlowP = (f) => (p, w, h, face) => {
+  const flip = face === 'west', amp = h * 0.2, per = 9, th = 4.0, y0 = h * 0.22, y1 = h * 0.42;
   for (let x = 0; x < w; x++) for (let y = 0; y < h; y++) {
-    const u = x / w, fr = (x / per) % 1, tri = (fr < 0.5 ? fr * 4 - 1 : 3 - fr * 4) * amp, cy = y0 + (y1 - y0) * u + tri, taper = Math.min(1, x / 4, (w - x) / 6);
+    const X = flip ? w - 1 - x : x, u = X / w, fr = (X / per) % 1, tri = (fr < 0.5 ? fr * 4 - 1 : 3 - fr * 4) * amp, cy = y0 + (y1 - y0) * u + tri, taper = Math.min(1, X / 4, (w - X) / 6);
     const d = Math.abs(y - cy); if (d > th * 0.5 * taper + 0.4) continue;
-    if ((x + y + f) % 5 === 0 && d > 0.6) continue;
+    if ((X + y + f) % 5 === 0 && d > 0.6) continue;
     p.px(x, y, d < th * 0.22 ? C.zapW : C.zapC);
   }
 };
 
-// eyes: 9 × 7 texels, small and mean: a narrow yellow iris with a black slit, a lid slanting down
-// toward the snout. Outer corner at x = 0, inner corner at x = 8.
+// eyes: 10 × 8 texels, outer corner at x = 0, inner corner (toward the snout) at x = 9. Simple and
+// mean: a small solid black wedge whose long top edge slants down toward the snout, one white glint.
 function eyeShape(p, o = {}) {
-  const lid = o.lid ?? 1.6, sl = o.slope ?? 0.42;
-  const top = (x) => lid + sl * x, bot = (x) => 6.2 - Math.abs(x - 4.2) ** 2 * 0.09;
-  for (let y = 0; y < 7; y++) for (let x = 0; x < 9; x++) {
-    const X = x + 0.5, Y = y + 0.5;
-    if (Y < top(X) - 1 || Y > bot(X) + 0.9) continue;
-    if (Y < top(X) || Y > bot(X) || x === 0 || x === 8) { p.px(x, y, C.ink); continue; }
-    const px = o.px ?? 4.6;
-    p.px(x, y, Math.abs(X - px) < 0.7 ? '#0a0a14' : Y > bot(X) - 1.2 ? C.eyeLo : C.eye);
-  }
-  for (let x = 0; x < 9; x++) p.px(x, Math.floor(top(x + 0.5)) - 1, C.ink);
+  const top = (x) => (o.top ?? 1.2) + (o.slope ?? 0.42) * x, cx = o.cx ?? 4.8, cy = o.cy ?? 4.2, rx = o.rx ?? 4.6, ry = o.ry ?? 3.4;
+  const inside = (x, y) => ((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2 <= 1 && y >= top(x);
+  for (let y = 0; y < 8; y++) for (let x = 0; x < 10; x++) if (inside(x + 0.5, y + 0.5)) p.px(x, y, '#0a0c1c');
+  if (o.glint !== false) p.px(o.gx ?? 3, o.gy ?? Math.ceil(top(3) + 0.8), '#ffffff');
 }
 const EYES = {
   mean: (p) => eyeShape(p),
-  glare: (p) => eyeShape(p, { lid: 2.4, slope: 0.5 }),
-  wide: (p) => eyeShape(p, { lid: 0.6, slope: 0.1 }),
-  glee: (p) => { eyeShape(p, { lid: 1.8, slope: 0.36 }); for (let x = 1; x < 8; x++) p.px(x, Math.round(5 - Math.abs(x - 4) * 0.2), C.ink); for (let x = 1; x < 8; x++) p.px(x, 6, 0); },
-  closed: (p) => { for (let x = 0; x < 9; x++) { const y = Math.round(2.4 + x * 0.36); p.px(x, y, C.ink); p.px(x, y + 1, x > 0 && x < 8 ? C.ink : 0); } },
-  hurt: (p) => { for (let i = 0; i < 4; i++) { p.px(2 + i, 1 + i, C.ink); p.px(3 + i, 1 + i, C.ink); p.px(2 + i, 6 - i, C.ink); p.px(3 + i, 6 - i, C.ink); } },
-  x: (p) => { for (let i = 0; i < 6; i++) { p.px(1 + i, i, C.ink); p.px(2 + i, i, C.ink); p.px(6 - i, i, C.ink); p.px(7 - i, i, C.ink); } },
-  swirl: (p) => { for (let a = 0; a < 12; a += 0.25) { const r = a * 0.28, x = Math.round(4.2 + Math.cos(a) * r * 1.2), y = Math.round(3.2 + Math.sin(a) * r * 0.9); if (r < 3.4) p.px(x, y, C.ink); } },
+  glare: (p) => eyeShape(p, { top: 2.4, slope: 0.36, ry: 2.8, cy: 4.6 }),
+  wide: (p) => eyeShape(p, { top: -1, slope: 0, cx: 4.8, cy: 4.0, rx: 3.0, ry: 3.0, gx: 3, gy: 2 }),
+  glee: (p) => { eyeShape(p, { top: 1.6, slope: 0.36 }); for (let x = 0; x < 10; x++) { const y0 = Math.round(5.4 - Math.abs(x - 4.8) * 0.3); for (let y = y0; y < 8; y++) p.px(x, y, 0); } },
+  closed: (p) => { for (let x = 0; x < 10; x++) { const y = Math.round(2.6 + x * 0.36); p.px(x, y, '#0a0c1c'); p.px(x, y + 1, x > 0 && x < 9 ? '#0a0c1c' : 0); } },
+  hurt: (p) => { for (let i = 0; i < 4; i++) { p.px(3 + i, 1 + i, '#0a0c1c'); p.px(4 + i, 1 + i, '#0a0c1c'); p.px(3 + i, 7 - i, '#0a0c1c'); p.px(4 + i, 7 - i, '#0a0c1c'); } },
+  x: (p) => { for (let i = 0; i < 7; i++) { p.px(1 + i, i, '#0a0c1c'); p.px(2 + i, i, '#0a0c1c'); p.px(7 - i, i, '#0a0c1c'); p.px(8 - i, i, '#0a0c1c'); } },
+  swirl: (p) => { for (let a = 0; a < 12; a += 0.25) { const r = a * 0.3, x = Math.round(4.8 + Math.cos(a) * r * 1.2), y = Math.round(4 + Math.sin(a) * r * 0.9); if (r < 3.6) p.px(x, y, '#0a0c1c'); } },
 };
 
 // ---------------------------------------------------------------- model
 const P = (o, s, tex, x = {}) => ({ o, s, tex, ...x });
 const mirrorCube = (c) => ({ ...c, o: [-(c.o[0] + c.s[0]), c.o[1], c.o[2]], mirror: !c.mirror, ...(c.pivot ? { pivot: [-c.pivot[0], c.pivot[1], c.pivot[2]], rot: c.rot ? [c.rot[0], -c.rot[1], -c.rot[2]] : undefined } : {}) });
 const D2R = Math.PI / 180;
-const SAW = [0, 26.0, -1.0], SAW_R = 10.4;
+const SAW = [0, 27.4, -1.0], SAW_R = 10.4;
 // eyes sit on the front corners of the head, turned outward
-const eyeStates = (side) => Object.entries(EYES).map(([k, fn]) => P(side < 0 ? [-8.25, 15.6, 18.6] : [5.25, 15.6, 18.6], [3.0, 2.3, 0], fn, { plane: 'z', mirror: side > 0, id: 'eye-' + k, hide: k !== 'mean', pivot: [side * 6.75, 16.8, 18.6], rot: [0, side * 34, 0] }));
+const eyeStates = (side) => Object.entries(EYES).map(([k, fn]) => P(side < 0 ? [-7.0, 19.3, 18.66] : [3.6, 19.3, 18.66], [3.4, 2.6, 0], fn, { plane: 'z', mirror: side > 0, id: 'eye-' + k, hide: k !== 'mean' }));
 // fin-legs: a paddle angled out and down, bent into a forward-pointing foot with a pale tip
 const legF = [
   P([-10.8, 2.0, 5.0], [2.4, 8.4, 6.8], finP, { pivot: [-9.6, 9.6, 8.4], rot: [0, 0, -24] }),
@@ -214,15 +215,16 @@ export const def = {
     { name: 'legBL', parent: 'root', pivot: [7.4, 9.4, -13.5], cubes: legB.map(mirrorCube) },
     { name: 'body', parent: 'root', pivot: [0, 15.0, 0], cubes: [
       // the torpedo: a deep mid-body tapering back to the tail stalk
-      P([-9.5, 6.5, -8.0], [19.0, 16.0, 16.0], boltP({ y0: 0.3, y1: 0.46 })),
-      P([-10.2, 8.0, -7.0], [20.4, 12.6, 14.0], skin),
-      P([-8.0, 8.0, -18.0], [16.0, 12.4, 10.4], boltP({ y0: 0.4, y1: 0.48, amp: 0.13, per: 7, th: 2.6 })),
-      P([-7.0, 19.6, -17.0], [14.0, 1.6, 8.0], skinBack),
+      P([-9.5, 6.5, -8.0], [19.0, 16.0, 16.0], skin),
+      P([-10.2, 8.0, -7.0], [20.4, 12.6, 14.0], boltP({ y0: 0.22, y1: 0.42, amp: 0.2 })),
+      P([-8.0, 8.0, -18.0], [16.0, 12.4, 10.4], boltP({ y0: 0.4, y1: 0.48, amp: 0.13, per: 7, th: 2.6 }), { pivot: [0, 20.4, -8], rot: [-7, 0, 0] }),
+      P([-7.0, 19.0, -17.0], [14.0, 1.6, 8.0], skinBack, { pivot: [0, 20.4, -8], rot: [-7, 0, 0] }),
+      P([-8.6, 20.6, -10.0], [17.2, 3.2, 16.6], skinBack),
       P([-8.6, 5.6, -6.0], [17.2, 1.2, 12.0], skin),
       // the saw's housing: a steel guard rail the blade spins out of, two big bolts
-      P([-2.0, 21.6, -11.2], [4.0, 2.4, 20.4], chromeP({ from: 0.1, to: 0.9 })),
-      P([-2.6, 21.2, -12.0], [5.2, 1.4, 2.6], chromeP({ from: 0.4, to: 1 })),
-      P([-2.6, 21.2, 8.0], [5.2, 1.4, 2.6], chromeP({ from: 0.4, to: 1 })),
+      P([-2.0, 23.2, -11.2], [4.0, 2.2, 20.0], chromeP({ from: 0.1, to: 0.9 })),
+      P([-2.6, 22.8, -12.0], [5.2, 1.4, 2.6], chromeP({ from: 0.4, to: 1 })),
+      P([-2.6, 22.8, 7.6], [5.2, 1.4, 2.6], chromeP({ from: 0.4, to: 1 })),
       // the pectoral 'shoulders' the fin-legs hang from
       P([-11.4, 7.6, 3.0], [3.0, 5.0, 8.0], skin), P([8.4, 7.6, 3.0], [3.0, 5.0, 8.0], skin, { mirror: true }),
     ] },
@@ -235,34 +237,38 @@ export const def = {
       P([-0.9, SAW[1] - SAW_R - 2, SAW[2] - SAW_R - 2], [0, SAW_R * 2 + 4, SAW_R * 2 + 4], crackP(f), { plane: 'x', glow: true, id: 'zap-' + 'abc'[f], hide: f > 0 }),
       P([0.9, SAW[1] - SAW_R - 2, SAW[2] - SAW_R - 2], [0, SAW_R * 2 + 4, SAW_R * 2 + 4], crackP(f + 3), { plane: 'x', glow: true, id: 'zap-' + 'abc'[f], hide: f > 0 }),
     ]) },
-    { name: 'charge', parent: 'body', pivot: [0, 15, 0], cubes: [0, 1].flatMap((f) => [
-      P([-9.56, 6.5, -8.0], [0, 16.0, 16.0], flankGlowP(f), { plane: 'x', glow: true, id: 'flank-' + f, hide: true }),
-      P([9.56, 6.5, -8.0], [0, 16.0, 16.0], flankGlowP(f + 2), { plane: 'x', glow: true, id: 'flank-' + f, hide: true, mirror: true }),
-    ]) },
-    { name: 'head', parent: 'body', pivot: [0, 14.0, 8.0], cubes: [
-      P([-8.6, 9.0, 8.0], [17.2, 13.0, 11.0], gillP),
-      P([-7.0, 10.2, 18.8], [14.0, 9.6, 6.0], skinHigh),
-      P([-5.0, 11.2, 24.6], [10.0, 7.2, 3.8], skinHigh),
+    { name: 'charge', parent: 'body', pivot: [0, 15, 0], cubes: [0, 1].map((f) => P([-10.32, 8.0, -7.0], [20.64, 12.6, 14.0], blankP, { glow: true, faces: { east: flankGlowP(f), west: flankGlowP(f + 2) }, id: 'flank-' + f, hide: true })) },
+    { name: 'head', parent: 'body', pivot: [0, 14.0, 8.0], rot: [5, 0, 0], cubes: [
+      P([-9.0, 9.4, 6.0], [18.0, 12.8, 12.6], gillP),
+      P([-8.2, 10.4, 7.0], [16.4, 13.4, 11.0], skinHigh, { faces: { south: headFront } }),
+      P([-7.4, 10.4, 18.4], [14.8, 7.0, 7.4], snoutP),
+      P([-6.2, 11.0, 18.0], [12.4, 8.2, 8.8], snoutP),
+      P([-4.6, 11.4, 25.6], [9.2, 5.0, 3.2], snoutP),
       // hard brows over the little eyes
-      P([-8.8, 18.0, 15.8], [5.2, 1.6, 3.0], browP, { pivot: [-6.2, 18.8, 17.3], rot: [0, 30, -14] }),
-      P([3.6, 18.0, 15.8], [5.2, 1.6, 3.0], browP, { pivot: [6.2, 18.8, 17.3], rot: [0, -30, 14], mirror: true }),
+      P([-7.6, 21.7, 17.6], [4.8, 1.5, 2.0], browP, { pivot: [-5.2, 22.4, 18.6], rot: [0, 0, -20] }),
+      P([2.8, 21.7, 17.6], [4.8, 1.5, 2.0], browP, { pivot: [5.2, 22.4, 18.6], rot: [0, 0, 20], mirror: true }),
       ...eyeStates(-1), ...eyeStates(1),
-      // the upper teeth, two rows, hanging from the lip line
-      P([-4.8, 9.2, 28.45], [9.6, 2.2, 0], teethP(false), { plane: 'z' }),
-      P([-6.8, 8.7, 19.0], [0, 2.4, 9.4], teethP(false), { plane: 'x' }), P([6.8, 8.7, 19.0], [0, 2.4, 9.4], teethP(false), { plane: 'x' }),
-      P([-4.4, 9.4, 26.6], [8.8, 1.8, 0], teethP(false, 1), { plane: 'z', outline: false }),
-      P([-6.6, 9.6, 10.0], [13.2, 0.8, 18.0], gumP, { outline: false }),
+      // the grin: an upper row of teeth all round the snout, a second row behind it
+      P([-4.6, 9.0, 28.85], [9.2, 2.6, 0], teethP(false), { plane: 'z' }),
+      P([-7.45, 9.0, 18.6], [0, 2.6, 7.0], teethP(false), { plane: 'x' }), P([7.45, 9.0, 18.6], [0, 2.6, 7.0], teethP(false), { plane: 'x' }),
+      P([-4.65, 9.0, 25.6], [0, 2.6, 3.2], teethP(false), { plane: 'x' }), P([4.65, 9.0, 25.6], [0, 2.6, 3.2], teethP(false), { plane: 'x' }),
+      P([-4.2, 9.6, 26.9], [8.4, 1.8, 0], teethP(false, 1), { plane: 'z', outline: false }),
+      P([-7.0, 9.7, 8.0], [14.0, 0.7, 20.8], gumP, { outline: false }),
     ] },
-    { name: 'jaw', parent: 'head', pivot: [0, 10.0, 10.0], cubes: [
-      P([-6.6, 5.2, 9.0], [13.2, 4.4, 17.6], jawP),
-      P([-5.6, 9.2, 10.0], [11.2, 0.6, 15.6], mouthP, { outline: false }),
-      P([-4.6, 9.6, 26.4], [9.2, 1.8, 0], teethP(true), { plane: 'z' }),
-      P([-5.9, 9.6, 12.0], [0, 1.8, 13.6], teethP(true), { plane: 'x' }), P([5.9, 9.6, 12.0], [0, 1.8, 13.6], teethP(true), { plane: 'x' }),
+    { name: 'jaw', parent: 'head', pivot: [0, 9.6, 9.0], cubes: [
+      P([-7.0, 5.4, 8.0], [14.0, 4.2, 11.4], jawP),
+      P([-5.8, 5.0, 19.0], [11.6, 4.4, 8.8], jawP),
+      P([-4.2, 4.4, 24.4], [8.4, 2.2, 3.6], jawP),
+      P([-5.4, 9.25, 9.0], [10.8, 0.4, 18.4], mouthP, { outline: false }),
+      P([-5.2, 9.4, 27.7], [10.4, 2.0, 0], teethP(true), { plane: 'z' }),
+      P([-5.85, 9.4, 19.4], [0, 2.0, 8.2], teethP(true), { plane: 'x' }), P([5.85, 9.4, 19.4], [0, 2.0, 8.2], teethP(true), { plane: 'x' }),
+      P([-7.05, 9.4, 9.0], [0, 2.0, 10.2], teethP(true), { plane: 'x' }), P([7.05, 9.4, 9.0], [0, 2.0, 10.2], teethP(true), { plane: 'x' }),
     ] },
     { name: 'tail1', parent: 'body', pivot: [0, 14.0, -18.0], cubes: [
       P([-5.0, 10.4, -27.0], [10.0, 7.0, 9.4], boltP({ base: skin, y0: 0.42, y1: 0.42, amp: 0.1, per: 5, th: 2 })),
-      // the studded band
+      // the studded band, a small second dorsal fin
       P([-5.5, 10.0, -24.0], [11.0, 7.8, 2.2], leatherP),
+      P([0, 16.8, -26.6], [0, 4.6, 5.2], smallFinP, { plane: 'x' }),
     ] },
     { name: 'tail2', parent: 'tail1', pivot: [0, 14.0, -26.5], cubes: [
       P([-1.2, 11.0, -29.6], [2.4, 6.0, 3.4], skin),
@@ -274,6 +280,7 @@ export const def = {
 // ---------------------------------------------------------------- effects
 // zap: a blue-white crackle of lightning; spray: a fan of water streaks
 defineFx('zap', { w: 6, h: 13, frames: [0, 1].map((k) => (p) => { let x = 2 + k; for (let y = 0; y < 13; y++) { p.px(x, y, '#ffffff'); p.px(x + 1, y, '#a8f0ff'); if (y % 4 === 3) x += (y + k) % 8 === 3 ? 2 : -2; x = Math.max(0, Math.min(4, x)); } p.px(0, 12, '#4a9aff'); }), glow: true, life: [0.08, 0.18], size: [0.22, 0.3], speed: [0, 0.6], grav: 0, spread: 1, spin: 6, tint: [[1, 1, 1], [0.7, 0.95, 1], [0.35, 0.6, 1]] });
+defineFx('sawgrit', { w: 3, h: 3, paint: (p) => { p.px(1, 0, '#e8fbff'); p.px(0, 1, '#a8f0ff'); p.px(1, 1, '#ffffff'); p.px(2, 1, '#ffe080'); p.px(1, 2, '#ffb040'); }, glow: true, life: [0.2, 0.45], size: [0.045, 0.02], speed: [2.4, 4.6], grav: 7, drag: 1.2, spread: 0.55, tint: [[1, 1, 1], [1, 0.9, 0.6], [1, 0.5, 0.2]] });
 defineFx('spray', { w: 4, h: 9, paint: (p) => { for (let y = 0; y < 9; y++) { p.px(1, y, y < 3 ? '#ffffff' : '#bff0ff'); p.px(2, y, y < 6 ? '#8adcff' : '#4ab0f0'); } p.px(0, 2, '#e8fbff'); }, life: [0.35, 0.6], size: [0.1, 0.06], speed: [2.4, 4.4], grav: 7, drag: 0.6, spread: 0.4, spin: 2 });
 
 // ---------------------------------------------------------------- animation
@@ -348,26 +355,30 @@ export const anim = {
       P.rot('tail1', 0, wave(t, 6) * 14 * up, 0).rot('tail2', 0, wave(t, 6, -1) * 20 * up, 0);
       P.face('eyes', up > 0.3 ? 'glare' : undefined).face('flank', up > 0.3 ? (cyc(t, 12, 2) ? 'a' : 'b') : 'off'); P.lookW = 1 - up;
       if (t > 0.5 && t < 1.3) P.stream('zap', 'body', RIM, { rate: 40, spread: 1, speed: 0.8 }).stream('spark', 'body', RIM, { rate: 10, spread: 1, key: 's' }).stream('spray', 'head', MOUTH, { rate: 30, dir: [0, 0.4, 1], key: 'w' });
-      P.burst(1.56, 'quake', 'root', [0, 0.5, 8], { n: 4, spread: 1 }).burst(1.56, 'splash', 'root', [0, 0.5, 8], { n: 10, speed: 1.2 });
+      P.burst(1.56, 'dust', 'root', [0, 0.5, 8], { n: 4, spread: 1 }).burst(1.56, 'splash', 'root', [0, 0.5, 8], { n: 10, speed: 1.2 });
     } },
-    // sawblade spin-slash: crouches, leaps into a front flip that brings the screaming blade down
-    // through whatever is in front of it, lands in a spray of sparks
+    // sawblade spin-slash: winds back while the blade screams up to speed, leaps into a front flip
+    // that brings the saw over the top and down through the ground in front (a gout of sparks and
+    // grit), completes the flip and slams down on all four fins
     attack: { len: 1.5, next: 'idle', f(P, t, c) {
-      sawSpin(P, c, rev(t, 0.2, 1.3, 12)); crackle(P, t, 20);
-      const crouch = seg(t, 0, 0.26, E.inout) * (1 - seg(t, 0.26, 0.34, E.out));
-      const flip = seg(t, 0.32, 0.78, E.inout), air = bump(t, 0.3, 0.86);
-      P.pos('root', 0, 7 * air, 14 * seg(t, 0.3, 0.8, E.out) * (1 - seg(t, 1.0, 1.5, E.inout)));
-      tilt(P, 360 * flip, 14, 0, LEGS);
-      const land = t > 0.82 ? Math.exp(-(t - 0.82) * 7) * Math.cos((t - 0.82) * 18) : 0;
-      const dy = -1.6 * crouch - 1.2 * land; P.pos('body', 0, dy, 0); plant(P, dy);
-      P.sq('body', -0.1 * crouch + 0.08 * air * (1 - flip) - 0.1 * land);
-      for (const l of LEGS) P.rot(l, (l[3] === 'F' ? -40 : 40) * air, 0, 0);
-      P.rot('jaw', 30 * air).rot('tail1', 0, 0, 0).rot('tail2', 20 * air, 0, 0);
-      P.face('eyes', t > 0.05 && t < 1.1 ? 'glare' : undefined); P.lookW = 1 - air;
-      if (t > 0.3 && t < 0.86) P.stream('zap', 'saw', RIM, { rate: 30, spread: 1 });
-      P.burst(0.7, 'spark', 'saw', RIM, { scale: 1.8 }).burst(0.7, 'shard', 'saw', RIM, { n: 10, speed: 1.2 }).burst(0.7, 'ring', 'saw', RIM, { scale: 0.7 }).burst(0.7, 'star', 'saw', RIM, { n: 4 });
-      if (t > 0.62 && t < 0.86) P.stream('grit', 'saw', RIM, { rate: 90, dir: [0, 0.8, -1], spread: 0.6 });
-      P.burst(0.84, 'splash', 'root', [0, 0.5, 0], { n: 12, speed: 1.2 }).burst(0.84, 'quake', 'root', [0, 0.5, 0], { n: 4, spread: 1 });
+      sawSpin(P, c, rev(t, 0.0, 1.3, 14)); crackle(P, t, 22);
+      const wind = seg(t, 0, 0.26, E.inout) * (1 - seg(t, 0.26, 0.32, E.out));
+      const flip = key([[0.28, 0], [0.4, 150, 'out'], [0.5, 205, 'lin'], [0.76, 360, 'inout']], t);
+      const ry = key([[0.28, 0], [0.38, 8.4, 'out'], [0.5, 9.0, 'lin'], [0.66, 6.5, 'in'], [0.76, 0, 'in']], t);
+      P.pos('root', 0, Math.max(0, ry), 15 * seg(t, 0.28, 0.5, E.out) * (1 - seg(t, 0.95, 1.45, E.inout)) - 2.2 * wind);
+      tilt(P, flip + (t < 0.3 ? -14 * wind : 0), 14, 0, LEGS);
+      const air = t > 0.3 && t < 0.76 ? 1 : 0, land = t > 0.76 ? Math.exp(-(t - 0.76) * 7) * Math.cos((t - 0.76) * 16) : 0;
+      const dy = -1.8 * wind - 1.6 * land; P.pos('body', 0, dy, 0); if (!air) plant(P, dy);
+      P.sq('body', -0.1 * wind + 0.07 * air - 0.12 * Math.max(0, land) + wob(t, 0.76, 0.05, 4, 7) * 0.5);
+      for (const l of LEGS) P.rot(l, (l[3] === 'F' ? -46 : 46) * air, 0, 0);
+      P.rot('jaw', 8 * wind + 34 * air).rot('tail2', 24 * air, 0, 0).rot('tail1', 0, wave(t, 5) * 12 * wind, 0);
+      P.face('eyes', t > 0.02 && t < 1.05 ? 'glare' : undefined); P.lookW = 1 - Math.max(wind, air);
+      if (t < 0.3) P.stream('zap', 'body', RIM, { rate: 60 * wind, spread: 1, speed: 0.5 });
+      // the cut: the blade's top rim passes through the ground in front between t 0.4 and 0.52
+      P.burst(0.41, 'spark', 'body', RIM, { scale: 2 }).burst(0.41, 'ring', 'body', RIM, { scale: 0.8 }).burst(0.41, 'star', 'body', RIM, { n: 4 });
+      if (t > 0.4 && t < 0.54) P.stream('sawgrit', 'body', RIM, { rate: 160, dir: [0, 1, -0.4], spread: 0.6 }).stream('zap', 'body', RIM, { rate: 50, spread: 1, key: 'c' }).stream('dust', 'body', RIM, { rate: 40, spread: 1, key: 'd', speed: 0.8 });
+      P.burst(0.46, 'rock', 'body', RIM, { n: 6, dir: [0, 1, 0.3], speed: 0.9 });
+      P.burst(0.77, 'splash', 'root', [0, 0.5, 0], { n: 14, speed: 1.3 }).burst(0.77, 'dust', 'root', [0, 0.5, 0], { n: 6, spread: 1 });
     } },
     // special (Hydro + Ferro, Ride the Lightning): charges up until the flank bolts blaze, then hurls the
     // whirling, crackling saw like a disc through a sheet of water; it boomerangs back into its slot
@@ -397,7 +408,7 @@ export const anim = {
       P.pos('root', 0, 0, -2.6 * k).rot('body', -8 * k + wob(t, 0.2, 2, 3, 6), 0, wave(t, 15) * 4 * k).sq('body', -0.1 * k);
       P.rot('head', -16 * k, 12 * k, 8 * k).rot('jaw', 22 * k).rot('tail1', 0, 20 * k, 0);
       P.face('eyes', t < 0.45 ? 'hurt' : undefined); P.lookW = 1 - k;
-      P.burst(0.02, 'spark', 'saw', RIM, { scale: 1.2 }).burst(0.02, 'zap', 'saw', RIM, { n: 4 }).burst(0.03, 'splash', 'body', [0, 16, 6], { n: 6 });
+      P.burst(0.02, 'spark', 'body', RIM, { scale: 1.2 }).burst(0.02, 'zap', 'body', RIM, { n: 4 }).burst(0.03, 'splash', 'body', [0, 16, 6], { n: 6 });
     } },
     // dazed wobble, then it keels over onto its side — the saw, of course, still spinning
     faint: { len: 2.1, next: 'down', f(P, t, c) {
@@ -424,7 +435,7 @@ export const anim = {
       const h = t < 0.9 ? hop(t, 0.9, 6, { crouch: 1.6 }) : { y: wob(t, 0.9, -1.2, 3, 6), sq: wob(t, 0.9, -0.14, 3, 6) };
       P.pos('root', 0, Math.max(0, h.y), 0).sq('body', h.sq).rot('root', 0, 360 * seg(t, 0.2, 0.68, E.inout), 0);
       if (h.y < 0) plant(P, h.y);
-      if (t > 0.2 && t < 0.7) P.stream('spark', 'saw', RIM, { rate: 30, spread: 1 });
+      if (t > 0.2 && t < 0.7) P.stream('spark', 'body', RIM, { rate: 30, spread: 1 });
       const chomp = t > 1.1 ? Math.max(0, Math.sin((t - 1.1) * Math.PI * 2 * 1.6)) * (1 - seg(t, 1.9, 2.1)) : 0;
       P.rot('head', 16 * chomp - 4, 0, 0).rot('jaw', 34 * chomp).rot('body', 4 * chomp, 0, 0);
       P.face('eyes', t > 1.0 ? 'glee' : undefined);
@@ -457,8 +468,8 @@ export const anim = {
     // fidget: revs the saw like an engine — three blips, sparks and crackle, a smug little bob
     rev: { len: 1.8, next: 'idle', f(P, t, c) {
       sawSpin(P, c, rev(t, 0.1, 0.5, 3) + rev(t, 0.55, 0.95, 3) + rev(t, 1.0, 1.6, 6)); crackle(P, t, 22);
-      for (const s0 of [0.1, 0.55, 1.0]) { const b = bump(t, s0, s0 + 0.35); P.sq('body', 0.04 * b).rot('body', -3 * b, 0, 0); P.burst(s0 + 0.15, 'spark', 'saw', RIM, {}).burst(s0 + 0.15, 'zap', 'saw', RIM, { n: 3 }); }
-      if (t > 1.0 && t < 1.5) P.stream('grit', 'saw', RIM, { rate: 50, dir: [0, 1, -0.6], spread: 0.5 });
+      for (const s0 of [0.1, 0.55, 1.0]) { const b = bump(t, s0, s0 + 0.35); P.sq('body', 0.04 * b).rot('body', -3 * b, 0, 0); P.burst(s0 + 0.15, 'spark', 'body', RIM, {}).burst(s0 + 0.15, 'zap', 'body', RIM, { n: 3 }); }
+      if (t > 1.0 && t < 1.5) P.stream('sawgrit', 'body', RIM, { rate: 50, dir: [0, 1, -0.6], spread: 0.5 });
       const smug = seg(t, 1.3, 1.5) * (1 - seg(t, 1.6, 1.8));
       P.face('eyes', t > 1.25 ? 'glee' : undefined).rot('head', -6 * smug, 0, 4 * smug);
       P.rot('tail1', 0, wave(t, 2) * 10, 0);

@@ -1,10 +1,13 @@
 // Strawbaa — the grass starter. A stout, grizzled old ram whose fleece is a ripe strawberry:
 // rose-red wool puffs studded with golden seeds, a leafy calyx cap with a curly stem, heavy
 // spiral horns ringed with growth ridges (one tip snapped off long ago), a long craggy face,
-// bushy white brows over heavy-lidded amber eyes, a notched ear and a great white beard.
+// bushy white brows over small, heavy-lidded dark eyes, a notched ear and a great white beard.
+// An old country troubadour (an original homage to the outlaw-country greats): a red paisley
+// bandana knotted across the brow, long white wool braids tied off in red, and a little road-worn
+// guitar slung across its back, pick-worn through beside the sound hole.
 // Gentle and sleepy — chews its cud, snorts at nothing — until a friend gets hurt.
 import * as THREE from '../../../vendor/three.module.js';
-import { E, seg, bump, wob, wave, key, bounce, lerp } from '../anim.js';
+import { E, seg, bump, wob, wave, key, bounce } from '../anim.js';
 import { defineFx } from '../fx.js';
 import { ramp, shift, h2 } from './kit.js';
 
@@ -17,7 +20,7 @@ const C = {
   g0: '#c8f08c', g1: '#86d45e', g2: '#4ea846', g3: '#2c723e', g4: '#18442c',
   st0: '#7aa046', st1: '#55803a', st2: '#3a5c2c',
   // grizzled old face and legs
-  s0: '#ece1d0', s1: '#cdbfac', s2: '#ab9b88', s3: '#857261', s4: '#5e4c46',
+  s0: '#efe5d5', s1: '#d3c6b3', s2: '#b2a28f', s3: '#8a7766', s4: '#5e4c46',
   // weathered nose leather
   n0: '#d4b4b0', n1: '#ae8c8c', n2: '#7a5a60', n3: '#3e2632',
   // white wool: beard, brows, chops, fetlocks
@@ -26,8 +29,6 @@ const C = {
   k0: '#6a5c68', k1: '#463a46', k2: '#2a212c',
   // mouth
   m0: '#8a2a3a', m1: '#5a1426', m2: '#360a18', tongue: '#d8607a', tooth: '#efe4c8',
-  // eyes
-  i0: '#ffd47a', i1: '#eea03a', i2: '#c06a1c', pupil: '#1c0c12',
   // blossoms
   p0: '#fffdf6', p1: '#f2e8dc', p2: '#e2c8cc', core: '#ffd23e',
 };
@@ -64,7 +65,7 @@ function leafAt(at, len, wid, phi, droop, tex, x = {}) {
 const T01 = (y, h) => (h > 1 ? y / (h - 1) : 0.5);
 // strawberry wool: rows of round puffs (lit upper-left, a shadowed rim underneath) shingled over a
 // top-lit ramp, studded with golden seeds sitting in little dimples on a loose diagonal lattice
-const W_LIT = [C.wHi, C.w0, C.w1, C.w2], W_MID = [C.w0, C.w1, C.w2, C.w3], W_RIM = [C.w2, C.w3, C.w4, C.w5];
+const W_LIT = [C.wHi, C.w0, C.w1, C.w2], W_MID = [C.w0, C.w1, C.w1, C.w2, C.w3], W_RIM = [C.w2, C.w3, C.w3, C.w4, C.w5];
 function seedAt(p, x, y) {
   p.px(x, y - 1, C.pit); p.px(x + 1, y - 1, C.w3);
   p.px(x, y, C.seedHi); p.px(x + 1, y, C.seed); p.px(x, y + 1, C.seed); p.px(x + 1, y + 1, C.seedLo);
@@ -105,7 +106,7 @@ function wool(o = {}) {
     }
   };
 }
-// white wool hanging in locks: wavy partings, a lit strand beside each, darker tips (beard, brows, chops)
+// white wool hanging in locks: wavy partings, a lit strand beside each, darker tips (beard, braid roots, fetlocks, tassels)
 function locks(o = {}) {
   const LW = o.lock ?? 3, cols = o.cols || [C.b0, C.b0, C.b1, C.b1, C.b2];
   return (p, w, h, face, cube) => {
@@ -145,24 +146,13 @@ function skin(o = {}) {
 }
 const skinP = skin(), skinDark = skin({ cols: [C.s1, C.s2, C.s2, C.s3] });
 
-// the face: heavy brow hollows, bags under the eyes, crow's feet, a stern frown crease
+// the face: grizzled skin and two stern frown creases between the brows (the eyes are separate planes)
 const EYE_Y = [20.0, 22.4], EYE_X = [0.75, 4.05];   // |x| range of each eye on the skull front
 function faceFront(p, w, h, face, cube) {
   skinP(p, w, h, face, cube);
   if (face !== 'south') return;
-  const X = (mx) => Math.round((mx - cube.o[0]) * 3), Y = (my) => Math.round((cube.o[1] + cube.s[1] - my) * 3);
-  for (const s of [-1, 1]) {
-    const xa = X(s < 0 ? -EYE_X[1] : EYE_X[0]), xb = X(s < 0 ? -EYE_X[0] : EYE_X[1]) - 1, ya = Y(EYE_Y[1]), yb = Y(EYE_Y[0]) - 1;
-    for (let y = ya - 2; y <= yb + 1; y++) for (let x = xa - 1; x <= xb + 1; x++) p.px(x, y, y < ya ? C.s3 : C.s2);
-    // bags: two soft lines under the eye, the lower one shorter
-    for (let x = xa; x <= xb; x++) { const u = (x - xa) / Math.max(1, xb - xa); p.px(x, yb + 2 + Math.round(Math.sin(u * Math.PI) * 0.6), C.s3); if (u > 0.2 && u < 0.8) p.px(x, yb + 4, shift(C.s2, -0.4)); }
-    // crow's feet at the outer corner
-    const ox = s < 0 ? xa - 2 : xb + 2, dx = s < 0 ? -1 : 1;
-    p.px(ox, ya + 2, C.s3); p.px(ox + dx, ya + 1, C.s3); p.px(ox, yb, C.s3); p.px(ox + dx, yb + 1, C.s3); p.px(ox + dx, Math.round((ya + yb) / 2), C.s3);
-  }
-  // frown creases between the brows
   const cx = Math.round(w / 2) - 1;
-  for (let y = 5; y < 12; y++) { p.px(cx - 1, y, C.s3); p.px(cx + 2, y + 1, C.s3); p.px(cx, y, C.s1); }
+  for (let y = 5; y < 11; y++) { p.px(cx - 1, y, C.s3); p.px(cx + 2, y + 1, C.s3); p.px(cx, y, C.s1); }
 }
 // the long roman-nosed muzzle in two steps. back: the wrinkled bridge with an old stitched scar; front: the snout,
 // lip line turned down at the corner, the fold from nostril to mouth
@@ -194,7 +184,7 @@ function muzzleP(part) {
     }
   };
 }
-// broad weathered nose leather: two slanted nostrils, a philtrum groove, dry cracks
+// weathered nose leather: a rounded dusty-pink pad with comma nostrils, the split upper lip below
 function noseP(p, w, h, face) {
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, face === 'down' ? C.s3 : face === 'up' ? C.s1 : ramp([C.s1, C.s1, C.s2], T01(y, h), x, y));
   if (face !== 'south') return;
@@ -259,7 +249,7 @@ function hornBreak(p, w, h, face) {
 function earP(notch) {
   return (p, w, h, face, cube) => {
     skinP(p, w, h, face, cube);
-    const tipC = (x, y) => x >= w - 2 && (y === 0 || y === h - 1) && !(x === w - 2 && h > 3 && y === 0 && false);
+    const tipC = (x, y) => x >= w - 2 && (y === 0 || y === h - 1);
     if (face === 'south') {
       for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) { const v = Math.abs(y - (h - 1) / 2) / ((h - 1) / 2); p.px(x, y, v < 0.25 ? '#a07478' : v < 0.7 ? '#d8aeac' : '#c49c9a'); }
     }
@@ -336,7 +326,7 @@ function guitarTop(hole, wear) {
       for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const d = Math.hypot(x - cx, (y - cy) * 1.1); if (d < 2.3) p.px(x, y, WOOD.hole); else if (d < 3.2) p.px(x, y, (x + y) % 2 ? '#2e6a3a' : '#f2e2b0'); }
       for (const dx of [-1, 1]) for (let y = 0; y < h; y++) p.px(Math.round(cx + dx * 0.9), y, '#fff8e0');
     }
-    if (wear) {   // the famous worn-through patch below the sound hole, scuffs and scratched names
+    if (wear) {   // a pick-worn hole right under the sound hole, scratched-in names, the bridge
       for (let y = 0; y < 4; y++) for (let x = 0; x < 4; x++) if (Math.hypot(x - 1.5, y - 1.5) < 2.1) p.px(Math.round(cx + 1 + x - 1.5), y + 1, x + y < 3 ? WOOD.topLo : WOOD.hole);
       for (let k = 0; k < 4; k++) p.px(2 + k, h - 3 - (k % 2), '#fff4dc');
       for (let k = 0; k < 3; k++) p.px(w - 4 + (k % 2), h - 5 + k, '#fff4dc');
@@ -423,40 +413,22 @@ function berryP(p, w, h, face) {
 }
 
 // ---------------------------------------------------------------- eyes
-// heavy-lidded, sheep-pupilled (a horizontal bar), amber. 10 × 7 texels; outer corner at x = 0.
+// simple Pokémon-style eyes: one solid dark shape and a single white glint pixel. 10 × 7 texels, outer corner
+// at x = 0 (the left eye is mirrored). The old, sleepy wisdom is all in the shape — a flat, heavy top edge
+// that droops toward the outer corner — and in the bushy brows above.
 const EW = 10, EH = 7;
-function eyeShape(p, o) {
-  for (let x = 0; x < EW; x++) {
-    const u = x / (EW - 1), arc = Math.sin(u * Math.PI), mid = lerp(o.c0 ?? 3.6, o.c1 ?? 3.0, u);
-    const top = mid - arc * (o.up ?? 2.6), bot = mid + arc * (o.dn ?? 2.4), lid = top + (bot - top) * (o.lid ?? 0.45) + (o.droop ?? 0.8) * (1 - u) * arc;
-    for (let y = 0; y < EH; y++) {
-      if (y < top - 0.5 || y > bot + 0.5) continue;
-      let c;
-      if (y < lid - 0.5) c = y < top + 0.5 ? C.s1 : C.s2;                 // the heavy upper lid
-      else if (y < lid + 0.5) c = C.ink;                                   // lid line
-      else if (y > bot - 0.5) c = C.s4;                                    // lower lid
-      else {
-        const v = (y - lid) / Math.max(1, bot - lid);
-        c = v < 0.35 ? C.i2 : v < 0.7 ? C.i1 : C.i0;
-        const px = (o.look ?? 0) + EW / 2 - 0.5;
-        if (Math.abs(x - px) < (o.pw ?? 2.2) && y < lid + 1.6 + (o.ph ?? 0)) c = C.pupil;
-      }
-      p.px(x, y, c);
-    }
-  }
-  if (o.glint !== false) p.px(Math.round(EW / 2 + (o.look ?? 0)) - 3, Math.round(lerp(o.c0 ?? 3.6, o.c1 ?? 3.0, 0.3) + 0.3), '#fff4e0');
-}
-const lineEye = (pts, c = C.ink, thick = 1) => (p) => { for (let i = 0; i < pts.length - 1; i++) { const [x0, y0] = pts[i], [x1, y1] = pts[i + 1], n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0)) * 2; for (let k = 0; k <= n; k++) { const x = Math.round(x0 + (x1 - x0) * k / n), y = Math.round(y0 + (y1 - y0) * k / n); p.px(x, y, c); if (thick > 1) p.px(x, y + 1, c); } } };
-const EYES = {
-  calm: (p) => eyeShape(p, {}),
-  open: (p) => eyeShape(p, { lid: 0.22, droop: 0.3, up: 2.9 }),
-  glare: (p) => eyeShape(p, { lid: 0.55, droop: -0.9, c0: 3.4, c1: 3.6, dn: 1.8, pw: 2.6 }),
-  closed: (p) => { lineEye([[0, 4], [3, 4.6], [6, 4.4], [9, 3.4]], C.ink, 2)(p); lineEye([[1, 2.6], [5, 2.6], [8, 2.2]], C.s3)(p); },
-  sleep: (p) => { lineEye([[0, 3.6], [3, 4.8], [6, 4.8], [9, 3.8]], C.ink, 2)(p); lineEye([[1, 2.4], [5, 2.6], [8, 2.2]], C.s3)(p); },
-  happy: (p) => { lineEye([[0, 4.8], [2, 3.4], [5, 2.8], [8, 3.4], [9, 4.4]], C.ink, 2)(p); lineEye([[2, 6], [6, 6.2]], C.s3)(p); },
-  squeeze: (p) => { lineEye([[0, 1.5], [5, 3.6], [9, 3.2]], C.ink, 2)(p); lineEye([[0, 5.8], [5, 4.4], [9, 4.6]], C.ink)(p); },
-  swirl: (p) => { for (let y = 0; y < EH; y++) for (let x = 0; x < EW; x++) { const d = Math.hypot((x - 4.5) / 4.6, (y - 3.3) / 3.3); if (d > 1) continue; const r = Math.hypot(x - 4.5, (y - 3.3) * 1.35); p.px(x, y, d > 0.86 ? C.ink : Math.abs(r - 2.6) < 0.62 || r < 0.9 ? C.ink : '#fff4e6'); } p.px(7, 2, C.ink); p.px(6, 1, '#fff4e6'); },
+const EYE_MAPS = {
+  calm: ['..........', '..........', '.......##.', '.#####o##.', '..#######.', '...#####..', '..........'],
+  open: ['..........', '...#####..', '..#####o#.', '..########', '..#######.', '...#####..', '..........'],
+  glare: ['..........', '.##.......', '.#o###....', '.########.', '..#######.', '...####...', '..........'],
+  closed: ['..........', '..........', '..........', '.......##.', '.#######..', '.##.......', '..........'],
+  sleep: ['..........', '..........', '..........', '.##....##.', '..######..', '..........', '..........'],
+  happy: ['..........', '..........', '...####...', '.##....##.', '.#......#.', '..........', '..........'],
+  squeeze: ['..........', '.##.......', '..###.....', '....###...', '..###.....', '.##.......', '..........'],
+  swirl: ['..........', '.##....##.', '..##..##..', '...####...', '..##..##..', '.##....##.', '..........'],
 };
+const EYE_INK = '#1e0c16';
+const EYES = Object.fromEntries(Object.entries(EYE_MAPS).map(([k, rows]) => [k, (p) => rows.forEach((r, y) => { for (let x = 0; x < EW; x++) if (r[x] !== '.') p.px(x, y, r[x] === 'o' ? '#ffffff' : EYE_INK); })]));
 
 // ---------------------------------------------------------------- the model
 const P = (o, s, tex, x = {}) => ({ o, s, tex, ...x });
@@ -489,7 +461,7 @@ const hornSize = (i, n) => { const u = Math.max(0, i - 1) / (n - 2); return [4.3
 const hornL = chain(hornPts(1), hornSize, (i, n) => hornSeg(i, n, { chip: i === 4, crack: i === 6 }));
 const hornR = chain(hornPts(-1), hornSize, (i, n) => (i === n - 1 ? hornBreak : hornSeg(i, n, { crack: i === 3 })), { extra: () => ({ mirror: true }) });
 hornR[hornR.length - 1].s[2] *= 0.6;   // the snapped-off tip (the box keeps its base end)
-// the calyx: five sepals, each a flat inner half and a drooping outer half, and the curly stem
+// the calyx: six sepals, each a flat inner half and an outer half draping over the topknot, and the curly stem
 const CX = [0, 28.05, 10.6];
 function sepals(glow) {
   const out = [], x = { id: glow ? 'cx-glow' : 'cx', hide: !!glow, ...(glow ? { glow: true } : {}) };
@@ -667,7 +639,7 @@ function trunk(P, { dy = 0, dz = 0, a = 0, roll = 0, yaw = 0, carry = 0 } = {}) 
 }
 // swing a leg about its hip; the hoof is dropped back to the ground (the leg is rigid), lift raises it
 function stride(P, leg, ang, lift = 0) { P.rot(leg, ang).pos(leg, 0, lift - HIP * (1 - Math.cos(ang * D2R)), 0); }
-// lying on its side (fainted): rolled over the right flank's edge
+// lying on its side (fainted): rolled over onto the right flank
 const SIDE = 10.4;   // half the fleece's width: rolling about a point this high lands it on its flank where it stood
 function keel(P, th, hop = 0) { const r = th * D2R; P.rot('root', 0, 0, th).pos('root', SIDE * Math.sin(r), SIDE * (1 - Math.cos(r)) + hop, 0); }
 const stiffLegs = (P, k) => { for (const [leg, sx] of [['legFR', -1], ['legFL', 1], ['legBR', -1], ['legBL', 1]]) P.rot(leg, (leg[3] === 'F' ? -16 : 16) * k, 0, sx * 12 * k); };

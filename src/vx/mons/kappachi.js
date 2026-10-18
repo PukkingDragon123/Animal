@@ -4,9 +4,9 @@
 // cheeky grin, a turtle shell on its back paved like the garden's stepping stones in moss, webbed
 // hands and feet, and a cucumber it carries like a club.
 //
-// Music homage (California surf rock, original): a vertical-striped short-sleeve surf shirt worn
-// open over its belly, a little longboard it leans on (and waxes with its cucumber), dish water
-// that rolls like a wave, sunny humming harmonies in its idle and a hang-ten in its victory.
+// Music homage (California surf rock, original): its one signature item is a little longboard painted
+// in early-60s surf-shirt stripes, which it leans on (and waxes with its cucumber); dish water that
+// rolls like a wave, sunny humming harmonies in its idle and a hang-ten in its victory.
 //
 // Build notes: the dish water is its own bone on a soft spring, so it tilts and sloshes by itself
 // whenever the head moves; the wave frames roll a foam crest across it. The board stands on the
@@ -18,7 +18,7 @@ import { h2 } from './kit.js';
 const D2R = Math.PI / 180, TAU = Math.PI * 2;
 const C = {
   skin: ['#d2fbe2', '#9eecc4', '#6ad2a4', '#45a88c', '#2c7a70'],
-  belly: ['#fffdea', '#fff4bc', '#fbe39a', '#eac57c'], bellyLine: '#e6c98a', mask: ['#e4fff0', '#bdf4d6', '#94e2bc'],
+  belly: ['#fffad2', '#ffec92', '#f8d468', '#e4b452'], bellyLine: '#e8be62', mask: ['#e4fff0', '#bdf4d6', '#94e2bc'],
   shirt: { c: '#f6eedc', b: '#6ab4e2', n: '#24386e', cLo: '#d8ccb4', bLo: '#4a8cc0', nLo: '#18264e' },
   shell: { rim: ['#8a9a4a', '#6a7a3a', '#4a5a2e'], stone: ['#cfc6b2', '#b6ac98', '#9c927e', '#d8d2c0', '#a8a08a'], moss: ['#6aa046', '#4a7e36'] },
   dish: ['#fbf4e2', '#e8dcc0', '#c4ae94'], glaze: '#3a5aa8',
@@ -89,20 +89,8 @@ const bellyP = orb(BO, BR3, (l, q) => {
   const ax = Math.abs(q[0]), seam = Math.abs(q[1] - (7.4 + ax * ax * 0.07)) < 0.17;
   return seam && q[2] > 4.6 ? C.bellyLine : band(C.belly, [0.8, 0.15, -0.5], l);
 });
-// the surf shirt: vertical stripes (cream, sky, navy), shaded down each face, open down the front
+// surf-shirt stripes (cream, sky, navy), painted down the board's deck
 const STRIPE = 'cccbbnbb';
-const shirtCol = (u, y, lo) => { const k = STRIPE[((Math.floor((u + 60) * 3) % STRIPE.length) + STRIPE.length) % STRIPE.length]; return C.shirt[k + (lo ? 'Lo' : '')]; };
-const shirtP = (open) => (p, w, h, face, c) => {
-  for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) {
-    const q = at(c, face, i, j, w, h), u = face === 'east' || face === 'west' ? q[2] : q[0], lo = j > h * 0.7 || face === 'down';
-    if (face === 'up' || face === 'down') { p.px(i, j, shirtCol(q[0], q[1], face === 'down')); continue; }
-    let col = shirtCol(u, q[1], lo);
-    if (open && face === 'south' && Math.abs(q[0]) < 2.3) col = Math.abs(q[0]) > 1.9 ? C.shirt.n : C.skin[2];      // the open front, a navy placket edge
-    if (j === h - 1) col = C.shirt.nLo;                                                                            // hem
-    p.px(i, j, col);
-  }
-  if (open && face === 'south') for (let j = 2; j < h - 2; j += 4) p.px(Math.round((2.1 - c.o[0]) * 3) - 1, j, '#ffffff');   // buttons
-};
 // the shell, paved like garden stepping stones set in moss (Voronoi stones on the back faces)
 const STONES = []; for (let k = 0; k < 26; k++) STONES.push([(h2(k, 1, 9) - 0.5) * 11, 3.6 + h2(k, 2, 9) * 9, k]);
 const shellP = (p, w, h, face, c) => {
@@ -170,37 +158,80 @@ const boardP = (p, w, h, face, c) => {
   for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) {
     const q = at(c, face, i, j, w, h);
     let col;
-    if (face === 'east') {                       // the deck
-      col = j > h - 2 ? B.deckLo : B.deck;
-      if (Math.abs(q[2]) < 0.17) col = B.stringer;
-      const y = q[1]; if (y > 8.6 && y < 9.0) col = B.stripeA; if (y > 9.3 && y < 9.6) col = B.stripeB;
+    if (face === 'east') {                       // the deck, striped like an early-60s surf shirt
+      const k = STRIPE[((Math.floor((q[2] + 60) * 3) % STRIPE.length) + STRIPE.length) % STRIPE.length];
+      col = k === 'c' ? (j > h - 2 ? B.deckLo : B.deck) : C.shirt[k];
+      if (Math.abs(q[2] - 0.4) < 0.17) col = B.stringer;
+      const y = q[1]; if (y > 9.3 && y < 9.7) col = B.stripeA;
     } else if (face === 'west') col = h2(i >> 1, j >> 2, 3) < 0.15 ? B.bottomLo : B.bottom;
     else col = face === 'up' ? B.rail : B.rail;
     p.px(i, j, col);
   }
 };
 
+// ---------------------------------------------------------------- kawaii eyes
+// Gen 8–9 style eyes: a big soft oval with a 1-texel outline, a dark iris tinted with an accent, a lighter
+// accent gradient in the lower third, a big catchlight high on the outer side (x small) and a 1-texel glint
+// low on the inner side. lid: [y (fraction of the height), slope] cuts the top with a flat lid (angry: slope
+// > 0, tilted in; sad: < 0). Other expressions are single-colour strokes: ^ (happy), ◡ (closed), > (hurt).
+function eyeOpen(W, H, K, lid) {
+  return (p) => {
+    const cx = (W - 1) / 2, cy = (H - 1) / 2, rx = W / 2 - 0.02, ry = H / 2 - 0.02;
+    const lidAt = (x) => (lid ? lid[0] * H + lid[1] * (x - cx) : -9);
+    const inside = (x, y) => ((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2 <= 1 && y >= lidAt(x) - 0.01;
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      if (!inside(x, y)) continue;
+      const edge = !inside(x - 1, y) || !inside(x + 1, y) || !inside(x, y - 1) || !inside(x, y + 1) || (lid && y < lidAt(x) + 1.2);
+      const t = y / (H - 1);
+      p.px(x, y, edge ? K.line : t > 0.8 ? K.acc[1] : t > 0.62 ? K.acc[0] : K.dark);
+    }
+    const k = W >= 9 && !lid ? 3 : 2, x0 = Math.round(cx - rx * 0.55 + 0.5);
+    const y0 = Math.max(Math.round(cy - ry * 0.55 + 0.5), lid ? Math.ceil(lidAt(x0 + 1) + 1.2) : 0);
+    for (let j = 0; j < k; j++) for (let i = 0; i < k; i++) if (inside(x0 + i, y0 + j) && !(k === 3 && (i === 2 && j === 2))) p.px(x0 + i, y0 + j, '#ffffff');
+    const gx = Math.round(cx + rx * 0.5), gy = Math.round(cy + ry * 0.48);
+    if (inside(gx, gy)) p.px(gx, gy, '#ffffff');
+  };
+}
+// ^ happy (bulging up) or ◡ closed (bulging down): a 2-texel stroke
+const eyeArc = (W, H, K, up) => (p) => {
+  const cx = (W - 1) / 2, rx = W / 2 - 0.5;
+  for (let x = 0; x < W; x++) {
+    const u = (x - cx) / rx; if (Math.abs(u) > 1.02) continue;
+    const s = Math.sqrt(Math.max(0, 1 - u * u)), y = Math.round(up ? H * 0.62 - H * 0.36 * s : H * 0.4 + H * 0.26 * s);
+    p.px(x, y, K.line); p.px(x, y + 1, K.line);
+  }
+};
+// > (hurt): apex on the inner side; the mirrored eye reads <
+const eyeHurt = (W, H, K) => (p) => {
+  for (let k = 0; k <= 10; k++) {
+    const t = k / 10, x = Math.round(1 + t * (W - 3)), a = Math.round(1 + t * ((H - 1) / 2 - 1)), b = Math.round(H - 2 - t * ((H - 1) / 2 - 1));
+    p.px(x, a, K.line); p.px(x, a + 1, K.line); p.px(x, b, K.line); p.px(x, b - 1, K.line);
+  }
+};
+const eyeX = (W, H, K) => (p) => { for (let k = 0; k < W - 2; k++) { const y = Math.round(1 + (k * (H - 3)) / (W - 3)); p.px(1 + k, y, K.line); p.px(W - 2 - k, y, K.line); p.px(1 + k, y + 1, K.line); p.px(W - 2 - k, y + 1, K.line); } };
+const eyeSwirl = (W, H, K) => (p) => { const cx = (W - 1) / 2, cy = (H - 1) / 2; for (let a = 0; a < 15; a += 0.2) { const r = a * (Math.min(W, H) / 2 - 0.5) / 15; p.px(Math.round(cx + Math.cos(a) * r), Math.round(cy + Math.sin(a) * r), K.line); } };
+
 // ---------------------------------------------------------------- face
-// eyes: 10 × 8 texels, outer corner at x = 0. Relaxed, heavy-lidded and cheeky: both glance the
-// same way (to its left), so each side has its own map for 'chill'.
-const EM = { k: C.lid, w: '#f6fffa', s: '#cfe6dc', p: '#0c1a18', g: '#2a6a7a' };
+// eyes: 10 × 11 texels (a third of the face), outer corner at x = 0
+const EK = { line: '#06121c', dark: '#0e2232', acc: ['#1c6c94', '#5ccaee'] }, EW = 10, EH = 11;
 const EYES = {
-  chill: [['..........', '..kkkkkk..', '.kkkkkkkkk', 'kkssssgppk', 'kwwwwwgppk', '.kwwwwwwk.', '..kkkkkk..', '..........'],
-    ['..........', '..kkkkkk..', 'kkkkkkkkk.', 'kppgsssskk', 'kppgwwwwwk', '.kwwwwwwk.', '..kkkkkk..', '..........']],
-  grin: ['..........', '..........', '.kkkkkkkk.', 'kkwwgppwkk', 'kwwwgppwwk', '.kkkkkkkk.', 'k........k', '..........'],
-  fierce: ['k.........', '.kkk......', '..kkkkkk..', '.kkwwgppkk', 'kwwwwgppwk', '.kwwwwwwk.', '..kkkkkk..', '..........'],
-  wide: ['..kkkkkk..', '.kwwwwwwk.', 'kwwwwwwwwk', 'kwwwgpwwwk', 'kwwwppwwwk', 'kwwwwwwwwk', '.kwwwwwwk.', '..kkkkkk..'],
-  closed: ['..........', '..........', '..........', '..........', 'kk......kk', '.kkkkkkkk.', '..........', '..........'],
-  x: ['.kk....kk.', '..kk..kk..', '...kkkk...', '....kk....', '...kkkk...', '..kk..kk..', '.kk....kk.', '..........'],
-  swirl: ['..kkkkk...', '.k.....k..', 'k..kkk..k.', 'k.k...k.k.', 'k.k.k.k.k.', 'k..kk..k..', '.k.....k..', '..kkkkk...'],
+  chill: eyeOpen(EW, EH, EK),                            // open, bright and cheeky
+  grin: eyeArc(EW, EH, EK, true),                        // ^ ^
+  fierce: eyeOpen(EW, EH, EK, [0.3, 0.36]),
+  wide: eyeOpen(EW, EH, EK),
+  sad: eyeOpen(EW, EH, EK, [0.26, -0.3]),
+  closed: eyeArc(EW, EH, EK, false),
+  hurt: eyeHurt(EW, EH, EK),
+  x: eyeX(EW, EH, EK),
+  swirl: eyeSwirl(EW, EH, EK),
 };
 
 // ---------------------------------------------------------------- geometry
 const P = (o, s, tex, x = {}) => ({ o, s, tex, ...x });
 const FZ = 7.03;      // the face plane (front of the head's face box)
-const eyeStates = (side) => Object.entries(EYES).map(([k, m]) => { const rows = Array.isArray(m[0]) ? m[side < 0 ? 0 : 1] : m; return P(side < 0 ? [-4.0, 18.6, FZ] : [0.667, 18.6, FZ], [3.333, 2.667, 0], (p) => stamp(p, rows, EM), { plane: 'z', mirror: side > 0, id: 'eye-' + k, hide: k !== 'chill' }); });
+const eyeStates = (side) => Object.entries(EYES).map(([k, fn]) => P(side < 0 ? [-4.0, 17.3, FZ] : [0.667, 17.3, FZ], [3.333, 3.667, 0], fn, { plane: 'z', mirror: side > 0, id: 'eye-' + k, hide: k !== 'chill' }));
 // the head: a squashed voxel sphere of six boxes (distinct extents on every axis), the deep one a flat face
-const HEAD = [[7.0, 2.8, 3.0], [3.0, 6.2, 3.2], [4.4, 3.8, 6.6], [6.2, 4.4, 4.6], [4.8, 5.6, 4.2], [5.2, 4.8, 5.8]];
+const HEAD = [[7.0, 2.6, 3.0], [2.8, 6.0, 3.2], [4.4, 3.6, 6.6], [6.0, 3.8, 4.6], [4.6, 5.2, 4.2], [5.2, 4.6, 5.8]];
 const WATER = ['calm', 0, 1, 2, 3, 'empty'];
 const ABCD = ['w0', 'w1', 'w2', 'w3'];
 const fringe = (n, o, s, plane, piv, rot, seed) => ({ name: 'reed' + n, parent: 'head', pivot: piv, rot, cubes: [P(o, s, reedP(seed), { plane })] });
@@ -215,39 +246,36 @@ export const def = {
     { name: 'footL', parent: 'root', pivot: [2.8, 0, -1.4], cubes: [P([1.0, 0, -1.4], [3.6, 1.2, 4.6], webP), ...toes(1.1)] },
     { name: 'legR', parent: 'root', pivot: [-2.8, 4.0, 0], cubes: [P([-3.9, 0.8, -1.1], [2.2, 3.4, 2.2], skinP)] },
     { name: 'legL', parent: 'root', pivot: [2.8, 4.0, 0], cubes: [P([1.7, 0.8, -1.1], [2.2, 3.4, 2.2], skinP)] },
-    // the pot belly in an open surf shirt, the stepping-stone shell on its back
+    // the pot belly, the stepping-stone shell on its back
     { name: 'body', parent: 'root', pivot: [0, 3.6, 0], cubes: [
-      P([-4.6, 3.6, -3.4], [9.2, 8.6, 7.0], shirtP(true)),
-      P([-3.6, 3.4, 2.6], [7.2, 7.4, 1.8], bellyP),                 // a pot belly: three stepped layers
-      P([-2.8, 4.2, 4.2], [5.6, 5.8, 0.8], bellyP),
-      P([-1.8, 5.0, 4.8], [3.6, 4.2, 0.6], bellyP),
+      P([-4.6, 3.6, -3.4], [9.2, 8.6, 7.0], skinP),
+      P([-3.6, 4.6, 2.6], [7.2, 4.8, 2.0], bellyP),                 // a pot belly: a cross of a wide and a tall layer,
+      P([-2.6, 3.4, 2.6], [5.2, 7.2, 2.3], bellyP),                 // and the round middle pushing out furthest
+      P([-2.2, 5.0, 4.8], [4.4, 4.0, 0.6], bellyP),
       P([-5.0, 3.8, -5.4], [10.0, 8.6, 2.2], shellP),
       P([-4.2, 4.6, -6.6], [8.4, 7.0, 1.4], shellP),
       P([-3.0, 5.6, -7.4], [6.0, 5.0, 1.0], shellP),
-      // a camp collar, flaps folded out over the shoulders
-      P([-3.6, 11.4, 2.4], [2.6, 0.5, 1.8], shirtP(false), { pivot: [-2.3, 11.6, 2.6], rot: [0, 0, 18] }),
-      P([1.0, 11.4, 2.4], [2.6, 0.5, 1.8], shirtP(false), { pivot: [2.3, 11.6, 2.6], rot: [0, 0, -18] }),
     ] },
     { name: 'head', parent: 'body', pivot: [0, 12.0, 0.4], cubes: [
       ...HEAD.map(([a, b, c], k) => P([HO[0] - a, HO[1] - b, HO[2] - c], [2 * a, 2 * b, 2 * c], k === 2 ? faceSkin : headSkin)),
       // the dish set into the crown
-      P([-4.0, 23.4, -2.8], [8.0, 1.1, 6.4], dishP), P([-3.2, 23.4, -3.6], [6.4, 1.0, 8.0], dishP),
+      P([-4.0, 23.0, -2.8], [8.0, 1.1, 6.4], dishP), P([-3.2, 23.0, -3.6], [6.4, 1.0, 8.0], dishP),
       // the bill (upper)
       P([-2.2, 15.5, 6.4], [4.4, 1.5, 2.8], billP(false)),
       ...eyeStates(-1), ...eyeStates(1),
     ] },
     { name: 'jaw', parent: 'head', pivot: [0, 15.5, 6.6], cubes: [P([-2.0, 14.6, 6.5], [4.0, 0.9, 2.5], billP(true)), P([-1.8, 15.4, 6.6], [3.6, 0.2, 2.2], '#7a2a3a', { outline: false })] },
     // the water, on a soft spring of its own; frames: calm, a rolling crest (4), empty
-    { name: 'water', parent: 'head', pivot: [0, 24.56, 0.4], cubes: WATER.map((f) => P([-3.6, 24.56, -3.2], [7.2, 0, 7.2], waterP(f), { plane: 'y', id: 'wa-' + f, hide: f !== 'calm' })) },
+    { name: 'water', parent: 'head', pivot: [0, 24.16, 0.4], cubes: WATER.map((f) => P([-3.6, 24.16, -3.2], [7.2, 0, 7.2], waterP(f), { plane: 'y', id: 'wa-' + f, hide: f !== 'calm' })) },
     // reed hair, hanging round the dish
-    fringe('F', [-4.8, 20.6, 6.2], [9.6, 3.333, 0], 'z', [0, 23.9, 6.2], [-20, 0, 0], 1),
-    fringe('B', [-4.8, 20.4, -5.4], [9.6, 3.667, 0], 'z', [0, 23.9, -5.4], [22, 0, 0], 2),
-    fringe('R', [-6.2, 20.4, -4.6], [0, 3.667, 9.6], 'x', [-6.2, 23.9, 0.4], [0, 0, -22], 3),
-    fringe('L', [6.2, 20.4, -4.6], [0, 3.667, 9.6], 'x', [6.2, 23.9, 0.4], [0, 0, 22], 4),
-    // arms in short striped sleeves; the right hand carries the cucumber
-    { name: 'armR', parent: 'body', pivot: [-4.8, 11.0, 0.2], cubes: [P([-6.8, 8.8, -1.2], [2.4, 3.0, 2.8], shirtP(false)), P([-6.5, 6.2, -0.7], [1.8, 2.8, 1.8], skinP), P([-6.9, 4.8, -1.1], [2.6, 1.6, 2.6], webP)] },
+    fringe('F', [-4.8, 20.2, 6.2], [9.6, 3.333, 0], 'z', [0, 23.5, 6.2], [-20, 0, 0], 1),
+    fringe('B', [-4.8, 20.0, -5.4], [9.6, 3.667, 0], 'z', [0, 23.5, -5.4], [22, 0, 0], 2),
+    fringe('R', [-6.2, 20.0, -4.6], [0, 3.667, 9.6], 'x', [-6.2, 23.5, 0.4], [0, 0, -22], 3),
+    fringe('L', [6.2, 20.0, -4.6], [0, 3.667, 9.6], 'x', [6.2, 23.5, 0.4], [0, 0, 22], 4),
+    // stubby arms; the right hand carries the cucumber
+    { name: 'armR', parent: 'body', pivot: [-4.8, 11.0, 0.2], cubes: [P([-6.6, 8.6, -1.0], [2.2, 3.0, 2.4], skinP), P([-6.5, 6.2, -0.7], [1.8, 2.8, 1.8], skinP), P([-6.9, 4.8, -1.1], [2.6, 1.6, 2.6], webP)] },
     { name: 'cuke', parent: 'armR', pivot: [-5.6, 5.6, 0.2], rot: [22, 0, 20], cubes: [P([-6.6, 4.0, -0.8], [2.0, 9.0, 2.0], cukeP), P([-6.1, 13.0, -0.3], [1.0, 0.8, 1.0], flowerP), P([-6.1, 3.4, -0.3], [1.0, 0.6, 1.0], '#5a4a20')] },
-    { name: 'armL', parent: 'body', pivot: [4.8, 11.0, 0.2], cubes: [P([4.4, 8.8, -1.2], [2.4, 3.0, 2.8], shirtP(false)), P([4.7, 6.2, -0.7], [1.8, 2.8, 1.8], skinP), P([4.3, 4.8, -1.1], [2.6, 1.6, 2.6], webP)] },
+    { name: 'armL', parent: 'body', pivot: [4.8, 11.0, 0.2], cubes: [P([4.4, 8.6, -1.0], [2.2, 3.0, 2.4], skinP), P([4.7, 6.2, -0.7], [1.8, 2.8, 1.8], skinP), P([4.3, 4.8, -1.1], [2.6, 1.6, 2.6], webP)] },
     // the longboard, standing on its tail beside it (nose up, deck facing out)
     { name: 'board', parent: 'root', pivot: [BOARD_X + 0.3, 0, 0.4], rot: [0, -24, 9], cubes: [
       P([BOARD_X, 0, 0.4 - BOARD_W / 2], [0.6, BOARD_L - 2.2, BOARD_W], boardP),
@@ -256,6 +284,13 @@ export const def = {
       P([BOARD_X - 1.0, 0.6, 0.1], [1.0, 1.6, 0.6], '#1e8a8a'),
     ] },
   ],
+};
+// gear anchors (model units); a hat should sit round the dish, never over it
+def.attach = {
+  head: { bone: 'head', at: [0, 24.1, 0.4], size: 9.6 },
+  face: { bone: 'head', at: [0, 19.2, 7.05], size: 8.8 },
+  neck: { bone: 'body', at: [0, 11.8, 3.4], size: 6.4 },
+  back: { bone: 'body', at: [0, 8.2, -7.4], size: 9.0 },
 };
 
 // ---------------------------------------------------------------- effects of its own
@@ -273,7 +308,7 @@ defineFx('kappawave', {
 });
 
 // ---------------------------------------------------------------- animation
-const DISH = [0, 24.8, 0.4], MOUTH = [0, 15.2, 9.2], CUKE_TIP = [-5.6, 13.4, 0.2];
+const DISH = [0, 24.4, 0.4], MOUTH = [0, 15.2, 9.2], CUKE_TIP = [-5.6, 13.4, 0.2];
 // the dish water: a crest rolling across it at `speed` frames per second (0 = calm)
 function surf(P, t, speed = 3) { if (!speed) return P.face('water', 'calm'); return P.face('water', ABCD[Math.floor(t * speed) % 4]); }
 // spill drops off the dish lip
@@ -282,6 +317,10 @@ const spill = (P, n, dir = [0, 0.6, 1]) => P.stream('drop', 'head', DISH, { rate
 function plant(P, dy) { for (const s of ['legR', 'legL']) P.pos(s, 0, dy, 0).scl(s, 1, Math.max(0.4, (3.4 + dy) / 3.4), 1); }
 // the board: stood beside it (rest), or carried under the arm (k), following the body's bob dy
 const carry = (P, k, dy = 0) => P.rot('board', 0, 0, -9 * k).pos('board', -1.6 * k, (3.2 + dy) * k, 0);
+// the board laid flat on the ground under it, nose forward (k blends from standing); roll rocks it on a wave
+// the board laid flat under its feet, sideways (nose to its right), k blends from standing; roll rocks it
+// along its length, pitch tips the nose up as if riding a wave face
+const flat = (P, k, roll = 0, pitch = 0) => P.rot('board', roll, 24 * k, 81 * k - pitch).pos('board', -2.7 * k, 0.3 * k, 0.4 * k);
 
 export const anim = {
   start: 'idle', seed: 13,
@@ -313,7 +352,7 @@ export const anim = {
       P.rot('footR', -10 * bump(t % 1.2, 0.1, 0.3), 0, 0);                // tapping the beat
       surf(P, t, 2.5);
       P.face('eyes', t > 1.4 && t < 1.9 ? 'grin' : undefined);
-      P.burst(0.3, 'note', 'head', [3, 16, 9], { dir: [0.5, 1, 0.3] }).burst(1.1, 'note', 'head', [3.5, 16.5, 9], { dir: [0.8, 1, 0.2] }).burst(1.9, 'note', 'head', [3, 16, 9], { dir: [0.3, 1, 0.4] });
+      P.burst(0.3, 'note', 'head', [7.5, 20, 3], { dir: [0.5, 1, 0.2] }).burst(1.1, 'note', 'head', [8, 22, 2], { dir: [0.8, 1, 0.1] }).burst(1.9, 'note', 'head', [7.5, 21, 3], { dir: [0.3, 1, 0.3] });
     } },
     // a waddle with the board tucked under its arm; water slops over the lip
     walk: { len: 0.7, loop: true, f(P, t) {
@@ -335,7 +374,7 @@ export const anim = {
       surf(P, t, 8);
       P.face('eyes', up > 0.3 ? 'wide' : crouch > 0.3 ? 'fierce' : undefined);
       P.burst(0.5, 'splash', 'head', DISH, { n: 16, dir: [0, 1, 0], speed: 1.6, spread: 0.7 }).burst(0.5, 'note', 'head', [0, 26, 2], { n: 5, speed: 1.6 });
-      P.burst(0.9, 'note', 'head', [3, 20, 8], { n: 3, speed: 1.2 });
+      P.burst(0.9, 'note', 'head', [7, 22, 3], { n: 3, speed: 1.2 });
     } },
     // attack: cucumber bonk — rear back and bring the cucumber down overhead like a club
     attack: { len: 1.05, next: 'idle', f(P, t) {
@@ -366,7 +405,7 @@ export const anim = {
       P.pos('root', 0, 0, -2.2 * k).rot('body', -14 * k + wob(t, 0.18, 5, 3, 6), 0, wave(t, 14) * 3 * k).sq('body', -0.14 * k).rot('head', -14 * k, 0, 0).rot('jaw', 26 * k);
       P.rot('armR', 0, 0, -40 * k).rot('armL', 0, 0, 40 * k);
       surf(P, t, 10);
-      P.face('eyes', t < 0.45 ? 'x' : undefined);
+      P.face('eyes', t < 0.45 ? 'hurt' : undefined);
       P.burst(0.02, 'splash', 'head', DISH, { n: 12, dir: [0, 1, -0.6], speed: 1.6 }).burst(0.02, 'spark', 'body', [0, 9, 6], {});
     } },
     // the dish spills dry, it wobbles, then topples back onto its shell like an upturned turtle
@@ -375,7 +414,7 @@ export const anim = {
       P.rot('body', 0, wave(t, 1.4) * 14 * dizzy, wave(t, 2) * 10 * dizzy).rot('head', 0, 0, wave(t, 2, 1) * 12 * dizzy);
       P.rot('root', -82 * fall, 0, 0).pos('root', 0, 7.6 * fall, -1.2 * fall);
       P.rot('footR', -30 * fall, 0, 0).rot('footL', -20 * fall, 0, 0).rot('armR', 0, 0, -60 * fall).rot('armL', 0, 0, 60 * fall).rot('jaw', 24 * fall);
-      P.rot('board', 0, 0, -86 * seg(t, 0.4, 0.8, E.bounce));
+      P.rot('board', 0, 0, -84 * seg(t, 0.4, 0.8, E.bounce));
       P.face('water', t > 0.6 ? 'empty' : 'w0').face('eyes', t > 0.25 ? 'swirl' : 'wide'); P.blinkOK = false; P.lookW = 0;
       P.burst(0.55, 'splash', 'head', DISH, { n: 18, dir: [-0.3, 0.6, 0.6], speed: 1.6 }).burst(1.0, 'star', 'head', [0, 26, 0], { n: 5 });
     } },
@@ -391,25 +430,24 @@ export const anim = {
       const lay = seg(t, 0.05, 0.35, E.out), ride = seg(t, 0.45, 0.7, E.out) * (1 - seg(t, 2.05, 2.35, E.inout));
       const hopY = Math.sin(seg(t, 0.35, 0.62) * Math.PI) * 4;
       // the board lands flat in front of it, nose forward
-      P.rot('board', -90 * lay, 24 * lay, -9 * lay).pos('board', -7.6 * lay, 0.5 * lay, 1.0 * lay);
       const sway = wave(t, 0.9) * ride, crouch = ride * (0.7 + 0.3 * Math.abs(wave(t, 1.8)));
-      P.pos('root', 0, hopY + 1.1 * ride, 3.2 * ride + sway * 0.6).rot('root', 0, -12 * ride, 0);
+      flat(P, lay, 4 * sway, 10 * ride);
+      P.pos('root', 0, hopY + 1.4 * ride, 0).rot('root', 0, -14 * ride, sway * 5);
       P.pos('body', 0, -1.5 * crouch, 0).rot('body', 10 * ride, 0, sway * 8); plant(P, -1.5 * crouch);
       P.pos('footR', 0, 0, 2.6 * ride).rot('footR', 0, 0, 0).pos('footL', 0, 0, -1.4 * ride);       // one foot walked up to the nose
       P.rot('armR', 0, 0, -78 * ride + sway * 10).rot('armL', 0, 0, 78 * ride - sway * 10).rot('cuke', 40 * ride, 0, 0);
       P.rot('head', -6 * ride, 10 * ride, -sway * 6).rot('jaw', 22 * ride);
       surf(P, t, 6);
       P.face('eyes', ride > 0.4 ? 'grin' : undefined);
-      if (ride > 0.5) P.stream('splash', 'root', [0, 0.5, -6], { rate: 30, dir: [0, 0.8, -1], speed: 1.4, spread: 0.6 });
-      P.burst(0.75, 'note', 'head', [0, 27, 2], { n: 4, speed: 1.2 }).burst(1.5, 'note', 'head', [3, 22, 6], { n: 2, speed: 1 });
+      if (ride > 0.5) P.stream('splash', 'root', [6, 0.6, 0], { rate: 30, dir: [1, 0.8, -0.3], speed: 1.4, spread: 0.6 }).stream('splash', 'root', [-8, 1.8, 0], { rate: 10, dir: [-0.6, 1, 0.2], speed: 1, spread: 0.5 });
+      P.burst(0.75, 'note', 'head', [0, 27, 2], { n: 4, speed: 1.2 }).burst(1.5, 'note', 'head', [7, 22, 3], { n: 2, speed: 1 });
     } },
-    // asleep on its board, laid flat like a beach towel; the dish water still
+    // asleep sitting up, slumped against its board, head lolled onto the rail; the dish water still
     sleep: { len: 3.4, loop: true, f(P, t) {
       const br = Math.sin((t / 3.4) * TAU);
-      P.rot('board', -90, 24, -9).pos('board', -7.6, 0.5, 1.0);
-      P.rot('root', -78, 0, 0).pos('root', 0, 7.2, -2.0);
-      P.sq('body', br * 0.02).rot('head', 6, 18, 0).rot('armR', 0, 0, -20).rot('armL', 0, 0, 20).rot('jaw', 4 + Math.max(0, br) * 6);
-      P.rot('footR', -14, 0, 8).rot('footL', -10, 0, -8);
+      P.pos('body', 0, -2.4, 0).rot('body', -8, 10, 12 + br * 1.2).sq('body', br * 0.02); plant(P, -2.4);
+      P.rot('legR', -60, 0, 10).rot('legL', -60, 0, -10).pos('footR', 0, 0, 1.6).pos('footL', 0, 0, 1.6);
+      P.rot('head', 10 + br * 2, 14, 16).rot('armR', 0, 0, -12).rot('armL', -16, 0, -36).rot('cuke', -30, 0, 30).rot('jaw', 4 + Math.max(0, br) * 6);
       surf(P, t, 0);
       P.face('eyes', 'closed'); P.blinkOK = false; P.lookW = 0; P.breathW = 0;
       P.burst(0.5, 'z', 'head', [3, 22, 8], {}).burst(1.8, 'z', 'head', [3, 22, 8], {});
@@ -418,8 +456,9 @@ export const anim = {
     wax: { len: 2.6, next: 'idle', f(P, t) {
       const reach = seg(t, 0.05, 0.4, E.inout) * (1 - seg(t, 1.9, 2.3, E.inout)), rub = reach * (t > 0.4 && t < 1.9 ? 1 : 0);
       const a = t * 4 * TAU;
-      P.rot('body', 0, -26 * reach, 0).rot('head', 8 * reach, -10 * reach + 10 * bump(t, 1.95, 2.4), 0);
-      P.rot('armR', -50 * reach + Math.sin(a) * 10 * rub, -30 * reach, -60 * reach + Math.cos(a) * 10 * rub).rot('cuke', 60 * reach, 0, -50 * reach);
+      P.rot('body', 0, 34 * reach, 0).rot('head', 10 * reach, 10 * reach + 12 * bump(t, 1.95, 2.4), 0);
+      P.rot('armR', -70 * reach + Math.sin(a) * 8 * rub, 40 * reach, Math.cos(a) * 8 * rub).rot('cuke', 70 * reach, 0, -40 * reach);
+      P.rot('board', 0, 0, -6 * reach);
       P.face('eyes', t > 2.0 ? 'grin' : reach > 0.5 ? 'chill' : undefined);
       if (rub > 0.5 && h2(Math.floor(t * 10), 1, 1) < 0.4) P.stream('sparkle', 'board', [BOARD_X + 0.6, 7, 0.4], { rate: 5 });
       surf(P, t, 2);
