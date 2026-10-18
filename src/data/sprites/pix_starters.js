@@ -3,150 +3,170 @@
 import { FX } from '../../px/pixmon.js';
 
 // ================================================================== CHILICHICK
-// A small, fat fire chick hugging a chili as big as its belly. A crest of three
-// flame tongues (no comb), a flame tuft for a tail, ember-lit eyes.
+// A small, fat, furious fire chick. It bit a chili pepper it knew was too hot and
+// now it is screaming about it: white glaring eyes with angry lids, tears streaming,
+// a wide-open hooked beak, a crest of flame tongues (no comb), ruffled feathers.
+// The pepper — bitten, seeds showing — never leaves its wing.
 const CHILI_PAL = {
-  body: { ramp: ['#ffe68a', '#ffbf3c', '#f5872c', '#cf552a'], line: '#5a1e18', lineLit: '#a4441f' },
-  belly: { ramp: ['#fff8da', '#ffe6a0', '#fbbd6c', '#e68f4c'], line: '#5a1e18' },
-  wing: { ramp: ['#ffd660', '#ffa834', '#ea7629', '#c24c28'], line: '#5a1e18', lineLit: '#9a3a1c' },
-  feet: { ramp: ['#ffb468', '#ee883a', '#c75e2c', '#963c24'], line: '#481812' },
-  beak: { ramp: ['#ffd27a', '#ff9e36', '#e0672a', '#b0432a'], line: '#5a1e18' },
-  chili: { ramp: ['#ff8a7a', '#e8363e', '#b4203a', '#781334'], line: '#3c0c1c', lineLit: '#6e1430', gloss: true, spec: 0.96, specC: '#ffd6cc' },
+  body: { ramp: ['#ffd256', '#ff9c2c', '#e8622a', '#b23a24'], line: '#3e120e', lineLit: '#8a2c18' },
+  belly: { ramp: ['#fff0b8', '#ffd47a', '#f6a650', '#d87a3a'], line: '#3e120e' },
+  wing: { ramp: ['#ffb84a', '#f2842a', '#cf5226', '#9a3220'], line: '#3e120e', lineLit: '#7a2416' },
+  feet: { ramp: ['#ffb468', '#e8803a', '#bc5a2c', '#863822'], line: '#2e0e0a' },
+  beak: { ramp: ['#ffe68e', '#ffb43a', '#e2782a', '#a84a20'], line: '#2e0e08', lineLit: '#7a3a14', th: [0.62, 0.3, 0.02] },
+  mouth: { ramp: ['#8a1c26', '#6a1020', '#4a0a18', '#300610'], line: '#2e0e08', flat: true },
+  chili: { ramp: ['#ff8a7a', '#e8363e', '#b4203a', '#781334'], line: '#3c0c1c', lineLit: '#6e1430', gloss: true, spec: 0.95, specC: '#ffd6cc' },
+  flesh: { ramp: ['#fff6d0', '#ffe2a0', '#f6c070', '#d89a50'], line: '#3c0c1c', flat: true },
   leaf: { ramp: ['#d2f070', '#80c64a', '#3f8e3a', '#245c2e'], line: '#16301a' },
-  crest: { ramp: ['#fff6c8', '#ffd040', '#ff7c22', '#e23c1e'], line: '#6a1612', lineLit: '#a42a18', th: [0.8, 0.5, 0.18], inner: '#e0662a' },
+  crest: { ramp: ['#fff6c8', '#ffd040', '#ff7c22', '#e23c1e'], line: '#5a120e', lineLit: '#a42a18', th: [0.8, 0.5, 0.18], inner: '#c84a22' },
 };
-const K = '#2a1218', WH = '#ffffff', EM = '#ee6a2a', EM2 = '#ffb04a';
-const EYE = {   // near eye 5×7 / far eye 3×6, per expression
-  open: [['.kkkk.', 'kWWkkk', 'kWWkkk', 'kkkkkk', 'kkkkkk', 'kkkkgk', 'kkkggk', '.kkkk.'], ['.kk.', 'kWkk', 'kkkk', 'kkkk', 'kkgk', 'kggk', '.kk.']],
-  fierce: [['kk....', '.kkk..', 'kkWkkk', 'kWWkkk', 'kkkkkk', 'kkkggk', '.kkkk.'], ['...k', '.kk.', 'kWkk', 'kkkk', 'kkgk', '.kk.']],
-  closed: [['......', '......', '......', '......', 'k....k', '.kkkk.'], ['....', '....', '....', '....', 'k..k', '.kk.']],
-  sleep: [['......', '......', '......', '......', '......', 'kkkkkk', '.kkkk.'], ['....', '....', '....', '....', '....', 'kkkk']],
-  happy: [['......', '......', '..kk..', '.k..k.', 'k....k'], ['....', '....', '.kk.', 'k..k', '....']],
-  hurt: [['......', '....kk', '..kk..', 'kk....', '..kk..', '....kk'], ['....', 'kk..', '..kk', '...k', '..kk', 'kk..']],
-  ko: [['......', 'kk..kk', '.kkkk.', '..kk..', '.kkkk.', 'kk..kk'], ['....', 'k..k', '.kk.', '.kk.', 'k..k']],
+// angry eyes, Pokémon-style: white with a dot pupil under a hard slanted lid (facing left)
+const K = '#1e0a0c', WH = '#ffffff';
+const EYE = {   // [near eye 8×6, far eye 4×4]
+  open: [['.......kk', '.....kkkk', '..kkkkWWk', 'kkkWWWWWk', '.kWppWWWk', '.kWppWWk.', '..kkkkk..'], ['kk..', '.kkk', 'kWpk', '.kkk']],
+  fierce: [['......kkk', '...kkkkkk', 'kkkkkkWWk', '.kpWWWWWk', '.kkWWWWk.', '..kkkkk..'], ['kk..', '.kkk', 'kpkk']],
+  closed: [['.......kk', '.....kkkk', '..kkkk...', 'kkk......', '.kkkkkkk.'], ['kk..', '.kkk', '..kk']],
+  sleep: [['.......kk', '....kkk..', '.........', '.........', 'kkkkkkkk.'], ['kk..', '..kk']],
+  happy: [['.......kk', '.....kkkk', '..kkkkkkk', 'kkkkkkkkk', '.kWWWWWk.', '..kkkkk..'], ['kk..', '.kkk', '.kWk']],
+  hurt: [['k.......k', '.kk...kk.', '...kkk...', '.kk...kk.', 'k.......k'], ['k..k', '.kk.', 'k..k']],
+  ko: [['.kkkkkkk.', 'kWkWWWkWk', 'kWWkWkWWk', 'kWWWkWWWk', 'kWWkWkWWk', '.kkkkkkk.'], ['kkk', 'kWk', 'kkk']],
 };
-const EYEMAP = { k: K, W: WH, g: EM, o: EM2 };
+const EYEMAP = { k: K, W: WH, p: K };
 
+// a chili pepper: pod from the stem end to the tip, calyx and curly stem; `bitten` cuts the tip open
 function chiliPod(P, pts, o = {}) {
-  // the pod, its calyx and curly stem; pts run from the stem end to the tip
   P.tube(pts, 'chili', { grp: o.grp || 'chili', round: 3 });
   const [sx, sy] = pts[0], dx = pts[0][0] - pts[1][0], dy = pts[0][1] - pts[1][1], d = Math.hypot(dx, dy) || 1, ux = dx / d, uy = dy / d;
-  // glossy streak along the top of the pod
-  for (let k = 1; k < Math.min(3, pts.length - 1); k++) { const [x, y, r] = pts[k]; P.px(x - 1, y - r + 1.4, '#ffd0c4'); P.px(x + 1, y - r + 1.4, '#ffd0c4'); P.px(x, y - r + 1.4, '#fff0ea'); }
-  // calyx: three sepals fanning back over the shoulder of the pod
+  for (let k = 1; k < Math.min(3, pts.length - 1); k++) { const [x, y, r] = pts[k]; P.px(x - 1, y - r + 1.4, '#ffd0c4'); P.px(x, y - r + 1.4, '#fff0ea'); }
+  if (o.bitten) {   // the bitten end: pale flesh and seeds
+    const [tx, ty, tr] = pts[pts.length - 1];
+    P.ell(tx, ty, tr + 0.4, tr + 0.4, 'flesh', { grp: (o.grp || 'chili') + 'b' });
+    P.px(tx, ty, '#e8b84a'); P.px(tx - 1, ty + 1, '#e8b84a'); P.px(tx + 1, ty - 1, '#fff8e0');
+  }
   const cx = sx + ux * 2, cy = sy + uy * 2;
-  P.poly([[cx - uy * 4.5, cy + ux * 4.5], [cx + ux * 3, cy + uy * 3 - 1], [cx + uy * 4.5, cy - ux * 4.5], [cx + ux * 1, cy + uy * 1 + 1.5]], 'leaf', { grp: 'calyx', round: 2 });
-  P.tube([[cx + ux * 2, cy + uy * 2, 1.3], [cx + ux * 4.5, cy + uy * 4.5 - 1.5, 1.1], [cx + ux * 4 + 1.5, cy + uy * 4 - 4, 0.9]], 'leaf', { grp: 'calyx', round: 1 });
+  P.poly([[cx - uy * 4, cy + ux * 4], [cx + ux * 3, cy + uy * 3], [cx + uy * 4, cy - ux * 4], [cx + ux, cy + uy]], 'leaf', { grp: 'calyx', round: 2 });
+  P.tube([[cx + ux * 2, cy + uy * 2, 1.2], [cx + ux * 4, cy + uy * 4 + 1, 1], [cx + ux * 4 + 2, cy + uy * 4 + 3, 0.8]], 'leaf', { grp: 'calyx', round: 1 });
+}
+
+// the beak, built from two shaded mandibles; open: 0 shut, 1 shouting, 2 screaming
+function beak(P, bx, by, open) {
+  const o = open || 0, lo = o * 2.6;
+  if (o) {
+    P.poly([[bx + 2, by + 1], [bx - 8, by + 1], [bx - 6, by + 2 + lo], [bx + 2, by + 3 + lo * 0.6]], 'mouth', { grp: 'mouth' });
+    P.ell(bx - 2, by + 2 + lo * 0.7, 2.6, 1.2 + o * 0.4, 'mouth', { grp: 'mouth', flat: true });
+    P.stamp(bx - 4, by + 1 + Math.round(lo * 0.8), ['.tt.', 'tttt'], { t: '#ff6a7a' }, { on: true });   // tongue
+  }
+  // lower mandible (behind the upper one)
+  P.poly([[bx + 2, by + 1 + lo * 0.5], [bx - 6, by + 1.5 + lo], [bx - 5, by + 3 + lo], [bx + 2, by + 4 + lo * 0.6]], 'beak', { grp: 'beakL', round: 2, lit: -0.12 });
+  // upper mandible: a strong hooked beak
+  P.poly([[bx + 2, by - 4], [bx - 3, by - 2.5], [bx - 8, by - 0.5], [bx - 10, by + 1.5], [bx - 8.5, by + 1.6], [bx + 2, by + 1.2]], 'beak', { grp: 'beakU', round: 2 });
+  P.px(bx - 1, by - 2, '#fff6c0'); P.px(bx - 3, by - 1, '#fff6c0'); P.px(bx + 0, by - 3, '#ffe68e');       // ridge highlight
+  P.px(bx - 2, by - 1, '#7a3a14');                                                                        // nostril
 }
 
 function chilichick(P, m) {
-  const back = m.view === 'back', sq = m.sq, rx = 16 + sq, ry = 14 - sq;
-  const lean = m.lean + (m.tilt ? Math.round(m.tilt * 2) : 0);
-  const X = 40 + m.dx, base = 60 + m.bob, cy = base - ry, top = cy - ry;
-  const fx = X - lean;                                         // the face leans with the body
-  const fl = (m.ph >> 1) % 3;                                  // flame flicker phase
-  // ---- crest + tail (behind the body in the front view)
+  const back = m.view === 'back', sq = m.sq, rx = 15 + sq, ry = 13 - sq;
+  const idle = m.clip === 'idle' || m.clip === 'walk' || m.clip === 'run';
+  const shake = m.clip === 'idle' && (m.ph >> 1) % 2 ? 1 : 0;              // shaking with rage
+  const lean = 1 + m.lean + (m.tilt ? Math.round(m.tilt * 2) : 0);
+  const X = 40 + m.dx + shake, base = 60 + m.bob, cy = base - ry, top = cy - ry;
+  const fx = X - lean;
+  const fl = (m.ph >> 1) % 3;
+  const mouth = m.mouth || (idle ? ((m.ph >> 3) % 3 === 0 ? 2 : 1) : m.clip === 'sleep' ? 0 : 1);
+  // ---- crest: sharp flame tongues swept back; a tail flame
   const crest = () => {
-    P.flame(fx + 9, top + 4, 10 + (fl === 0 ? 1 : 0), 4.6, 8 - (fl === 1 ? 1 : 0), 'crest', { grp: 'crest', glow: true, round: 3 });
-    P.flame(fx + 2, top + 3, 13 + (fl === 1 ? 1 : 0), 5.6, 5 - (fl === 2 ? 1 : 0), 'crest', { grp: 'crest', glow: true, round: 3 });
-    P.flame(fx - 5, top + 4, 7 + (fl === 2 ? 1 : 0), 4, 3, 'crest', { grp: 'crest', glow: true, round: 2.5 });
+    P.flame(fx + 9, top + 4, 12 + (fl === 0 ? 2 : 0), 4.4, 9 - (fl === 1 ? 2 : 0), 'crest', { grp: 'crest', glow: true, round: 3 });
+    P.flame(fx + 2, top + 3, 15 + (fl === 1 ? 2 : 0), 5.2, 6 - (fl === 2 ? 1 : 0), 'crest', { grp: 'crest', glow: true, round: 3 });
+    P.flame(fx - 3, top + 2, 9 + (fl === 2 ? 2 : 0), 3.6, 4, 'crest', { grp: 'crest', glow: true, round: 2.5 });
   };
-  const tail = () => back ? P.flame(X + 1, base - 3, 10 + (fl === 1 ? 1 : 0), 4.2, 3, 'crest', { grp: 'tail', glow: true, round: 2.5 })
-    : P.flame(X + 15, cy + 2, 11 + (fl === 1 ? 1 : 0), 4.2, 9, 'crest', { grp: 'tail', glow: true, round: 2.5 });
-  // ---- feet
+  const tail = () => back ? P.flame(X + 1, base - 3, 11 + (fl === 1 ? 1 : 0), 4.2, 3, 'crest', { grp: 'tail', glow: true, round: 2.5 })
+    : P.flame(X + 14, cy + 1, 12 + (fl === 1 ? 2 : 0), 4.2, 10, 'crest', { grp: 'tail', glow: true, round: 2.5 });
+  // ---- feet with dark talons
   const feet = () => {
     const nearUp = m.step > 0 ? 2 : 0, farUp = m.step < 0 ? 2 : 0;
-    P.ell(X - 7, base + 1.5 - farUp, 3.6, 2.1, 'feet', { grp: 'footF' });
-    P.ell(X + 5, base + 2 - nearUp, 4, 2.3, 'feet', { grp: 'footN' });
-    if (!back) {
-      P.stamp(X - 12, base + 2 - farUp, ['ff.f'], { f: '#c75e2c' }, { mat: 'feet', grp: 'footF' });
-      P.stamp(X - 1, base + 3 - nearUp, ['ff.f'], { f: '#c75e2c' }, { mat: 'feet', grp: 'footN' });
-    }
+    P.ell(X - 6, base + 1.5 - farUp, 3.4, 2, 'feet', { grp: 'footF' });
+    P.ell(X + 5, base + 2 - nearUp, 3.8, 2.2, 'feet', { grp: 'footN' });
+    if (!back) { P.stamp(X - 11, base + 2 - farUp, ['c.c.c'], { c: '#2e0e0a' }, { mat: 'feet', grp: 'footF' }); P.stamp(X, base + 3 - nearUp, ['c.c.c'], { c: '#2e0e0a' }, { mat: 'feet', grp: 'footN' }); }
   };
-  // ---- the chili, wherever the wings have it
-  const pod = () => {
+  // ---- the pepper in the near wing (stem in the wing, bitten tip toward the beak)
+  const pepper = () => {
     if (m.arm === 2 || m.arm === 3) return;
-    if (m.arm === 1) chiliPod(P, [[X + 12, top - 2, 3.6], [X + 3, top - 4, 4.2], [X - 6, top - 4, 3.6], [X - 13, top - 2, 2.2], [X - 16, top + 1, 1]]);
-    else if (m.arm === 4) chiliPod(P, [[X + 7, cy + 9, 4], [X + 1, cy + 6, 4], [X - 5, cy + 2, 3.2], [X - 9, cy - 1, 2], [X - 11, cy - 2, 1]]);
-    else chiliPod(P, [[X + 13, cy + 4, 3.8], [X + 7, cy + 8, 4.8], [X - 1, cy + 10.5, 4.9], [X - 9, cy + 11, 4.1], [X - 15, cy + 9, 2.9], [X - 19, cy + 5.5, 1.6], [X - 20, cy + 2.5, 0.9]]);
+    if (m.arm === 1) chiliPod(P, [[X + 8, top - 1, 2.4], [X + 3, top - 4, 3.2], [X - 3, top - 6, 3], [X - 7, top - 7, 2.2]], { bitten: true });
+    else if (m.arm === 4) chiliPod(P, [[X + 1, cy + 8, 2.4], [X - 3, cy + 5, 3.2], [X - 7, cy + 2, 3], [X - 10, cy, 2.2]], { bitten: true });
+    else chiliPod(P, [[X + 4, cy + 6, 2.6], [X - 1, cy + 7.5, 3.6], [X - 7, cy + 9.5, 3.5], [X - 12, cy + 11, 2.8], [X - 15, cy + 12, 2.2]], { bitten: true });
   };
   const wings = () => {
     const W = {
-      0: [[X + 10, cy + 12, 4.6, 5.6, -1.1], [X - 10, cy + 15, 3.2, 4, 1.2]],
-      1: [[X + 13, top + 2, 4.5, 7, -2.4], [X - 13, top + 3, 3.6, 6, 2.4]],
-      2: [[X - 6, cy + 2, 4.5, 7, 1.2], [X - 15, cy + 2, 3.4, 5.5, 1.1]],
-      3: [[X + 9, cy + 6, 5, 7, -0.4], [X - 11, cy + 7, 3.4, 5, 0.5]],
-      4: [[X + 7, cy + 10, 5, 7, -1.0], [X - 9, cy + 9, 3.6, 5, 0.8]],
+      0: [[X + 7, cy + 7, 4.4, 6, -0.9], [X - 12, cy + 2, 3.4, 5.6, 0.2]],
+      1: [[X + 9, top + 1, 4.2, 6.5, -2.4], [X - 12, top + 3, 3.4, 6, 2.4]],
+      2: [[X - 8, cy + 1, 4.4, 6.5, 1.3], [X - 14, cy + 1, 3.4, 5.5, 1.1]],
+      3: [[X + 5, cy + 7, 4.4, 6.5, -0.5], [X - 12, cy + 5, 3.4, 5, 0.4]],
+      4: [[X + 1, cy + 8, 4.4, 6.2, -1.3], [X - 12, cy + 6, 3.4, 5, 0.6]],
     }[m.arm] || [];
     const [nw, fw] = W;
-    if (fw) P.ell(fw[0], fw[1], fw[2], fw[3], 'wing', { rot: fw[4], grp: 'wingF' });
+    const flap = idle && fw ? ((m.ph >> 2) % 2 ? -2 : 0) : 0;                 // the far wing shakes a fist
+    if (fw) P.ell(fw[0], fw[1] + flap, fw[2], fw[3], 'wing', { rot: fw[4] + flap * 0.15, grp: 'wingF' });
     if (nw) {
       P.ell(nw[0], nw[1], nw[2], nw[3], 'wing', { rot: nw[4], grp: 'wingN' });
-      // feather tips along the wing's lower edge
-      const c = Math.cos(nw[4]), s = Math.sin(nw[4]);
-      for (const u of [-0.45, 0, 0.45]) { const lx = nw[0] + (-s) * nw[3] * 0.82 + c * nw[2] * u * 1.4, ly = nw[1] + c * nw[3] * 0.82 + s * nw[2] * u * 1.4; P.px(lx, ly, '#c24c28'); }
+      const c = Math.cos(nw[4]), sn = Math.sin(nw[4]);
+      for (const u of [-0.5, 0, 0.5]) { const lx = nw[0] + (-sn) * nw[3] * 0.85 + c * nw[2] * u * 1.3, ly = nw[1] + c * nw[3] * 0.85 + sn * nw[2] * u * 1.3; P.px(lx, ly, '#9a3220'); P.px(lx + 1, ly + 1, '#9a3220'); }
     }
   };
   const face = () => {
-    const ex = m.eyes, e = EYE[ex] || EYE.open;
-    const nx = fx - 5, ny = cy - 10 + (ex === 'happy' || ex === 'closed' || ex === 'sleep' ? 1 : 0), farX = fx - 15, farY = cy - 9;
+    const ex = m.eyes === 'open' && idle ? 'open' : m.eyes, e = EYE[ex] || EYE.open;
+    const nx = fx - 9, ny = cy - 11, farX = fx - 16, farY = cy - 8;
     P.stamp(nx, ny, e[0], EYEMAP, { on: true });
     P.stamp(farX, farY, e[1], EYEMAP, { on: true });
-    // always teary from the heat: a wet glint under each eye and a tear on the near cheek
-    if (ex !== 'ko') {
-      const drip = (m.ph >> 2) % 4, wet = '#bfeaff', tear = '#8ad4ff';
-      P.stamp(nx + 1, ny + (ex === 'open' ? 8 : 6), ['wwww'], { w: wet }, { on: true });
-      P.stamp(nx + 5, ny + 6 + drip, ['t', 'T'], { t: wet, T: tear }, { on: true });
-      P.stamp(farX, farY + (ex === 'open' ? 7 : 5), ['ww'], { w: wet }, { on: true });
+    // tears: streams down the cheek, drops flung back while it screams
+    if (ex !== 'ko' && ex !== 'sleep') {
+      const ph = m.ph, wet = '#c8f0ff', tear = '#6ac8ff';
+      for (let k = 0; k < 6; k++) { const y = ny + 7 + k, x = nx + 4 + Math.round(k * 0.4); P.px(x, y, (k + ph) % 3 ? tear : wet); P.px(x + 1, y, wet); }
+      for (let k = 0; k < 5; k++) { const y = ny + 6 + k, x = nx + 7 + Math.round(k * 0.6); P.px(x, y, (k + ph + 1) % 3 ? tear : wet); }
+      if (mouth >= 1) for (let k = 0; k < 3; k++) { const t = ((ph * 0.35 + k / 3) % 1); P.dot(nx + 9 + t * 12, ny + 2 - Math.sin(t * Math.PI) * 6 + k * 2, k % 2 ? tear : wet, 'water'); }
+      P.stamp(farX - 1, farY + 3, ['w', 't', 'w'], { w: wet, t: tear }, { on: true });
     }
-    // cheeks: warm blush, blazing when the chili bites back
-    const hot = m.fx.has('blush');
-    P.stamp(nx, cy - 1, [hot ? 'rrrr' : '.rr.', hot ? '.rr.' : ''], { r: hot ? '#ff4a3a' : '#ff8a5e' }, { on: true });
-    P.stamp(farX - 1, cy - 1, [hot ? 'rr' : '.r'], { r: hot ? '#ff4a3a' : '#ff8a5e' }, { on: true });
-    // beak (pointing left, between the eyes)
-    const bx = fx - 12, by = cy - 3;
-    const BK = { b: '#ffd27a', B: '#ff9e36', D: '#e0672a', d: '#9a3a22', r: '#6a1420', t: '#ff6a7a' };
-    if (m.mouth === 0) P.stamp(bx, by, ['...bbB', '.bbbBB', 'bbbBBD', '.dddd.'], BK, { mat: 'beak', grp: 'beak' });
-    else if (m.mouth === 1) P.stamp(bx, by - 1, ['...bbB', '.bbbBB', 'bbBBDd', '.rrrr.', '..ddd.'], BK, { mat: 'beak', grp: 'beak' });
-    else P.stamp(bx - 1, by - 2, ['....bbB', '..bbbBB', 'bbbBBDd', '.rrrrr.', '.rttrr.', '..dddd.'], BK, { mat: 'beak', grp: 'beak' });
-    // a little fluff on the crown
-    P.px(fx - 2, top + 2, '#fff2b0'); P.px(fx - 1, top + 1, '#fff2b0'); P.px(fx + 3, top + 2, '#fff2b0');
+    beak(P, fx - 10, cy - 1, mouth);
   };
 
   if (!back) {
     tail(); feet();
     P.ell(X - Math.round(lean / 2), cy, rx, ry, 'body', { grp: 'body', rot: lean * 0.05 });
-    // fluffy cheek tufts break up the round silhouette
-    P.poly([[X + 13, cy - 7], [X + 19, cy - 4], [X + 15, cy - 3], [X + 18, cy], [X + 13, cy + 1]], 'body', { grp: 'body', round: 2 });
-    P.poly([[X - 14, cy - 1], [X - 18, cy + 2], [X - 14, cy + 3]], 'body', { grp: 'body', round: 2 });
-    crest();
-    P.ell(X - 3 - lean, cy + 6, 10, 7.5, 'belly', { paint: true, grp: 'body' });
-    pod(); wings(); face();
+    // ruffled, spiky feather edges (back of the head, cheek, chest)
+    P.poly([[X + 11, cy - 9], [X + 19, cy - 7], [X + 14, cy - 5], [X + 19, cy - 2], [X + 13, cy - 1]], 'body', { grp: 'body', round: 2 });
+    P.poly([[X - 13, cy + 3], [X - 18, cy + 5], [X - 13, cy + 7], [X - 16, cy + 9], [X - 11, cy + 9]], 'body', { grp: 'body', round: 2 });
+    P.poly([[X + 13, cy + 5], [X + 18, cy + 8], [X + 12, cy + 9]], 'body', { grp: 'body', round: 2 });
+    P.ell(X - 3 - lean, cy + 6, 9, 6.5, 'belly', { paint: true, grp: 'body' });
+    for (const [dx, dy] of [[-6, 3], [-1, 4], [4, 3], [-4, 8], [1, 9]]) { P.px(X - lean + dx, cy + dy, '#f6a650'); P.px(X - lean + dx + 1, cy + dy + 1, '#f6a650'); }   // feather scallops
+    crest(); wings(); pepper();
+    // the near wing's tip wraps over the stem
+    if (m.arm === 0) P.ell(X + 5, cy + 6, 2.8, 2.4, 'wing', { grp: 'wingTip' });
+    face();
   } else {
-    // from behind: the pod peeks out either side, the crest and tail face us
-    if (m.arm === 0 || m.arm === 4) { P.tube([[X + 15, cy + 4, 3.4], [X + 19, cy + 3, 2.6]], 'chili', { grp: 'chili' }); P.tube([[X - 15, cy + 6, 3], [X - 19, cy + 4, 1.6], [X - 21, cy + 2, 0.8]], 'chili', { grp: 'chili' }); P.ell(X + 20, cy + 1, 2.4, 2, 'leaf', { grp: 'calyx' }); }
     feet();
     P.ell(X, cy, rx, ry, 'body', { grp: 'body' });
-    P.ell(X, cy - 3, 12, 9, 'wing', { paint: true, grp: 'body' });               // deeper orange back
-    for (const [dx, dy] of [[-5, -2], [0, -4], [5, -2], [-3, 3], [3, 3]]) { P.px(X + dx, cy + dy, '#c24c28'); P.px(X + dx + 1, cy + dy + 1, '#c24c28'); P.px(X + dx - 1, cy + dy + 1, '#c24c28'); }   // feather chevrons
-    if (m.arm === 1) chiliPod(P, [[X + 12, top - 2, 3.6], [X + 3, top - 4, 4.2], [X - 6, top - 4, 3.6], [X - 13, top - 2, 2.2], [X - 16, top + 1, 1]]);
-    P.ell(X - 16, cy + 4, 3.6, 6, 'wing', { rot: 0.3, grp: 'wingF' }); P.ell(X + 16, cy + 4, 3.6, 6, 'wing', { rot: -0.3, grp: 'wingN' });
+    P.poly([[X - 13, cy - 6], [X - 19, cy - 3], [X - 13, cy]], 'body', { grp: 'body', round: 2 }); P.poly([[X + 13, cy - 6], [X + 19, cy - 3], [X + 13, cy]], 'body', { grp: 'body', round: 2 });
+    P.ell(X, cy - 3, 11, 8, 'wing', { paint: true, grp: 'body' });
+    for (const [dx, dy] of [[-5, -2], [0, -4], [5, -2], [-3, 3], [3, 3]]) { P.px(X + dx, cy + dy, '#9a3220'); P.px(X + dx + 1, cy + dy + 1, '#9a3220'); P.px(X + dx - 1, cy + dy + 1, '#9a3220'); }
+    if (m.arm === 0 || m.arm === 4) P.tube([[X - 15, cy + 7, 2.4], [X - 19, cy + 4, 1.6]], 'chili', { grp: 'chili' });
+    if (m.arm === 1) chiliPod(P, [[X + 8, top - 1, 2.4], [X + 3, top - 4, 3.2], [X - 3, top - 6, 3], [X - 7, top - 7, 2.2]], { bitten: true });
+    P.ell(X - 15, cy + 4, 3.4, 5.6, 'wing', { rot: 0.3, grp: 'wingF' }); P.ell(X + 15, cy + 4, 3.4, 5.6, 'wing', { rot: -0.3, grp: 'wingN' });
     crest(); tail();
   }
   // ---- effects
-  if (m.fx.has('breath')) FX.breath(P, fx - 13, cy - 1, m, 'fire');
-  if (m.fx.has('toss')) { const t = m.k, x = X - 18 - t * 34, y = cy - 6 - Math.sin(t * Math.PI) * 14; chiliPod(P, [[x + 6, y - 2, 2.6], [x, y, 3], [x - 5, y + 2, 1.6], [x - 7, y + 4, 0.8]], { grp: 'fly' }); if (m.ph % 2) P.dot(x + 9, y - 3, '#ffcf3a'); }
+  if (m.fx.has('breath')) FX.breath(P, fx - 19, cy + 1, m, 'fire');
+  if (m.fx.has('toss')) { const t = m.k, x = X - 18 - t * 34, y = cy - 6 - Math.sin(t * Math.PI) * 14; chiliPod(P, [[x + 5, y - 2, 2.2], [x, y, 2.8], [x - 4, y + 2, 1.8]], { grp: 'fly', bitten: true }); }
   if (m.fx.has('dash')) { FX.dash(P, X + 16, cy, m); P.flame(X + 17, cy + 6, 6, 2.6, 7, 'fire', { glow: true, round: 2, grp: 'fx-dash' }); }
-  if (m.fx.has('swipe')) FX.swipe(P, fx - 18, cy - 2);
+  if (m.fx.has('swipe')) FX.swipe(P, fx - 20, cy);
   if (m.fx.has('hit')) FX.hit(P, X + 2, cy - 4, m);
-  if (m.fx.has('aura') || m.fx.has('cast')) FX.aura(P, X, cy + 2, rx + 5, ry + 3, m, '#ffb03a');
-  if (m.fx.has('sparkle')) FX.sparkle(P, X, cy, m);
+  if (m.fx.has('aura') || m.fx.has('cast')) FX.aura(P, X, cy + 2, rx + 5, ry + 3, m, '#ff8a2a');
+  if (m.fx.has('sparkle')) FX.aura(P, X, cy, rx + 3, ry + 2, m, '#ffcf3a');
   if (m.fx.has('zz')) FX.zz(P, X + 10, top - 2, m);
-  if (m.fx.has('steam')) FX.steam(P, fx, top - 6, m);
+  if (m.fx.has('steam') || m.clip === 'idle') for (let k = 0; k < 3; k++) {   // heat steaming off its head
+    const t = (m.t * 3 + k / 3) % 1, x = fx - 2 + k * 6 + Math.round(Math.sin(t * 7 + k) * 1.5), y = top - 4 - Math.round(t * 12);
+    if (t < 0.8) { P.dot(x, y, '#ffffff', 'steam'); P.dot(x + 1, y - 1, '#e8ecf4', 'steam'); if (t > 0.3) P.dot(x - 1, y - 2, '#e8ecf4', 'steam'); }
+  }
   if (m.fx.has('hearts')) FX.hearts(P, X + 12, top, m);
   if (m.fx.has('bond')) FX.aura(P, X, cy + 2, rx + 6, ry + 4, m, '#7af0ff');
 }
-
 
 // ================================================================== BUBBLION
 // A little lionfish prince riding in a ball of water: a mane of striped fin rays
@@ -162,16 +182,16 @@ const BUB_PAL = {
   gold: { ramp: ['#fff6a8', '#ffd23e', '#e49a24', '#ae641c'], line: '#4a2810', lineLit: '#8a5418', gloss: true, spec: 0.9 },
   lips: { ramp: ['#ffd8d8', '#ff9aa2', '#e0687c', '#b04a62'], line: '#4a1622' },
 };
-const BEYE = {
-  open: ['.kkkk.', 'kWWkkk', 'kWWkrk', 'kkkkrk', 'krrrrk', '.kkkk.'],
-  fierce: ['kk....', '.kkkk.', 'kWWkrk', 'kkkkrk', '.krrk.'],
-  closed: ['......', '......', '......', 'k....k', '.kkkk.'],
-  sleep: ['......', '......', '......', '......', 'kkkkkk'],
-  happy: ['......', '..kk..', '.k..k.', 'k....k'],
-  hurt: ['......', 'kk....', '..kk..', '....kk', '..kk..', 'kk....'],
-  ko: ['......', 'kk..kk', '.kkkk.', '..kk..', '.kkkk.', 'kk..kk'],
+const BEYE = {   // smug and half-lidded: a proud little king, never cute
+  open: ['.kkkkk.', 'kkkkkkk', 'kWppWWk', 'kWppWk.', '.kkkk..'],
+  fierce: ['kk.....', '.kkkkkk', 'kkWppWk', '.kWppk.', '..kkk..'],
+  closed: ['.kkkkk.', 'kkkkkkk', '.kkkkk.'],
+  sleep: ['.......', 'kkkkkkk', '.kkkkk.'],
+  happy: ['.kkkkk.', 'kkkkkkk', 'kWWWWWk', '.kkkkk.'],
+  hurt: ['k.....k', '.kk.kk.', '...k...', '.kk.kk.', 'k.....k'],
+  ko: ['.kkkkk.', 'kWkWkWk', 'kWWkWWk', 'kWkWkWk', '.kkkkk.'],
 };
-const BEYEMAP = { k: '#24101c', W: '#ffffff', r: '#c83a4a' };
+const BEYEMAP = { k: '#24101c', W: '#ffffff', p: '#24101c' };
 function bubblion(P, m) {
   const back = m.view === 'back', sq = m.sq, R = 21;
   const BX = 40 + m.dx, BY = 37 + m.bob + Math.round(Math.sin(m.t * Math.PI * 2) * (m.clip === 'idle' ? 1 : 0)) + (m.tilt ? Math.round(m.tilt * 4) : 0);
@@ -212,7 +232,6 @@ function bubblion(P, m) {
     const lx = fx - 15, ly = fy + 3;
     if (m.mouth) P.stamp(lx - 1, ly - 1, ['.pp.', 'pkkp', 'pkkp', '.pp.'], { p: '#ff9aa2', k: '#5a1424' }, { mat: 'lips', grp: 'lips' });
     else P.stamp(lx - 1, ly - 1, ['.pP', 'ppP', 'dpP', '.pP'], { p: '#ff9aa2', P: '#e0687c', d: '#7a2a3a' }, { mat: 'lips', grp: 'lips' });
-    P.stamp(fx - 6, fy + 2, ['rr'], { r: '#ff8a8a' }, { on: true });                                                        // blush
   } else {
     // from behind: spines up top, mane fans either side, tail toward us
     for (const sgn of [-1, 1]) { const mx = fx + 2 + sgn * 2, my = fy + 1; const fan = []; for (let a = -1.2; a <= 1.2; a += 0.2) fan.push([mx + sgn * Math.cos(a) * 14, my + Math.sin(a) * 12]); P.poly([[mx, my], ...fan], 'fin', { grp: 'mane', round: 3 }); for (let k = 0, a = -1.1; a <= 1.12; a += 0.22, k++) ray(mx, my, sgn > 0 ? a : Math.PI - a, 13, k); }
@@ -254,16 +273,16 @@ const STRAW_PAL = {
   leaf: { ramp: ['#d2f070', '#80c64a', '#3f8e3a', '#245c2e'], line: '#16301a', lineLit: '#2a5a26' },
   leg: { ramp: ['#a87a8a', '#7a4a5e', '#5a3248', '#3e2236'], line: '#22101c' },
 };
-const SEYE = {
-  open: [['.kkk.', 'kWWkk', 'kWkgk', 'kkggk', '.kkk.'], ['.kk', 'kWk', 'kgk', '.k.']],
-  fierce: [['kk...', '.kkkk', 'kWkgk', '.kkk.'], ['..k', 'kkk', 'kgk', '.k.']],
-  closed: [['.....', '.....', 'k...k', '.kkk.'], ['...', '...', 'k.k', '.k.']],
-  sleep: [['.....', '.....', '.....', 'kkkkk'], ['...', '...', '...', 'kkk']],
-  happy: [['.....', '..k..', '.k.k.', 'k...k'], ['...', '.k.', 'k.k', '...']],
+const SEYE = {   // calm and steady: white with a dot pupil under a firm lid
+  open: [['.kkkk', 'kkkkk', 'kWpWk', 'kWWWk', '.kkk.'], ['kkk', 'kpk', '.k.']],
+  fierce: [['kk...', '.kkkk', 'kWpWk', '.kkk.'], ['k..', 'kkk', 'kpk']],
+  closed: [['.....', '.kkkk', 'kkkk.', '.....'], ['...', 'kkk']],
+  sleep: [['.....', '.....', 'kkkkk', '.kkk.'], ['...', 'kkk']],
+  happy: [['.kkkk', 'kkkkk', 'kWWWk', '.kkk.'], ['kkk', 'kWk']],
   hurt: [['k....', '.kk..', '...kk', '.kk..', 'k....'], ['..k', 'kk.', '..k']],
   ko: [['k...k', '.k.k.', '..k..', '.k.k.', 'k...k'], ['k.k', '.k.', 'k.k']],
 };
-const SEYEMAP = { k: '#2a1420', W: '#ffffff', g: '#5aa848' };
+const SEYEMAP = { k: '#2a1420', W: '#ffffff', p: '#2a1420' };
 const SEEDS = [[0, 0], [5, 2], [10, 0], [2, 5], [8, 6], [-3, 4], [13, 4], [4, 9], [10, 11], [-1, 10], [15, 9], [6, -4], [12, -5], [0, -6], [17, -1], [-5, -2]];
 function strawbaa(P, m) {
   const back = m.view === 'back', sq = m.sq;
@@ -303,11 +322,10 @@ function strawbaa(P, m) {
     P.circ(fx + 1, fy - 9, 4.6, 'wool', { grp: 'bang1' }); P.circ(fx - 4, fy - 7, 3.3, 'wool', { grp: 'bang2' }); P.circ(fx + 5, fy - 7, 3.2, 'wool', { grp: 'bang3' });
     P.stamp(fx, fy - 11, ['y.y', '...', '.y.'], { y: '#ffe680' }, { onMat: 'wool' });
     calyx(P, fx + 1, fy - 15, m);
-    // eyes, blush, nose and mouth
+    // eyes, nose and mouth
     const e = SEYE[m.eyes] || SEYE.open, dy = m.eyes === 'happy' || m.eyes === 'closed' ? 1 : 0;
     P.stamp(fx - 1, fy - 1 + dy, e[0], SEYEMAP, { on: true });
     P.stamp(fx - 8, fy - 1 + dy, e[1], SEYEMAP, { on: true });
-    P.stamp(fx + 4, fy + 4, ['rr'], { r: m.fx.has('blush') ? '#ff5a6a' : '#ff9aa2' }, { on: true }); P.stamp(fx - 9, fy + 4, ['r'], { r: '#ff9aa2' }, { on: true });
     P.stamp(fx - 5, fy + 5, ['.n.', 'n.n'], { n: '#c86a7a' }, { on: true });
     if (m.mouth) P.stamp(fx - 5, fy + 7, ['kk', 'tt'], { k: '#5a1a2a', t: '#ff7a8a' }, { on: true });
   }

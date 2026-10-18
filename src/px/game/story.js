@@ -11,7 +11,7 @@ import { Actor } from '../scene2d.js';
 import * as S from '../../game/state.js';
 
 const STARTERS = [
-  { id: 'chilichick', el: 'Pyro', color: '#ff7a3a', icon: 'flame', blurb: 'A small, round fire chick that hugs a chili bigger than its belly and never lets go. Its flame crest flares when it gets fired up. Fast, close-range, scary fire.' },
+  { id: 'chilichick', el: 'Pyro', color: '#ff7a3a', icon: 'flame', blurb: 'A small, fat, furious fire chick. It bites peppers it knows are too hot, then screams and cries about it — and breathes fire. Fast, close-range, scary fire.' },
   { id: 'bubblion', el: 'Hydro', color: '#5ab8f0', icon: 'drop', blurb: 'A lionfish prince floating in its own soft, bouncy ball of water. Water-bullet sniper: long range, slow and precise.' },
   { id: 'strawbaa', el: 'Bio', color: '#ff5a78', icon: 'leaf', blurb: 'A strawberry sheep from the Strawberry Fields. Heals friends, plants vines that hurt foes and heal allies, and rams hard.' },
 ];
