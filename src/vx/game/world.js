@@ -4,7 +4,7 @@
 // Cutscenes drive it through a small director API: shot(), addPerson(), addMon(),
 // actor.walkTo(), actor.play(), emote().
 import * as THREE from '../../../vendor/three.module.js';
-import { Model } from '../model.js';
+import { Model, dripForm } from '../model.js';
 import { Animator, E } from '../anim.js';
 import { FX } from '../fx.js';
 import { cast } from '../people/cast.js';
@@ -142,7 +142,7 @@ export class VxWorld {
   }
   // ---- actors
   async addMon(id, species, at, o = {}) {
-    const def = await monDef(species), m = new Model(def), a = new Actor(this, id, m, 'mon'); m.drip(o.drip || 1, o.look || 0);
+    const def = await monDef(species), m = new Model((o.drip || 1) >= 3 ? dripForm(def) : def), a = new Actor(this, id, m, 'mon'); m.drip(o.drip || 1, o.look || 0);
     this.st.actors.add(m.group); this.actors.set(id, a);
     const [x, z, yaw, y] = typeof at === 'string' ? this.spot(at) : at; a.place(x, z, o.yaw ?? yaw ?? 0, o.y ?? y);
     if (o.clip) a.play(o.clip, { fade: 0 });

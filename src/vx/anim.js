@@ -201,7 +201,8 @@ export class Animator {
         const bone = M.bones[e.bone] || M.group, pv = M.pivots[e.bone] || [0, 0, 0], off = e.off || pv; bone.updateWorldMatrix(true, false);
         const pos = new THREE.Vector3(off[0] - pv[0], off[1] - pv[1], off[2] - pv[2]).multiplyScalar(U).applyMatrix4(bone.matrixWorld);   // offsets are model coordinates
         let dir = null; if (e.o.dir) { bone.getWorldQuaternion(_q); dir = new THREE.Vector3(...e.o.dir).applyQuaternion(_q).normalize(); }
-        ctx.fx.emit(e.kind, pos, { ...e.o, dir, dt: e.stream ? dt : 0, scale: M.scale * (e.o.scale || 1) });
+        const D = M.def, kind = (D.fxMap && D.fxMap[e.kind]) || e.kind, tint = D.recolor && typeof e.o.tint === 'string' ? D.recolor(e.o.tint) : e.o.tint;   // the drip form's blue fire, truffle sauce…
+        ctx.fx.emit(kind, pos, { ...e.o, tint, dir, dt: e.stream ? dt : 0, scale: M.scale * (e.o.scale || 1) });
       }
     }
     this.pose = P;

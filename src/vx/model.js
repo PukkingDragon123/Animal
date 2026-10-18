@@ -262,3 +262,58 @@ function hullMaterial(color, px) {
   hullMats.set(key, m); return m;
 }
 export const rad = (d) => d * D2R;
+
+// ---------------------------------------------------------------- the ultra-drip form
+// An ultra-dripped Tokonmon wears its luxury form: warm colours turn to black lacquer,
+// yellows and creams to gold, fire burns blue (and its sauce is truffle). It is a
+// derived def whose painters draw through a recolouring pen, so every species gets it
+// for free; a species can tune it with def.dripForm = { map(hex, glow) → hex, fx: { kind: kind } }.
+const _hsl = (hex) => {
+  const n = parseInt(hex.slice(1, 7), 16), r = ((n >> 16) & 255) / 255, g = ((n >> 8) & 255) / 255, b = (n & 255) / 255;
+  const mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2, d = mx - mn;
+  if (!d) return { h: 0, s: 0, l };
+  const s = d / (1 - Math.abs(2 * l - 1)); let h = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4; h *= 60; if (h < 0) h += 360;
+  return { h, s, l };
+};
+const _hex = (h, s, l) => {
+  const c = (1 - Math.abs(2 * l - 1)) * s, x = c * (1 - Math.abs(((h / 60) % 2) - 1)), m = l - c / 2;
+  const [r, g, b] = h < 60 ? [c, x, 0] : h < 120 ? [x, c, 0] : h < 180 ? [0, c, x] : h < 240 ? [0, x, c] : h < 300 ? [x, 0, c] : [c, 0, x];
+  return '#' + [r, g, b].map((v) => Math.round(Math.max(0, Math.min(1, v + m)) * 255).toString(16).padStart(2, '0')).join('');
+};
+export function blackGold(c, glow) {
+  if (typeof c !== 'string' || c[0] !== '#' || c.length < 7) return c;
+  const { h, s, l } = _hsl(c);
+  if (glow) return s > 0.2 && (h < 75 || h > 320) ? _hex(200 + (h < 75 ? h * 0.35 : 0), Math.min(1, s * 1.05), Math.min(0.97, l * 1.02)) : c;   // fire burns blue
+  if (s < 0.14) return c;                                                   // whites, greys, blacks (eyes, outlines) stay
+  if (h >= 318 && h < 356 && l > 0.62) return c;                            // pale pinks (tongues) stay
+  if (h >= 315 || h < 36) return _hex(255, 0.14, 0.05 + l * 0.24);         // reds, oranges, browns → black lacquer
+  if (h < 72) return _hex(44, 0.88, 0.22 + l * 0.58);                       // yellows, creams → gold
+  return _hex(44, 0.62, 0.16 + l * 0.46);                                   // everything else → antique gold
+}
+const COLOR_ARG = { px: 2, rect: 4, hl: 3, vl: 3, line: 4, ell: 4, poly: 1, blend: 2, wash: 4, speckle: 4, blots: 4, drips: 4, frame: 4 };
+function recolorPen(p, map) {
+  const proxy = new Proxy(p, {
+    get(t, k) {
+      const v = t[k]; if (typeof v !== 'function') return v;
+      return (...a) => {
+        if (COLOR_ARG[k] !== undefined && typeof a[COLOR_ARG[k]] === 'string') a[COLOR_ARG[k]] = map(a[COLOR_ARG[k]]);
+        if (k === 'ditherRow') { a[3] = map(a[3]); a[4] = map(a[4]); }
+        if (k === 'vgrad' && Array.isArray(a[4])) a[4] = a[4].map(map);
+        const r = v.apply(t, a); return r === t ? proxy : r;
+      };
+    },
+  });
+  return proxy;
+}
+const FORMS = new WeakMap();
+export function dripForm(def) {
+  if (FORMS.has(def)) return FORMS.get(def);
+  const F = def.dripForm || {}, map = F.map || blackGold;
+  const wrap = (fn, glow) => (typeof fn === 'string' ? map(fn, glow) : typeof fn === 'function' ? (p, w, h, face, cube) => fn(recolorPen(p, (c) => map(c, glow)), w, h, face, cube) : fn);
+  const d = {
+    ...def, name: def.name + '-drip', form: 'drip',
+    bones: def.bones.map((b) => ({ ...b, cubes: (b.cubes || []).map((c) => ({ ...c, tex: wrap(c.tex, c.glow), ...(c.faces ? { faces: Object.fromEntries(Object.entries(c.faces).map(([k, f]) => [k, wrap(f, c.glow)])) } : {}) })) })),
+    fxMap: { fire: 'bluefire', breath: 'bluebreath', ember: 'blueember', ...(F.fx || {}) }, recolor: (c) => map(c, false),
+  };
+  FORMS.set(def, d); return d;
+}

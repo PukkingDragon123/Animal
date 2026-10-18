@@ -80,12 +80,16 @@ function heart(p, W, H, c) { const m = (W - 1) / 2; for (let y = 0; y < H; y++) 
 function rock(p, W, H, c) { const m = (W - 1) / 2; for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const d = Math.max(Math.abs(x - m), Math.abs(y - m)) + Math.min(Math.abs(x - m), Math.abs(y - m)) * 0.6; if (d > m + 0.6) continue; p.px(x, y, d > m - 0.4 ? shift(c, -0.4) : x + y < W - 2 ? shift(c, 0.3) : c); } }
 function bolt(p, W, H) { let x = Math.floor(W / 2); for (let y = 0; y < H; y++) { p.px(x, y, '#ffffff'); p.px(x + 1, y, '#fff070'); p.px(x - 1, y, '#ffd040'); if (y % 3 === 2) x += y % 6 === 2 ? 2 : -2; x = Math.max(1, Math.min(W - 2, x)); } }
 function ghostFlame(p, W, H, f) { flame(p, W, H, f); for (let i = 0; i < W * H; i++) { const v = p.s.data[i]; if (!(v >>> 24)) continue; const r = v & 255, g = (v >> 8) & 255, b = (v >> 16) & 255; const l = (r + g + b) / 3; p.s.data[i] = (255 << 24) | (Math.min(255, l * 1.15 + 40) << 16) | (Math.min(255, l * 0.55) << 8) | Math.min(255, l * 0.75); } }
+// the drip form's fire: the same flame, burning blue with a white core
+function blueFlame(p, W, H, f) { flame(p, W, H, f); for (let i = 0; i < W * H; i++) { const v = p.s.data[i]; if (!(v >>> 24)) continue; const r = v & 255, g = (v >> 8) & 255, l = (r + g) / 2; const R = l > 230 ? 230 : Math.round(l * 0.25), G = l > 230 ? 250 : Math.round(80 + l * 0.6), B = 255; p.s.data[i] = (255 << 24) | (B << 16) | (G << 8) | R; } }
 function twinkle(p, W, H) { const c = (W - 1) / 2; for (let i = 0; i < W; i++) { const d = Math.abs(i - c) / c, col = d < 0.3 ? '#ffffff' : '#d8f0ff'; p.px(i, Math.round(c), col); p.px(Math.round(c), i, col); } }
 let S = null;
 export function fxSprites() {
   if (S) return S;
   S = {
     flame: [0, 1, 2, 3].map((f) => sprite('fx-flame' + f, 12, 18, (p) => flame(p, 12, 18, f), { ppm: 40 })),
+    bflame: [0, 1, 2, 3].map((f) => sprite('fx-bflame' + f, 12, 18, (p) => blueFlame(p, 12, 18, f), { ppm: 40 })),
+    bember: [sprite('fx-bember', 3, 3, (p) => { p.px(1, 0, '#8ae0ff'); p.px(0, 1, '#8ae0ff'); p.px(1, 1, '#ffffff'); p.px(2, 1, '#5ab8ff'); p.px(1, 2, '#3a7aff'); }, { ppm: 40 })],
     ember: [sprite('fx-ember', 3, 3, (p) => { p.px(1, 0, '#ffd040'); p.px(0, 1, '#ffd040'); p.px(1, 1, '#ffffff'); p.px(2, 1, '#ffb030'); p.px(1, 2, '#ff8a20'); }, { ppm: 40 })],
     smoke: [0, 1].map((i) => sprite('fx-smoke' + i, 16, 14, (p) => puff(p, 16, 14, '#6a6070'), { ppm: 40 })),
     steam: [0, 1].map((i) => sprite('fx-steam' + i, 14, 12, (p) => puff(p, 14, 12, '#f2f0f4'), { ppm: 40 })),
@@ -116,6 +120,9 @@ export function fxSprites() {
 // ------------------------------------------------------------ presets
 // each: sprite set, glow (additive), life, size (m) start→end, speed, gravity, drag, spread, rise, tint ramp, frames per second
 const PRE = {
+  bluefire: { spr: 'bflame', glow: true, life: [0.35, 0.6], size: [0.14, 0.05], speed: [0.2, 0.6], grav: -1.6, drag: 1.5, spread: 0.6, fps: 14, tint: [[1, 1, 1], [0.7, 0.85, 1], [0.35, 0.5, 1]] },
+  bluebreath: { spr: 'bflame', glow: true, life: [0.38, 0.62], size: [0.1, 0.42], speed: [3.6, 5.2], grav: -0.9, drag: 2.6, spread: 0.22, fps: 16, tint: [[1, 1, 1], [0.75, 0.9, 1], [0.4, 0.6, 1], [0.2, 0.3, 0.8]] },
+  blueember: { spr: 'bember', glow: true, life: [0.5, 1.0], size: [0.05, 0.03], speed: [0.6, 1.6], grav: -0.8, drag: 0.8, spread: 1, tint: [[1, 1, 1], [0.5, 0.8, 1]] },
   fire: { spr: 'flame', glow: true, life: [0.35, 0.6], size: [0.14, 0.05], speed: [0.2, 0.6], grav: -1.6, drag: 1.5, spread: 0.6, fps: 14, tint: [[1, 1, 1], [1, 0.75, 0.45], [0.9, 0.3, 0.15]] },
   breath: { spr: 'flame', glow: true, life: [0.38, 0.62], size: [0.1, 0.42], speed: [3.6, 5.2], grav: -0.9, drag: 2.6, spread: 0.22, fps: 16, tint: [[1, 1, 1], [1, 0.8, 0.45], [1, 0.4, 0.15], [0.6, 0.2, 0.1]] },
   ember: { spr: 'ember', glow: true, life: [0.5, 1.0], size: [0.05, 0.03], speed: [0.6, 1.6], grav: -0.8, drag: 0.8, spread: 1, tint: [[1, 1, 1], [1, 0.6, 0.3]] },

@@ -411,7 +411,7 @@ export const anim = {
     tailfire: { default: 'a', states: { a: ['tf-a'], b: ['tf-b'], c: ['tf-c'], off: [] } },
     snot: { default: 'off', states: { off: [], on: ['snot'] } },
   },
-  fidget: { every: [4, 8], clips: ['sip', 'hiccup', 'dance'] },
+  fidget: { every: [3.5, 7], clips: ['sip', 'hiccup', 'dance', 'dance'] },
   clips: {
     // bouncing on its big feet, panting with its tongue out, eyes darting about
     idle: { len: 2.0, loop: true, f(P, t, c) {
