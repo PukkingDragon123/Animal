@@ -6,6 +6,7 @@
 import * as THREE from '../../../vendor/three.module.js';
 import { defineFx } from '../fx.js';
 import { poly, ramp, shift, mix, h2 } from './kit.js';
+import { eyeRig } from './eyes.js';
 
 export { shift, mix, h2, poly, ramp };
 const D2R = Math.PI / 180;
@@ -16,7 +17,7 @@ export const PAL = {
   trash: {
     c: '#928b8c', hi: '#bdb5b2', lo: '#6b6367', deep: '#463f47', tip: '#d8d0cc',
     cream: '#ece6db', creamHi: '#fffbf3', creamLo: '#bdb3a8',
-    mask: '#564c5a', maskHi: '#6a6170', maskLo: '#433a48',
+    mask: '#332c38', maskHi: '#4a4250', maskLo: '#221d26',
     belly: '#c2b8b2', bellyHi: '#ddd4cc', bellyLo: '#9a8f8c',
     paw: '#4a434c', pawHi: '#6c646e', pawLo: '#2e2930',
     ringD: '#2e282e', ringL: '#c2bab6', bolt: '#e8c870',
@@ -25,7 +26,7 @@ export const PAL = {
   dyna: {
     c: '#857d86', hi: '#aaa2a8', lo: '#605865', deep: '#40394a', tip: '#c4bcc0',
     cream: '#ddd4c6', creamHi: '#f4ecdf', creamLo: '#a89c90',
-    mask: '#463d4c', maskHi: '#5a5162', maskLo: '#342c3a',
+    mask: '#2c2532', maskHi: '#433b4a', maskLo: '#1c171f',
     belly: '#9a929a', bellyHi: '#b8b0b6', bellyLo: '#726a74',
     paw: '#2a2530', pawHi: '#4a4352', pawLo: '#16131a',
     ringD: '#211d26', ringL: '#9e979f', bolt: '#f0c84a',
@@ -35,7 +36,7 @@ export const PAL = {
   hell: {
     c: '#5e5866', hi: '#837c8a', lo: '#433d4b', deep: '#2c2733', tip: '#b4aebc',
     cream: '#cfc6ba', creamHi: '#e8e0d4', creamLo: '#988e84',
-    mask: '#3c3442', maskHi: '#504656', maskLo: '#2a2330',
+    mask: '#241e28', maskHi: '#3a3240', maskLo: '#16121a',
     belly: '#6e6872', bellyHi: '#8a848e', bellyLo: '#4e4854',
     paw: '#1f1b24', pawHi: '#3c3644', pawLo: '#0f0c12',
     ringD: '#16121a', ringL: '#8a8490', bolt: '#ff9a3a',
@@ -249,50 +250,28 @@ export const earPlaneP = (F, back, torn) => (p, w, h) => {
     }
   }
 };
+// rock-star hair (planes): shaggy brown strands hanging from the top edge, ragged tips, lit locks
+export const HAIR = { c: '#5c4434', hi: '#86664c', lo: '#36261e', tip: '#a88462' };
+export const hairP = (H = HAIR, o = {}) => (p, w, h) => {
+  const sd = o.seed || 0;
+  for (let x = 0; x < w; x++) {
+    const l = Math.max(2, Math.round(h * (o.min ?? 0.55) + h * (1 - (o.min ?? 0.55)) * (((x * 7 + sd * 3) % 5) / 4)));
+    for (let y = 0; y < l; y++) p.px(x, y, y >= l - 1 ? H.lo : y === 0 ? H.hi : (x + (y >> 2) + sd) % 4 === 0 ? H.hi : (x + sd) % 3 === 2 ? H.lo : H.c);
+    if (o.tips && l > 3) p.px(x, l - 2, H.tip);
+  }
+};
 // whiskers: long pale strands, darker roots
 export const whiskerP = (p, w, h) => { for (const [y0, sl] of [[h * 0.25, -0.12], [h * 0.85, 0.06]]) for (let x = 0; x < w; x++) { const y = Math.round(y0 + (w - x) * sl); if (x < w - 1 || y % 2) p.px(x, y, x > w * 0.75 ? '#a8a0a8' : '#f6f2ee'); } };
 
-// ---------------------------------------------------------------- eyes
-// Kawaii eyes (recent-generation Pokémon style): a big soft oval with a 1-texel dark outline, a
-// dark iris tinted with an accent colour that lightens through its lower third, one big white
-// catchlight high on the outer side and a 1-texel glint low on the inner side. No whites, veins,
-// creases, ringed irises or lashes. x = 0 of the texture is the outer corner (the left eye is
-// mirrored). The angry lid of the later stages is a flat dark line cutting the top of the eye,
-// tilted down toward the snout. Line expressions (^ ^, closed, > <, X, swirl) are pale strokes so
-// they still read on the dark mask. o: { ink, dark, mid, light, line, lid: { at, slope } (default lid) }
-export function kawaiiEyes(o = {}) {
-  const ink = o.ink || '#0c090e', dark = o.dark || '#3a2412', mid = o.mid || '#8c5418', light = o.light || '#eaa22e', line = o.line || '#ece4d8', K = o.round ?? 2.5;
-  const inO = (W, H, x, y) => x >= 0 && y >= 0 && x < W && y < H && Math.abs((x + 0.5 - W / 2) / (W / 2)) ** K + Math.abs((y + 0.5 - H / 2) / (H / 2)) ** K <= 1;
-  const eye = (q = {}) => (p) => {
-    const W = p.w, H = p.h, lid = q.lid === null ? null : q.lid || o.lid || null;
-    const lidY = (x) => (lid ? lid.at + lid.slope * x : -9);
-    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
-      if (!inO(W, H, x, y) || y + 0.5 < lidY(x + 0.5)) continue;
-      const edge = !inO(W, H, x - 1, y) || !inO(W, H, x + 1, y) || !inO(W, H, x, y - 1) || !inO(W, H, x, y + 1) || y - 0.5 < lidY(x + 0.5);
-      const t = (y + 0.5) / H;
-      p.px(x, y, edge ? ink : t > 0.8 ? light : t > 0.62 ? mid : dark);
-    }
-    const cs = q.cs ?? (W >= 9 ? 3 : 2), top = Math.max(1, Math.ceil(lidY(1.5) + 0.6));
-    for (let j = 0; j < cs; j++) for (let i = 0; i < cs; i++) if (!(cs === 3 && i === 2 && j === 2)) p.px(1 + i + (q.cx || 0), top + j, '#ffffff');
-    if (q.glint !== false) p.px(W - 3, H - 3, '#ffffff');
-  };
-  const stroke = (pts) => (p) => {
-    const W = p.w, H = p.h;
-    for (let i = 0; i + 1 < pts.length; i++) {
-      const [x0, y0] = pts[i], [x1, y1] = pts[i + 1], n = Math.ceil(Math.max(Math.abs(x1 - x0) * W, Math.abs(y1 - y0) * H)) * 2 + 1;
-      for (let k = 0; k <= n; k++) { const x = Math.round((x0 + (x1 - x0) * (k / n)) * (W - 1)), y = Math.round((y0 + (y1 - y0) * (k / n)) * (H - 1)); p.px(x, y, line); p.px(x, y + 1, line); }
-    }
-  };
-  return {
-    open: eye(), angry: eye({ lid: o.angry || { at: 1.6, slope: 0.42 } }), wide: eye({ lid: null, cs: 3 }), half: eye({ lid: { at: H2(o), slope: 0.06 } }),
-    happy: stroke([[0.08, 0.72], [0.5, 0.28], [0.92, 0.72]]),
-    closed: stroke([[0.06, 0.42], [0.3, 0.6], [0.7, 0.6], [0.94, 0.42]]),
-    hurt: stroke([[0.18, 0.15], [0.84, 0.5], [0.18, 0.85]]),
-    x: (p) => { stroke([[0.15, 0.12], [0.85, 0.86]])(p); stroke([[0.85, 0.12], [0.15, 0.86]])(p); },
-    swirl: (p) => { const W = p.w, H = p.h; for (let a = 0; a < 15; a += 0.1) { const r = a * 0.25, x = Math.round(W / 2 - 0.5 + Math.cos(a) * r * W / 8.5), y = Math.round(H / 2 - 0.5 + Math.sin(a) * r * H / 8.5); if (r < 3.7) p.px(x, y, line); } },
-  };
+// eyes for a masked face: the shared Gen 8–9 eye kit, but the line-only expressions (closed, ^ ^,
+// > <, X, swirl) are drawn in a pale fur colour so they read on the dark mask; `glow` makes the
+// iris states unlit (they bloom inside a helmet or under a brim)
+const LINE_STATES = new Set(['closed', 'happy', 'shut', 'x', 'swirl']);
+export function maskEyes(o, light = '#e2dad0', glow = false) {
+  const A = eyeRig(o), B = eyeRig({ ...o, line: light });
+  A.bones.forEach((bone, i) => { bone.cubes = bone.cubes.map((c, j) => { const st = c.id.slice(3), q = LINE_STATES.has(st) ? B.bones[i].cubes[j] : c; return glow && !LINE_STATES.has(st) ? { ...q, glow: true } : q; }); });
+  return A;
 }
-const H2 = (o) => o.halfAt ?? 3.2;
 
 // ---------------------------------------------------------------- the ringed tail
 // rings alternate dark / pale along the tail with a tiny zig-zag edge; every dark ring carries a
@@ -524,6 +503,24 @@ export const jetP = (f) => (p, w, h) => {
     const u = x / (w - 1), half = (1 - u) ** 0.7 * (h / 2) * (0.8 + 0.2 * Math.sin(f * 2.3 + u * 7)), sway = Math.sin(u * 5 + f * 1.7) * u * 1.4;
     for (let y = 0; y < h; y++) { const d = Math.abs(y - cy - sway) / Math.max(0.5, half); if (d > 1) continue; p.px(x, y, d < 0.35 && u < 0.5 ? '#fff6c8' : d < 0.7 && u < 0.75 ? '#ffd040' : u > 0.7 ? '#ff5a1e' : '#ff9a2a'); }
   }
+};
+
+// ---------------------------------------------------------------- drip extras
+// a black trash-bag cape: glossy plastic with stretched highlights, a duct-tape bolt on the back
+export const trashBagP = (o = {}) => (p, w, h, face) => {
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const st = (x * 2 + y * 3) % 11; p.px(x, y, face === 'up' ? '#4a4a58' : st === 0 ? '#5a5a6a' : st === 1 ? '#383844' : (x + y * 5) % 13 === 0 ? '#2a2a34' : '#1e1e26'); }
+  if (o.bolt && face === 'north' && w >= 9 && h >= 10) {
+    const cx = Math.floor(w / 2) - 2, cy = Math.floor(h / 2) - 4;
+    ['..###', '.###.', '#####', '..##.', '.##..', '##...'].forEach((r, j) => [...r].forEach((c, i) => { if (c === '#') p.px(cx + i, cy + j, (i + j) % 3 ? '#b8bcc4' : '#8a8e98'); }));
+  }
+};
+// the ragged hem of the cape (plane): torn plastic points
+export const bagHemP = (p, w, h) => { for (let x = 0; x < w; x++) { const l = Math.max(1, h - ((x * 5) % 4)); for (let y = 0; y < l; y++) p.px(x, y, (x + y) % 5 === 0 ? '#4a4a58' : '#1e1e26'); } };
+// a wooden blasting-crate (the detonator pack): planks, a red stencil band
+export const crateP = (p, w, h, face) => {
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, face === 'up' ? (x % 4 === 3 ? '#7a5434' : '#b8885a') : (y % 4 === 3 ? '#6a4628' : ramp(['#c09060', '#a87648', '#86582e'], h > 1 ? y / (h - 1) : 0.5, x, y)));
+  if (face === 'north' || face === 'east' || face === 'west') for (let x = 1; x < w - 1; x++) for (let y = Math.round(h * 0.4); y < Math.round(h * 0.4) + 2; y++) p.px(x, y, (x % 4 === 1) ? '#f2e2c0' : J.tnt);
+  if (sideF(face)) { for (let y = 0; y < h; y++) { p.px(0, y, '#5a3a20'); p.px(w - 1, y, '#5a3a20'); } }
 };
 
 // ---------------------------------------------------------------- FK / IK rig

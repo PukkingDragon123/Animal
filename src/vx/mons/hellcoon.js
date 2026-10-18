@@ -4,11 +4,11 @@
 // belch fire, ape-hanger bars with a bronze bell hanging between them ("Hells Bells") and a little
 // cannon bolted over the front wheel ("For Those About to Rock"). He wears a riveted devil iron
 // helmet with red horns, a long black scarf that streams in the wind ("Back in Black"), and his
-// ringed tail ends in a devil's spade. Kawaii eyes glow red-hot under the iron brim. Homage only.
+// ringed tail ends in a devil's spade. Slit eyes glow red-hot under the iron brim. Homage only.
 import { E, seg, bump, wob, wave, key } from '../anim.js';
 import {
   PAL, J, P, mirrorCube, rod, furP, bellyP, tuftP, skullP, muzzleP, noseP, jawP, mouthP, tongueP, toothP, whiskerP,
-  kawaiiEyes, tailP, handP, footP, teethP, pipeP, ironP, galvP, lidP, jerryP, seatP, canEngineP, finsP, bronzeP, lensP, jetP, rig, shift, ramp,
+  maskEyes, hairP, tailP, handP, footP, teethP, pipeP, ironP, galvP, lidP, jerryP, seatP, canEngineP, finsP, bronzeP, lensP, jetP, rig, shift, ramp,
 } from './raccoon_parts.js';
 
 const F = PAL.hell;
@@ -51,7 +51,14 @@ const fringeP = (p, w, h) => { for (let x = 0; x < w; x++) { const l = h - (x % 
 const spadeP = (p, w, h) => { const cx = (w - 1) / 2; for (let y = 0; y < h; y++) { const v = y / (h - 1), hw = v < 0.65 ? (v / 0.65) * (w / 2) : (1 - (v - 0.65) / 0.35) * (w / 2) * 0.9 + 1; for (let x = 0; x < w; x++) { const dx = Math.abs(x - cx); if (dx > hw) continue; p.px(x, y, dx > hw - 1 ? J.devilDeep : x < cx ? J.devilHi : J.devil); } } };
 const gripP = (p, w, h, face) => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, face === 'up' ? '#3a3842' : (x % 3 === 0) ? '#8a8e98' : '#1c1a20'); };
 const holeP = (p, w, h) => { const c = (w - 1) / 2; for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const d = Math.hypot(x - c, y - c); if (d <= c + 0.3) p.px(x, y, d > c - 0.8 ? J.ironLo : '#08070a'); } };
-const EYES = kawaiiEyes({ dark: '#2a0806', mid: '#c0300e', light: '#ff8a2a', angry: { at: 2.2, slope: 0.42 } });
+// hand-pixelled eyes: glowing red-hot slits under the iron brim, no pupil, one glint
+const EYES = maskEyes({ style: 'pix', chunk: 2, iris: '#ff4a14', accent: '#ffc040', at: [-3.0, 33.0, 0.05], map: { open: [
+  'ii...',
+  'iiih.',
+  '.cccc',
+] } }, '#e2dad0', true);
+// long rock hair spilling from under the helmet: side locks and a mane that streams in the wind
+const MANE = { c: '#5a3e2c', hi: '#8c6648', lo: '#30201a', tip: '#b08a64' };
 
 // ---------------------------------------------------------------- the bike
 const RA = [0, 8, -17], RR = 8, FA = [0, 7, 19], FR = 7;
@@ -68,7 +75,7 @@ function wheel(c, R, W) {
   out.push(P([c[0] - W / 2 - 0.4, c[1] - 1.0, c[2] - 1.0], [W + 0.8, 2.0, 2.0], iron));                                 // axle
   return out;
 }
-const pipes = (a, b, w, tex = pipeP) => rod(a, b, w, w, tex, { sideV: [1, 0, 0], over: w * 0.6 });
+const pipes = (a, b, w = 1.2, tex = pipeP) => rod(a, b, w, w, tex, { sideV: [1, 0, 0], over: w * 0.6 });
 const bikeCubes = [
   // paint-can engine and twin finned cylinders
   P([-4, 4.5, -7], [8, 7, 10], canEngineP),
@@ -114,9 +121,15 @@ const steerCubes = [
 const GRIP_R = [-8.9, 27.7, 7.6], GRIP_L = [8.9, 27.7, 7.6];
 
 // ---------------------------------------------------------------- the rider
-const EYE_SZ = [3.0, 3.0, 0];
-const eyeParts = (side) => Object.entries(EYES).map(([k, fn]) => P(side < 0 ? [-4.5, 31.7, 0.05] : [1.5, 31.7, 0.05], EYE_SZ, fn, { plane: 'z', glow: true, mirror: side > 0, id: 'eye-' + k, hide: k !== 'angry' }));
-const armCubes = [P([-8.95, 21.0, -7.25], [3.5, 6.333, 3.5], fur), P([-9.4, 24.5, -7.7], [4.4, 3.4, 4.4], fur)];
+const armCubes = [P([-8.95, 21.0, -7.25], [3.5, 6.333, 3.5], fur), P([-9.4, 24.5, -7.7], [4.4, 3.4, 4.4], fur),
+  // drip 3: a spiked iron pauldron riveted over the shoulder
+  P([-10.0, 26.0, -8.3], [5.4, 2.4, 5.6], ironRiv, { id: 'drip3', hide: true }),
+  P([-10.3, 24.6, -8.5], [5.0, 1.6, 6.0], ironRust, { id: 'drip3', hide: true }),
+  ...[[-8.4, -6.4], [-8.4, -3.8], [-9.6, -5.1]].flatMap(([x, z], i) => [
+    P([x - 0.7, 28.4, z - 0.7], [1.4, 1.2, 1.4], iron, { id: 'drip3', hide: true }),
+    P([x - 0.4, 29.6, z - 0.4], [0.8, 1.0 + (i === 2 ? 0.6 : 0), 0.8], ironP({ rivets: false }), { id: 'drip3', hide: true }),
+  ]),
+];
 const foreCubes = [P([-8.7, 16.2, -7.0], [3.0, 5.3, 3.0], sock(0.5)), P([-8.95, 13.2, -7.25], [3.5, 2.4, 3.5], hand)];
 const legCubes = [
   rod([-4.6, 17.4, -7.5], [-6.8, 13.6, 2.4], 5.0, 5.4, fur, { sideV: [1, 0, 0], over: 2 }),
@@ -164,12 +177,12 @@ export const def = {
       P([-8.0, 21.5, -10.5], [16, 6, 8.5], fur, { faces: { north: furBack } }),
       P([-6.0, 28.3, -10.0], [12, 1.2, 7.0], fur),
       // the scarf wound round the neck
-      P([-5.6, 27.6, -2.0], [11.2, 2.2, 1.4], scarfP), P([-5.6, 27.6, -11.4], [11.2, 2.2, 1.4], scarfP),
-      P([-6.2, 27.6, -11.0], [1.4, 2.2, 9.4], scarfP), P([4.8, 27.6, -11.0], [1.4, 2.2, 9.4], scarfP),
-      P([0.4, 26.4, -12.2], [2.6, 2.6, 1.6], scarfP),
+      P([-5.6, 27.6, -2.0], [11.2, 2.2, 1.4], scarfP, { id: 'drip2', hide: true }), P([-5.6, 27.6, -11.4], [11.2, 2.2, 1.4], scarfP, { id: 'drip2', hide: true }),
+      P([-6.2, 27.6, -11.0], [1.4, 2.2, 9.4], scarfP, { id: 'drip2', hide: true }), P([4.8, 27.6, -11.0], [1.4, 2.2, 9.4], scarfP, { id: 'drip2', hide: true }),
+      P([0.4, 26.4, -12.2], [2.6, 2.6, 1.6], scarfP, { id: 'drip2', hide: true }),
     ] },
-    { name: 'scarf1', parent: 'body', pivot: [1.6, 27.4, -12.6], rot: [-28, 18, 0], cubes: [P([0.4, 27.2, -19.6], [2.4, 0.5, 7.2], scarfP)] },
-    { name: 'scarf2', parent: 'scarf1', pivot: [1.6, 27.4, -19.4], rot: [-8, 6, 0], cubes: [P([0.5, 27.22, -25.8], [2.2, 0.45, 6.6], scarfP), P([0.5, 27.45, -27.4], [2.2, 0, 1.6], fringeP, { plane: 'y' })] },
+    { name: 'scarf1', parent: 'body', pivot: [1.6, 27.4, -12.6], rot: [-28, 18, 0], cubes: [P([0.4, 27.2, -19.6], [2.4, 0.5, 7.2], scarfP, { id: 'drip2', hide: true })] },
+    { name: 'scarf2', parent: 'scarf1', pivot: [1.6, 27.4, -19.4], rot: [-8, 6, 0], cubes: [P([0.5, 27.22, -25.8], [2.2, 0.45, 6.6], scarfP, { id: 'drip2', hide: true }), P([0.5, 27.45, -27.4], [2.2, 0, 1.6], fringeP, { plane: 'y', id: 'drip2', hide: true })] },
     { name: 'tail1', parent: 'body', pivot: [0.6, 17.6, -11.4], rot: [-8, -14, 0], cubes: tailSeg(0.6, 17.6, -10.8, 7.0, 4.333, 4.333, 6) },
     { name: 'tail2', parent: 'tail1', pivot: [0.6, 17.6, -17.4], rot: [12, -6, 0], cubes: tailSeg(0.6, 17.6, -16.8, 6.6, 4.0, 4.0, 24) },
     { name: 'tail3', parent: 'tail2', pivot: [0.6, 17.6, -23.2], rot: [22, 0, 0], cubes: tailSeg(0.6, 17.6, -22.6, 5.8, 3.333, 3.333, 41) },
@@ -194,8 +207,12 @@ export const def = {
       P([-1.7, 28.9, 4.22], [3.4, 0.7, 0], teethP(false), { plane: 'z', outline: false }),
       P([-2.3, 28.2, 3.2], [0.7, 1.4, 0.6], toothP), P([1.6, 28.4, 3.2], [0.7, 1.2, 0.6], toothP),
       P([-6.8, 30.0, 3.4], [4.4, 1.8, 0], whiskerP, { plane: 'z', mirror: true }), P([2.4, 30.0, 3.4], [4.4, 1.8, 0], whiskerP, { plane: 'z' }),
-      ...eyeParts(-1), ...eyeParts(1),
+      P([-6.25, 29.6, -8.0], [0, 6.2, 7.0], hairP(MANE, { seed: 2, min: 0.45, tips: true }), { plane: 'x', pivot: [-6.1, 35.6, -4], rot: [0, 0, -14] }),
+      P([6.25, 29.6, -8.0], [0, 6.2, 7.0], hairP(MANE, { seed: 3, min: 0.45, tips: true }), { plane: 'x', pivot: [6.1, 35.6, -4], rot: [0, 0, 14] }),
     ] },
+    ...EYES.bones,
+    { name: 'mane1', parent: 'head', pivot: [0, 35.0, -9.4], rot: [-36, 0, 0], cubes: [P([-5.4, 28.0, -9.5], [10.8, 7.0, 0], hairP(MANE, { seed: 4, min: 0.6, tips: true }), { plane: 'z' })] },
+    { name: 'mane2', parent: 'mane1', pivot: [0, 28.6, -9.5], rot: [-14, 0, 0], cubes: [P([-4.8, 23.0, -9.55], [9.6, 5.8, 0], hairP(MANE, { seed: 5, min: 0.5, tips: true }), { plane: 'z' })] },
     { name: 'jaw', parent: 'head', pivot: [0, 29.6, 0.0], rot: [6, 0, 0], cubes: [
       P([-2.2, 27.8, -0.4], [4.4, 1.8, 4.0], jaw),
       P([-1.5, 29.4, 3.62], [3.0, 0.7, 0], teethP(true, { off: 1 }), { plane: 'z', outline: false }),
@@ -204,15 +221,16 @@ export const def = {
     ] },
     // the devil iron helmet: riveted rim, dome, crest ridge, a short brim, red horns
     { name: 'helmet', parent: 'head', pivot: [0, 36, -4], cubes: [
-      P([-6.6, 34.6, -9.1], [13.2, 1.8, 9.8], ironRust),
-      P([-6.2, 36.4, -8.7], [12.4, 2.8, 9.0], ironRiv),
-      P([-5.0, 39.2, -7.6], [10.0, 1.4, 6.8], iron),
-      P([-0.7, 36.8, -9.3], [1.4, 4.0, 10.0], ironRiv),
-      P([-6.2, 34.6, 0.6], [12.4, 0.8, 1.6], iron),
-      ...horn(-1), ...horn(1),
+      P([-6.6, 34.6, -9.1], [13.2, 1.8, 9.8], ironRust, { id: 'drip1' }),
+      P([-6.2, 36.4, -8.7], [12.4, 2.8, 9.0], ironRiv, { id: 'drip1' }),
+      P([-5.0, 39.2, -7.6], [10.0, 1.4, 6.8], iron, { id: 'drip1' }),
+      P([-0.7, 36.8, -9.3], [1.4, 4.0, 10.0], ironRiv, { id: 'drip1' }),
+      P([-6.2, 34.6, 0.6], [12.4, 0.8, 1.6], iron, { id: 'drip1' }),
+      ...horn(-1).map((c) => ({ ...c, id: 'drip1' })), ...horn(1).map((c) => ({ ...c, id: 'drip1' })),
     ] },
   ],
 };
+def.drip = ['Devil iron helmet', 'Black scarf', 'Spiked iron pauldrons'];
 def.attach = {
   head: { bone: 'head', at: [0, 40.6, -4.2], size: 12.4 },
   face: { bone: 'head', at: [0, 33.2, 0.1], size: 12 },
@@ -240,6 +258,8 @@ function exhaust(P, t, fire, smoke = 2.5) {
   if (fire) { P.face('exh', cyc(t, 16)); EXH.forEach((e, i) => P.stream('fire', 'bike', e, { rate: 22 * fire, dir: [0, 0.3, -1], speed: 1.6, spread: 0.3, key: 'x' + i })); }
   EXH.forEach((e, i) => P.stream('smoke', 'bike', e, { rate: smoke, dir: [0, 0.6, -1], spread: 0.4, scale: 0.7, key: 's' + i }));
 }
+const eyeSq = (P, sx, sy) => P.scl('eyeR', sx, sy, 1).scl('eyeL', sx, sy, 1);
+const dart = (P, dx, dy = 0) => P.pos('eyeR', dx, dy, 0).pos('eyeL', dx, dy, 0);
 const spin = (P, rr, rf = rr) => P.rot('wheelR', rr, 0, 0).rot('wheelF', rf, 0, 0);
 
 export const anim = {
@@ -250,6 +270,8 @@ export const anim = {
   springs: [
     { bone: 'bell', tip: [0, -5, 0], k: 60, d: 3.2, gain: 1.4, max: 32 },
     { bone: 'scarf1', tip: [0, 0, -7], k: 70, d: 5, gain: 1.0, max: 30 },
+    { bone: 'mane1', tip: [0, -6, 0], k: 90, d: 6, gain: 0.9, max: 24 },
+    { bone: 'mane2', tip: [0, -5, 0], k: 70, d: 5, gain: 1.1, max: 28 },
     { bone: 'scarf2', tip: [0, 0, -6], k: 55, d: 4, gain: 1.3, max: 36 },
     { bone: 'tail1', tip: [0, 0, -7], k: 110, d: 8, gain: 0.6, max: 14 },
     { bone: 'tail2', tip: [0, 0, -6], k: 95, d: 7, gain: 0.8, max: 18 },
@@ -257,7 +279,7 @@ export const anim = {
     { bone: 'spade', tip: [0, 0, -5], k: 80, d: 5, gain: 1.1, max: 24 },
   ],
   faces: {
-    eyes: { default: 'angry', states: Object.fromEntries(Object.keys(EYES).map((k) => [k, ['eye-' + k]])) },
+    eyes: EYES.slot,
     exh: { default: 'off', states: { off: [], a: ['ex-a'], b: ['ex-b'], c: ['ex-c'] } },
   },
   fidget: { every: [5, 9], clips: ['rev', 'polish'] },
@@ -274,7 +296,7 @@ export const anim = {
       grips(P); P.rot('foreR', -16 * blip, 0, 0);
       exhaust(P, t, blip > 0.2 ? 1 : 0, 2.5);
       P.burst(1.35, 'smoke', 'bike', EXH[0], { n: 3, dir: [0, 0.4, -1] }).burst(1.35, 'smoke', 'bike', EXH[1], { n: 3, dir: [0, 0.4, -1] });
-      P.face('eyes', blip > 0.3 ? 'half' : undefined);
+      P.face('eyes', blip > 0.3 ? 'sleepy' : undefined); dart(P, 0.4 * (bump(t, 0.3, 0.9) - bump(t, 1.8, 2.3)));
     } },
     // riding: the lids spin, the frame skips over the road, the scarf streams back, dust kicks up
     walk: { len: 0.6, loop: true, f(P, t) {
@@ -284,7 +306,7 @@ export const anim = {
       P.pos('bike', 0, 0.35 * bmp, 0).rot('bike', -1 + 1.5 * Math.sin((t / 0.3) * Math.PI), 0, wave(t, 1 / 0.6) * 2);
       P.rot('steer', 0, wave(t, 1 / 0.6, 1) * 4, 0);
       P.rot('body', 6, 0, 0).rot('head', -4 + 3 * bmp, 0, 0);
-      P.rot('scarf1', 18, 0, 0).rot('scarf2', 10 + wave(t, 4) * 10, 0, 0).rot('tail1', 8, 0, 0);
+      P.rot('scarf1', 18, 0, 0).rot('scarf2', 10 + wave(t, 4) * 10, 0, 0).rot('tail1', 8, 0, 0).rot('mane1', -22, 0, 0).rot('mane2', -10 + wave(t, 5) * 8, 0, 0);
       grips(P);
       exhaust(P, t, 0.5, 4);
       P.stream('dust', 'bike', GROUND_R, { rate: 14, dir: [0, 0.5, -1], spread: 0.6, scale: 0.8 });
@@ -307,7 +329,7 @@ export const anim = {
       P.rot('bell', 0, 0, wob(t, 1.68, 28, 1.6, 2.2));
       P.burst(1.68, 'shockring', 'bell', BELL, { scale: 1.6 }).burst(1.7, 'ring', 'bell', BELL, { scale: 2 }).burst(1.7, 'note', 'bell', BELL, { n: 4, spread: 1 });
       P.burst(2.0, 'ring', 'bell', BELL, { scale: 2.6 }).burst(1.45, 'dust', 'root', [0, 0.5, 19], { n: 8, spread: 1 }).burst(1.45, 'spark', 'root', [0, 1, 19], {});
-      P.face('eyes', up > 0.3 ? 'wide' : ring > 0.3 ? 'happy' : undefined); P.lookW = 1 - up;
+      P.face('eyes', up > 0.3 ? 'angry' : ring > 0.3 ? 'happy' : undefined); P.lookW = 1 - up; eyeSq(P, 1 - 0.1 * up, 1 + 0.2 * up);
     } },
     // physical: a revving lunge — front wheel up, then slammed down on the target
     attack: { len: 1.3, next: 'idle', f(P, t) {
@@ -342,7 +364,7 @@ export const anim = {
       P.burst(1.93, 'smoke', 'cannon', MUZZLE, { n: 14, dir: [0, 0.3, 1], spread: 0.6, speed: 2.4, scale: 1.4 }).burst(1.92, 'fire', 'cannon', MUZZLE, { n: 18, dir: [0, 0.1, 1], spread: 0.3, speed: 4 });
       P.burst(1.92, 'rock', 'cannon', MUZZLE, { n: 1, dir: [0, 0.15, 1], spread: 0, speed: 3.5, scale: 2.5 });
       P.rot('head', -12 * fire + 6 * salute, 0, 0).rot('jaw', 30 * fire);
-      P.face('eyes', t > 1.95 && t < 2.6 ? 'happy' : salute > 0.3 ? 'half' : 'angry');
+      P.face('eyes', t > 1.95 && t < 2.6 ? 'happy' : salute > 0.3 ? 'sleepy' : 'angry');
     } },
     hurt: { len: 0.7, next: 'idle', f(P, t) {
       const k = seg(t, 0, 0.07, E.out) * (1 - seg(t, 0.2, 0.7, E.inout));
@@ -350,7 +372,7 @@ export const anim = {
       P.pos('root', 0, 0, -3 * k).rot('bike', 5 * k + wob(t, 0.2, 2, 3, 6), 0, wave(t, 14) * 2 * k);
       P.rot('body', -18 * k, 0, 8 * k).rot('head', -20 * k, 0, 10 * k).rot('jaw', 22 * k);
       grips(P, { wL: 1 - k * 0.8 });
-      P.face('eyes', t < 0.45 ? 'hurt' : undefined);
+      P.face('eyes', t < 0.45 ? 'shut' : undefined); eyeSq(P, 1 + 0.25 * k, 1 - 0.3 * k);
       P.burst(0.02, 'spark', 'helmet', HELM, { n: 2 }).burst(0.03, 'shard', 'helmet', HELM, { n: 6 }).burst(0.03, 'smoke', 'bike', EXH[0], { n: 3 });
     } },
     // the engine coughs out, the bike wobbles and goes over onto its side
@@ -422,7 +444,7 @@ export const anim = {
       const hornAt = R.at(P, 'helmet', [7.6, 39.4 + rub * 0.8, -3.4 + rub * 1.2]);
       if (k > 0) R.reach(P, 'armL', 'foreL', hornAt, { pole: [1, -0.4, -0.6], w: k });
       P.rot('head', 6 * k, -14 * k, -10 * k);
-      P.face('eyes', k > 0.5 ? 'half' : undefined); P.lookW = 1 - k;
+      P.face('eyes', k > 0.5 ? 'sleepy' : undefined); P.lookW = 1 - k;
       P.burst(1.0, 'sparkle', 'helmet', [8.4, 42, -3.4], { n: 3 }).burst(1.6, 'sparkle', 'helmet', [8.4, 42, -3.4], { n: 4 }).burst(2.0, 'sparkle', 'helmet', [-8.4, 42, -3.4], { n: 2 });
       exhaust(P, t, 0, 2);
     } },

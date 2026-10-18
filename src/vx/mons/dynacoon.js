@@ -2,13 +2,13 @@
 // scarred alley brute: a bandolier of red TNT sticks strapped across his chest with fuse cord, one
 // more stick always in his fist, fizzing. His old cardboard cap now has devil horns cut into it and
 // coloured in with red marker; his ears stick out through holes in the sides (one torn); his mask is
-// a straight black bar like a censor strip; a crooked grin full of sharp teeth; glowing kawaii eyes
+// a straight black bar like a censor strip; a crooked grin full of sharp teeth; sharp glowing slit eyes
 // under a hard angry lid; his tail tip is singed and still smoking. He lights fuses by snapping his
 // claws, tosses dynamite like a toy and cackles. Homage, never a likeness.
 import { E, seg, bump, wob, wave, key, bounce, hop } from '../anim.js';
 import {
   PAL, J, P, mirrorCube, aimX, rod, furP, bellyP, tuftP, bangsP, skullP, muzzleP, noseP, jawP, mouthP, tongueP, toothP, whiskerP,
-  earPlaneP, kawaiiEyes, tailP, handP, footP, cardP, tapeP, bottleCapP, tntP, fuseP, fuseSparkP, teethP, clawP, rig, shift, ramp,
+  earPlaneP, hairP, maskEyes, tailP, handP, footP, cardP, tapeP, bottleCapP, crateP, ironP, tntP, fuseP, fuseSparkP, teethP, clawP, rig, shift, ramp,
 } from './raccoon_parts.js';
 
 const F = PAL.dyna;
@@ -70,11 +70,22 @@ const hornP = (p, w, h, face) => {
   if (face === 'south') for (let y = 1; y < h; y += 2) p.px((y * 2) % Math.max(1, w), y, J.devilLo);   // marker strokes
   if (face === 'east' || face === 'west') for (let y = 0; y < h; y++) p.px(0, y, J.cardIn);         // the cut cardboard edge
 };
-const EYES = kawaiiEyes({ dark: '#2c1a06', mid: '#b07810', light: '#ffe244', angry: { at: 1.9, slope: 0.4 } });
+// hand-pixelled eyes: sharp slanted yellow eyes, a slit pupil, one glint — and they glow
+const EYES = maskEyes({ style: 'pix', chunk: 2, iris: '#f2b414', accent: '#fff27a', at: [-2.85, 20.2, 5.05], map: { open: [
+  'ih...',
+  'iiiki',
+  '.ccci',
+] } }, '#e2dad0', true);
+// wild rock hair: a shaggy mane bursting out from under the horned cap
+const WILD = { c: '#6e4c36', hi: '#a07656', lo: '#3c281e', tip: '#c49a6e' };
+const hairCubes = [
+  P([-4.4, 21.8, 5.08], [8.8, 2.0, 0], hairP(WILD, { seed: 1, min: 0.4, tips: true }), { plane: 'z' }),
+  P([-6.1, 16.6, -3.0], [0, 7.0, 8.0], hairP(WILD, { seed: 2, min: 0.4, tips: true }), { plane: 'x', pivot: [-5.9, 23.6, 0], rot: [0, 0, -26] }),
+  P([6.1, 16.6, -3.0], [0, 7.0, 8.0], hairP(WILD, { seed: 3, min: 0.4, tips: true }), { plane: 'x', pivot: [5.9, 23.6, 0], rot: [0, 0, 26] }),
+  P([-5.4, 15.6, -3.45], [10.8, 8.0, 0], hairP(WILD, { seed: 4, min: 0.55, tips: true }), { plane: 'z', pivot: [0, 23.6, -3.45], rot: [-16, 0, 0] }),
+];
 
 // ---------------------------------------------------------------- the model
-const EYE_SZ = [2.667, 3.0, 0], EYE_Y = 18.8, EYE_Z = 5.05;
-const eyeParts = (side) => Object.entries(EYES).map(([k, fn]) => P(side < 0 ? [-4.083, EYE_Y, EYE_Z] : [1.417, EYE_Y, EYE_Z], EYE_SZ, fn, { plane: 'z', glow: true, mirror: side > 0, id: 'eye-' + k, hide: k !== 'angry' }));
 const earCubes = (torn) => [
   P([-6.0, 21.667, -1.0], [2.0, 1.667, 1.0], fur),
   P([-7.0, 22.0, -0.25], [4.0, 4.667, 0], earPlaneP(F, false, torn), { plane: 'z' }),
@@ -112,7 +123,7 @@ const BAND_T = [0.15, 0.32, 0.49, 0.66, 0.83];
 const BAND_TOPS = BAND_T.map((t) => { const c = strapAt(t), a = STRAP_ROT * Math.PI / 180; return [c[0] - Math.sin(a) * 3.4, c[1] + Math.cos(a) * 3.4, c[2] + 0.9]; });
 const cordP = (p, w, h, face) => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, face === 'up' ? J.fuseHi : (x + y) % 3 === 0 ? J.fuseHi : (x + y) % 3 === 1 ? J.fuse : J.fuseLo); };
 const bandCubes = [
-  rod(SA, SBp, 0.5, 1.0, cordP, { sideV: [0, 0, 1], over: 1 }),
+  rod(SA, SBp, 0.5, 1.0, cordP, { sideV: [0, 0, 1], over: 1, id: 'drip1' }),
   rod([SA[0] + 0.4, SA[1] + 0.9, SA[2] - 0.3], [SA[0] + 0.4, SA[1] + 0.9, -4.6], 0.9, 0.5, cordP, { sideV: [1, 0, 0] }),
   ...BAND_T.flatMap((t, i) => tntStick([...strapAt(t).slice(0, 2), strapAt(t)[2] + 0.9], STRAP_ROT, { stick: 'bstick', spark: 'bsp-' }, { text: i % 2 === 0 })),
 ];
@@ -162,8 +173,9 @@ export const def = {
       P([1.5, 14.8, 7.6], [0.6, 0.867, 0.5], toothP),
       P([-6.333, 16.0, 8.0], [4.0, 1.667, 0], whiskerP, { plane: 'z', mirror: true }),
       P([2.333, 16.0, 8.0], [4.0, 1.667, 0], whiskerP, { plane: 'z' }),
-      ...eyeParts(-1), ...eyeParts(1),
+      ...hairCubes,
     ] },
+    ...EYES.bones,
     { name: 'jaw', parent: 'head', pivot: [0, 15.667, 4.667], rot: [8, 0, 3], cubes: [
       P([-2.0, 14.0, 4.333], [4.0, 1.667, 3.667], jaw),
       P([-1.333, 15.5, 8.02], [2.667, 0.667, 0], teethP(true, { off: 1 }), { plane: 'z', outline: false }),
@@ -174,19 +186,30 @@ export const def = {
     { name: 'browL', parent: 'head', pivot: [2.75, 22.8, 5.1], rot: [0, 0, 20], cubes: [P([1.0, 22.4, 4.8], [3.5, 0.833, 0.6], brow, { mirror: true })] },
     { name: 'earR', parent: 'head', pivot: [-5.0, 22.0, -0.5], rot: [-6, 18, 64], cubes: earCubes(false) },
     { name: 'earL', parent: 'head', pivot: [5.0, 22.0, -0.5], rot: [-6, -18, -64], cubes: earCubes(true).map(mirrorCube) },
+    // drip 2: the horned cardboard cap
     { name: 'cap', parent: 'head', pivot: [0, 23.6, 0.6], rot: [-10, 0, -5], cubes: [
-      P([-5.833, 23.0, -3.5], [11.667, 2.333, 8.833], bandP),
-      P([-6.167, 25.0, -3.833], [12.333, 1.667, 9.5], puffP),
-      P([-5.333, 26.667, -3.0], [10.667, 0.5, 7.833], cardP({ upFlat: true })),
-      P([-0.667, 27.167, 0.5], [1.333, 0.5, 1.333], bottleCapP()),
-      P([-5.0, 23.0, 5.333], [10.0, 0.5, 3.667], brimP, { pivot: [0, 23.25, 5.333], rot: [14, 0, 0] }),
+      P([-5.833, 23.0, -3.5], [11.667, 2.333, 8.833], bandP, { id: 'drip2', hide: true }),
+      P([-6.167, 25.0, -3.833], [12.333, 1.667, 9.5], puffP, { id: 'drip2', hide: true }),
+      P([-5.333, 26.667, -3.0], [10.667, 0.5, 7.833], cardP({ upFlat: true }), { id: 'drip2', hide: true }),
+      P([-0.667, 27.167, 0.5], [1.333, 0.5, 1.333], bottleCapP(), { id: 'drip2', hide: true }),
+      P([-5.0, 23.0, 5.333], [10.0, 0.5, 3.667], brimP, { pivot: [0, 23.25, 5.333], rot: [14, 0, 0], id: 'drip2', hide: true }),
       // horns cut from the crown and folded up, leaning outward like a devil's
       ...[-1, 1].flatMap((sd) => [[2.333, 1.667, 0], [1.667, 1.5, 0.45], [1.0, 1.333, 0.85]].map(([w, h, out], i) => P(
-        [sd * (3.8 + out) - w / 2, 26.3 + [0, 1.667, 3.167][i], 1.7], [w, h, 0.833], hornP, { pivot: [sd * 3.8, 26.3, 2.1], rot: [0, 0, -sd * 14], mirror: sd > 0 }))),
-      P([-4.6, 26.3, 1.7], [2.0, 0.7, 1.3], tapeP),
+        [sd * (3.8 + out) - w / 2, 26.3 + [0, 1.667, 3.167][i], 1.7], [w, h, 0.833], hornP, { pivot: [sd * 3.8, 26.3, 2.1], rot: [0, 0, -sd * 14], mirror: sd > 0, id: 'drip2', hide: true }))),
+      P([-4.6, 26.3, 1.7], [2.0, 0.7, 1.3], tapeP, { id: 'drip2', hide: true }),
+    ] },
+    // drip 3: a blasting crate strapped to his back, plunger up, a fuse cord running to the bandolier
+    { name: 'pack', parent: 'body', pivot: [0, 11, -4.4], cubes: [
+      P([-3.4, 8.2, -7.0], [6.8, 5.4, 2.8], crateP, { id: 'drip3', hide: true }),
+      rod([0, 13.4, -5.6], [0, 16.4, -5.6], 0.8, 0.8, ironP(), { id: 'drip3', hide: true }),
+      rod([-2.0, 16.6, -5.6], [2.0, 16.6, -5.6], 0.9, 0.9, ironP({ rivets: true }), { id: 'drip3', hide: true }),
+      rod([-5.6, 15.4, -4.3], [-5.0, 9.6, -4.3], 1.0, 0.5, cordP, { sideV: [0, 0, 1], id: 'drip3', hide: true }),
+      rod([5.6, 15.4, -4.3], [5.0, 9.6, -4.3], 1.0, 0.5, cordP, { sideV: [0, 0, 1], id: 'drip3', hide: true }),
+      rod([3.0, 10.2, -5.2], [7.4, 9.0, 0.6], 0.5, 0.5, cordP, { id: 'drip3', hide: true }),
     ] },
   ],
 };
+def.drip = ['TNT bandolier', 'Horned cardboard cap', 'Blasting-crate pack'];
 def.attach = {
   head: { bone: 'head', at: [0, 24.0, 1.3], size: 11.333 },
   face: { bone: 'head', at: [0, 20.3, 5.05], size: 11.333 },
@@ -208,6 +231,8 @@ function fizz(P, t, rate = 30) { P.face('hspark', cyc(t, 14)); P.stream('fusespa
 // every fuse on the bandolier lit
 function bandFizz(P, t, rate = 14) { P.face('bspark', cyc(t, 12)); BAND_TOPS.forEach((q, i) => P.stream('fusespark', 'band', q, { rate, dir: [0, 1, 0.3], spread: 0.9, key: 'b' + i })); }
 const MOUTH = [0, 15.2, 8.8], HEAD_TOP = [0, 30, 2];
+const dart = (P, dx, dy = 0) => P.pos('eyeR', dx, dy, 0).pos('eyeL', dx, dy, 0);
+const eyeSq = (P, sx, sy) => P.scl('eyeR', sx, sy, 1).scl('eyeL', sx, sy, 1);
 
 export const anim = {
   start: 'idle', seed: 33,
@@ -224,7 +249,7 @@ export const anim = {
     { bone: 'earL', tip: [0, 4, 0], k: 160, d: 7, gain: 0.6, max: 18 },
   ],
   faces: {
-    eyes: { default: 'angry', states: Object.fromEntries(Object.keys(EYES).map((k) => [k, ['eye-' + k]])) },
+    eyes: EYES.slot,
     held: { default: 'on', states: { on: ['held'], off: [] } },
     hspark: { default: 'off', states: { off: [], a: ['hsp-a'], b: ['hsp-b'], c: ['hsp-c'] } },
     bspark: { default: 'off', states: { off: [], a: ['bsp-a'], b: ['bsp-b'], c: ['bsp-c'] } },
@@ -244,7 +269,8 @@ export const anim = {
       P.rot('armL', wave(t, 1 / 2.4, 1) * 6, 0, -sw * 4).rot('foreL', -6 + wave(t, 1 / 1.2) * 5, 0, 0);
       P.rot('browR', 0, 0, -3 * bump(t, 1.3, 1.6)).rot('browL', 0, 0, 3 * bump(t, 1.3, 1.6));
       P.rot('tail1', 0, sw * 10, 0).rot('tail3', wave(t, 1 / 2.4, 1.2) * 8, 0, 0);
-      P.face('eyes', t > 1.3 && t < 1.7 ? 'half' : undefined);
+      P.face('eyes', t > 1.3 && t < 1.7 ? 'sleepy' : undefined);
+      dart(P, 0.5 * (bump(t, 0.6, 1.3) - bump(t, 1.8, 2.3)), 0.2 * toss); eyeSq(P, 1, 1 + 0.12 * toss);   // the eyes follow the toss
       fizz(P, t, 24);
       P.stream('smoke', 'tail4', [0.8, 5.0, -26], { rate: 1.2, scale: 0.5, spread: 0.4 });
     } },
@@ -325,7 +351,7 @@ export const anim = {
       P.pos('root', 0, 0, -2.6 * k).rot('body', -14 * k + wob(t, 0.2, 4, 3, 6), 0, wave(t, 16) * 4 * k).sq('body', -0.12 * k);
       P.rot('head', -16 * k, 0, 10 * k).rot('jaw', 22 * k);
       P.rot('armR', 30 * k, 0, 30 * k).rot('armL', 30 * k, 0, -30 * k);
-      P.face('eyes', t < 0.42 ? 'hurt' : undefined);
+      P.face('eyes', t < 0.42 ? 'shut' : undefined); eyeSq(P, 1 + 0.25 * k, 1 - 0.3 * k);
       P.burst(0.02, 'spark', 'body', [0, 13, 6], {}).burst(0.03, 'fusespark', 'band', BAND_TOPS[2], { n: 14 }).burst(0.03, 'sweat', 'head', [6, 25, 3], { n: 2, dir: [1, 0.6, 0] });
     } },
     // reels, the fuses fizzle out in puffs of smoke, and he topples onto his side
@@ -389,7 +415,8 @@ export const anim = {
       const stare = seg(t, 0.8, 1.0) * (1 - seg(t, 2.2, 2.4));
       P.rot('head', 16 * stare + wave(t, 7) * 2 * seg(t, 1.6, 2.1), -10 * stare, 8 * stare).rot('jaw', 4 + 10 * stare);
       P.pos('body', 0, -0.6 * stare, 0); plant(P, -0.6 * stare);
-      P.face('eyes', t > 0.8 && t < 2.2 ? 'wide' : t > 2.25 && t < 2.9 ? 'happy' : undefined); P.lookW = 1 - stare;
+      P.face('eyes', t > 0.8 && t < 2.2 ? 'shock' : t > 2.25 && t < 2.9 ? 'happy' : undefined); P.lookW = 1 - stare;
+      eyeSq(P, 1 - 0.1 * stare, 1 + 0.2 * stare); dart(P, 0, 0.3 * stare);
       P.burst(2.2, 'smoke', 'held', HELD_FUSE, { n: 3, scale: 0.6 }).burst(2.25, 'sweat', 'head', [6, 26, 3], { n: 2, dir: [1, 0.5, 0] });
       P.sq('body', wob(t, 2.25, 0.05, 3, 5));
     } },

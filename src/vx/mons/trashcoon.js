@@ -2,13 +2,13 @@
 // schoolboy cap out of a cardboard box (taped seams, a torn brim, ear slots, a bottle-cap button),
 // knotted a flattened soda can on as a tie, and picked up a forked stick that he plays like a horned guitar — power chords on a rubber-band
 // string. He can't stand still: he headbangs on every beat, his walk is a one-legged hopping
-// duck-walk, and when the riff takes him he drops and spins on the floor. Big glossy kawaii eyes in
+// duck-walk, and when the riff takes him he drops and spins on the floor. Small amber eyes in
 // the bandit mask, a snaggle fang, little bolt-shaped notches in his tail rings. Homage, never a
 // likeness: no logos, no covers, no real people.
 import { E, seg, bump, wob, wave, key, bounce, hop } from '../anim.js';
 import {
   PAL, J, P, mirrorCube, aimX, furP, bellyP, tuftP, skullP, muzzleP, noseP, jawP, mouthP, tongueP, toothP, whiskerP,
-  earPlaneP, kawaiiEyes, tailP, handP, footP, cardP, tapeP, bottleCapP, barkP, leafP, tieP, tabP, rig, shift, ramp,
+  earPlaneP, hairP, maskEyes, tailP, handP, footP, cardP, tapeP, bottleCapP, barkP, leafP, tieP, tabP, trashBagP, bagHemP, rig, shift, ramp,
 } from './raccoon_parts.js';
 
 const F = PAL.trash;
@@ -78,8 +78,13 @@ const flapP = (p, w, h) => {
 };
 const stick = barkP({ string: true, s0: 3, s1: 4 });
 const stickNub = barkP();
-// kawaii eyes: a dark warm-brown iris that lightens to amber at the bottom
-const EYES = kawaiiEyes({ dark: '#3c2614', mid: '#8e561a', light: '#f0aa30' });
+// hand-pixelled eyes: small round amber eyes with a 2×2 pupil glancing in, one glint; low-res like a Cobblemon face
+const EYES = maskEyes({ style: 'pix', chunk: 2, iris: '#e8961e', accent: '#ffcf52', at: [-2.4, 15.6, 4.38], map: { open: [
+  '.ii.',
+  'ihki',
+  'ikki',
+  '.cc.',
+] } });
 
 // ---------------------------------------------------------------- the model
 // the stick-guitar: its base (the "body") rests in front of the right hip and the neck runs up
@@ -87,8 +92,13 @@ const EYES = kawaiiEyes({ dark: '#3c2614', mid: '#8e561a', light: '#f0aa30' });
 const SB = [-4.0, 4.3, 5.6], SL = 16, SDIR = [1, 0.46, 0.1], SUP = [0, 1, 0];
 const s = (dx, dy, dz) => [SB[0] + dx, SB[1] + dy, SB[2] + dz];
 const STRUM = s(2.7, 0.9, 0.5), FRET = s(11.6, 0.5, 0.6);
-const EYE_SZ = [2.333, 2.667, 0], EYE_Y = 14.267;
-const eyeParts = (side) => Object.entries(EYES).map(([k, fn]) => P(side < 0 ? [-3.567, EYE_Y, 4.38] : [1.233, EYE_Y, 4.38], EYE_SZ, fn, { plane: 'z', mirror: side > 0, id: 'eye-' + k, hide: k !== 'open' }));
+// a shaggy rock fringe and mullet hanging out from under the cap
+const hairCubes = [
+  P([-3.8, 17.1, 4.42], [7.6, 1.6, 0], hairP(undefined, { seed: 1, min: 0.35, tips: true }), { plane: 'z' }),
+  P([-5.1, 14.6, -2.0], [0, 4.0, 6.0], hairP(undefined, { seed: 2, min: 0.45, tips: true }), { plane: 'x' }),
+  P([5.1, 14.6, -2.0], [0, 4.0, 6.0], hairP(undefined, { seed: 3, min: 0.45, tips: true }), { plane: 'x' }),
+  P([-4.4, 12.4, -3.1], [8.8, 6.2, 0], hairP(undefined, { seed: 4, min: 0.6, tips: true }), { plane: 'z' }),
+];
 // the ears poke up through two slots cut in the cardboard cap
 const earCubes = [
   P([-4.667, 19.333, -0.833], [2.0, 1.667, 1.0], fur),
@@ -125,10 +135,10 @@ export const def = {
       P([-3.833, 10.667, -2.5], [7.667, 0.667, 5.333], fur),
       P([-4.0, 7.667, -3.667], [8.0, 3.0, 1.0], furBack),
       P([-2.333, 8.667, 3.36], [4.667, 2.333, 0], tuftP(F, { cream: true }), { plane: 'z', pivot: [0, 10, 3.36], rot: [0, 0, -90] }),
-      P([-0.667, 9.167, 3.167], [1.333, 1.333, 0.667], tabP),
+      P([-0.667, 9.167, 3.167], [1.333, 1.333, 0.667], tabP, { id: 'drip2', hide: true }),
     ] },
     // a flattened soda can worn as a schoolboy tie, its pull tab for the knot
-    { name: 'tie', parent: 'body', pivot: [0, 9.4, 3.6], rot: [-14, 0, 0], cubes: [P([-1.333, 4.9, 3.65], [2.667, 4.5, 0], tieP, { plane: 'z' })] },
+    { name: 'tie', parent: 'body', pivot: [0, 9.4, 3.6], rot: [-14, 0, 0], cubes: [P([-1.333, 4.9, 3.65], [2.667, 4.5, 0], tieP, { plane: 'z', id: 'drip2', hide: true })] },
     { name: 'tail1', parent: 'body', pivot: [0.6, 4.0, -3.0], rot: [14, -28, 0], cubes: tailSeg(0.6, 4.0, -2.4, 5.6, 3.667, 3.667, 6) },
     { name: 'tail2', parent: 'tail1', pivot: [0.6, 4.0, -7.6], rot: [22, -8, 0], cubes: tailSeg(0.6, 4.0, -6.9, 6.0, 4.333, 4.333, 19) },
     { name: 'tail3', parent: 'tail2', pivot: [0.6, 4.0, -12.6], rot: [24, 0, 0], cubes: tailSeg(0.6, 4.0, -11.9, 5.4, 3.667, 3.667, 34) },
@@ -164,8 +174,9 @@ export const def = {
       P([0.5, 11.2, 7.3], [0.5, 0.667, 0.333], toothP),
       P([-5.667, 11.667, 6.9], [3.667, 1.667, 0], whiskerP, { plane: 'z', mirror: true }),
       P([2.0, 11.667, 6.9], [3.667, 1.667, 0], whiskerP, { plane: 'z' }),
-      ...eyeParts(-1), ...eyeParts(1),
+      ...hairCubes,
     ] },
+    ...EYES.bones,
     { name: 'jaw', parent: 'head', pivot: [0, 11.667, 4.333], cubes: [
       P([-1.667, 10.333, 4.0], [3.333, 1.333, 3.0], jaw),
       P([-1.5, 11.367, 4.167], [3.0, 0.3, 2.667], mouthP, { outline: false }),
@@ -177,16 +188,27 @@ export const def = {
     { name: 'earR', parent: 'head', pivot: [-3.667, 19.667, -0.333], rot: [-4, 14, 24], cubes: earCubes },
     { name: 'earL', parent: 'head', pivot: [3.667, 19.667, -0.333], rot: [-4, -14, -24], cubes: earCubes.map(mirrorCube) },
     { name: 'cap', parent: 'head', pivot: [0, 18.667, 0.4], rot: [-6, 0, 7], cubes: [
-      P([-5.167, 18.0, -3.833], [10.333, 2.0, 8.667], bandP),
-      P([-5.5, 19.667, -4.167], [11.0, 1.667, 9.333], puffP),
-      P([-4.667, 21.333, -3.333], [9.333, 0.5, 7.667], capTopP),
-      P([-0.667, 21.833, 0.0], [1.333, 0.5, 1.333], bottleCapP()),
-      P([1.333, 21.267, -4.333], [1.333, 0.75, 9.667], tapeP),
-      P([-4.333, 18.0, 4.833], [8.667, 0.5, 3.667], brimP, { pivot: [0, 18.25, 4.833], rot: [12, 0, 0] }),
+      P([-5.167, 18.0, -3.833], [10.333, 2.0, 8.667], bandP, { id: 'drip1' }),
+      P([-5.5, 19.667, -4.167], [11.0, 1.667, 9.333], puffP, { id: 'drip1' }),
+      P([-4.667, 21.333, -3.333], [9.333, 0.5, 7.667], capTopP, { id: 'drip1' }),
+      P([-0.667, 21.833, 0.0], [1.333, 0.5, 1.333], bottleCapP(), { id: 'drip1' }),
+      P([1.333, 21.267, -4.333], [1.333, 0.75, 9.667], tapeP, { id: 'drip1' }),
+      P([-4.333, 18.0, 4.833], [8.667, 0.5, 3.667], brimP, { pivot: [0, 18.25, 4.833], rot: [12, 0, 0], id: 'drip1' }),
     ] },
-    { name: 'flap', parent: 'cap', pivot: [3.3, 17.567, 8.3], rot: [62, 0, 8], cubes: [P([2.3, 17.567, 8.3], [2.0, 0, 1.333], flapP, { plane: 'y' })] },
+    { name: 'flap', parent: 'cap', pivot: [3.3, 17.567, 8.3], rot: [62, 0, 8], cubes: [P([2.3, 17.567, 8.3], [2.0, 0, 1.333], flapP, { plane: 'y', id: 'drip1' })] },
+    // drip 3: a black trash-bag cape, taped on at the shoulders, a duct-tape bolt on the back
+    { name: 'cape1', parent: 'body', pivot: [0, 10.6, -3.4], rot: [8, 0, 0], cubes: [
+      P([-4.6, 5.4, -3.9], [9.2, 5.4, 0.4], trashBagP({ bolt: true }), { id: 'drip3', hide: true }),
+      P([-4.4, 9.9, -3.6], [1.6, 1.4, 6.2], tapeP, { id: 'drip3', hide: true }), P([2.8, 9.9, -3.6], [1.6, 1.4, 6.2], tapeP, { id: 'drip3', hide: true }),
+    ] },
+    { name: 'cape2', parent: 'cape1', pivot: [0, 5.6, -3.7], rot: [10, 0, 0], cubes: [
+      P([-4.9, 2.6, -3.9], [9.8, 3.2, 0.4], trashBagP(), { id: 'drip3', hide: true }),
+      P([-4.9, 1.4, -3.7], [9.8, 1.2, 0], bagHemP, { plane: 'z', id: 'drip3', hide: true }),
+    ] },
   ],
 };
+// drip tiers (1 normal → 3 ultra dripped)
+def.drip = ['Cardboard schoolboy cap', 'Soda-can tie', 'Trash-bag cape'];
 // buyable gear sockets (model units): top of the head, between the eyes, front of the neck, middle of the back
 def.attach = {
   head: { bone: 'head', at: [0, 18.667, 1.2], size: 10 },
@@ -218,6 +240,9 @@ function play(P, o = {}) {
 const strumAt = (t, per = 0.5) => key([[0, 1], [0.07, -1, 'out'], [0.25, -1], [0.32, 1, 'out'], [0.5, 1]], ((((t % per) + per) % per) / per) * 0.5);
 // a headbang: snap down on the beat, ease back up
 const bang = (t, per = 0.5) => { const u = (((t % per) + per) % per) / per; return u < 0.12 ? E.out(u / 0.12) : 1 - E.inout((u - 0.12) / 0.88); };
+// eyes as bones: dart them (dx, dy in units) and squash / stretch them
+const dart = (P, dx, dy = 0) => P.pos('eyeR', dx, dy, 0).pos('eyeL', dx, dy, 0);
+const eyeSq = (P, sx, sy) => P.scl('eyeR', sx, sy, 1).scl('eyeL', sx, sy, 1);
 const NECK_TIP = s(SL - 0.5, 0, 0), STRUM_FX = s(2.4, 0.6, 1.6), CAP_TOP = [0, 22.4, 0.4], CAP_PIVOT = [0, 18.667, 0.4];
 const REST_DIR = SDIR;
 
@@ -234,11 +259,13 @@ export const anim = {
     { bone: 'tie', tip: [0, -4.5, 0], k: 80, d: 6, gain: 1.1, max: 30, axes: [1, 0.3, 1] },
     { bone: 'cap', tip: [0, 3, 0], k: 260, d: 9, gain: 0.35, max: 10 },
     { bone: 'flap', tip: [0, 0, 1.333], k: 70, d: 4.5, gain: 1.4, max: 40 },
+    { bone: 'cape1', tip: [0, -5, 0], k: 70, d: 5, gain: 1.0, max: 26, axes: [1, 0.4, 1] },
+    { bone: 'cape2', tip: [0, -3, 0], k: 55, d: 4, gain: 1.3, max: 32, axes: [1, 0.4, 1] },
     { bone: 'earR', tip: [-0.5, 3, 0], k: 170, d: 8, gain: 0.6, max: 18 },
     { bone: 'earL', tip: [0.5, 3, 0], k: 170, d: 8, gain: 0.6, max: 18 },
   ],
   faces: {
-    eyes: { default: 'open', states: Object.fromEntries(Object.keys(EYES).map((k) => [k, ['eye-' + k]])) },
+    eyes: EYES.slot,
     tongue: { default: 'in', states: { in: [], out: ['tongue-out'] } },
   },
   fidget: { every: [5, 9], clips: ['spin', 'capspin'] },
@@ -255,6 +282,8 @@ export const anim = {
       const chord = seg(t, 0.95, 1.05, E.out) - seg(t, 1.95, 2.0, E.out);
       play(P, { strum: strumAt(t), slide: -1.6 * chord });
       P.face('eyes', t > 1.02 && t < 1.38 ? 'happy' : undefined);
+      // a sly glance left, then right, between the beats; the eyes squash a touch on every headbang
+      dart(P, 0.45 * (bump(t, 0.25, 0.75) - bump(t, 1.45, 1.9)), 0.1 * n); eyeSq(P, 1 + 0.06 * n, 1 - 0.1 * n);
     } },
     // the duck-walk: crouched low on one hopping leg, the other kicked straight out in front with
     // the toes up, the head pecking forward on every hop, riffing hard on the stick
@@ -270,7 +299,7 @@ export const anim = {
       P.rot('stick', 0, 0, -4 + h.y * 2);
       play(P, { strum: strumAt(t * 2), slide: wave(t, 1 / 0.6) * 1.2 });
       P.rot('tail1', -10, 0, 0);
-      P.face('eyes', 'half');
+      P.face('eyes', 'sleepy');
       P.burst(0.29, 'dust', 'footL', [2.6, 0.3, 1], { n: 1, speed: 0.4, scale: 0.5 });
     } },
     // "Thunder": crouch, leap with the stick thrust at the sky beside the head, a bolt strikes it
@@ -293,7 +322,8 @@ export const anim = {
       const bangs = bump(t, 1.0, 1.22) + bump(t, 1.28, 1.5);
       P.rot('head', 14 * crouch - 26 * up + 30 * bangs + wave(t, 13) * 3 * zap, 0, wave(t, 9) * 3 * land).rot('jaw', 6 * crouch + 36 * up + 6 * bangs);
       P.rot('browR', 0, 0, -10 * up).rot('browL', 0, 0, 10 * up);
-      P.face('eyes', zap > 0.2 ? 'wide' : up > 0.3 ? 'angry' : undefined); P.blinkOK = up < 0.1; P.lookW = 1 - up;
+      P.face('eyes', zap > 0.2 ? 'shock' : up > 0.3 ? 'angry' : undefined); P.blinkOK = up < 0.1; P.lookW = 1 - up;
+      eyeSq(P, 1 - 0.12 * zap + 0.1 * crouch, 1 + 0.25 * zap - 0.2 * crouch);
       P.burst(0.52, 'thunder', 'stick', NECK_TIP, { n: 1 }).burst(0.53, 'thunder', 'stick', NECK_TIP, { n: 1 }).burst(0.52, 'spark', 'stick', NECK_TIP, { n: 2 });
       P.burst(0.52, 'shockring', 'stick', NECK_TIP, {}).burst(0.54, 'bolt', 'body', [0, 10, 0], { n: 4, spread: 1 });
       if (t > 0.54 && t < 1.5) P.stream('bolt', 'stick', NECK_TIP, { rate: 10 }).stream('sparkle', 'body', [0, 9, 0], { rate: 8, spread: 1 });
@@ -335,7 +365,7 @@ export const anim = {
       P.sq('body', 0.06 * crouch * (1 - slam) - 0.1 * seg(t, 0.86, 0.9) * (1 - seg(t, 0.9, 1.1)));
       P.rot('head', 10 * crouch - 24 * slam + wave(t, 14) * 3 * ring, 0, 6 * slam).rot('jaw', 30 * slam + 10 * ring);
       P.rot('browR', 0, 0, -8 * slam).rot('browL', 0, 0, 8 * slam);
-      P.face('eyes', slam > 0.3 ? (t < 1.2 ? 'angry' : 'happy') : crouch > 0.3 ? 'half' : undefined); P.lookW = 1 - slam;
+      P.face('eyes', slam > 0.3 ? (t < 1.2 ? 'angry' : 'happy') : crouch > 0.3 ? 'sleepy' : undefined); P.lookW = 1 - slam;
       P.burst(0.87, 'shockring', 'stick', STRUM_FX, {}).burst(0.9, 'shockring', 'stick', STRUM_FX, { scale: 1.5 });
       P.burst(0.87, 'riff', 'stick', STRUM_FX, { n: 14, dir: [0, 0.3, 1], spread: 1, speed: 1.4 }).burst(0.87, 'note', 'stick', STRUM_FX, { n: 6, spread: 1, speed: 2 });
       P.burst(0.88, 'thunder', 'stick', NECK_TIP, {}).burst(0.92, 'thunder', 'stick', NECK_TIP, {}).burst(0.88, 'spark', 'stick', STRUM_FX, { n: 2 });
@@ -349,7 +379,7 @@ export const anim = {
       P.pos('cap', 0, 2.4 * bump(t, 0.02, 0.4), -0.6 * bump(t, 0.02, 0.4)).rot('cap', -20 * bump(t, 0.02, 0.4), 0, 14 * bump(t, 0.02, 0.4));
       P.rot('stick', 0, 0, -16 * k);
       play(P, { strum: 0 });
-      P.face('eyes', t < 0.42 ? 'hurt' : undefined);
+      P.face('eyes', t < 0.42 ? 'shut' : undefined); eyeSq(P, 1 + 0.25 * k, 1 - 0.3 * k);
       P.burst(0.02, 'spark', 'body', [0, 10, 5], {}).burst(0.03, 'cardbit', 'cap', CAP_TOP, { n: 3 }).burst(0.03, 'sweat', 'head', [5, 20, 3], { n: 2, dir: [1, 0.6, 0] });
     } },
     // dazed wobble, the stick slips, flops onto its side
@@ -440,7 +470,7 @@ export const anim = {
       const paw = R.at(P, 'cap', [-1.5, 18.0, 0.4]).lerp(R.at(P, 'cap', [0, 17.4, 0.4]), off);
       R.reach(P, 'armR', 'foreR', paw, { pole: [-1, -0.5, -0.2], w: reach });
       P.rot('earR', 0, 0, -16 * off + wave(t, 6) * 6 * off).rot('earL', 0, 0, 16 * off - wave(t, 6, 1) * 6 * off);
-      P.face('eyes', off > 0.5 ? (spin > 0.5 ? 'happy' : 'half') : undefined); P.lookW = 1 - off;
+      P.face('eyes', off > 0.5 ? (spin > 0.5 ? 'happy' : 'sleepy') : undefined); P.lookW = 1 - off;
       const pop = seg(t, 2.32, 2.38, E.in) * (1 - seg(t, 2.42, 2.75, E.inout));
       P.sq('body', -0.08 * pop).rot('head', 6 * pop, 0, 0);
       P.burst(2.34, 'cardbit', 'cap', CAP_TOP, { n: 3 }).burst(1.3, 'sparkle', 'cap', CAP_TOP, { n: 2 });
