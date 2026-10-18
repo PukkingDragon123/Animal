@@ -1,0 +1,42 @@
+<!doctype html><html><head><meta charset="utf-8"><title>scene</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link href="https://fonts.googleapis.com/css2?family=DotGothic16&display=swap" rel="stylesheet">
+<style>html,body{margin:0;background:#120c16;overflow:hidden}canvas{display:block;width:100vw;height:100vh;object-fit:contain;image-rendering:pixelated}#err{position:fixed;top:0;left:0;color:#f66;font:12px monospace;white-space:pre}</style>
+</head><body><canvas id="c"></canvas><div id="err"></div>
+<script type="module">
+// HD-2D scene preview.  ?x=&y= camera  raw=1 (no post)  night=1  actor=0  t=seconds  still=1
+window.onerror = (m, s, l) => { document.getElementById('err').textContent += m + ' @' + l + '\n'; };
+import { buildDotonbori, DOTONBORI } from '../src/data/scenes/dotonbori.js';
+import { HD2D } from '../src/px/hd2d.js';
+import { Actor } from '../src/px/scene2d.js';
+import { frames, CLIPS, FPS } from '../src/px/sdf.js';
+import { SPRITES } from '../src/data/sprites/sdf_starters.js';
+import { loadFonts } from '../src/px/font.js';
+const q = new URLSearchParams(location.search);
+await loadFonts();
+const sc = buildDotonbori(Object.assign({ night: q.has('night') }, q.has('full') ? { viewW: DOTONBORI.w, viewH: DOTONBORI.h } : {}));
+const cv = document.getElementById('c');
+const S = +(q.get('s') || 3);
+cv.width = sc.vw * S; cv.height = sc.vh * S;
+const post = q.has('raw') ? null : new HD2D(cv);
+if (post && q.has('night')) Object.assign(post.opts, { night: 0.55, rays: 0, warm: 0.2, threshold: 0.6, bloom: 0.9 });
+sc.cam.x = +(q.get('x') ?? 80); sc.cam.y = +(q.get('y') ?? 110);
+// Chilichick wandering the plaza
+const d = SPRITES.chilichick, SC = 0.5;
+if (q.get('actor') !== '0') {
+  const walk = { clip: q.get('clip') || 'walk', yaw: +(q.get('yaw') ?? -60) };
+  const fr = frames(d, walk.clip, { scale: SC, yaw: walk.yaw });
+  const a = new Actor({ x: +(q.get('ax') || 300), y: +(q.get('ay') || 300), src: (t) => { const f = fr[Math.floor(t * FPS) % fr.length]; return { surf: f, ax: d.anchor[0] * SC + (f.ox || 0), ay: d.anchor[1] * SC + (f.oy || 0) }; } });
+  sc.actors.add(a);
+}
+const t0 = performance.now();
+const tick = (now) => {
+  const t = q.has('t') ? +q.get('t') : (now - t0) / 1000;
+  const frame = sc.render(t);
+  post.draw(frame, t);
+  if (!q.has('still')) requestAnimationFrame(tick);
+};
+if (q.has('raw')) { const g = cv.getContext('2d'); g.imageSmoothingEnabled = false; g.drawImage(sc.render(0), 0, 0, cv.width, cv.height); }
+else tick(performance.now());
+document.title = 'ready';
+</script></body></html>

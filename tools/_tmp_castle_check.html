@@ -1,0 +1,29 @@
+<!doctype html><html><head><meta charset="utf-8"><title>check</title></head><body><pre id="o"></pre>
+<script type="module">
+const out = [];
+try {
+  const { loadFonts } = await import('../src/px/font.js'); await loadFonts();
+  const { CASTLE_PARK_MAP } = await import('../src/data/scenes/castle_park.js');
+  const { World2D } = await import('../src/px/game/world.js');
+  const t0 = performance.now();
+  const b = CASTLE_PARK_MAP.build({ viewW: 480, viewH: 270 });
+  out.push('build ms ' + Math.round(performance.now() - t0) + ' sprites ' + b.scene.sprites.length + ' terrain ' + JSON.stringify(b.terrain));
+  const w = Object.create(World2D.prototype); w.sc = b.scene; w.buildMask(b);
+  for (const [k, [x, y]] of Object.entries(b.spawns)) out.push('spawn ' + k + ' walkable=' + w.walkable(x, y));
+  const from = b.spawns.gate;
+  for (const h of b.hotspots) {
+    // find a walkable point within reach of the hotspot
+    let best = null; for (let dy = -30; dy <= 30; dy += 2) for (let dx = -30; dx <= 30; dx += 2) { const x = h.x + dx, y = h.y + dy; if (Math.hypot(dx, dy * 1.4) < (h.r || 26) && w.walkable(x, y) && (!best || Math.hypot(dx, dy) < best[2])) best = [x, y, Math.hypot(dx, dy)]; }
+    if (!best) { out.push('hotspot ' + h.id + ' NO walkable point in reach'); continue; }
+    const p = w.findPath(from[0], from[1], best[0], best[1]);
+    const end = p && p.length ? p[p.length - 1] : null;
+    out.push('hotspot ' + h.id + ' reach ' + best.slice(0, 2).map(Math.round) + ' path ' + (p ? p.length + ' end ' + end.map(Math.round) : 'NONE'));
+  }
+  for (const s of ['start', 'ring', 'bridge', 'shrine', 'moat']) { const p = w.findPath(from[0], from[1], ...b.spawns[s]); out.push('path gate->' + s + ' ' + (p ? 'ok ' + p.length + ' end ' + p[p.length - 1].map(Math.round) : 'NONE')); }
+  // battle area clear?
+  let blocked = 0; for (let y = 312; y < 436; y += 2) for (let x = 330; x < 550; x += 2) if (!w.mask[y * b.scene.w + x]) blocked++;
+  out.push('battle area blocked px (sampled) ' + blocked);
+} catch (e) { out.push('ERR ' + e.stack); }
+document.getElementById('o').textContent = out.join('\n'); console.log(out.join('\n'));
+document.title = 'ready';
+</script></body></html>

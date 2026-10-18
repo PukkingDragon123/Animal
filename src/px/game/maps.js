@@ -51,4 +51,5 @@ export async function loadMaps() {
   for (const [id, path, key] of extra) {
     try { const m = await import(path); if (m[key]) MAPS[id] = Object.assign({ night: id === 'dotonbori', ambientFx: id === 'castle_park' ? 'petals' : id === 'dotonbori' ? 'embers' : null }, m[key], { music: id === 'dotonbori' ? 'dotonbori' : 'park', ambience: id === 'dotonbori' ? 'canal_night' : 'park' }); } catch (e) { /* not painted yet */ }
   }
+  try { const m = await import('../../data/scenes/stadium.js'); MAPS.stadium = m.STADIUM_MAP; } catch (e) { /* not painted yet */ }
 }

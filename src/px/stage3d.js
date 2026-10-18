@@ -99,7 +99,7 @@ export class Stage3D {
       S.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), wmat));
     }
     this.points = [];
-    const lights = (opts.lights || []).concat(night ? (sc.glows || []).filter((g) => g.light !== false).map((g) => ({ x: g.x, y: g.base ?? g.y + 30, h: g.h ?? 30, color: g.color, power: Math.min(1.2, (g.a || 0.4) * 1.6), dist: Math.max(90, g.r * 6) })) : []);
+    const lights = (opts.lights || sc.lights3d || []).concat(night ? (sc.glows || []).filter((g) => g.light !== false).map((g) => ({ x: g.x, y: g.base ?? g.y + 30, h: g.h ?? 30, color: g.color, power: Math.min(1.2, (g.a || 0.4) * 1.6), dist: Math.max(90, g.r * 6) })) : []);
     for (const L of lights.slice(0, 24)) {
       const p = new THREE.PointLight(new THREE.Color(L.color), (L.power || 1) * 520, L.dist || 120, 1.4);
       const G = this.ground(L.x, L.y); p.position.set(G[0], G[1] + (L.h || 20) / c, G[2] + 6);
