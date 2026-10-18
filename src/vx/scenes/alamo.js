@@ -15,14 +15,16 @@ export function build(o = {}) {
   // backyards behind the row (north): lawns, fences, trees, the backs of the next street
   k.lawn(0, 0, 511, 72, Y + 1, { flowers: 0.004 });
   for (let x = 0; x < 512; x += 60) k.box(x, Y + 2, 0, x, Y + 9, 68, 'wood', 'rows');
-  for (let i = 0; i < 8; i++) k.tree(30 + i * 62 + Math.floor(h3(i, 1, 1) * 20), Y + 2, 20 + Math.floor(h3(i, 2, 1) * 30), i % 3 ? 'oak' : 'street', i);
+  for (let i = 0; i < 8; i++) dr.tree(30 + i * 62 + Math.floor(h3(i, 1, 1) * 20), Y + 2, 20 + Math.floor(h3(i, 2, 1) * 30), i % 3 ? 'oak' : 'leaf', i + 20);
   // the Painted Ladies
   const lit = night;
   for (let i = 0; i < 8; i++) k.victorian({ x: 4 + i * 63, y: Y + 1, z: 140, w: 60, d: 72, scheme: SCHEMES[i % SCHEMES.length], lit, setback: 24 });
   // Steiner Street
   const st = k.streetX(0, 511, 227, Y, { half: 40, walk: 22 });
   // street trees in wells, lamps, a hydrant
-  for (let i = 0; i < 6; i++) { const x = 40 + i * 84; k.box(x - 3, Y, 173, x + 3, Y + 1, 179, 'dirt'); k.tree(x, Y + 2, 176, i % 2 ? 'street' : 'bloom', i); }
+  // street trees in wells: voxel trunks under painted leaf crowns, grass and flowers in the wells, weeds at the curbs
+  for (let i = 0; i < 6; i++) { const x = 40 + i * 84; k.box(x - 4, Y, 172, x + 4, Y + 1, 180, 'dirt'); k.box(x - 5, Y + 1, 171, x + 5, Y + 1, 171, 'curb'); dr.tree(x, Y + 2, 176, i % 2 ? 'leaf' : 'bloom', i + 1, { h: 34 }); dr.tufts(x - 4, 172, x + 4, 180, 7, [...SPR.grass, ...SPR.flowers], i + 50, { sway: 1.5, scale: 0.7 }); }
+  for (let i = 0; i < 60; i++) { const x = Math.floor(h3(i, 5, 7) * 508) + 2; dr.card(SPR.grass[i % SPR.grass.length], x, Y + 2, 186 + (i % 2 ? 0 : 82), { scale: 0.45, sway: 1.6 }); }
   const lamps = [];
   for (let i = 0; i < 5; i++) lamps.push(k.lampPost(80 + i * 96, Y + 2, 168, night));
   for (let i = 0; i < 4; i++) lamps.push(k.lampPost(30 + i * 128, Y + 2, 285, night));
@@ -38,7 +40,7 @@ export function build(o = {}) {
   for (const bx of [120, 300]) { const z = 314; k.bench(bx, Y + 1 + Math.floor((z - 292) / 5) + 1, z); }
   dr.tufts(0, 296, 511, 351, 1400, [...SPR.grass, ...SPR.grass, ...SPR.flowers], 7, { sway: 1.6 });
   dr.tufts(0, 2, 511, 70, 500, [...SPR.grass, ...SPR.fern], 9, { sway: 1.4 });
-  k.tree(60, Y + 6, 330, 'cypress', 3); k.tree(420, Y + 7, 335, 'cypress', 4); k.tree(230, Y + 8, 342, 'euc', 5); k.tree(470, Y + 5, 322, 'bloom', 6);
+  dr.tree(60, Y + 6, 330, 'cypress', 3); dr.tree(420, Y + 7, 335, 'cypress', 4); dr.tree(230, Y + 8, 342, 'euc', 5); dr.tree(470, Y + 5, 322, 'bloom', 6);
   return {
     vox: v, mood: o.mood || 'golden', lamps,
     view: { target: [32, 3, 24], dist: 58, yaw: 0, pitch: 38 },
