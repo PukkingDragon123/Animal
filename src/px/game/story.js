@@ -164,9 +164,76 @@ export class Story2D {
     await app.say('Coach Gonda', '(a message on your phone) Morning, rookie! The League desk opens at nine. Osaka League Stadium — it\'s on your map now. Don\'t be late!');
   }
 
+  // ------------------------------------------------------------------ rank matches any time after registering
+  rankMatchHotspot() {
+    const app = this.app, w = app.world, s = app.state, desk = w.meta.spawns.desk || w.meta.spawns.start, ring = w.meta.spawns.ring;
+    const POOL = [['Stairway Sora', 'C'], ['Purple Haze Hana', 'C'], ['Rocket Man Ryo', 'B'], ['Sweet Child Saki', 'B'], ['Wonderwall Wren', 'A'], ['Thriller Taka', 'A'], ['Paranoid Pip', 'B'], ['Superstition Suki', 'A']];
+    const SPECIES_POOL = ['zapanda', 'kappachi', 'lemmo', 'cabbunny', 'chochobake', 'beatlet', 'studrat', 'kanizumo'].filter((id) => DESIGNS_HAS(id));
+    w.meta.hotspots.unshift({ x: desk[0], y: desk[1] - 8, r: 30, label: 'Rank match', icon: 'star', bubbleH: 40, act: async () => {
+      const lv = Math.max(5, ...s.party.map((m) => m.level)), n = s.league.wins + s.league.losses;
+      const [name] = POOL[n % POOL.length], pick = (k) => SPECIES_POOL.length ? SPECIES_POOL[(n * 3 + k * 5) % SPECIES_POOL.length] : s.party[0].species;
+      const yes = await app.ui.choose(`Rank match against ${name}? You're ${S.rankOf(s).name}, ${s.league.points} points.`, ['Fight!', 'Not now'], { name: 'Ms. Aoi' });
+      if (yes !== 0) return;
+      const r = await app.startBattle({ title: 'RANK MATCH', subtitle: `${S.rankOf(s).name}  ·  vs ${name}`, stadium: true, chooseArena: true, clock: { len: 150 }, at: ring, arenaR: 8.5, money: 500 + lv * 40, music: 'league',
+        foe: { name, team: [[pick(0), lv], [pick(1), Math.max(4, lv - 1)]], ai: 'normal' } });
+      const won = r && r.winner === 0;
+      s.league[won ? 'wins' : 'losses']++;
+      if (S.addLeaguePoints(s, won ? 60 : 15)) { app.ui.toast('Rank up! ' + S.rankOf(s).name, { icon: 'star', color: T.amber }); app.audio.sfx && app.audio.sfx('evolve_burst'); }
+      if (S.rankOf(s).id === 'A' && !s.flags.e4_notice) {
+        s.flags.e4_notice = true;
+        await app.say('Ms. Aoi', 'Rank A! …You know what that means. The Elite Four have asked to see your record.', 'Four master trainers who play together as a band — John, Paul, George and Ringo. The Beatles.', 'Their challenge is being prepared. The whole of Osaka will be watching.');
+        app.objective = 'Rank A! The Elite Four challenge is coming soon — keep training.';
+      }
+      app.save();
+    } });
+  }
+
+  // ------------------------------------------------------------------ Day 3: Moshi and the stray cat, the showdown on the bridge
+  metalBeats(mapId) {
+    const app = this.app, w = app.world, s = app.state, beat = s.story.beat;
+    if (mapId === 'plaza' && beat === 'league2') {
+      const cat = w.meta.hotspots.find((h) => h.id === 'cat');
+      if (DESIGNS_HAS('moshbull')) w.addNpc({ species: 'moshbull', x: 62, y: 352, still: true, yaw: -60, label: 'Moshbull', talk: () => cat && cat.act(app) });
+      if (cat) cat.act = async () => {
+        await app.say('', 'Someone is crouched by the crates, feeding the stray cat bits of takoyaki. Studded jacket, spiked bracelets, a very gentle voice.');
+        await app.say('Moshi', '…Ah. You. From the canal.', 'Please don\'t tell Thrash. He thinks I\'m out buying guitar strings.', 'This one\'s called Lemmy. He only eats the middle bits.');
+        await app.say('Moshi', 'Listen. Thrash is going to take over the Dotonbori bridge tonight. The whole crew. He says the street stalls will have to pay rent to us.', 'The takoyaki man is old. I don\'t want… I can\'t stop them by myself.', 'If you\'re there, maybe Thrash backs down. Maybe.');
+        s.flags.met_moshi = true; s.flags.moshi_friend = true; s.story.beat = 'metal1'; app.save();
+        app.ui.toast('Moshi added to Friends', { icon: 'heart', color: T.pink });
+        app.objective = 'Tonight: stop Team Metallica on the Dotonbori bridge';
+      };
+    }
+    if (mapId === 'dotonbori' && beat === 'metal1') {
+      const sp = w.meta.spawns.bridge || w.meta.spawns.icecream || w.meta.spawns.start;
+      const show = async () => {
+        await app.say('Thrash', 'Well, well. The rookie with the lucky streak. This bridge is ours now — every stall pays Team Metallica, starting tonight.', 'Riff! Moshi! Positions!');
+        await app.say('Moshi', '…No.', 'I\'m not doing this one, Thrash. They\'re just old people selling food.');
+        await app.say('Thrash', '…We\'ll talk later, Moshi. Riff — with me. Two on one, rookie. Let\'s see that luck.');
+        const lv = Math.max(8, ...s.party.map((m) => m.level));
+        const res = await app.startBattle({ title: 'TEAM METALLICA', subtitle: 'showdown on the bridge', at: sp, money: 1500, music: 'battle_punk', partySize: 3,
+          foes: [{ name: 'Thrash', team: [[DESIGNS_HAS('studrat') ? 'studrat' : s.party[0].species, lv + 1], [DESIGNS_HAS('moshbull') ? 'studrat' : 'studrat', lv]], ai: 'normal' }, { name: 'Riff', team: [[DESIGNS_HAS('thrashark') ? 'thrashark' : 'studrat', lv + 1]], ai: 'normal' }] });
+        if (res && res.winner === 0) {
+          await app.say('Thrash', 'Tch. This bridge stinks of soy sauce anyway.', 'This isn\'t over, rookie. Team Metallica plays the long game.');
+          await app.say('Moshi', 'You did it. …Thank you. Lemmy says thank you too.', 'If Thrash gets any worse, I\'ll… I\'ll let you know. Text me.');
+          await app.say('Takoyaki Taisho', 'Ha! Free takoyaki for the hero of the bridge! For life! …Well. For this week.');
+          s.flags.metallica_bridge = true; s.story.beat = 'league3'; app.save();
+          app.objective = 'Climb the League ladder to rank A (rank matches at the stadium)';
+        } else {
+          await app.say('Thrash', 'Ha! The bridge is ours. Come back when you\'ve grown a spine.');
+          await app.say('Moshi', '(whispering) …They\'ll be here every night. Train up and try again.');
+          app.objective = 'Train up and take back the Dotonbori bridge from Team Metallica';
+        }
+      };
+      w.meta.hotspots.unshift({ x: sp[0], y: sp[1], r: 34, label: 'Team Metallica', icon: 'fist', bubbleH: 40, act: show });
+      for (const [id, dx] of [['studrat', -30], ['thrashark', 30]]) if (DESIGNS_HAS(id)) w.addNpc({ species: id, x: sp[0] + dx, y: sp[1] - 18, still: true, yaw: 0, label: id === 'studrat' ? "Thrash's Studrat" : "Riff's Thrashark", talk: show });
+    }
+  }
+
   // ------------------------------------------------------------------ Day 2: the League (stadium beats)
   leagueBeats(mapId) {
     const app = this.app, w = app.world, s = app.state, beat = s.story.beat;
+    this.metalBeats(mapId);
+    if (mapId === 'stadium' && s.flags.league_registered && beat !== 'league1') this.rankMatchHotspot();
     if (mapId !== 'stadium' || beat !== 'league1') return;
     const ring = w.meta.spawns.ring, desk = w.meta.spawns.desk || w.meta.spawns.start;
     w.meta.hotspots.unshift({ x: desk[0], y: desk[1] - 8, r: 30, label: 'League desk', icon: 'talk', bubbleH: 40, act: async () => {
@@ -189,7 +256,7 @@ export class Story2D {
       await app.say('Kaito', won2 ? '…Fine. You\'re good. Don\'t let it go to your head — the ladder only gets steeper from here.' : 'Ha! Now we\'re even. See you higher up the ladder.');
       await app.say('Coach Gonda', `${S.rankOf(s).name} after one day — not bad, rookie!`, 'Take the afternoon: train against wild Tokonmon, explore, eat something. More rank matches tomorrow.', '…And keep your eyes open. Team Metallica has been asking around about you.');
       s.story.beat = 'league2'; s.time.hour = 16; app.save();
-      app.objective = 'Afternoon free time: train, explore, eat. Rank matches continue tomorrow.';
+      app.objective = 'Free time! Rank matches at the stadium desk — and someone has been feeding the plaza\'s stray cat…';
     } });
   }
 
