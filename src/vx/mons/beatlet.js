@@ -1,8 +1,10 @@
-// Beatlet — stage 1 of the Beatlet line (Bio): a small, chubby bipedal beetle kid. Its glossy
-// head shell is an early-60s mop-top with a fringe down to its eyes, its elytra and chest carry
-// the markings of a matching collarless suit (black piping round a round neckline, a slim tie,
-// a centre vent behind), and a leaf sprout grows from the little horn nub on its crown. Round amber
-// bead eyes. Sunny, bouncy, always humming. Evolves into Pepperhorn.
+// Beatlet — stage 1 of the Beatlet line (Bio): a small, chubby bipedal beetle kid. Its head wears an
+// early-60s mop-top — a round, glossy chestnut helmet of hair, full over the ears, a straight
+// fringe cut level just over its eyes — and its grey shell is marked like a matching collarless
+// suit (a piped round neckline over a white shirt and slim tie, an edge-to-edge piped front with
+// covered buttons, piped pocket flaps, a centre vent behind). A leaf sprout grows from the little
+// horn nub on its crown. Round amber bead eyes peek out from under the fringe. Sunny, bouncy,
+// always humming. Evolves into Pepperhorn.
 // Drip (one option per tier): 1 satin band collar | harmonica neck-rack · 2 Cuban-heel Beatle boots |
 // pink round shades pushed up on the mop · 3 sunburst 12-string | violin bass, slung on its back.
 import { eyeRig } from './eyes.js';
@@ -115,7 +117,7 @@ const RIGHT = [
   { name: 'foreR', parent: 'armR', pivot: [-5.5, 9.6, 0.2], cubes: [B(-6.3, 7.8, -0.7, -4.7, 9.8, 1.1, sleeveP), B(-6.4, 7.4, -0.8, -4.6, 7.9, 1.2, cuffP)] },
   { name: 'handR', parent: 'foreR', pivot: [-5.5, 7.5, 0.2], cubes: [B(-6.3, 6.0, -0.8, -4.7, 7.5, 1.2, handP), B(-6.2, 5.2, 0.1, -5.5, 6.0, 1.0, clawP), B(-5.4, 5.2, 0.1, -4.8, 6.0, 1.0, clawP)] },
   // a little 45 for the record-spin fidget
-  { name: 'vinylR', parent: 'handR', pivot: [-5.5, 5.2, 0.6], cubes: [B(-7.0, 5.1, -0.9, -4.0, 5.35, 2.1, vinylP, { id: 'vinyl', hide: true })] },
+  { name: 'vinylR', parent: 'handR', pivot: [-5.5, 5.2, 0.6], cubes: [B(-7.7, 5.1, -1.6, -3.3, 5.35, 2.8, vinylP, { id: 'vinyl', hide: true })] },
   { name: 'mandR', parent: 'head', pivot: [-1.6, 12.8, 4.6], cubes: [B(-2.4, 12.2, 4.4, -1.2, 13.2, 6.0, mandP), B(-1.6, 12.2, 5.6, -0.8, 12.9, 6.5, clawP)] },
 ];
 export const def = {

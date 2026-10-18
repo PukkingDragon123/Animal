@@ -1,6 +1,6 @@
 // Abbeyhorn — split final stage of the Beatlet line (Bio): a tall, sleek, fast warrior beetle
-// in white armour (the white-suit Abbey Road era). Long middle-parted hair falls past its jaw and
-// flows down its back in a frill, its mandibles are furred like a beard, a long, elegant ivory horn
+// in white armour (the white-suit Abbey Road era). Long middle-parted hair frames its face, falls
+// over its shoulders and flows down its back in a frill, its mandibles are furred like a beard, a long, elegant ivory horn
 // curves up from its brow, and its sharp gold slit eyes sit in a dark visor. It strides like it is
 // crossing the most famous zebra crossing in the world. Calm, cool, very fast. From Pepperhorn
 // (the other branch is Walrusk).
@@ -24,7 +24,7 @@ const visorP = chitin(C.visor, { gloss: '#6a7088', streakAt: 0.12 });
 const clawP = tipP(C.claw);
 const hairP = locks(C.hair, { gloss: C.hairGl, sheen: 0.12 });
 const capP = (p, w, h, face, cube) => { hairP(p, w, h, face, cube); if (face === 'up') for (let y = 0; y < h; y++) p.px(Math.floor(w / 2), y, C.hair[3]); if (face === 'south') for (let y = 0; y < h; y++) p.px(Math.floor(w / 2), y, C.hair[3]); };
-const beardP = locks(C.hair, { gloss: C.hairGl, sheen: 0.08 });
+const beardP = locks(['#d89a6c', '#9a6038', '#6a3a1e', '#3e200e'], { gloss: C.hairGl, sheen: 0.08 });   // a shade lighter than the hair, so it reads as a beard
 const hornP = tipP(C.ivory, { up: true });
 // the chest: white armour cut like a suit — two lapel lines in a narrow V, a pocket square of grey
 function suitP(p, w, h, face, cube) {
@@ -102,12 +102,12 @@ export const def = {
       B(-1.8, 27.0, 3.0, 1.8, 28.6, 4.2, whiteP),
       B(-3.95, 31.5, -2.9, 3.95, 32.9, 3.3, capP),                                   // middle-parted hair on the crown
       // normal (or): round wire specs pushed up into its hair
-      B(-2.9, 31.5, 3.1, -0.6, 32.6, 3.55, lensP, { id: 'acc-specs', hide: true }), B(0.6, 31.5, 3.1, 2.9, 32.6, 3.55, lensP, { id: 'acc-specs', hide: true, mirror: true }),
-      B(-0.6, 31.95, 3.15, 0.6, 32.2, 3.4, wireP, { id: 'acc-specs', hide: true }),
+      B(-2.9, 31.5, 3.3, -0.6, 32.6, 3.75, lensP, { id: 'acc-specs', hide: true }), B(0.6, 31.5, 3.3, 2.9, 32.6, 3.75, lensP, { id: 'acc-specs', hide: true, mirror: true }),
+      B(-0.6, 31.95, 3.4, 0.6, 32.2, 3.65, wireP, { id: 'acc-specs', hide: true }),
       // dripped (or): a denim headband
       B(-3.8, 31.1, -2.75, 3.8, 31.7, 3.45, denimP, { id: 'acc-band', hide: true }),
       // ultra (or): a crown of daisies
-      ...[[-3.2, 0.6], [-2.6, 2.6], [0, 3.0], [2.6, 2.6], [3.2, 0.6], [2.4, -1.8], [-2.4, -1.8], [0, -2.4]].map(([x, z]) => B(x - 0.6, 32.5, z - 0.6, x + 0.6, 33.3, z + 0.6, daisyP, { id: 'acc-flowers', hide: true })),
+      ...[[-3.95, 0.4], [-3.0, 3.3], [0, 3.3], [3.0, 3.3], [3.95, 0.4], [3.0, -2.9], [-3.0, -2.9], [0, -2.9]].map(([x, z]) => B(x - 0.6, 32.6, z - 0.6, x + 0.6, 33.4, z + 0.6, daisyP, { id: 'acc-flowers', hide: true })),
     ] },
     // the long hair down its back
     { name: 'frill', parent: 'head', pivot: [0, 31.6, -2.6], cubes: [B(-3.9, 25.0, -4.4, 3.9, 32.6, -2.2, hairP)] },

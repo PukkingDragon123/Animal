@@ -1,6 +1,6 @@
 // Walrusk — split final stage of the Beatlet line (Bio): a massive, heavy armoured beetle tank.
 // Its psychedelic carapace swirls yellow and purple and is dotted with egg-shaped spots, its
-// mandibles have grown into long ivory walrus tusks under a bristly walrus moustache, and its horn
+// mandibles have grown into long ivory walrus tusks under two big puffy whisker pads, and its horn
 // is stubby, blunt and huge. Heavy-lidded eyes with a small purple iris. Slow, unbothered and
 // enormously strong — "goo goo g'joob". From Pepperhorn (the other branch is Abbeyhorn).
 // Drip (one per tier): 1 eggshell cap | big daisy · 2 daisy garland | swirl shades pushed up ·

@@ -1,9 +1,9 @@
 // Pepperhorn — stage 2 of the Beatlet line (Bio): a Heracross-like bipedal rhinoceros beetle,
 // taller and stronger, and a marching-band showman. Its carapace and chest are patterned like a
 // satin Sgt.-Pepper-era band jacket — colour-blocked pink chest, teal shoulders and wing cases,
-// orange collar, sash and cuffs, gold frogging — its fur-tufted mandibles droop like a bandsman's
-// moustache, and its horn curls up into a flared brass bell it can blow like a horn. Almond eyes
-// with whites and a teal iris. Proud, loud, theatrical. Evolves from Beatlet; splits into
+// orange collar, sash and cuffs, gold frogging — its furred mandibles make a thick, droopy
+// bandsman's moustache, and its horn curls up into a flared brass bell it can blow like a horn.
+// Almond showman's eyes: whites, a teal iris, a heavy lined lid with a flick. Proud, loud, theatrical. Evolves from Beatlet; splits into
 // Abbeyhorn or Walrusk.
 // Drip (one per tier): 1 gold epaulettes | gold aiguillette · 2 medal row | tinted shades pushed
 // up · 3 marching snare drum | satin half-cape.
