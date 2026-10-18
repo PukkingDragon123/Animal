@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0c0814">
+<meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
+<link rel="icon" type="image/svg+xml" href="./favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DotGothic16&display=swap" rel="stylesheet">
+<title>Tokonmon — Osaka 2050</title>
+<style>
+html,body{margin:0;height:100%;overflow:hidden;background:#0c0814;touch-action:none;user-select:none;-webkit-user-select:none;overscroll-behavior:none}
+canvas{position:fixed;left:0;top:0;display:block;image-rendering:pixelated;image-rendering:crisp-edges}
+#ui{z-index:2;touch-action:none;cursor:pointer}
+#err{position:fixed;left:0;top:0;z-index:9;display:none;color:#ff7a7a;background:#000c;font:12px monospace;white-space:pre-wrap;padding:8px;max-height:60vh;overflow:auto}
+</style></head>
+<body><canvas id="gl"></canvas><canvas id="ui"></canvas><div id="err"></div>
+<script type="module">
+import { App } from './src/px/game/app.js';
+import { setSupersample } from './src/px/sdf.js';
+const q = new URLSearchParams(location.search); if (q.get('ss')) setSupersample(+q.get('ss'));
+const app = new App();
+app.boot().catch((e) => { console.error(e); const el = document.getElementById('err'); el.style.display = 'block'; el.textContent = 'Boot failed: ' + (e.stack || e); });
+</script></body></html>

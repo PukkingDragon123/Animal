@@ -63,8 +63,9 @@ export function buildPlaza(o = {}) {
     sc.glows.push({ x: 408, y: 54, r: 22, color: C.neonC, a: 0.5 });
   }
   // railing along the upper edge of the wall
-  for (let x = 0; x < PLAZA.w; x++) { g.px(x, 146, C.metal2); g.px(x, 141, C.metalL); }
-  for (let x = 2; x < PLAZA.w; x += 10) g.vl(x, 141, 150, C.metal2);
+  const gap = (x) => (x > 30 && x < 130) || (x > 508 && x < 608);       // stair openings
+  for (let x = 0; x < PLAZA.w; x++) if (!gap(x)) { g.px(x, 146, C.metal2); g.px(x, 141, C.metalL); }
+  for (let x = 2; x < PLAZA.w; x += 10) if (!gap(x)) g.vl(x, 141, 150, C.metal2);
   // sidewalk props (sprites)
   sc.add(PR.vendingMachine({ color: C.red }), 170, 140);
   sc.add(PR.vendingMachine({ color: C.blue }), 194, 140);

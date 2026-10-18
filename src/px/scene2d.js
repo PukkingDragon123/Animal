@@ -25,6 +25,7 @@ export class Scene2D {
     this.fx = [];                                 // per-frame painters (particles, motes): fn(ctx, cam, t)
     this.glows = [];                              // light halos for bloom: { x, y, r, color, a }
   }
+  setView(w, h) { this.vw = w; this.vh = h; this.out.width = w; this.out.height = h; this._dyn = null; }
   add(spr, x, y, o = {}) { const s = Object.assign({ x, y, shadow: true, z: 0 }, spr, o); s.cv = toCanvas(spr.surf); this.sprites.push(s); return s; }
   // bake: ground + static shadows into one canvas
   bake() {

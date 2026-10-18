@@ -36,7 +36,9 @@ import { Surf, P } from './surface.js';
 
 export const FPS = 24;
 const TAU = Math.PI * 2, D2R = Math.PI / 180;
-const SS = 3;
+let SS = 3;
+// supersampling per pixel side (3 = 9 rays/pixel; 2 is plenty on slow GPUs)
+export function setSupersample(n) { SS = Math.max(1, Math.min(4, n | 0)); for (const k of cache.keys()) cache.delete(k); }
 
 // ------------------------------------------------------------------ small math
 const v3 = (x = 0, y = 0, z = 0) => [x, y, z];
