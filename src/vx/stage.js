@@ -33,6 +33,7 @@ export class VxStage {
     this.view = { target: new THREE.Vector3(0, 0, 0), dist: 60, yaw: 0, pitch: 52 };
     this.actors = new THREE.Group(); S.add(this.actors);
     this.lamps = [];
+    this.hooks = []; this.time = 0;            // per-frame hooks (card billboards, wind, animation)
     this.setMood('day');
   }
   setSize(w, h) { this.w = w; this.h = h; this.r.setSize(w, h, false); this.cam.aspect = w / h; this.cam.updateProjectionMatrix(); }
@@ -78,7 +79,7 @@ export class VxStage {
     this.cam.position.set(v.target.x + Math.sin(yr) * Math.cos(pr) * v.dist, v.target.y + Math.sin(pr) * v.dist, v.target.z + Math.cos(yr) * Math.cos(pr) * v.dist);
     this.cam.lookAt(v.target);
   }
-  render() { this.updateCamera(); this.r.render(this.scene, this.cam); return this.cv; }
+  render() { this.updateCamera(); this.cam.updateMatrixWorld(); for (const f of this.hooks) f(this); this.r.render(this.scene, this.cam); return this.cv; }
 }
 
 // a vertical sky gradient for the background
