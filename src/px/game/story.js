@@ -66,7 +66,7 @@ export class Story2D {
     const mon = S.giveStarter(app.state, st.id, 5);
     const w = app.world;
     for (const n of this.starterNpcs) { if (n.species === st.id) { w.me.x = n.a.x; w.me.y = n.a.y; } w.removeNpc(n); }
-    w.avatar = new MonSprite(st.id, { scale: 0.5, pitch: 26, yaw: 0 });
+    w.avatar = new MonSprite(st.id, { scale: 0.58, pitch: 24, yaw: 0 });
     w.me.src = () => w.avatar.frame();
     w.avatar.play('happy', { restart: true });
     app.audio.sfx('evolve');
@@ -89,7 +89,9 @@ export class Story2D {
 
   async roam() {
     const app = this.app;
-    await app.world.load('plaza', 'start');
+    const id = app.state.map && app.state.map.id;
+    const { MAPS } = await import('./maps.js');
+    await app.world.load(MAPS[id] ? id : 'plaza', 'start', { night: MAPS[id] && MAPS[id].night });
     app.mode = 'world';
     await app.fade(0, 600);
     app.objective = app.objective || 'Explore the plaza';

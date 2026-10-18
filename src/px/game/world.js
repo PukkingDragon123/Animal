@@ -21,9 +21,10 @@ export class World2D {
     this.buildMask(built);
     // avatar = your lead Tokonmon
     const sp = (app.state && app.state.party[0] && app.state.party[0].species) || o.species || 'chilichick';
-    this.avatar = new MonSprite(sp, { scale: 0.5, pitch: 26, yaw: 0 });
+    this.avatar = new MonSprite(sp, { scale: 0.58, pitch: 24, yaw: 0 });
     const [x, y] = built.spawns[spawn] || built.spawns.start || [this.sc.w / 2, this.sc.h / 2];
     this.me = new Actor({ x, y, src: () => this.avatar.frame() });
+    this.me.src = () => this.avatar.frame();
     this.sc.actors.add(this.me);
     // wandering Tokonmon / NPC creatures
     this.npcs = [];
@@ -34,12 +35,13 @@ export class World2D {
     return this;
   }
   addNpc(n) {
-    const spr = new MonSprite(n.species, { scale: n.scale || 0.5, pitch: 26, yaw: n.yaw ?? 0 });
+    const spr = new MonSprite(n.species, { scale: n.scale || 0.58, pitch: 24, yaw: n.yaw ?? 0 });
     const a = new Actor({ x: n.x, y: n.y, src: () => spr.frame() });
     const rec = Object.assign({ spr, a, home: [n.x, n.y], wait: Math.random() * 3, target: null }, n);
     this.sc.actors.add(a); this.npcs.push(rec);
     return rec;
   }
+  refreshAvatar() { const sp = this.app.state.party[0] && this.app.state.party[0].species; if (sp && sp !== this.avatar.species) { this.avatar = new MonSprite(sp, { scale: 0.58, pitch: 24, yaw: this.avatar.yaw }); } }
   removeNpc(rec) { this.sc.actors.delete(rec.a); this.npcs = this.npcs.filter((r) => r !== rec); }
 
   // ------------------------------------------------------------------ walk mask (1 = walkable)

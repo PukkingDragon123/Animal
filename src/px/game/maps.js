@@ -44,3 +44,11 @@ export const MAPS = {
   },
 };
 export { say };
+
+// optional maps painted in their own modules (loaded if present)
+export async function loadMaps() {
+  const extra = [['dotonbori', '../../data/scenes/dotonbori.js', 'DOTONBORI_MAP'], ['castle_park', '../../data/scenes/castle_park.js', 'CASTLE_PARK_MAP']];
+  for (const [id, path, key] of extra) {
+    try { const m = await import(path); if (m[key]) MAPS[id] = Object.assign({ night: id === 'dotonbori' }, m[key]); } catch (e) { /* not painted yet */ }
+  }
+}

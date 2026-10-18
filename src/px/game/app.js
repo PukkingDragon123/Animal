@@ -8,6 +8,8 @@ import { World2D } from './world.js';
 import { loadFonts } from '../font.js';
 import * as S from '../../game/state.js';
 import { Story2D } from './story.js';
+import { Phone } from './phone.js';
+import { MAPS, loadMaps } from './maps.js';
 import { createElemon } from '../../game/elemon.js';
 import { ITEMS } from '../../data/items.js';
 import { recordEat } from '../../data/progress.js';
@@ -32,7 +34,9 @@ export class App {
     try { const m = await import('../../audio/audio.js'); this.audio = m.audio || m.default || NO_AUDIO; } catch (e) { this.audio = NO_AUDIO; }
     if (this.audio.autoUnlock) this.audio.autoUnlock(window);
     await loadFonts();
+    await loadMaps();
     this.world = new World2D(this);
+    this.phone = new Phone(this);
     this.story = new Story2D(this);
     this.last = performance.now();
     this.loop = this.loop.bind(this);
@@ -78,8 +82,9 @@ export class App {
       if (frame) this.post.draw(frame, this.t);
       const ui = this.ui; ui.begin(dt);
       if (mode && mode.drawUI) mode.drawUI(ui, dt);
-      if (this.mode === 'world') this.drawHud(ui);
+      if (this.mode === 'world' && !this.phone.open) this.drawHud(ui);
       if (this.overlay) this.overlay(ui, dt);
+      if (this.phone && this.phone.open) this.phone.draw(ui, dt);
       // fades
       this.fadeA += Math.sign(this.fadeTo - this.fadeA) * Math.min(Math.abs(this.fadeTo - this.fadeA), dt * 3.2);
       if (this.fadeA > 0.001) ui.fade(this.fadeA, '#0c0814');
@@ -125,6 +130,23 @@ export class App {
   }
   async rest() { await this.say('', 'You sit on the bench for a while. The afternoon light crawls across the tiles.'); S.healParty(this.state, 1); this.ui.toast('Team rested', { icon: 'heart' }); }
   onExit(ex) { if (ex.act) return ex.act(this); }
+  places() {
+    const s = this.state, has = s.party.length > 0;
+    return Object.entries(MAPS).map(([id, M]) => ({ id, name: M.name, open: id === 'plaza' || (has && (!M.unlock || s.flags[M.unlock])) }));
+  }
+  async travel(id, spawn) {
+    if (!MAPS[id] || this._travelling) return;
+    this._travelling = true;
+    const prev = this.world.control; this.world.control = false;
+    this.audio.sfx('whoosh');
+    await this.fade(1, 450);
+    await this.world.load(id, spawn || 'start', { night: MAPS[id].night });
+    Object.assign(this.post.opts, MAPS[id].night ? { night: 0.25, rays: 0, warm: 0.25, threshold: 0.72, bloom: 0.75 } : { night: 0, rays: 0.11, warm: 0.65, threshold: 0.78, bloom: 0.5 });
+    this.state.map = { id }; this.save();
+    await this.fade(0, 500);
+    this.world.control = prev !== false; this._travelling = false;
+    this.ui.toast(MAPS[id].name, { icon: 'map', color: T.cyan, dur: 2.4 });
+  }
   save() { if (this.state.party.length) S.save(this.state); }
   // HD-2D diorama: rebuild a painted scene as a lit 3D set (falls back to flat 2D with ?flat=1 or without WebGL)
   attachStage(sc, o = {}) {
@@ -153,7 +175,7 @@ export class App {
   drawHud(ui) {
     if (this.mode !== 'world' || ui.dialog || this.overlay) return;
     if (this.objective) { const w = Math.min(ui.w - 70, ui.tw(this.objective) + 22); ui.panel(4, 4, w, 15, {}); ui.icon('star', 8, 8, T.amber); ui.text(this.objective.length * 6 > w - 20 ? this.objective.slice(0, Math.floor((w - 22) / 6) - 1) + '…' : this.objective, 18, 8, T.text, { shadow: T.ink }); }
-    if (this.state.flags.phone && ui.button(ui.w - 26, 4, 22, 20, '', { icon: 'phone', color: T.cyan, hotkey: 'Tab' })) this.openPhone && this.openPhone();
+    if (this.state.flags.phone && ui.button(ui.w - 26, 4, 22, 20, '', { icon: 'phone', color: T.cyan, hotkey: 'Tab' })) this.phone.toggle();
   }
   newMon(species, level = 5) { return createElemon(species, { level, friendship: 70 }); }
 }
