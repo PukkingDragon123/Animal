@@ -35,9 +35,11 @@ export class VxStage {
     this.actors = new THREE.Group(); S.add(this.actors);
     this.lamps = [];
     this.hooks = []; this.time = 0;            // per-frame hooks (card billboards, wind, animation)
+    this.style = {};
     this.setMood('day');
   }
   setSize(w, h) { this.w = w; this.h = h; this.r.setSize(w, h, false); this.cam.aspect = w / h; this.cam.updateProjectionMatrix(); }
+  // (ink and toon: see setStyle)
   // world: a Fine voxel volume → chunk meshes; the sun's shadow box covers it
   setWorld(vox) {
     if (this.world) { this.scene.remove(this.world); this.world.traverse((o) => o.geometry && o.geometry.dispose()); }
@@ -80,7 +82,71 @@ export class VxStage {
     this.cam.position.set(v.target.x + Math.sin(yr) * Math.cos(pr) * v.dist, v.target.y + Math.sin(pr) * v.dist, v.target.z + Math.cos(yr) * Math.cos(pr) * v.dist);
     this.cam.lookAt(v.target);
   }
-  render() { this.updateCamera(); this.cam.updateMatrixWorld(); OUTLINE.uK.value = (2 * Math.tan((this.cam.fov * Math.PI) / 360)) / (this.h || 720); for (const f of this.hooks) f(this); this.r.render(this.scene, this.cam); return this.cv; }
+  render() {
+    this.updateCamera(); this.cam.updateMatrixWorld(); OUTLINE.uK.value = (2 * Math.tan((this.cam.fov * Math.PI) / 360)) / (this.h || 720);
+    for (const f of this.hooks) f(this);
+    if (this.style.toon) this.toonify(this.scene);
+    if (!this.style.ink) { this.r.render(this.scene, this.cam); return this.cv; }
+    // ink: render into a target with depth, then composite with outlines found in the depth buffer
+    const W = this.w, H = this.h;
+    if (!this.rt || this.rt.width !== W || this.rt.height !== H) {
+      if (this.rt) this.rt.dispose();
+      this.rt = new THREE.WebGLRenderTarget(W, H, { type: THREE.HalfFloatType, depthTexture: new THREE.DepthTexture(W, H, THREE.UnsignedIntType) });
+      this.inkQuad.material.uniforms.tColor.value = this.rt.texture; this.inkQuad.material.uniforms.tDepth.value = this.rt.depthTexture;
+    }
+    const u = this.inkQuad.material.uniforms;
+    u.uTexel.value.set((this.style.inkPx ?? 1.5) / W, (this.style.inkPx ?? 1.5) / H); u.uNear.value = this.cam.near; u.uFar.value = this.cam.far; u.uFog.value.set(this.scene.fog ? this.scene.fog.near : 1e4, this.scene.fog ? this.scene.fog.far : 2e4);
+    u.uInk.value.set(this.style.inkColor || 0x140e16); u.uK.value = this.style.inkDepth ?? 0.018; u.uCrease.value = this.style.inkCrease ?? 0.006; u.uAlpha.value = this.style.inkAlpha ?? 0.92;
+    this.r.setRenderTarget(this.rt); this.r.render(this.scene, this.cam);
+    this.r.setRenderTarget(null); this.r.render(this.inkScene, this.inkCam);
+    return this.cv;
+  }
+  // stylized look: { ink: outlines from depth, toon: banded cel shading }
+  setStyle(o = {}) {
+    this.style = Object.assign(this.style || {}, o);
+    if (o.ink && !this.inkScene) {
+      this.inkCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1); this.inkScene = new THREE.Scene();
+      this.inkQuad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.ShaderMaterial({
+        uniforms: { tColor: { value: null }, tDepth: { value: null }, uTexel: { value: new THREE.Vector2() }, uNear: { value: 0.5 }, uFar: { value: 2000 }, uFog: { value: new THREE.Vector2(70, 220) }, uInk: { value: new THREE.Color(0x140e16) }, uK: { value: 0.018 }, uCrease: { value: 0.006 }, uAlpha: { value: 0.92 } },
+        vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }',
+        fragmentShader: `#include <packing>
+          uniform sampler2D tColor; uniform sampler2D tDepth; uniform vec2 uTexel; uniform float uNear; uniform float uFar; uniform vec2 uFog; uniform vec3 uInk; uniform float uK; uniform float uCrease; uniform float uAlpha;
+          varying vec2 vUv;
+          float lz(vec2 uv) { float d = texture2D(tDepth, uv).x; return d >= 1.0 ? 1e5 : -perspectiveDepthToViewZ(d, uNear, uFar); }
+          void main() {
+            vec4 col = texture2D(tColor, vUv);
+            float c = lz(vUv);
+            float l = lz(vUv - vec2(uTexel.x, 0.0)), r = lz(vUv + vec2(uTexel.x, 0.0)), d = lz(vUv - vec2(0.0, uTexel.y)), u = lz(vUv + vec2(0.0, uTexel.y));
+            // silhouettes: this pixel is in front of a neighbour by a good margin (lines sit on the near object)
+            float jump = max(max(l - c, r - c), max(d - c, u - c)) / c;
+            float edge = smoothstep(uK, uK * 1.6, jump);
+            // creases: the depth bends sharply (corners, folds) — only on surfaces, not into the sky
+            if (c < 1e4 && l < 1e4 && r < 1e4 && u < 1e4 && d < 1e4) edge = max(edge, smoothstep(uCrease, uCrease * 2.2, abs(l + r + u + d - 4.0 * c) / c) * 0.7);
+            float fog = 1.0 - smoothstep(uFog.x, uFog.y, c);
+            gl_FragColor = vec4(mix(col.rgb, uInk, edge * uAlpha * fog), 1.0);
+            #include <tonemapping_fragment>
+            #include <colorspace_fragment>
+          }`,
+      }));
+      this.inkQuad.frustumCulled = false; this.inkScene.add(this.inkQuad);
+    }
+    if (o.toon) {
+      const g = new Uint8Array([90, 90, 90, 255, 168, 168, 168, 255, 230, 230, 230, 255, 255, 255, 255, 255]);
+      this.toonRamp = new THREE.DataTexture(g, 4, 1, THREE.RGBAFormat); this.toonRamp.minFilter = this.toonRamp.magFilter = THREE.NearestFilter; this.toonRamp.needsUpdate = true;
+      this.toonCache = new Map();
+    }
+    return this;
+  }
+  // swap lit materials for cel-shaded twins (patched or unlit materials are left alone)
+  toonify(root) {
+    const C = this.toonCache;
+    root.traverse((o) => {
+      const m = o.material; if (!m || Array.isArray(m) || !m.isMeshLambertMaterial || m.onBeforeCompile !== THREE.Material.prototype.onBeforeCompile || m.userData.keep) return;
+      let t = C.get(m);
+      if (!t) { t = new THREE.MeshToonMaterial({ color: m.color, map: m.map, vertexColors: m.vertexColors, alphaTest: m.alphaTest, side: m.side, transparent: m.transparent, opacity: m.opacity, gradientMap: this.toonRamp, emissive: m.emissive, emissiveMap: m.emissiveMap, emissiveIntensity: m.emissiveIntensity }); C.set(m, t); }
+      o.material = t;
+    });
+  }
 }
 
 // a vertical sky gradient for the background

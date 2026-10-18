@@ -4,9 +4,11 @@
 import { Fine } from '../fine.js';
 import { Kit, SCHEMES, h3 } from '../kit.js';
 import { skyline } from '../stage.js';
+import { Dress } from '../dress.js';
+import { SPR } from '../cards.js';
 
 export function build(o = {}) {
-  const v = new Fine(512, 176, 352, 8), k = new Kit(v), night = o.mood === 'night';
+  const v = new Fine(512, 176, 352, 8), k = new Kit(v), night = o.mood === 'night', dr = new Dress(k);
   const Y = 12;                                    // street level (asphalt top)
   // ground slab
   k.box(0, 0, 0, 511, Y - 1, 351, 'dirt', 'hash');
@@ -34,10 +36,12 @@ export function build(o = {}) {
   for (let x = 0; x < 512; x++) for (let z = 292; z <= 351; z++) { const yy = Y + 1 + Math.floor((z - 292) / 5), r = h3(x, 9, z); if (r < 0.01) v.set(x, yy + 1, z, v.c(['#f4f0f0', '#ffd84a', '#ff8ab0', '#b49aff'][Math.floor(h3(x, 3, z) * 4)])); else if (r < 0.06) k.set(x, yy + 1, z, 'grass'); }
   for (let x = 0; x < 512; x++) { const z0 = 300 + Math.round(Math.sin(x / 40) * 6); for (let z = z0; z < z0 + 8; z++) { const yy = Y + 1 + Math.floor((z - 292) / 5); k.box(x, yy, z, x, yy, z, 'gravel'); } }
   for (const bx of [120, 300]) { const z = 314; k.bench(bx, Y + 1 + Math.floor((z - 292) / 5) + 1, z); }
+  dr.tufts(0, 296, 511, 351, 1400, [...SPR.grass, ...SPR.grass, ...SPR.flowers], 7, { sway: 1.6 });
+  dr.tufts(0, 2, 511, 70, 500, [...SPR.grass, ...SPR.fern], 9, { sway: 1.4 });
   k.tree(60, Y + 6, 330, 'cypress', 3); k.tree(420, Y + 7, 335, 'cypress', 4); k.tree(230, Y + 8, 342, 'euc', 5); k.tree(470, Y + 5, 322, 'bloom', 6);
   return {
     vox: v, mood: o.mood || 'golden', lamps,
     view: { target: [32, 3, 24], dist: 58, yaw: 0, pitch: 38 },
-    setup(st) { skyline(st, { x: [-30, 100], z: -40 }); },
+    setup(st) { skyline(st, { x: [-30, 100], z: -40 }); dr.build(st); },
   };
 }

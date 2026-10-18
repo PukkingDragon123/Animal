@@ -15,7 +15,7 @@ import { FX } from '../src/vx/fx.js';
 import { HD2D } from '../src/px/hd2d.js';
 const q = new URLSearchParams(location.search), num = (k, d) => (q.has(k) ? +q.get(k) : d);
 const W = num('w', 960), H = num('h', 720), sheet = num('sheet', 0), cols = num('cols', 4);
-const mod = await import('../src/vx/mons/' + (q.get('mon') || 'chilichick') + '.js');
+const mod = q.get('person') ? { def: (await import('../src/vx/people/cast.js')).cast(q.get('person')) } : await import('../src/vx/mons/' + (q.get('mon') || 'chilichick') + '.js');
 const st = new VxStage({ fov: num('fov', 30), shadowSize: 2048 });
 const fw = new Fine(128, 8, 128, 16), k = new Kit(fw);
 k.box(0, 0, 0, 127, 3, 127, 'grass', 'patch', { sc: 6 }); k.box(48, 3, 0, 80, 3, 127, 'gravel', 'patch', { sc: 3 });

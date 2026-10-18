@@ -217,8 +217,10 @@ export class Cards {
         Object.assign(sh.uniforms, U);
         let vs = 'attribute vec4 uvRect;\nattribute float sway;\nuniform vec3 uRight;\nuniform vec3 uUp;\nuniform vec3 uN;\nuniform float uWind;\n' + sh.vertexShader;
         vs = vs.replace('#include <uv_vertex>', '#include <uv_vertex>\n#ifdef USE_MAP\n vMapUv = vec2(mix(uvRect.x, uvRect.z, uv.x), mix(uvRect.y, uvRect.w, uv.y));\n#endif');
+        // wind: a steady flutter plus gusts that roll across the set as travelling waves
         const swayGLSL = `vec3 ip = vec3(instanceMatrix[3][0], instanceMatrix[3][1], instanceMatrix[3][2]);
-          float sw = (sin(uWind * 1.7 + ip.x * 0.9 + ip.z * 0.6) * 0.05 + sin(uWind * 2.9 + ip.y * 1.3 + ip.x) * 0.02) * sway;
+          float gust = pow(max(0.0, sin(uWind * 0.85 - ip.x * 0.16 - ip.z * 0.1)), 3.0);
+          float sw = (sin(uWind * 1.7 + ip.x * 0.9 + ip.z * 0.6) * (0.04 + gust * 0.05) + sin(uWind * 3.1 + ip.y * 1.3 + ip.x) * 0.018 + gust * 0.11) * sway;
           ${hang ? 'transformed.x += sw * -position.y * 1.4;' : 'transformed.x += sw * position.y;'}`;
         if (bb) {
           vs = vs.replace('#include <begin_vertex>', `#include <begin_vertex>\n{ ${swayGLSL} }\nvec2 bbOff = (mat3(instanceMatrix) * transformed).xy;\nvec3 bbWorld = vec3(instanceMatrix[3][0], instanceMatrix[3][1], instanceMatrix[3][2]) + uRight * bbOff.x + uUp * bbOff.y;`)

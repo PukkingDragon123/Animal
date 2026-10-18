@@ -15,15 +15,19 @@ const t0 = performance.now();
 const sc = mod.build({ mood: q.get('mood') || undefined });
 console.log('build ms', Math.round(performance.now() - t0));
 const st = new VxStage({ fov: +(q.get('fov') || 32) });
-st.setSize(W, H); const t1 = performance.now(); st.setWorld(sc.vox); console.log('mesh ms', Math.round(performance.now() - t1)); st.setMood(q.get('mood') || sc.mood || 'day');
+st.setSize(W, H); if (q.get('ink') !== '0') st.setStyle({ ink: true, toon: q.get('toon') === '1' }); const t1 = performance.now(); st.setWorld(sc.vox); console.log('mesh ms', Math.round(performance.now() - t1)); st.setMood(q.get('mood') || sc.mood || 'day');
 if (sc.lamps) for (const L of sc.lamps) st.lamp(L[0], L[1], L[2]);
 if (sc.setup) sc.setup(st);
 const v = sc.view || {};
 st.look([+(q.get('tx') ?? v.target[0]), +(q.get('ty') ?? v.target[1]), +(q.get('tz') ?? v.target[2])], +(q.get('dist') || v.dist), +(q.get('yaw') ?? v.yaw ?? 0), +(q.get('pitch') ?? v.pitch ?? 52));
+st.time = +(q.get('time') || 2);
 const frame = st.render();
 console.log('build+render ms', Math.round(performance.now() - t0));
 const cv = document.getElementById('c'); cv.width = W; cv.height = H;
+let post = null;
 if (q.get('post') === '0') { const g = cv.getContext('2d'); g.drawImage(frame, 0, 0); }
-else { const post = new HD2D(cv); Object.assign(post.opts, { focus: 0.5, band: 0.28, dof: 0.6, bloom: 0.45, threshold: 0.82, rays: 0.05, vig: 0.45, warm: 0.4, sat: 1.08, contrast: 1.06 }, st.moodName === 'night' ? { night: 0.15, bloom: 0.9, threshold: 0.6, rays: 0 } : {}); post.draw(frame, 0.5); }
+else { post = new HD2D(cv); Object.assign(post.opts, { focus: 0.5, band: 0.28, dof: 0.6, bloom: 0.45, threshold: 0.82, rays: 0.05, vig: 0.45, warm: 0.4, sat: 1.08, contrast: 1.06 }, st.moodName === 'night' ? { night: 0.15, bloom: 0.9, threshold: 0.6, rays: 0 } : {}); post.draw(frame, 0.5); }
+// live=1: run the clock (wind, lanterns) and slowly orbit
+if (q.get('live')) { let last = performance.now(); const loop = (now) => { st.time += (now - last) / 1000; last = now; if (q.get('orbit')) st.view.yaw += 0.02; const f = st.render(); if (post) post.draw(f, st.time); else cv.getContext('2d').drawImage(f, 0, 0); requestAnimationFrame(loop); }; requestAnimationFrame(loop); }
 document.title = 'ready';
 </script></body></html>
