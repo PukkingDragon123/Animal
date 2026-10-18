@@ -29,6 +29,7 @@ export class VxApp {
     this.params = new URLSearchParams(location.search);
     this.keysDown = {}; this.t = 0; this.fadeA = 1; this.fadeTo = 1; this.overlays = [];
     this.state = S.newGame({ name: 'Ren' });
+    this.auto = this.params.get('auto') ? +this.params.get('auto') || 1 : 0;      // dev: auto-play cutscenes (tests)
   }
   async boot() {
     this.view = document.getElementById('view'); this.uiCv = document.getElementById('ui');
@@ -102,8 +103,8 @@ export class VxApp {
   // ------------------------------------------------------------------ services for the story
   fade(to, ms = 400) { this.fadeTo = to; return new Promise((r) => setTimeout(r, ms)); }
   wait(ms) { return new Promise((r) => setTimeout(r, ms)); }
-  say(name, ...lines) { return lines.reduce((p, l) => p.then(() => this.ui.say(name, l)), Promise.resolve()); }
-  choose(prompt, opts, o) { return this.ui.choose(prompt, opts, o); }
+  say(name, ...lines) { if (this.auto) { this.log && this.log.push(name + ': ' + lines[0]); return this.wait(40 * this.auto); } return lines.reduce((p, l) => p.then(() => this.ui.say(name, l)), Promise.resolve()); }
+  choose(prompt, opts, o) { if (this.auto) return this.wait(40).then(() => 0); return this.ui.choose(prompt, opts, o); }
   toast(str, o) { this.ui.toast(str, o); }
   setPost(mood) { Object.assign(this.post.opts, POST[mood] || POST.day); }
   async travel(id, o = {}) {
@@ -122,6 +123,7 @@ export class VxApp {
     if (this.story.onArrive) await this.story.onArrive(id);
   }
   async startBattle(spec) {
+    if (this.auto) { this.log && this.log.push('BATTLE ' + (spec.title || '')); await this.wait(200); return { winner: 0, auto: true }; }
     if (!this.battle) { const m = await import('./battle.js'); this.battle = new m.Battle3D(this); }
     await this.fade(1, 300);
     const res = await this.battle.start(spec);

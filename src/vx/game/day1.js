@@ -23,6 +23,7 @@ function goal(story, h) {
   return new Promise((resolve) => {
     const hs = { icon: 'star', color: T.amber, ...h, act: async () => { const i = w.hotspots.indexOf(hs); if (i >= 0) w.hotspots.splice(i, 1); resolve(); } };
     w.hotspots.push(hs); w.roam(true); story.busy = false;
+    if (app.auto) setTimeout(() => { if (h.walk && w.player) w.player.place(h.walk[0], h.walk[1]); hs.act(); }, 300);
   }).then(async () => { await app.wait(60); story.busy = true; w.roam(false); w.player && (w.player.path = null); });
 }
 async function talkShot(w, a, b, o = {}) {

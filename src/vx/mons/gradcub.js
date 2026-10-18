@@ -6,8 +6,9 @@
 // diploma. Drip: shutter shades or a mortarboard; a gold bear-piece chain or a teddy backpack; big
 // kicks or a gold mic. An original plush that winks at a rapper's college albums — never their mascot.
 import { E, seg, bump, wob, wave, key } from '../anim.js';
-import { fur, fringe, halo, gold, GOLD, chain, shutter, sneaker, piece, waves, rib, fill, wrapX, isSide, edgeLine, sh } from './bear_parts.js';
-import { eyeRig, eyesAt, eyesScale, glance, mouthArt } from './eyes.js';
+import { fur, fringe, halo, gold, GOLD, chain, shutter, sneaker, piece, waves, rib, luxe, fill, wrapX, isSide, edgeLine, sh } from './bear_parts.js';
+import { eyeRig, eyesAt, eyesScale, glance, mouthArt, keepEyes } from './eyes.js';
+import { blackGold } from '../model.js';
 import { poly, ramp, shift, h2 } from './kit.js';
 
 const C = {
@@ -260,6 +261,8 @@ def.drip = [
   [{ id: 'acc-chain', name: 'Bear-piece chain' }, { id: 'acc-pack', name: 'Teddy backpack' }],
   [{ id: 'acc-kicks', name: 'Big kicks' }, { id: 'acc-mic', name: 'Gold mic' }],
 ];
+// the ultra-drip form: black lacquer and gold, but the amber glass eyes stay amber
+def.dripForm = { map: keepEyes(EYES, luxe(blackGold)) };
 // where bought gear sits (model units): the crown, between the eyes, the front of the neck, the middle of the back
 def.attach = {
   head: { bone: 'head', at: [0, 22.0, 0], size: 11 },
@@ -289,8 +292,8 @@ export const anim = {
     { bone: 'earR', tip: [-1.2, 2.2, 0], k: 240, d: 10, gain: 0.6, max: 14 },
     { bone: 'earL', tip: [1.2, 2.2, 0], k: 240, d: 10, gain: 0.6, max: 14 },
   ],
-  faces: { eyes: EYES.slot, mouth: { default: 'smirk', states: Object.fromEntries(MOUTHS.map((s) => [s, ['m-' + s]])) } },
-  fidget: { every: [5, 9], clips: ['shades', 'polish', 'shake'] },
+  faces: { eyes: EYES.slot, mouth: { default: 'smirk', states: Object.fromEntries(MOUTHS.map((s) => [s, ['m-' + s]])) }, prop: { default: 'off', states: { off: [], roll: ['p-roll'], paper: ['p-paper'], ball: ['p-ball'] } } },
+  fidget: { every: [3.5, 7], clips: ['dance', 'dance', 'dropout', 'shades', 'polish', 'shake'] },
   clips: {
     // a laid-back head-nod groove over four beats, eyes flicking about; on the fourth it leans back, smug
     idle: { len: 3.2, loop: true, f(P, t) {
@@ -408,6 +411,40 @@ export const anim = {
       arms(P, 4, -30 + 10 * sink, 4, -26 + 10 * sink);
       face(P, jolt > 0.3 ? 'shock' : 'closed', jolt > 0.3 ? 'o' : br > 0.3 ? 'o' : 'flat'); P.lookW = 0; P.breathW = 0;
       P.burst(0.6, 'z', 'head', [3, 23, 4], {}).burst(1.7, 'z', 'head', [3, 23, 4], {}).burst(2.8, 'z', 'head', [3, 23, 4], {}).burst(3.4, 'sweat', 'head', [5, 21, 4], { n: 1 });
+    } },
+    // the dance: a bouncy two-step with shoulder pops and a clap, a spin, and the finish — arms folded, chin up
+    dance: { len: 3.0, next: 'idle', f(P, t) {
+      const per = 0.5, ph = (t % per) / per, g = groove(ph), on = seg(t, 0, 0.15) * (1 - seg(t, 1.95, 2.05));
+      const sx = Math.sin((t / per) * Math.PI), pop = Math.max(0, Math.sin((t / per) * Math.PI * 2));
+      P.pos('root', sx * 1.5 * on, 0, 0).pos('body', 0, -0.7 * g * on, 0).sq('body', -0.06 * g * on).rot('body', 0, -sx * 12 * on, sx * 5 * on);
+      P.rot('legR', 0, 0, 0).pos('legR', 0, Math.max(0, -sx) * 1.2 * on, 0).pos('legL', 0, Math.max(0, sx) * 1.2 * on, 0);
+      arms(P, (14 + 10 * pop) * on, (-30 + sx * 40) * on, (14 + 10 * pop) * on, (-30 - sx * 40) * on);
+      const clap = bump(t, 1.15, 1.45); arms(P, -24 * clap, -60 * clap);
+      P.rot('head', (8 * g - 4) * on, sx * 10 * on, -sx * 6 * on);
+      const spin = seg(t, 2.0, 2.4, E.inout), hopY = bump(t, 2.0, 2.4) * 2.4;
+      P.rot('root', 0, 360 * spin, 0).pos('root', 0, hopY, 0);
+      const fin = seg(t, 2.35, 2.55, E.back) * (1 - seg(t, 2.85, 3.0));
+      P.rot('armR', -62 * fin, 0, 46 * fin).rot('armL', -56 * fin, 0, -46 * fin).rot('body', -6 * fin, 0, 0).rot('head', -10 * fin, 12 * fin, 0).pos('body', 0, wob(t, 2.42, -0.8, 3, 6), 0);
+      eyesScale(P, 1, 1 - 0.15 * g * on);
+      face(P, t < 2.0 ? (t % 1 < 0.5 ? 'happy' : 'smug') : t < 2.35 ? 'shut' : 'glint', t < 2.0 ? 'grin' : 'smirk');
+      if (t > 0.1 && t < 2.0) P.stream('bear-note', 'head', [0, 22, 2], { rate: 3, spread: 1 });
+      P.burst(1.3, 'bear-star', 'armR', [-3, 6, 6], { n: 4 }).burst(2.45, 'sparkle', 'head', [0, 22, 4], { n: 10, speed: 1.4 }).burst(2.45, 'bear-note', 'head', [0, 22, 2], { n: 5 }).burst(2.42, 'dust', 'root', [0, 0.5, 1], { n: 5 });
+    } },
+    // the signature: it pulls out its diploma, unrolls it, reads it… shrugs, crumples it and tosses it over its shoulder
+    dropout: { len: 3.4, next: 'idle', f(P, t) {
+      const reach = seg(t, 0.05, 0.4, E.inout), show = seg(t, 0.45, 0.75, E.back) * (1 - seg(t, 1.45, 1.65, E.inout));
+      const shrug = bump(t, 1.15, 1.55), crush = bump(t, 1.6, 1.85), wind = seg(t, 1.85, 2.05, E.inout) * (1 - seg(t, 2.05, 2.2, E.in3));
+      const fly = seg(t, 2.1, 2.9, E.lin), dust = bump(t, 2.5, 3.1);
+      P.rot('armR', 30 * reach * (1 - show) - 104 * show + 30 * crush - 150 * wind + 40 * seg(t, 2.05, 2.2) * (1 - seg(t, 2.4, 2.7)), 0, -34 * show + 10 * crush);
+      P.rot('armL', -60 * show - 50 * crush - 40 * dust, 0, -10 * show + 30 * crush).rot('armR', -40 * dust, 0, 20 * dust);
+      P.rot('head', 14 * show - 8 * shrug - 14 * wind, -16 * show, 8 * shrug * 0).rot('body', 0, -10 * show + 20 * wind, 0).pos('body', 0, 0.8 * shrug, 0);
+      arms(P, 18 * shrug, 0);
+      // the diploma flies off behind it, tumbling
+      if (t > 2.12) P.pos('prop', 2 * fly, -14 * Math.sin(fly * Math.PI) - 4 * fly, 8 * fly - 14 * fly * fly).rot('prop', 720 * fly, 0, 380 * fly).scl('prop', 1 + 0.4 * fly);
+      P.face('prop', t < 0.38 ? 'off' : t < 0.62 ? 'roll' : t < 1.62 ? 'paper' : t < 2.8 ? 'ball' : 'off');
+      eyesAt(P, -0.4 * show, -0.3 * show); eyesScale(P, 1, 1 - 0.2 * shrug);
+      face(P, show > 0.5 && t < 1.15 ? 'smug' : shrug > 0.3 ? 'closed' : crush > 0.3 ? 'angry' : t > 2.3 ? 'happy' : undefined, show > 0.5 && t < 1.15 ? 'flat' : shrug > 0.3 ? 'wavy' : crush > 0.2 ? 'grit' : t > 2.3 ? 'grin' : undefined);
+      P.burst(2.12, 'bear-confetti', 'armR', [-7, 6, 2], { n: 16, dir: [0, 1, -0.5], spread: 0.8 }).burst(2.2, 'bear-note', 'head', [0, 22, 2], { n: 3 }).burst(2.7, 'dust', 'armR', [-7, 4, 3], { n: 3, scale: 0.5 });
     } },
     // fidget: tips the shades up for a cool look and a wink, then slides them back with a glint
     shades: { len: 2.3, next: 'idle', f(P, t) {

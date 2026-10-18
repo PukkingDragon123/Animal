@@ -1,19 +1,22 @@
 // Bearbreak — stage 2 of the bear line (Echo). The cub grew up and the colour drained out: a
-// lanky grey teen bear with sleek fur, a crisp buzz with a shaved part, droopy eyes that rarely
-// look up, and a belly where the cub's daisies and stars survive only as faded grey markings. One
+// lanky grey teen bear with sleek fur that grows in a minimal suit — charcoal jacket and trousers,
+// a pale V of shirt — a crisp buzz with a shaved part, and droopy eyes that rarely look up. One
 // red thing is left in its world — a deflated heart balloon it never lets go of, drifting on a
 // string at its shoulder. It sways alone, sighs, and sings its sorrow through an auto-tuned
 // shockwave while the balloon glows. Drip: shades pushed up or a fur hat; a long minimal coat or
 // a cracked-heart chain; big grey high-tops or a little teddy backpack (the cub it used to be).
 // An original design that winks at a rapper's heartbreak album.
-import { E, seg, bump, wob, wave } from '../anim.js';
-import { fur, fringe, halo, gold, chain, shutter, sneaker, fill, wrapX, isSide, edgeLine, sh } from './bear_parts.js';
-import { eyeRig, eyesAt, eyesScale, glance, mouthArt } from './eyes.js';
+import { E, seg, bump, wob, wave, key } from '../anim.js';
+import { fur, fringe, halo, gold, chain, shutter, sneaker, luxe, fill, wrapX, isSide, edgeLine, sh } from './bear_parts.js';
+import { blackGold } from '../model.js';
+import { eyeRig, eyesAt, eyesScale, glance, mouthArt, keepEyes } from './eyes.js';
+import { toHsl, fromHsl } from '../../px/color.js';
 import { shade, poly, ramp, shift, h2 } from './kit.js';
 
 const C = {
   fur: '#93939a', furHi: '#b6b6bc', furLo: '#6c6c74', furEdge: '#5e5e67', furTip: '#c2c2c8', furLite: '#a6a6ad',
-  belly: '#b4b3b2', bellyHi: '#cbcac8', bellyLo: '#8e8d8c', ghost: '#d6d5d2', ghostLo: '#9a9998',
+  suit: '#4a4a52', suitHi: '#62626c', suitLo: '#33333a', suitEdge: '#24242a', suitTip: '#7a7a84',
+  shirt: '#d2d1cc', shirtHi: '#e8e7e2', shirtLo: '#a8a7a2', tie: '#2a2a30',
   hair: '#3c3c44', hairHi: '#5a5a64', part: '#a8a8b0',
   muz: '#c9c6c0', muzHi: '#e2dfda', muzLo: '#a29f99', muzLine: '#4e4c4a',
   nose: '#26262c', noseHi: '#4e4e58', noseSpec: '#a8a8b4',
@@ -34,19 +37,22 @@ const furP = (seed, o = {}) => fur(C.fur, { hi: C.furHi, lo: C.furLo, line: C.fu
 const headFur = furP(12), headFur2 = furP(24, { s: 8 }), limbFur = furP(36, { s: 7, tipH: 3 });
 const headHalo = halo(C.fur, { hi: C.furHi, lo: C.furLo, line: C.furEdge, tip: C.furTip, n: 24, depth: 0.11, inner: 0.8, sq: 2.6, seed: 6 });
 const neckFluff = fringe(C.fur, { hi: C.furHi, lo: C.furLo, line: C.furEdge, tip: C.furTip, seed: 81, tw: 3.4, short: 0.55 });
-// the belly: paler fur with the cub's daisies and stars faded to grey ghosts
-const ghostPattern = (face, cube, w, h) => {
+// the suit grown in fur: charcoal jacket and trousers; on the chest a pale V of shirt with a thin dark tie,
+// edged by lit lapels
+const suitP = (seed, o = {}) => fur(C.suit, { hi: C.suitHi, lo: C.suitLo, line: C.suitEdge, tip: C.suitTip, lite: C.suitHi, s: 9, tipH: 3, pt: 0.55, seed, ...o });
+const shirtV = (face, cube, w, h) => {
   if (face !== 'south') return null;
-  const m = new Map(), cx = (w - 1) / 2, put = (x, y, c) => { if (x >= 0 && x < w && y >= 0 && y < h && ((x - cx) / (w * 0.36)) ** 2 + ((y - h * 0.56) / (h * 0.44)) ** 2 < 1) m.set(y * w + x, c); };
-  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) put(x, y, ramp([C.bellyHi, C.belly, C.bellyLo], y / (h - 1), x, y));
-  [[0.36, 0.42, 0], [0.66, 0.66, 1], [0.4, 0.82, 2], [0.64, 0.3, 2]].forEach(([fx, fy, t]) => {
-    const X = Math.round(w * fx), Y = Math.round(h * fy);
-    if (t < 2) for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) { const r = Math.hypot(dx, dy), a = Math.atan2(dy, dx), pet = 2.8 * (0.62 + 0.38 * Math.abs(Math.cos(a * 2.5))); if (r <= pet) put(X + dx, Y + dy, r < 1 ? C.ghostLo : C.ghost); }
-    else for (let i = -2; i <= 2; i++) { put(X + i, Y, C.ghost); put(X, Y + i, C.ghost); }
-  });
-  return (x, y) => m.get(y * w + x) || null;
+  const cx = (w - 1) / 2;
+  return (x, y) => {
+    const half = 1 + (1 - y / (h - 1)) ** 1.2 * 6.5, d = Math.abs(x - cx);
+    if (d < 1 && y > 2 && y < h * 0.86) return y > h * 0.8 ? C.tie : C.tie;
+    if (d < half - 0.5) return ramp([C.shirtHi, C.shirt, C.shirtLo], y / (h - 1), x, y);
+    if (d < half + 0.6 && y < h * 0.7) return C.suitHi;
+    return null;
+  };
 };
-const torsoFur = furP(48, { under: ghostPattern });
+const torsoFur = suitP(48, { under: shirtV });
+const suitFur = suitP(56), suitLimb = suitP(58, { s: 7, tipH: 2.5 });
 const muzP = fur(C.muz, { hi: C.muzHi, lo: C.muzLo, line: shift(C.muz, -0.14), lite: C.muzHi, ramp: [C.muzHi, C.muz, C.muz, shift(C.muz, -0.06)], s: 8, rowH: 6, tipH: 2.5, seed: 9, y0: 2 });
 const noseP = (p, w, h, face) => { fill(p, w, h, (x, y) => (face === 'up' ? C.noseHi : face === 'down' ? '#121216' : y === 0 ? C.noseHi : y >= h - 1 ? '#121216' : C.nose)); if (face === 'south' && w > 3) { p.px(1, 1, C.noseSpec); p.px(2, 1, C.noseHi); } };
 const earP = (seed) => { const f = furP(seed, { s: 6, tipH: 2.5 }); return (p, w, h, face, cube) => { f(p, w, h, face, cube); if (face !== 'south') return; const cx = w / 2, cy = h / 2 + 0.3, rx = w / 2 - 1.8, ry = h / 2 - 1.8; fill(p, w, h, (x, y) => { const d = ((x + 0.5 - cx) / rx) ** 2 + ((y + 0.5 - cy) / ry) ** 2; return d < 1 ? (d < 0.45 ? C.inEarLo : C.inEar) : null; }); }; };
@@ -114,11 +120,15 @@ const strapP = (p, w, h, face) => fill(p, w, h, (x, y) => (face === 'up' ? C.cub
 
 // ---------------------------------------------------------------- face
 // eyes: droopy, the outer corner low; a sliver of white, a slate-blue iris, the pupil sunk low (hand-pixelled)
-const EYES = eyeRig({ style: 'pix', chunk: 2, at: [-2.15, 31.6, 4.63], line: '#16141a', iris: '#5a78a8', irisDark: '#34486c', extra: ['smug'], map: { open: [
-  '..lll',
-  '.lwil',
-  'lwwkl',
-  '.lll.',
+const EYES = eyeRig({ style: 'pix', chunk: 1, at: [-2.15, 31.6, 4.63], line: '#16141a', iris: '#5a78a8', irisDark: '#34486c', extra: ['smug'], map: { open: [
+  '.......lllll',
+  '....llllssIl',
+  '..lllsswIIIl',
+  '.llswwwIhiIl',
+  'lswwwwIikkil',
+  'lwwwwwIkkkil',
+  '.llwwwwiiill',
+  '...lllllll..',
 ] } });
 const MOUTHS = ['frown', 'o', 'flat', 'wavy', 'grit', 'smile', 'tongue'];
 
@@ -141,16 +151,16 @@ export const def = {
   bones: [
     { name: 'root', pivot: [0, 0, 0], cubes: [] },
     // legs: thigh → shin → foot
-    { name: 'thighR', parent: 'root', pivot: [-2.0, 15.2, 0], cubes: [B([-3.35, 8.4, -1.4], [2.7, 7.2, 2.8], limbFur)] },
-    { name: 'shinR', parent: 'thighR', pivot: [-2.0, 8.6, 0], cubes: [B([-3.25, 1.7, -1.3], [2.5, 7.1, 2.6], limbFur)] },
+    { name: 'thighR', parent: 'root', pivot: [-2.0, 15.2, 0], cubes: [B([-3.35, 8.4, -1.4], [2.7, 7.2, 2.8], suitLimb)] },
+    { name: 'shinR', parent: 'thighR', pivot: [-2.0, 8.6, 0], cubes: [B([-3.25, 1.7, -1.3], [2.5, 7.1, 2.6], suitLimb)] },
     { name: 'footR', parent: 'shinR', pivot: [-2.0, 1.7, 0], cubes: [B([-3.5, 0, -1.7], [3.0, 1.9, 4.6], pawP(41)), A('acc-kicks', B([-3.85, 0, -2.2], [3.7, 2.2, 5.6], kicks)), A('acc-kicks', B([-3.6, 2.0, -1.8], [3.2, 1.8, 3.8], kicks))] },
-    { name: 'thighL', parent: 'root', pivot: [2.0, 15.2, 0], cubes: [B([0.65, 8.4, -1.4], [2.7, 7.2, 2.8], limbFur)] },
-    { name: 'shinL', parent: 'thighL', pivot: [2.0, 8.6, 0], cubes: [B([0.75, 1.7, -1.3], [2.5, 7.1, 2.6], limbFur)] },
+    { name: 'thighL', parent: 'root', pivot: [2.0, 15.2, 0], cubes: [B([0.65, 8.4, -1.4], [2.7, 7.2, 2.8], suitLimb, { mirror: true })] },
+    { name: 'shinL', parent: 'thighL', pivot: [2.0, 8.6, 0], cubes: [B([0.75, 1.7, -1.3], [2.5, 7.1, 2.6], suitLimb, { mirror: true })] },
     { name: 'footL', parent: 'shinL', pivot: [2.0, 1.7, 0], cubes: [B([0.5, 0, -1.7], [3.0, 1.9, 4.6], pawP(43), { mirror: true }), A('acc-kicks', B([0.15, 0, -2.2], [3.7, 2.2, 5.6], kicks, { mirror: true })), A('acc-kicks', B([0.4, 2.0, -1.8], [3.2, 1.8, 3.8], kicks, { mirror: true }))] },
     { name: 'body', parent: 'root', pivot: [0, 15.2, 0], cubes: [
       B([-4.4, 13.6, -2.7], [8.8, 12.6, 5.4], torsoFur),
-      B([-4.8, 22.8, -2.4], [9.6, 3.0, 4.8], furP(52)),
-      B([-3.6, 12.6, -2.4], [7.2, 1.4, 4.8], furP(54)),
+      B([-4.8, 22.8, -2.4], [9.6, 3.0, 4.8], suitFur),
+      B([-3.6, 12.6, -2.4], [7.2, 1.4, 4.8], suitFur),
       B([-3.6, 25.0, 2.35], [7.2, 1.6, 0], neckFluff, { plane: 'z' }),
       // drip: the long coat (torso, shoulders, collar)
       A('acc-coat', B([-4.9, 13.6, -3.1], [9.8, 12.8, 6.0], coatP({ dart: true }), { faces: { south: coatFront } })),
@@ -169,10 +179,10 @@ export const def = {
       A('acc-pack', B([-3.4, 16.4, -3.5], [0.9, 8.6, 0.8], strapP)), A('acc-pack', B([2.5, 16.4, -3.5], [0.9, 8.6, 0.8], strapP)),
     ] },
     // arms: upper → fore (fur, coat sleeves when worn, paw)
-    { name: 'armR', parent: 'body', pivot: [-5.1, 25.0, 0], cubes: [B([-6.4, 18.9, -1.35], [2.5, 6.4, 2.7], limbFur), A('acc-coat', B([-6.55, 18.8, -1.5], [2.8, 6.6, 3.0], coatP()))] },
-    { name: 'foreR', parent: 'armR', pivot: [-5.15, 19.2, 0], cubes: [B([-6.35, 13.3, -1.3], [2.4, 6.1, 2.6], limbFur), A('acc-coat', B([-6.5, 13.2, -1.45], [2.7, 6.2, 2.9], coatP({ cuff: true }))), B([-6.3, 10.8, -1.2], [2.3, 2.5, 2.4], pawP(51))] },
-    { name: 'armL', parent: 'body', pivot: [5.1, 25.0, 0], cubes: [B([3.9, 18.9, -1.35], [2.5, 6.4, 2.7], limbFur), A('acc-coat', B([3.75, 18.8, -1.5], [2.8, 6.6, 3.0], coatP()))] },
-    { name: 'foreL', parent: 'armL', pivot: [5.15, 19.2, 0], cubes: [B([3.95, 13.3, -1.3], [2.4, 6.1, 2.6], limbFur), A('acc-coat', B([3.8, 13.2, -1.45], [2.7, 6.2, 2.9], coatP({ cuff: true }))), B([4.0, 10.8, -1.2], [2.3, 2.5, 2.4], pawP(53), { mirror: true })] },
+    { name: 'armR', parent: 'body', pivot: [-5.1, 25.0, 0], cubes: [B([-6.4, 18.9, -1.35], [2.5, 6.4, 2.7], suitLimb), A('acc-coat', B([-6.55, 18.8, -1.5], [2.8, 6.6, 3.0], coatP()))] },
+    { name: 'foreR', parent: 'armR', pivot: [-5.15, 19.2, 0], cubes: [B([-6.35, 13.3, -1.3], [2.4, 6.1, 2.6], suitLimb), A('acc-coat', B([-6.5, 13.2, -1.45], [2.7, 6.2, 2.9], coatP({ cuff: true }))), B([-6.3, 10.8, -1.2], [2.3, 2.5, 2.4], pawP(51))] },
+    { name: 'armL', parent: 'body', pivot: [5.1, 25.0, 0], cubes: [B([3.9, 18.9, -1.35], [2.5, 6.4, 2.7], suitLimb), A('acc-coat', B([3.75, 18.8, -1.5], [2.8, 6.6, 3.0], coatP()))] },
+    { name: 'foreL', parent: 'armL', pivot: [5.15, 19.2, 0], cubes: [B([3.95, 13.3, -1.3], [2.4, 6.1, 2.6], suitLimb), A('acc-coat', B([3.8, 13.2, -1.45], [2.7, 6.2, 2.9], coatP({ cuff: true }))), B([4.0, 10.8, -1.2], [2.3, 2.5, 2.4], pawP(53), { mirror: true })] },
     // the balloon on its string, held in the right paw
     { name: 'string1', parent: 'foreR', pivot: [-5.4, 11.8, 0.9], rot: [-4, 0, 20], cubes: [B([-5.5, 11.8, 0.8], [0.2, 6.0, 0.2], stringP, { outline: false })] },
     { name: 'string2', parent: 'string1', pivot: [-5.4, 17.8, 0.9], rot: [0, 0, -12], cubes: [B([-5.5, 17.8, 0.8], [0.2, 5.4, 0.2], stringP, { outline: false })] },
@@ -190,7 +200,7 @@ export const def = {
       B([-1.8, 26.6, 4.2], [3.6, 1.2, 2.3], muzP),
       B([-1.1, 29.5, 6.55], [2.2, 1.1, 1.0], noseP),
       B([-0.6, 29.0, 6.5], [1.2, 0.6, 0.9], noseP),
-      ...MOUTHS.map((s) => B([-1.9, 27.45, 6.93], [3.8, 1.6, 0], mouthArt(s, { line: C.muzLine, inner: '#3a1a22', tongue: '#c86a78' }), { plane: 'z', id: 'm-' + s, hide: s !== 'frown', outline: false })),
+      ...MOUTHS.map((s) => B([-1.9, 27.45, 6.93], [3.8, 1.6, 0], mouthArt(s, { chunk: 1, line: C.muzLine, inner: '#3a1a22', tongue: '#c86a78' }), { plane: 'z', id: 'm-' + s, hide: s !== 'frown', outline: false })),
       // drip: a big fluffy fur hat
       A('acc-furhat', B([-5.6, 33.9, -4.9], [11.2, 2.6, 9.8], hatP)),
       A('acc-furhat', B([-4.8, 36.3, -4.2], [9.6, 1.8, 8.4], hatP)),
@@ -212,6 +222,7 @@ def.drip = [
   [{ id: 'acc-coat', name: 'Long grey coat' }, { id: 'acc-chain', name: 'Cracked-heart chain' }],
   [{ id: 'acc-kicks', name: 'Big grey high-tops' }, { id: 'acc-pack', name: 'Teddy backpack' }],
 ];
+def.dripForm = { map: keepEyes(EYES, luxe(blackGold, { grey: (c, l) => (l < 0.5 ? fromHsl(258, 0.16, 0.04 + l * 0.5) : fromHsl(44, 0.55, 0.28 + l * 0.5)) })) };
 def.attach = {
   head: { bone: 'head', at: [0, 36.1, 0], size: 9 },
   face: { bone: 'head', at: [0, 31.6, 4.7], size: 8 },
@@ -260,7 +271,7 @@ export const anim = {
     mouth: { default: 'frown', states: Object.fromEntries(MOUTHS.map((s) => [s, ['m-' + s]])) },
     heart: { default: 'dull', states: { dull: ['heart-dull'], glow: ['heart-glow'] } },
   },
-  fidget: { every: [6, 10], clips: ['sigh', 'look'] },
+  fidget: { every: [3.5, 7], clips: ['dance', 'dance', 'letgo', 'sigh', 'look'] },
   clips: {
     // alone with its thoughts: a slow weight shift, head hung, eyes sliding away, the balloon bobbing at its shoulder
     idle: { len: 4.0, loop: true, f(P, t) {
@@ -380,6 +391,45 @@ export const anim = {
       drift(P, t, 0.6);
       face(P, 'closed', br > 0.4 ? 'o' : 'flat'); P.lookW = 0; P.breathW = 0.5;
       P.burst(0.5, 'z', 'head', [3, 36, 4], {}).burst(1.8, 'z', 'head', [3, 36, 4], {}).burst(3.1, 'z', 'head', [3, 36, 4], {});
+    } },
+    // the dance: cold, robotic and precise — a ripple down one arm and back, head ticks on the beat, a slow
+    // turn, and the finish: one paw over its heart while the balloon pulses
+    dance: { len: 3.2, next: 'idle', f(P, t) {
+      const per = 0.4, beat = Math.floor(t / per);
+      const on = seg(t, 0, 0.1) * (1 - seg(t, 2.3, 2.45));
+      stance(P, 1 - on * 0.4); drift(P, t, 1.2);
+      // the arm wave: shoulder, elbow, wrist in sequence, there and back
+      const w1 = key([[0, 0], [0.4, 1, 'out3'], [0.8, 1], [1.2, 0, 'out3'], [1.6, 0]], t % 1.6), w2 = key([[0, 0], [0.2, 0], [0.6, 1, 'out3'], [1.0, 1], [1.4, 0, 'out3'], [1.6, 0]], t % 1.6);
+      P.rot('armL', -30 * w1 * on, 0, -60 * w1 * on).rot('foreL', -60 * w2 * on, 0, 30 * w2 * on);
+      P.rot('head', (beat % 2 ? 6 : -6) * on + 8, (beat % 4 < 2 ? 14 : -14) * on, 0).pos('body', 0, -0.4 * (t % per < 0.08 ? 1 : 0) * on, 0);
+      P.rot('body', 2, (beat % 4 < 2 ? 8 : -8) * on, 0);
+      knees(P, (beat % 2 ? 0.8 : 0.2) * on);
+      const turn = seg(t, 2.3, 2.7, E.inout), fin = seg(t, 2.6, 2.8, E.back) * (1 - seg(t, 3.05, 3.2));
+      P.rot('root', 0, 360 * turn, 0);
+      P.rot('armL', -60 * fin, 0, -30 * fin).rot('foreL', -70 * fin, 0, -40 * fin).rot('head', -14 * fin, -10 * fin, 0).rot('body', -4 * fin, 0, 0);
+      inflate(P, 0.2 * fin + 0.15 * bump(t, 2.8, 3.1));
+      P.face('heart', fin > 0.4 ? 'glow' : 'dull');
+      face(P, t < 2.3 ? (beat % 4 === 3 ? 'closed' : 'sleepy') : fin > 0.3 ? 'closed' : 'open', t < 2.3 ? 'flat' : fin > 0.3 ? 'smile' : 'flat');
+      if (t > 0.1 && t < 2.3) P.stream('bear-bluenote', 'head', [0, 34, 3], { rate: 3, spread: 0.8 });
+      P.burst(2.75, 'bear-tunered', 'balloon', [-7, 27, 1], { n: 1, scale: 1.2 }).burst(2.75, 'bear-heart', 'body', [2, 21, 4], { n: 3, speed: 0.5 });
+    } },
+    // the signature: the string slips from its paw and the balloon drifts away — a beat of shock, a desperate
+    // leap, the catch, and it holds the heart close
+    letgo: { len: 3.4, next: 'idle', f(P, t) {
+      const slip = seg(t, 0.25, 1.1, E.in), shock = bump(t, 0.4, 1.0), crouch = bump(t, 0.85, 1.15), jump = t > 1.1 && t < 1.7 ? Math.sin(((t - 1.1) / 0.6) * Math.PI) : 0;
+      const reach = seg(t, 1.0, 1.25, E.out) * (1 - seg(t, 1.6, 1.9, E.inout)), hug = seg(t, 1.9, 2.3, E.back) * (1 - seg(t, 3.0, 3.4, E.inout));
+      stance(P, 1 - Math.max(reach, hug)); drift(P, t, 1);
+      // the string leaves the paw and rises, then is snatched back
+      const away = slip * (1 - seg(t, 1.38, 1.5, E.out));
+      P.pos('string1', -1 * away, 7 * away, -0.5 * away).rot('string1', -10 * away, 0, -24 * away);
+      P.pos('body', 0, -1.6 * crouch, 0); knees(P, 1.6 * crouch); P.pos('root', 0, 4.5 * jump, 0).sq('body', 0.08 * jump - 0.08 * crouch);
+      P.rot('armR', -170 * reach, 0, -10 * reach).rot('foreR', -10 * reach, 0, 0); str(P, 150 * reach, 0);
+      P.rot('head', -18 * shock - 30 * reach + 18 * hug, 0, 0);
+      P.rot('armR', -70 * hug, 0, 30 * hug).rot('foreR', -60 * hug, 0, 30 * hug).rot('armL', -70 * hug, 0, -30 * hug).rot('foreL', -60 * hug, 0, -30 * hug); str(P, 130 * hug, -30 * hug);
+      P.rot('string1', 0, 0, 30 * hug).rot('string2', 0, 0, -40 * hug).rot('balloon', 0, 0, -20 * hug);
+      eyesScale(P, 1 + 0.25 * shock, 1 + 0.35 * shock);
+      face(P, shock > 0.3 ? 'shock' : reach > 0.3 ? 'wide' : hug > 0.3 ? 'closed' : undefined, shock > 0.3 ? 'o' : reach > 0.3 ? 'grit' : hug > 0.3 ? 'smile' : undefined);
+      P.burst(0.45, 'sweat', 'head', [5, 35, 3], { n: 3 }).burst(1.45, 'star', 'balloon', [-7, 27, 1], { n: 3 }).burst(2.1, 'bear-heart', 'body', [0, 24, 5], { n: 4, speed: 0.6 }).burst(1.7, 'dust', 'root', [0, 0.5, 1], { n: 5 });
     } },
     // fidget: a long sigh — shoulders up, breath in, then everything drops
     sigh: { len: 2.6, next: 'idle', f(P, t) {

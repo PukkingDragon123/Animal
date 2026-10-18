@@ -327,3 +327,16 @@ export function waves(c, o = {}) {
     if (isSide(face)) for (let x = 0; x < w; x++) p.px(x, 0, hi);
   };
 }
+// the ultra-drip form for the bears: browns → black lacquer that keeps its fur clumps (a wider value
+// spread than the default), pinks and reds → bright gold, the rest via the engine's blackGold
+import { toHsl, fromHsl } from '../../px/color.js';
+export function luxe(fallback, o = {}) {
+  return (c, glow) => {
+    if (glow || typeof c !== 'string' || c[0] !== '#') return fallback(c, glow);
+    const [h, s, l] = toHsl(c);
+    if (s < 0.14) return o.grey ? o.grey(c, l) : fallback(c, glow);
+    if (h >= 15 && h < 45 && l < 0.62) return fromHsl(258, 0.16, 0.05 + l * 0.48);                  // browns → black lacquer
+    if ((h >= 300 || h < 15) && (o.reds !== false)) return fromHsl(44, 0.86, 0.26 + l * 0.56);   // pinks, reds → gold
+    return fallback(c, glow);
+  };
+}

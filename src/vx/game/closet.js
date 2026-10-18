@@ -89,7 +89,7 @@ export class Closet {
   open() {
     this.app.overlays.push(this.draw = this.draw.bind(this));
     this.rebuild();
-    return new Promise((r) => { this.done = r; });
+    return new Promise((r) => { this.done = r; if (this.app.auto) setTimeout(() => { this.wear(WARDROBE[0][1]); this.wear(WARDROBE[1][0]); this.close(); }, 600); });
   }
   close() { const i = this.app.overlays.indexOf(this.draw); if (i >= 0) this.app.overlays.splice(i, 1); this.done(this.r); }
   rebuild(anim = 'idle') {

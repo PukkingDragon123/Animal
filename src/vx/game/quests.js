@@ -17,7 +17,11 @@ export const QUESTS = {
 
 export class Quests {
   constructor(app) { this.app = app; }
-  get s() { const st = this.app.state; return st.quests || (st.quests = { active: {}, done: [], counts: {} }); }
+  get s() {
+    const st = this.app.state; let q = st.vxQuests;
+    if (!q) q = st.vxQuests = { active: {}, done: [], counts: {} };
+    return q;
+  }
   has(id) { return this.s.active[id] !== undefined; }
   done(id) { return this.s.done.includes(id); }
   at(id) { return this.s.active[id]; }

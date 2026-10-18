@@ -1,19 +1,20 @@
-// Yeezilla — stage 3a of the bear line (Echo/Ecto). The heartbreak curdled into rage: a hunched
-// giant of near-black fur with grizzled silver tips, a bleached-blond buzz, and a mask-helmet
-// encrusted in crystal that swallows its whole face — jagged crystal spikes, two slits glowing
-// red where its eyes should be, a fanged jaw beneath. Arms long enough to knuckle-walk, claws like
+// Yeezilla — stage 3a of the bear line (Echo/Ecto). The heartbreak curdled into rage: a hunched,
+// all-black giant with grizzled silver tips and a black buzz, its whole face swallowed by a mask-
+// helmet encrusted in crystal — jagged crystal spikes, one strip of red tape slapped across it, two
+// slits glowing red where its eyes should be, a fanged jaw beneath. Arms long enough to knuckle-walk, claws like
 // bone. It moves slowly, breathes like a furnace, and its roar shakes the ground. Drip: red-tape
 // wraps or crystal knuckles; heavy chains or a jagged crystal piece; a fur mantle or big black
 // kicks. An original monster that winks at a rapper's darkest albums and their masked tour.
 import { E, seg, bump, wob, wave, key } from '../anim.js';
-import { fur, fringe, halo, gold, GOLD, chain, sneaker, fill, wrapX, isSide, edgeLine, sh } from './bear_parts.js';
+import { fur, fringe, halo, gold, GOLD, chain, sneaker, luxe, fill, wrapX, isSide, edgeLine, sh } from './bear_parts.js';
+import { blackGold } from '../model.js';
 import { eyeRig, eyesAt, eyesScale, glance } from './eyes.js';
 import { poly, ramp, shift, h2 } from './kit.js';
 
 const C = {
   fur: '#2a2630', furHi: '#46404e', furLo: '#18161c', furEdge: '#0e0d12', furTip: '#7a7286', furLite: '#3a3442',
   chest: '#8a8494', chestLo: '#5e5868',
-  blond: '#e8d48a', blondHi: '#fff0b8', blondLo: '#b89a52',
+  blond: '#26232c', blondHi: '#4c4858', blondLo: '#121016',
   cry: '#dcecff', cryHi: '#ffffff', cryMid: '#a8c8ec', cryLo: '#6a88b8', cryDeep: '#2c3858', cryPink: '#f0c8e8',
   claw: '#e8e0d0', clawLo: '#a89a86', clawTip: '#3a3028',
   mouth: '#5a0c16', mouthHi: '#8a1a24', tooth: '#f4eee0', toothLo: '#c4baa4',
@@ -41,12 +42,13 @@ const buzzP = (p, w, h, face) => { fill(p, w, h, (x, y) => (face === 'down' ? C.
 // the crystal mask: a skin of faceted stones in a diamond lattice, each with a lit facet and a dark one
 const crystalSkin = (p, w, h, face) => {
   fill(p, w, h, (x, y) => {
-    const a = ((x + y) % 4 + 4) % 4, b = ((x - y) % 4 + 4) % 4;
-    if (a === 0 || b === 0) return C.cryDeep;                              // the setting between stones
-    const lit = (x + y) % 4 < 2 ? (face === 'up' ? C.cryHi : C.cry) : (x - y + 400) % 4 < 2 ? C.cryMid : C.cryLo;
-    return h2(x >> 2, y >> 2, 3) > 0.9 ? C.cryPink : lit;
+    const a = ((x + y) % 5 + 5) % 5, b = ((x - y) % 5 + 5) % 5;
+    if (a === 0 && b === 0) return C.cryDeep;                              // the setting where stones meet
+    if (a === 0 || b === 0) return C.cryLo;
+    const lit = a < 3 && b < 3 ? (face === 'up' ? '#ffffff' : C.cryHi) : a < 3 || b < 3 ? C.cry : C.cryMid;
+    return h2(Math.floor((x + y) / 5), Math.floor((x - y + 400) / 5), 3) > 0.9 ? C.cryPink : lit;
   });
-  for (let y = 1; y < h; y += 4) for (let x = (y >> 2) % 2 ? 3 : 1; x < w; x += 8) p.px(x, y, '#ffffff');
+  for (let y = 1; y < h; y += 5) for (let x = (Math.floor(y / 5) % 2) ? 4 : 1; x < w; x += 7) p.px(x, y, '#ffffff');
 };
 const spikeP = (p, w, h, face) => { fill(p, w, h, (x, y) => (face === 'up' ? C.cryHi : face === 'down' ? C.cryLo : x === 0 ? C.cryHi : x === w - 1 ? C.cryLo : ramp([C.cryHi, C.cry, C.cryMid], y / Math.max(1, h - 1), x, y))); if (isSide(face) && h > 2) p.px(Math.min(1, w - 1), 1, '#ffffff'); };
 const clawP = (p, w, h, face) => fill(p, w, h, (x, y) => (face === 'up' ? C.claw : y >= h - 1 ? C.clawTip : ramp([C.claw, C.clawLo], y / Math.max(1, h - 1), x, y)));
@@ -74,13 +76,33 @@ const mantleFringe = fringe(C.fur, { hi: C.furHi, lo: C.furLo, line: C.furEdge, 
 const kicks = sneaker({ up: '#26242c', upHi: '#3e3a46', upLo: '#16141a', panel: C.tape, sole: '#e8e4dc', soleLo: '#9a968e', lace: C.tape });
 
 // ---------------------------------------------------------------- face: two slits of red light through the crystal
-const EYES = eyeRig({ style: 'pix', chunk: 2, at: [-3.0, 35.2, 14.26], glow: 'all', accent: C.red, line: '#2a0408', map: {
-  open: ['cc....', 'chhcc.', '..cccc'],
-  angry: ['c.....', 'chc...', '.chhcc', '...ccc'],
-  wide: ['.cccc.', 'chhhhc', 'chhhhc', '.cccc.'],
-  sleepy: ['......', 'cccccc', '......'],
+const EYES = eyeRig({ style: 'pix', chunk: 1, at: [-3.0, 35.2, 14.26], glow: 'all', accent: '#ff1e2a', iris: '#ff7a3a', irisDark: '#a00a18', line: '#2a0408', map: {
+  open: [
+    'cc..........',
+    'ciicc.......',
+    '.cihhiicc...',
+    '...cciihhicc',
+    '......cciicc',
+    '.........ccc',
+  ],
+  angry: [
+    'c...........',
+    'cic.........',
+    '.chicc......',
+    '..cchhiicc..',
+    '....cciihhic',
+    '.......ccccc',
+  ],
+  wide: [
+    '..cccccccc..',
+    '.ciiiiiiiic.',
+    'cihhhhhhhhic',
+    'cihhhhhhhhic',
+    '.ciiiiiiiic.',
+    '..cccccccc..',
+  ],
+  sleepy: ['............', '............', '.Iccccccccc.', '..IIIIIIII..'],
 } });
-
 // ---------------------------------------------------------------- the model
 const B = (o, s, tex, x = {}) => ({ o, s, tex, ...x });
 const A = (id, c) => ({ ...c, id, hide: true });
@@ -133,6 +155,8 @@ export const def = {
     { name: 'chains', parent: 'body', pivot: [0, 29.4, 4.4], cubes: [...CHAINS, ...PIECE] },
     { name: 'armR', parent: 'body', pivot: [-11.2, 29.0, 0], rot: [-12, 0, -4], cubes: [B([-15.6, 17.6, -3.8], [6.6, 12.4, 7.6], limbFur)] },
     { name: 'foreR', parent: 'armR', pivot: [-12.3, 18.6, 0], cubes: [B([-15.8, 7.0, -3.6], [7.0, 12.2, 7.2], limbFur), B([-16.3, 2.2, -4.0], [8.0, 5.4, 8.4], limbFur), ...CLAWS(-15.9, 1.6, 4.0), ...TAPE_R, ...KNUX_R] },
+    // a crystal shard it plucks from its own helmet (the 'crush' fidget)
+    { name: 'gem', parent: 'foreR', pivot: [-12.3, 5.0, 4.6], cubes: spike([-12.3, 4.0, 5.2], 0, 0, 6.4, 2.4).map((c) => ({ ...c, id: 'p-gem', hide: true, glow: true })) },
     { name: 'armL', parent: 'body', pivot: [11.2, 29.0, 0], rot: [-12, 0, 4], cubes: [B([9.0, 17.6, -3.8], [6.6, 12.4, 7.6], limbFur, { mirror: true })] },
     { name: 'foreL', parent: 'armL', pivot: [12.3, 18.6, 0], cubes: [B([8.8, 7.0, -3.6], [7.0, 12.2, 7.2], limbFur, { mirror: true }), B([8.3, 2.2, -4.0], [8.0, 5.4, 8.4], limbFur, { mirror: true }), ...CLAWS(9.7, 1.6, 4.0), ...TAPE_R.map(M), ...KNUX_R.map(M)] },
     { name: 'head', parent: 'body', pivot: [0, 31.0, 5.0], rot: [-12, 0, 0], cubes: [
@@ -144,6 +168,8 @@ export const def = {
       B([-3.6, 29.2, 12.9], [1.3, 2.0, 1.0], toothP), B([2.3, 29.2, 12.9], [1.3, 2.0, 1.0], toothP),
       B([-4.6, 30.4, 6.8], [9.2, 0.7, 6.8], mouthP, { outline: false }),
       ...SPIKES,
+      // one strip of red tape slapped across the crystal
+      B([0.2, 32.5, 14.12], [7.2, 1.3, 0.38], tapeP, { pivot: [3.8, 33.15, 14.3], rot: [0, 0, -28] }),
     ] },
     ...EYES.bones,
     { name: 'jaw', parent: 'head', pivot: [0, 30.8, 6.0], cubes: [B([-5.6, 26.6, 5.6], [11.2, 4.4, 8.2], jawP)] },
@@ -156,6 +182,8 @@ def.drip = [
   [{ id: 'acc-chains', name: 'Heavy chains' }, { id: 'acc-piece', name: 'Crystal piece' }],
   [{ id: 'acc-mantle', name: 'Fur mantle' }, { id: 'acc-kicks', name: 'Big black kicks' }],
 ];
+// the ultra-drip form: black stays black, the crystal turns to gold, the red tape to gold leaf — and the slits burn blue
+def.dripForm = { map: luxe(blackGold) };
 def.attach = {
   head: { bone: 'head', at: [0, 40.4, 7.0], size: 12.4 },
   face: { bone: 'head', at: [0, 35.2, 14.3], size: 13.6 },
@@ -184,8 +212,8 @@ export const anim = {
     { bone: 'earR', tip: [-1, 3, 0], k: 200, d: 10, gain: 0.4, max: 8 },
     { bone: 'earL', tip: [1, 3, 0], k: 200, d: 10, gain: 0.4, max: 8 },
   ],
-  faces: { eyes: EYES.slot },
-  fidget: { every: [6, 10], clips: ['crack', 'stomp'] },
+  faces: { eyes: EYES.slot, prop: { default: 'off', states: { off: [], gem: ['p-gem'] } } },
+  fidget: { every: [3.5, 7], clips: ['dance', 'dance', 'crush', 'crack', 'stomp'] },
   clips: {
     // a mountain breathing: the chest heaves, the head turns slowly to scan, breath smokes from the jaw
     idle: { len: 4.0, loop: true, f(P, t) {
@@ -298,6 +326,38 @@ export const anim = {
       face(P, 'sleepy'); P.lookW = 0; P.breathW = 0.6;
       if (br < -0.4) P.stream('steam', 'head', [0, 29, 13], { rate: 4, speed: 0.3, scale: 1 });
       P.burst(1.0, 'z', 'head', [6, 44, 6], { scale: 1.6 }).burst(3.0, 'z', 'head', [6, 44, 6], { scale: 1.6 });
+    } },
+    // the dance: a tribal stomp — right, left, two pounds on the chest, a headbang — twice, then it throws its
+    // arms wide and the crystals flare
+    dance: { len: 3.4, next: 'idle', f(P, t) {
+      const per = 0.35, bar = (t % 1.4) / 1.4, on = seg(t, 0, 0.1) * (1 - seg(t, 2.75, 2.85));
+      const stR = bump(bar, 0.0, 0.22) * on, stL = bump(bar, 0.25, 0.47) * on, pd = (bump(bar, 0.5, 0.62) + bump(bar, 0.64, 0.76)) * on, bang = bump(bar, 0.78, 1.0) * on;
+      P.rot('thighR', -50 * stR, 0, 0).rot('shinR', 40 * stR, 0, 0).pos('thighR', 0, 1.2 * stR, 0).rot('thighL', -50 * stL, 0, 0).rot('shinL', 40 * stL, 0, 0).pos('thighL', 0, 1.2 * stL, 0);
+      P.rot('body', -6 * pd + 10 * bang, 0, -6 * stR + 6 * stL).sq('body', -0.04 * pd);
+      P.rot('armR', -70 * (pd > 0 ? 1 : 0) * on - 20 * pd, 0, 24 * on).rot('foreR', -80 * on, 0, 30 * on).rot('armL', -70 * (pd > 0 ? 1 : 0) * on - 20 * pd, 0, -24 * on).rot('foreL', -80 * on, 0, -30 * on);
+      P.rot('head', 30 * bang - 6 * pd, 0, 0).rot('jaw', 18 * bang + 10 * pd);
+      knees(P, 0.5 + 0.8 * (stR + stL) * 0.5);
+      quake(P, t, (stR + stL) * 0.6 + pd * 0.3);
+      const fin = seg(t, 2.8, 3.0, E.back) * (1 - seg(t, 3.25, 3.4));
+      P.rot('armR', -50 * fin, 0, -80 * fin).rot('armL', -50 * fin, 0, 80 * fin).rot('body', -14 * fin, 0, 0).rot('head', -18 * fin, 0, 0).rot('jaw', 36 * fin);
+      face(P, bang > 0.3 ? 'angry' : fin > 0.3 ? 'wide' : undefined); eyesScale(P, 1 + 0.2 * fin, 1 + 0.35 * fin);
+      for (const tb of [0.08, 0.43, 1.48, 1.83]) P.burst(tb, 'dust', tb % 1.4 < 0.3 ? 'footR' : 'footL', [tb % 1.4 < 0.3 ? -4.8 : 4.8, 0.5, 2], { n: 5, spread: 1, speed: 0.7 });
+      P.burst(2.9, 'bear-crystal', 'head', [0, 42, 8], { n: 18, dir: [0, 1, 0.3], spread: 1 }).burst(2.9, 'sparkle', 'head', [0, 40, 8], { n: 10, speed: 1.4 }).burst(2.9, 'ring', 'root', [0, 1, 4], { scale: 3 });
+    } },
+    // the signature: it plucks a crystal from its own helmet, studies it, crushes it in its fist, and blows the glitter away
+    crush: { len: 3.6, next: 'idle', f(P, t) {
+      const reach = seg(t, 0.1, 0.55, E.inout) * (1 - seg(t, 0.75, 1.05, E.inout)), pull = bump(t, 0.55, 0.8);
+      const hold = seg(t, 0.9, 1.25, E.inout) * (1 - seg(t, 3.0, 3.5, E.inout)), squeeze = seg(t, 1.9, 2.05, E.in3), blow = bump(t, 2.35, 3.0);
+      P.rot('armR', -150 * reach - 70 * hold, 0, -30 * reach + 20 * hold).rot('foreR', -30 * reach - 50 * hold, 0, 10 * hold);
+      P.rot('head', -10 * reach + 6 * pull + 14 * hold - 10 * blow, 18 * hold, 0).rot('jaw', 22 * blow + 8 * squeeze);
+      P.scl('foreR', 1 + 0.08 * squeeze * (1 - seg(t, 2.2, 2.4)), 1, 1 + 0.08 * squeeze * (1 - seg(t, 2.2, 2.4)));
+      P.scl('gem', 1 - 0.95 * squeeze, 1 - 0.95 * squeeze, 1 - 0.95 * squeeze).rot('gem', 0, t * 40, 0);
+      P.face('prop', t > 0.6 && t < 2.1 ? 'gem' : 'off');
+      eyesAt(P, 0.3 * hold, -0.2 * hold); eyesScale(P, 1, 1 - 0.3 * (hold - squeeze) * (t < 1.9 ? 1 : 0) + 0.3 * squeeze * (1 - blow));
+      face(P, hold > 0.5 && t < 1.9 ? 'sleepy' : squeeze > 0.3 && t < 2.4 ? 'wide' : blow > 0.2 ? 'sleepy' : undefined);
+      P.burst(0.7, 'sparkle', 'head', [-4, 42, 9], { n: 6, speed: 0.6 }).burst(0.72, 'bear-crystal', 'head', [-4, 42, 9], { n: 3, speed: 0.6 });
+      P.burst(2.02, 'bear-crystal', 'foreR', [-12.3, 5, 6], { n: 10, speed: 0.6 }).burst(2.02, 'sparkle', 'foreR', [-12.3, 5, 6], { n: 10, speed: 0.4 });
+      if (t > 2.4 && t < 2.95) P.stream('sparkle', 'foreR', [-12.3, 6, 6], { rate: 40, dir: [0.4, 0.3, 1], spread: 0.4, speed: 1.6 }).stream('steam', 'head', [0, 29, 14], { rate: 8, dir: [0, 0, 1], spread: 0.3, speed: 1 });
     } },
     // fidget: it cracks its neck — left, right — and flexes its claws
     crack: { len: 2.2, next: 'idle', f(P, t) {
