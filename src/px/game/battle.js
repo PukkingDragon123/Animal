@@ -66,7 +66,7 @@ export class Battle2D {
       this.sc.fx.push(this.fxPainter = (ctx, cam) => this.paintFx(ctx, cam));
       this.active = true;
       app.mode = 'battle';
-      app.audio.music && app.audio.music('battle', { fade: 0.5 });
+      app.audio.music && app.audio.music(spec.music || 'battle', { fade: 0.5 });
       this.intro().catch((e) => console.error(e));
     });
   }

@@ -117,6 +117,7 @@ export class Story2D {
       });
       if (DESIGNS_HAS('zapanda')) w.addNpc({ species: 'zapanda', x: sp[0] - 60, y: sp[1] + 30, roam: 30 });
     }
+    this.leagueBeats(mapId);
     if (mapId === 'dotonbori' && beat === 'dotonbori1') {
       const sp = w.meta.spawns.icecream || w.meta.spawns.start;
       const meet = async () => {
@@ -135,13 +136,60 @@ export class Story2D {
         if (res && res.winner === 0) await app.say('Thrash', 'This isn\'t over. Team Metallica never forgets a face.', 'Moshi: …sorry about the bridge thing. (He slips a takoyaki to a stray cat on his way out.)');
         else await app.say('Thrash', 'Pay up! …Ugh, keep it. Not worth the paperwork.', 'Moshi lingers, feeding a stray cat, then hurries after them.');
         s.flags.met_taro = true; s.flags.met_moshi_glimpse = true; s.story.beat = 'night1'; app.save();
-        await app.say('Coach Gonda', 'Good teamwork. Get some dinner and some sleep — tomorrow you register for the Osaka League.');
-        app.objective = 'Day 2: register for the Osaka League (coming soon) — explore, battle wild Tokonmon, eat!';
+        await app.say('Coach Gonda', 'Good teamwork. Dinner\'s on me — then sleep. Tomorrow you register for the Osaka League.');
+        await this.nextDay();
       };
       hot({ x: sp[0], y: sp[1], label: 'Ice cream!', icon: 'bowl', act: meet });
       if (DESIGNS_HAS('beatlet')) w.addNpc({ species: 'beatlet', x: sp[0] + 40, y: sp[1] + 10, roam: 14 });
       if (DESIGNS_HAS('zapanda')) w.addNpc({ species: 'zapanda', x: sp[0] - 36, y: sp[1] + 12, roam: 14 });
     }
+  }
+
+  // ------------------------------------------------------------------ night → Day 2
+  async nextDay() {
+    const app = this.app, s = app.state, lead = s.party[0], name = lead ? (lead.nick || SPECIES[lead.species].name) : 'your partner';
+    await app.fade(1, 600);
+    this.scene = new BlackCard(app); app.mode = 'cut';
+    await app.fade(0, 300);
+    await app.say('', 'Dinner is okonomiyaki at Coach Gonda\'s favourite counter. Kanizumo eats four. Mika draws Zapanda on yours in mayonnaise.', `Later, back at the training ground, ${name} falls asleep against your arm, still warm, still smelling a little of smoke and sugar.`);
+    s.time.day += 1; s.time.hour = 8; S.healParty(s, 1);
+    s.flags.league = true; s.story.beat = 'league1'; app.save();
+    this.scene = new DayCard(app, 'DAY ' + s.time.day, 'Osaka League registration');
+    await app.wait(2600);
+    await app.fade(1, 400);
+    app.mode = 'world';
+    await app.travel('plaza', 'start');
+    app.objective = 'Register for the Osaka League at the stadium (phone → Map)';
+    await app.say('Coach Gonda', '(a message on your phone) Morning, rookie! The League desk opens at nine. Osaka League Stadium — it\'s on your map now. Don\'t be late!');
+  }
+
+  // ------------------------------------------------------------------ Day 2: the League (stadium beats)
+  leagueBeats(mapId) {
+    const app = this.app, w = app.world, s = app.state, beat = s.story.beat;
+    if (mapId !== 'stadium' || beat !== 'league1') return;
+    const ring = w.meta.spawns.ring, desk = w.meta.spawns.desk || w.meta.spawns.start;
+    w.meta.hotspots.unshift({ x: desk[0], y: desk[1] - 8, r: 30, label: 'League desk', icon: 'talk', bubbleH: 40, act: async () => {
+      await app.say('Ms. Aoi', 'Welcome to the Osaka League! A new registration? …Ah, Coach Gonda called ahead. He says you\'re "loud but promising".', 'You start at Rookie D. Win rank matches to earn League points — the ladder goes D, C, B, A, S… and at the very top, the Champions.', 'Stadium rules: a match clock, and at kick-off and half-time you choose the arena — rocky, grassy or water. Pick the one that helps your partner!', 'Your first opponent is already warming up. Good luck out there!');
+      s.flags.league_registered = true;
+      const pick = (...ids) => ids.find((id) => DESIGNS_HAS(id)) || s.party[0].species;
+      const r1 = await app.startBattle({ title: 'RANK MATCH', subtitle: 'Rookie D  ·  vs DJ Revolver', stadium: true, chooseArena: true, clock: { len: 150 }, at: ring, arenaR: 8.5, money: 600, music: 'league',
+        foe: { name: 'DJ Revolver', team: [[pick('lemmo', 'zapanda'), 6], [pick('kappachi', 'cabbunny'), 6]], ai: 'normal' } });
+      const won1 = r1 && r1.winner === 0;
+      if (S.addLeaguePoints(s, won1 ? 70 : 25)) app.ui.toast('Rank up! ' + S.rankOf(s).name, { icon: 'star', color: T.amber });
+      await app.say('Reporter', won1 ? 'Channel 7 Sports, live from the ring! A rookie win on day one! How does it feel?' : 'Channel 7 Sports! A tough loss — but what a debut! Any words for the fans?', `…"${SPECIES[s.party[0].species].name} did all the work"? Ha! Modest, too. The crowd loves you!`);
+      await app.say('Ms. Aoi', 'Lunch break! Matches resume at two. The takoyaki on the upper concourse is legendary — and your partner looks hungry.');
+      s.time.hour = 14; S.healParty(s, 1); app.ui.toast('Lunch break — team healed', { icon: 'heart', color: T.green });
+      const rival = COUNTER[s.party[0].species] || 'bubblion';
+      await app.say('Kaito', 'So you actually showed up. Good. I wanted a witness when I put you back in your place.', `${SPECIES[rival].name} and I trained all night. This time there\'s a whole stadium watching.`);
+      const r2 = await app.startBattle({ title: 'RANK MATCH', subtitle: 'vs KAITO', stadium: true, chooseArena: true, clock: { len: 150 }, at: ring, arenaR: 8.5, money: 900, music: 'league',
+        foe: { name: 'Kaito', team: [[rival, 8], [pick('studrat', 'zapanda'), 6]], ai: 'normal' } });
+      const won2 = r2 && r2.winner === 0;
+      if (S.addLeaguePoints(s, won2 ? 90 : 30)) app.ui.toast('Rank up! ' + S.rankOf(s).name, { icon: 'star', color: T.amber });
+      await app.say('Kaito', won2 ? '…Fine. You\'re good. Don\'t let it go to your head — the ladder only gets steeper from here.' : 'Ha! Now we\'re even. See you higher up the ladder.');
+      await app.say('Coach Gonda', `${S.rankOf(s).name} after one day — not bad, rookie!`, 'Take the afternoon: train against wild Tokonmon, explore, eat something. More rank matches tomorrow.', '…And keep your eyes open. Team Metallica has been asking around about you.');
+      s.story.beat = 'league2'; s.time.hour = 16; app.save();
+      app.objective = 'Afternoon free time: train, explore, eat. Rank matches continue tomorrow.';
+    } });
   }
 
   async roam() {
@@ -186,6 +234,19 @@ class TitleScreen {
   done(v) { if (this.picked) return; this.picked = true; this.app.audio.sfx && this.app.audio.sfx('ui_confirm'); Object.assign(this.app.post.opts, { night: 0, bloom: 0.45, threshold: 0.8, rays: 0.06 }); this.resolve(v); }
 }
 class BlackCard { render() { return null; } drawUI(ui) { ui.rect(0, 0, ui.w, ui.h, '#0c0814'); } }
+class DayCard {
+  constructor(app, title, sub) { this.app = app; this.title = title; this.sub = sub; this.t = 0; }
+  render() { return null; }
+  drawUI(ui, dt) {
+    this.t += dt || 1 / 60;
+    ui.rect(0, 0, ui.w, ui.h, '#0c0814');
+    const cx = ui.w >> 1, cy = (ui.h >> 1) - 10, k = Math.min(1, this.t * 2);
+    ui.rect(cx - 70, cy + 22, Math.round(140 * k), 1, T.amber);
+    ui.text(this.title, cx + 2, cy + 2, '#3a1430', { align: 'center', scale: 3, spacing: 3 });
+    ui.text(this.title, cx, cy, T.amber, { align: 'center', scale: 3, spacing: 3, outline: T.ink });
+    if (this.t > 0.5) ui.text(this.sub, cx, cy + 30, T.text, { align: 'center', shadow: T.ink });
+  }
+}
 
 // ------------------------------------------------------------------ starter card
 class StarterCard {

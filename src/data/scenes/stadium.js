@@ -246,6 +246,16 @@ function micStand() {
   p.block(1, 8, 6, 4, C.red, { line: false }); p.text('7', 2, 8, C.white, { mini: true });
   return { surf: s, ax: 4, ay: 25 };
 }
+// the League entry desk by the players' tunnel
+function leagueDesk() {
+  const s = newSurf(46, 30), p = new Pen(s, 6);
+  p.block(4, 4, 38, 12, C.navy, { line: '#14101c' }); p.text('LEAGUE', 23, 5, C.neonY, { align: 'center', mini: true }); p.text('ENTRY', 23, 10, C.white, { align: 'center', mini: true });
+  for (const x of [6, 39]) { p.rect(x, 16, 2, 4, '#5a5468'); }
+  p.block(2, 19, 42, 10, '#e8e0f0', { line: '#3a3048' }); p.rect(2, 19, 42, 2, '#ffffff'); p.rect(4, 23, 38, 1, C.red);
+  p.block(30, 13, 9, 7, '#2a2434', { line: '#14101c' }); p.rect(31, 14, 7, 4, C.neonC);                        // a little terminal
+  p.rect(8, 16, 5, 3, C.white); p.px(10, 17, C.red); p.rect(15, 17, 4, 2, C.mustard);                           // forms and a bell
+  return { surf: s, ax: 23, ay: 29 };
+}
 function cannon() {
   const s = newSurf(16, 18), p = new Pen(s, 3);
   p.block(2, 12, 12, 5, '#3a3448', { line: '#14101c' });
@@ -363,6 +373,7 @@ export function buildStadium(o = {}) {
   sc.add(mast(night, true), W - 20, 114, { solid: false });
   for (let i = 0, x = 140; x < W - 20; x += 66, i++) sc.add(adBoard(i, night), x, FIELD_Y + 12, { solid: false });
   sc.add(tunnel(), 66, FIELD_Y + 36, { solid: false });
+  sc.add(leagueDesk(), 128, FIELD_Y + 58, { foot: [20, 4] });
   sc.add(dugout('#d8483a'), 200, FIELD_Y + 38, { foot: [22, 5] });
   sc.add(dugout('#3a7ad8'), 520, FIELD_Y + 38, { foot: [22, 5] });
   sc.add(tripodCam(true), 610, FIELD_Y + 36, { foot: [6, 3] });
@@ -398,7 +409,7 @@ export const STADIUM_MAP = {
       scene, terrain: scene.terrain,
       walk: [[[34, FIELD_Y + 46], [W - 34, FIELD_Y + 46], [W - 34, H - 12], [34, H - 12]]],
       block: [],
-      spawns: { start: [70, FIELD_Y + 62], ring: [RING.x, RING.y + 30], tunnel: [70, FIELD_Y + 62] },
+      spawns: { start: [70, FIELD_Y + 62], ring: [RING.x, RING.y], tunnel: [70, FIELD_Y + 62], desk: [128, FIELD_Y + 74] },
       hotspots: [
         { id: 'jumbotron', x: W >> 1, y: FIELD_Y + 56, r: 34, label: 'Jumbotron', icon: 'eye', act: (app) => app.say('Announcer', 'Welcome to the OSAKA LEAGUE! Today\'s rank matches start at 14:00 — trainers, report to the ring!') },
         { id: 'reporter', x: 150, y: 582, r: 26, label: 'Reporter', icon: 'talk', act: (app) => app.say('Reporter', 'Channel 7 Sports! Any words for the fans? …"Chili"? Bold. I love it.') },
