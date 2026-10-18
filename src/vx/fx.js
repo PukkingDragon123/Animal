@@ -75,6 +75,12 @@ function letterZ(p, W, H, c) { p.hl(0, W - 1, 0, c); p.hl(0, W - 1, H - 1, c); f
 function feather(p, W, H, c) { for (let y = 0; y < H; y++) { const w = Math.round(Math.sin((y / (H - 1)) * Math.PI) * (W / 2)); for (let x = -w; x <= w; x++) p.px(Math.floor(W / 2) + x, y, x === 0 ? shift(c, -0.4) : x < 0 ? shift(c, 0.25) : c); } }
 function ring(p, W, H, c) { const m = (W - 1) / 2; for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const d = Math.hypot(x - m, y - m); if (d < m + 0.2 && d > m - 2.2) p.px(x, y, d > m - 1 ? c : shift(c, 0.5)); } }
 
+function leafSpr(p, W, H, c) { for (let y = 0; y < H; y++) { const w = Math.round(Math.sin(((y + 0.5) / H) * Math.PI) * (W / 2)); for (let x = -w; x < w; x++) p.px(Math.floor(W / 2) + x, y, x === -1 ? shift(c, -0.35) : x < -1 ? shift(c, 0.2) : c); } }
+function heart(p, W, H, c) { const m = (W - 1) / 2; for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const u = (x - m) / (W / 2), v = (y - H * 0.38) / (H / 2); const inside = (u * u + v * v - 0.6) ** 3 - u * u * v * v * v * 1.4 < 0; if (inside) p.px(x, y, x < m - 1 && y < H / 2 ? shift(c, 0.4) : c); } }
+function rock(p, W, H, c) { const m = (W - 1) / 2; for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const d = Math.max(Math.abs(x - m), Math.abs(y - m)) + Math.min(Math.abs(x - m), Math.abs(y - m)) * 0.6; if (d > m + 0.6) continue; p.px(x, y, d > m - 0.4 ? shift(c, -0.4) : x + y < W - 2 ? shift(c, 0.3) : c); } }
+function bolt(p, W, H) { let x = Math.floor(W / 2); for (let y = 0; y < H; y++) { p.px(x, y, '#ffffff'); p.px(x + 1, y, '#fff070'); p.px(x - 1, y, '#ffd040'); if (y % 3 === 2) x += y % 6 === 2 ? 2 : -2; x = Math.max(1, Math.min(W - 2, x)); } }
+function ghostFlame(p, W, H, f) { flame(p, W, H, f); for (let i = 0; i < W * H; i++) { const v = p.s.data[i]; if (!(v >>> 24)) continue; const r = v & 255, g = (v >> 8) & 255, b = (v >> 16) & 255; const l = (r + g + b) / 3; p.s.data[i] = (255 << 24) | (Math.min(255, l * 1.15 + 40) << 16) | (Math.min(255, l * 0.55) << 8) | Math.min(255, l * 0.75); } }
+function twinkle(p, W, H) { const c = (W - 1) / 2; for (let i = 0; i < W; i++) { const d = Math.abs(i - c) / c, col = d < 0.3 ? '#ffffff' : '#d8f0ff'; p.px(i, Math.round(c), col); p.px(Math.round(c), i, col); } }
 let S = null;
 export function fxSprites() {
   if (S) return S;
@@ -93,6 +99,16 @@ export function fxSprites() {
     z: [sprite('fx-z', 7, 7, (p) => letterZ(p, 7, 7, '#e8f0ff'), { ppm: 40 })],
     feather: ['#e84a2a', '#ffb040'].map((c, i) => sprite('fx-feather' + i, 5, 9, (p) => feather(p, 5, 9, c), { ppm: 40 })),
     ring: [sprite('fx-ring', 32, 32, (p) => ring(p, 32, 32, '#fff4d0'), { ppm: 40 })],
+    drop: [sprite('fx-drop', 5, 7, (p) => drop(p, 5, 7, '#5ab8f0'), { ppm: 40 })],
+    leaf: ['#5a9a3a', '#7ab84a'].map((c, i) => sprite('fx-leaf' + i, 5, 8, (p) => leafSpr(p, 5, 8, c), { ppm: 40 })),
+    petal: ['#f6a0c0', '#ffd0e0'].map((c, i) => sprite('fx-petal' + i, 4, 5, (p) => leafSpr(p, 4, 5, c), { ppm: 40 })),
+    heart: [sprite('fx-heart', 9, 8, (p) => heart(p, 9, 8, '#ff4a7a'), { ppm: 40 })],
+    rock: ['#8a7a6a', '#6a5e52'].map((c, i) => sprite('fx-rock' + i, 6, 6, (p) => rock(p, 6, 6, c), { ppm: 40 })),
+    bolt: [0, 1].map((i) => sprite('fx-bolt' + i, 7, 16, (p) => bolt(p, 7, 16), { ppm: 40, seed: 3 + i })),
+    ghostfire: [0, 1, 2, 3].map((f) => sprite('fx-gflame' + f, 12, 18, (p) => ghostFlame(p, 12, 18, f), { ppm: 40 })),
+    dust: [0, 1].map((i) => sprite('fx-dust' + i, 14, 12, (p) => puff(p, 14, 12, '#b8a488'), { ppm: 40 })),
+    sparkle: [sprite('fx-sparkle', 7, 7, (p) => twinkle(p, 7, 7), { ppm: 40 })],
+    shard: ['#c8ccd8', '#8a8e9a'].map((c, i) => sprite('fx-shard' + i, 4, 4, (p) => rock(p, 4, 4, c), { ppm: 40 })),
   };
   return S;
 }
@@ -115,7 +131,27 @@ const PRE = {
   z: { spr: 'z', life: [1.4, 1.8], size: [0.07, 0.15], speed: [0.25, 0.35], grav: -0.25, drag: 0.4, spread: 0.3, wob: 0.8, fade: true },
   feather: { spr: 'feather', life: [0.9, 1.4], size: [0.08, 0.08], speed: [1, 2], grav: 1.2, drag: 2.2, spread: 1, flutter: true },
   ring: { spr: 'ring', glow: true, life: [0.22, 0.22], size: [0.1, 0.9], speed: [0, 0], grav: 0, fade: true },
+  drop: { spr: 'drop', life: [0.5, 0.9], size: [0.06, 0.05], speed: [1, 2.4], grav: 8, drag: 0.3, spread: 0.6 },
+  splash: { spr: 'drop', life: [0.35, 0.6], size: [0.07, 0.04], speed: [1.6, 3], grav: 9, drag: 0.5, spread: 1 },
+  leaf: { spr: 'leaf', life: [1.0, 1.6], size: [0.08, 0.08], speed: [0.6, 1.4], grav: 0.9, drag: 2, spread: 1, flutter: true },
+  petal: { spr: 'petal', life: [1.2, 1.8], size: [0.06, 0.06], speed: [0.5, 1.2], grav: 0.6, drag: 2, spread: 1, flutter: true },
+  heart: { spr: 'heart', life: [0.9, 1.2], size: [0.06, 0.14], speed: [0.5, 0.8], grav: -0.6, drag: 1, spread: 0.4, wob: 1, fade: true },
+  rock: { spr: 'rock', life: [0.6, 1.0], size: [0.08, 0.08], speed: [1.5, 3], grav: 9, drag: 0.3, spread: 0.8, spin: 6 },
+  bolt: { spr: 'bolt', glow: true, life: [0.08, 0.16], size: [0.25, 0.3], speed: [0, 0.4], grav: 0, spread: 1, spin: 3 },
+  ghostfire: { spr: 'ghostfire', glow: true, life: [0.5, 0.8], size: [0.14, 0.06], speed: [0.2, 0.6], grav: -1.2, drag: 1.5, spread: 0.5, fps: 12, wob: 1 },
+  dust: { spr: 'dust', life: [0.5, 0.9], size: [0.1, 0.32], speed: [0.4, 1.0], grav: -0.2, drag: 2.5, spread: 1, fade: true, spin: 0.5 },
+  sparkle: { spr: 'sparkle', glow: true, life: [0.4, 0.8], size: [0.08, 0.02], speed: [0.1, 0.5], grav: 0, drag: 1, spread: 1, fade: true },
+  shard: { spr: 'shard', life: [0.5, 0.8], size: [0.05, 0.05], speed: [2, 4], grav: 8, drag: 0.4, spread: 0.7, spin: 9 },
 };
+// a species can add its own particle kind: defineFx('notes_gold', { w, h, frames: [painter, …] | paint, ...preset })
+// preset fields: glow, life [a, b], size [start, end] (m), speed [a, b], grav, drag, spread, fps, tint [[r,g,b], …], fade, spin, wob, pop, flutter
+export function defineFx(kind, o) {
+  if (PRE[kind]) return kind;
+  const S2 = fxSprites(), key = 'x-' + kind, frames = o.frames || [o.paint];
+  S2[key] = frames.map((fn, i) => sprite('fx-' + kind + i, o.w, o.h, (p, w, h) => fn(p, w, h, i), { ppm: 40 }));
+  PRE[kind] = { life: [0.5, 1], size: [0.1, 0.1], speed: [0.5, 1], grav: 0, ...o, spr: key };
+  return kind;
+}
 
 const DITHER = `float bayer4(vec2 p) { int x = int(mod(p.x, 4.0)), y = int(mod(p.y, 4.0)); int i = x + y * 4;
   float m[16]; m[0]=0.;m[1]=8.;m[2]=2.;m[3]=10.;m[4]=12.;m[5]=4.;m[6]=14.;m[7]=6.;m[8]=3.;m[9]=11.;m[10]=1.;m[11]=9.;m[12]=15.;m[13]=7.;m[14]=13.;m[15]=5.;
@@ -166,6 +202,7 @@ export class FX {
     }
   }
   update(dt) {
+    atlasTexture();                     // uploads sprites added since (defineFx)
     const L = this.L; let ng = 0, ns = 0;
     for (let i = this.ps.length - 1; i >= 0; i--) {
       const q = this.ps[i], P = q.P; q.age += dt;

@@ -317,8 +317,8 @@ export const anim = {
       P.burst(0.5, 'anger', 'head', [-6, 23, 3], {}).burst(0.62, 'anger', 'head', [6, 22, 2], {});
       P.burst(0.52, 'tear', 'head', [-4, 15, 6.4], { n: 8, dir: [-1, 0.9, 0.2], speed: 2.2 }).burst(0.52, 'tear', 'head', [4, 15, 6.4], { n: 8, dir: [1, 0.9, 0.2], speed: 2.2 });
     } },
-    // special attack: swig, puff up, then a jet of flame
-    breath: { len: 1.8, next: 'idle', f(P, t) {
+    // special (fire): swig, puff up, then a jet of flame
+    special: { len: 1.8, next: 'idle', f(P, t) {
       const lift = seg(t, 0.0, 0.24, E.out3) - seg(t, 0.46, 0.62, E.inout);
       hot(P, t, 1); P.lookW = 1 - lift;
       drink(P, lift);
@@ -331,8 +331,8 @@ export const anim = {
       if (t > 0.78 && t < 1.42) P.stream('breath', 'head', MOUTH, { rate: 140, dir: [0, 0.05, 1], spread: 0.16 });
       if (t > 0.8 && t < 1.4) P.stream('smoke', 'head', [0, 23, -1], { rate: 6 });
     } },
-    // physical attack: rear back, lunge, peck
-    peck: { len: 0.95, next: 'idle', f(P, t) {
+    // attack (physical): rear back, lunge, peck
+    attack: { len: 0.95, next: 'idle', f(P, t) {
       hot(P, t, 0.8);
       const back = seg(t, 0, 0.26, E.out) * (1 - seg(t, 0.26, 0.36, E.in)), hit = seg(t, 0.28, 0.4, E.in3) * (1 - seg(t, 0.5, 0.9, E.inout));
       P.pos('root', 0, 0, -2 * back + 5.5 * hit).rot('body', -10 * back + 18 * hit, 0, 0).rot('head', -14 * back + 22 * hit, 0, 0).rot('jaw', 20 * back);
