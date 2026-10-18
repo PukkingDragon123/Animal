@@ -69,7 +69,7 @@ export class Story2D {
     w.avatar = new MonSprite(st.id, { scale: 0.58, pitch: 24, yaw: 0 });
     w.me.src = () => w.avatar.frame();
     w.avatar.play('happy', { restart: true });
-    app.audio.sfx('evolve');
+    app.audio.sfx('evolve_burst');
     app.ui.toast(`${SPECIES[st.id].name} joined you!`, { icon: 'star', color: st.color });
     await app.wait(900);
     await app.say('Coach Gonda', `${SPECIES[st.id].name}! Ha! I knew it. Look at that face — it picked you right back.`, 'Two more things. This bracelet carries a soul stone. When your heart and your Tokonmon\'s heart beat together, the stone lets you BOND.', 'Bonded, you move as one: no delay on your orders, special gimmicks, even ultimates. Ultimates burn the bond out, though, so time them well.', 'And this phone is your whole life now: team, bag, map, your friends, League rank. Tap the phone icon any time.');
@@ -125,7 +125,7 @@ class TitleScreen {
     if (ui.button(bx, by, bw, 18, 'New Game', { icon: 'star', color: T.cyan, hotkey: this.can ? 'n' : 'Enter' })) this.done('new');
     ui.text('v2 · HD-2D edition', W - 4, H - 10, T.dim, { align: 'right', mini: true });
   }
-  done(v) { if (this.picked) return; this.picked = true; this.app.audio.sfx && this.app.audio.sfx('ui_ok'); Object.assign(this.app.post.opts, { night: 0, bloom: 0.45, threshold: 0.8, rays: 0.06 }); this.resolve(v); }
+  done(v) { if (this.picked) return; this.picked = true; this.app.audio.sfx && this.app.audio.sfx('ui_confirm'); Object.assign(this.app.post.opts, { night: 0, bloom: 0.45, threshold: 0.8, rays: 0.06 }); this.resolve(v); }
 }
 class BlackCard { render() { return null; } drawUI(ui) { ui.rect(0, 0, ui.w, ui.h, '#0c0814'); } }
 

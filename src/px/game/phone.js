@@ -22,7 +22,7 @@ const ELC = { pyro: '#ff7a3a', hydro: '#5ab8f0', bio: '#7ce07a', geo: '#d8a060',
 export class Phone {
   constructor(app) { this.app = app; this.open = false; this.t = 0; this.view = 'home'; this.sel = 0; this.scroll = 0; this.minis = new Map(); }
   toggle() { if (this.open) this.close(); else { this.open = true; this.t = 0; this.view = 'home'; this.app.audio.sfx('ui_open'); this.app.world.control = false; } }
-  close() { this.open = false; this.app.world.control = true; this.app.audio.sfx('ui_close'); }
+  close() { this.open = false; this.app.world.control = true; this.app.audio.sfx('ui_back'); }
   mini(species) { let m = this.minis.get(species); if (!m) { m = new MonSprite(species, { scale: 0.34, pitch: 16, yaw: -24 }); this.minis.set(species, m); } return m; }
 
   draw(ui, dt) {

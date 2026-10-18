@@ -31,6 +31,8 @@ export class World2D {
     for (const n of built.npcs || []) this.addNpc(n);
     this.cam(true);
     this.path = null; this.hotNear = null;
+    if (M.music && app.audio.music) app.audio.music(M.music, { fade: 1.2 });
+    if (M.ambience && app.audio.ambience) app.audio.ambience(M.ambience);
     if (M.onEnter) M.onEnter(this);
     return this;
   }
