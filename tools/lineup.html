@@ -15,7 +15,7 @@ import { cast, castVox } from '../src/vx/people/cast.js';
 const q = new URLSearchParams(location.search), num = (k, d) => (q.has(k) ? +q.get(k) : d);
 const W = num('w', 1600), H = num('h', 720);
 const defs = [];
-for (const n of (q.get('people') || '').split(',').filter(Boolean)) defs.push(q.get('box') ? cast(n) : { vox: n });
+for (const n of (q.get('people') || '').split(',').filter(Boolean)) defs.push(q.get('vox') ? { vox: n } : cast(n));
 for (const n of (q.get('mons') || '').split(',').filter(Boolean)) defs.push((await import('../src/vx/mons/' + n + '.js')).def);
 const st = new VxStage({ fov: num('fov', 28), shadowSize: 2048 });
 const fw = new Fine(160, 8, 96, 16), k = new Kit(fw);

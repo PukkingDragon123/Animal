@@ -7,16 +7,16 @@
 <link rel="icon" type="image/svg+xml" href="./favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DotGothic16&display=swap" rel="stylesheet">
-<title>Tokonmon — Osaka 2050</title>
+<title>Tokonmon — San Francisco</title>
 <style>
 html,body{margin:0;height:100%;overflow:hidden;background:#0c0814;touch-action:none;user-select:none;-webkit-user-select:none;overscroll-behavior:none}
-canvas{position:fixed;left:0;top:0;display:block;image-rendering:pixelated;image-rendering:crisp-edges}
-#ui{z-index:2;touch-action:none;cursor:pointer}
+canvas{position:fixed;left:0;top:0;display:block}
+#ui{z-index:2;touch-action:none;cursor:pointer;image-rendering:pixelated;image-rendering:crisp-edges}
 #err{position:fixed;left:0;top:0;z-index:9;display:none;color:#ff7a7a;background:#000c;font:12px monospace;white-space:pre-wrap;padding:8px;max-height:60vh;overflow:auto}
 </style></head>
-<body><canvas id="gl"></canvas><canvas id="ui"></canvas><div id="err"></div>
+<body><canvas id="view"></canvas><canvas id="ui"></canvas><div id="err"></div>
 <script type="module">
-import { App } from './src/px/game/app.js';
-const app = new App();
+import { VxApp } from './src/vx/game/app.js';
+const app = new VxApp();
 app.boot().catch((e) => { console.error(e); const el = document.getElementById('err'); el.style.display = 'block'; el.textContent = 'Boot failed: ' + (e.stack || e); });
 </script></body></html>

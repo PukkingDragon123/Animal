@@ -27,7 +27,7 @@ for (const s of steps) {
   if (s.hold) { await page.keyboard.down(s.hold); await page.waitForTimeout(s.ms || 500); await page.keyboard.up(s.hold); }
   if (s.click) await page.mouse.click(s.click[0], s.click[1]);
   if (s.eval) { const r = await page.evaluate(s.eval); if (r !== undefined) logs.push('[eval] ' + JSON.stringify(r)); }
-  if (s.shot) await page.screenshot({ path: `${out}_${String(++n).padStart(2, '0')}_${s.shot}.png` });
+  if (s.shot) await page.screenshot({ path: `${out}_${String(++n).padStart(2, '0')}_${s.shot}.png`, timeout: 180000 });
 }
 const el = await page.$('#err'); if (el) { const t = await el.textContent(); if (t) logs.push('[#err] ' + t); }
 console.log(logs.join('\n')); await browser.close(); server.close();
