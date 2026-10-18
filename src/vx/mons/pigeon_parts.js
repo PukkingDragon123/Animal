@@ -354,63 +354,81 @@ export const cereP = (p, w, h, face) => {
 export const mouthP = (p, w, h) => { p.rect(0, 0, w, h, '#3a0c18'); p.rect(1, 0, Math.max(1, w - 2), Math.max(1, h - 1), '#5e1424'); };
 export const tongueP = (p, w, h) => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, x === 0 || x === w - 1 ? '#b8405a' : y === 0 ? '#ff9aac' : '#e86a82'); };
 
-// ---------------------------------------------------------------- eyes
-// Kawaii eyes in the recent-generation Pokémon style: a big rounded eye with a 1-texel dark outline, filled
-// mostly with a near-black iris tinted by the accent colour, a lighter accent gradient in its lower third, one
-// big white catchlight high on the outer side and a 1-texel glint low on the inner side. Expressions keep the
-// style: a flat dark lid line cutting the top, tilted in (glare / cool / squint), ^ ^ (happy), a soft curve
-// (closed), > < (hurt), swirls or X (faint). Canvas W × H, outer corner at x = 0. o.flick: one tiny lash flick
-export function kawaiiEyes(o = {}) {
-  const W = o.w || 7, H = o.h || 8, ink = o.ink || C.ink;
-  const fill = o.fill || ['#2a1218', '#3a181e'], acc = o.accent || ['#5a1c14', '#a43c1c', '#f07a30'];
-  const inM = (x, y) => { if (x < 0 || y < 0 || x >= W || y >= H) return false; const X = (x + 0.5 - W / 2) / (W / 2), Y = (y + 0.5 - H / 2) / (H / 2); return X * X + Y * Y <= 1.12; };
-  // the full eye's rows (the accent gradient and the catchlight belong to the eye, a lid only trims its top)
-  let T0 = H, B0 = 0; for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (inM(x, y)) { T0 = Math.min(T0, y); B0 = Math.max(B0, y); }
-  const eye = (lid, flick) => (p) => {
-    const vis = (x, y) => inM(x, y) && (!lid || y + 0.5 >= lid(x + 0.5));
-    let top = H; for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (vis(x, y)) top = Math.min(top, y);
-    const inner = new Set();
+// ---------------------------------------------------------------- eyes and hair
+// Eyes come from the shared Gen 8–9 kit (eyes.js → eyeRig): each form of the line has its own design, set up
+// in its model file at the positions below. Hair: a little curled quiff of feathers (stage 1).
+import { eyeArt, chunky } from './eyes.js';
+export { eyeRig } from './eyes.js';
+// Pigeon eyes, Cobblemon-style: a few chunky face pixels — a small round coloured ring round a dark pupil, one
+// white glint — varied per form. o: { grid: [w, h] face pixels, ring: [main, lower], sclera (a white eye round a
+// small iris), pupil: 'round' (2×2) | 'slit' | 'dot' | 'none', shape: 'round' | 'sharp' (outer top corner cut,
+// fierce) | 'heavy' (a flat lid across the top) | 'almond', lash, core (the centre colour when there's no pupil) }
+const INK2 = '#1a0c14';
+function pgEye(o, mode) {
+  const [W, H] = o.grid || [5, 5], ring = o.ring || ['#ff8a26', '#e0601c'], sh = o.shape || 'round';
+  return (p) => {
+    const cx = (W - 1) / 2, cy = (H - 1) / 2;
+    const inE = (x, y) => {
+      if (x < 0 || y < 0 || x >= W || y >= H) return false;
+      const corner = (x === 0 || x === W - 1) && (y === 0 || y === H - 1);
+      if (corner) return false;
+      if (sh === 'sharp' && y === 0 && x < Math.ceil(W / 2)) return false;
+      if (sh === 'almond' && (y === 0 || y === H - 1) && (x <= 1 || x >= W - 2)) return false;
+      return true;
+    };
+    // lids (rows above the line are hidden; the topmost visible pixel of each column is drawn as the lid line)
+    const lidY = (x) => {
+      const u = x / Math.max(1, W - 1);                 // 0 outer → 1 inner
+      if (mode === 'angry') return 0.6 + u * H * 0.45;
+      if (mode === 'sad') return 0.6 + (1 - u) * H * 0.45;
+      if (mode === 'sleepy' || mode === 'smug') return H * 0.42;
+      if (sh === 'heavy') return 1;
+      return -1;
+    };
+    const vis = (x, y) => inE(x, y) && y >= Math.floor(lidY(x));
+    const pupX = Math.round(cx + (o.px ?? 0.5) + (mode === 'smug' ? 0.6 : 0)), pupY = Math.round(cy + (o.py ?? 0));
     for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
       if (!vis(x, y)) continue;
-      if (!vis(x - 1, y) || !vis(x + 1, y) || !vis(x, y - 1) || !vis(x, y + 1)) { p.px(x, y, ink); continue; }
-      const t = (y - T0 - 1) / Math.max(1, B0 - T0 - 2);
-      p.px(x, y, t >= 0.95 ? acc[2] : t >= 0.75 ? acc[1] : t >= 0.6 ? acc[0] : y - T0 <= 1 ? fill[1] : fill[0]);
-      inner.add(x + ',' + y);
+      let c = y > cy + 0.6 ? ring[1] : ring[0];
+      if (o.sclera) { const d = Math.max(Math.abs(x - pupX + 0.5), Math.abs(y - pupY + 0.5)); c = d <= 1.0 ? (y > pupY ? ring[1] : ring[0]) : '#ffffff'; }
+      const pu = o.pupil || 'round';
+      if (pu === 'round' && (x === pupX || x === pupX - 1) && (y === pupY || y === pupY - 1)) c = INK2;
+      if (pu === 'dot' && x === pupX && y === pupY) c = INK2;
+      if (pu === 'slit' && x === pupX && Math.abs(y - pupY) <= 1) c = INK2;
+      if (pu === 'none' && o.core && Math.abs(x - cx) <= 0.6 && Math.abs(y - cy) <= 0.6) c = o.core;
+      if (mode === 'teary' && y === H - 2) c = '#8ad8ff';
+      p.px(x, y, c);
     }
-    if (lid) for (let x = 1; x < W - 1; x++) { let y0 = -1; for (let y = 0; y < H; y++) if (vis(x, y)) { y0 = y; break; } if (y0 >= 0 && y0 + 1 < H && vis(x, y0 + 1)) p.px(x, y0 + 1, ink); }
-    // the catchlight: 2 × 2 high on the outer side (a lid trims it); the glint low on the inner side
-    const free = (x, y) => inner.has(x + ',' + y) && !(lid && y <= lid(x + 0.5) + 1);
-    let cy = T0 + 1; while (cy < B0 - 2 && !(free(1, cy) && free(2, cy))) cy++;
-    for (const [x, y] of [[1, cy], [2, cy], [1, cy + 1], [2, cy + 1]]) if (free(x, y) && (!lid || y < B0 - 2)) p.px(x, y, '#ffffff');
-    if (!lid) { for (let y = B0 - 1; y > T0; y--) if (free(W - 2, y)) { p.px(W - 2, y, '#ffffff'); break; } }
-    if (flick) p.px(0, Math.max(0, top), ink);
-  };
-  const line = (p, pts) => { for (const [x, y] of pts) p.px(x, y, ink); };
-  const c = (W - 1) / 2;
-  return {
-    open: eye(null, o.flick),
-    glare: eye((x) => 0.8 + (x / W) * (H * 0.26), o.flick),
-    cool: eye((x) => H * 0.3 + (x / W) * 0.5, o.flick),
-    squint: eye((x) => H * 0.36 + (x / W) * (H * 0.22), false),
-    happy: (p) => { const pts = []; for (let x = 0; x < W; x++) { const u = (x - c) / c, y = Math.round(H * 0.3 + Math.abs(u) ** 1.2 * H * 0.42); pts.push([x, y], [x, y + 1]); } line(p, pts); },
-    closed: (p) => { const pts = []; for (let x = 0; x < W; x++) { const u = (x - c) / c, y = Math.round(H * 0.42 + (1 - u * u) * H * 0.22); pts.push([x, y]); if (x > 0 && x < W - 1) pts.push([x, y + 1]); } line(p, pts); if (o.flick) p.px(0, Math.round(H * 0.42) - 1, ink); },
-    hurt: (p) => { const pts = []; const m = Math.floor(H / 2); for (let i = 0; i <= m; i++) { const x = Math.round(0.5 + (i / m) * (W - 2.5)); pts.push([x, i + 0.0], [x, H - 1 - i]); pts.push([x + 1, i], [x + 1, H - 1 - i]); } line(p, pts.map(([x, y]) => [x, Math.round(y)])); },
-    x: (p) => { const pts = []; for (let i = 0; i < H; i++) { const x = Math.round((i / (H - 1)) * (W - 1)); pts.push([x, i], [W - 1 - x, i]); } line(p, pts); },
-    swirl: (p) => { for (let a = 0; a < 12; a += 0.15) { const r = a * 0.26, x = Math.round(c + Math.cos(a) * r * (W / H) * 1.05), y = Math.round((H - 1) / 2 + Math.sin(a) * r); if (r < H / 2) p.px(x, y, ink); } },
+    // the lid line on the top edge of what shows
+    if (sh === 'heavy' || mode === 'angry' || mode === 'sad' || mode === 'sleepy' || mode === 'smug' || sh === 'sharp')
+      for (let x = 0; x < W; x++) for (let y = 0; y < H; y++) if (vis(x, y)) { p.px(x, y, INK2); break; }
+    // one glint, top-outer of the pupil
+    const gx = (o.pupil || 'round') === 'none' ? Math.round(cx) - 1 : pupX - 2, gy = pupY - 1;
+    if (vis(gx, gy) && !(sh === 'heavy' && gy <= 1)) p.px(gx, gy, '#ffffff');
+    if (o.lash) { for (let y = 0; y < H; y++) if (vis(0, y)) { p.px(0, Math.max(0, y - 1), INK2); break; } }
   };
 }
-// both eyes as expression planes on the front face: the right eye (−x) at −(x0 + w) … −x0, the left mirrored.
-// o: { x0, y (bottom), z (front face), w, h (units), def }
-export function eyeCubes(EYES, o) {
-  const out = [];
-  for (const [k, fn] of Object.entries(EYES)) {
-    const x = { id: 'eye-' + k, hide: k !== o.def };
-    out.push(P([-o.x0 - o.w, o.y, o.z + 0.07], [o.w, o.h, 0], fn, { plane: 'z', ...x }));
-    out.push(P([o.x0, o.y, o.z + 0.07], [o.w, o.h, 0], fn, { plane: 'z', mirror: true, ...x }));
-  }
-  return out;
+const PG_OWN = ['open', 'angry', 'sad', 'sleepy', 'smug', 'teary'];
+const PG_KIT = ['closed', 'happy', 'shut', 'x', 'swirl', 'shock', 'wide', 'heart', 'star'];
+// the rig: bones eyeR / eyeL (pivots at the eye centres, for squash, stretch and darts) and the face slot
+export function pigeonEyeRig(o) {
+  const { at, size, parent = 'head', chunk = 2 } = o, [x, y, z] = at, [w, h] = size, states = [...PG_OWN, ...PG_KIT];
+  const tex = (s) => (PG_OWN.includes(s) ? chunky(pgEye(o, s), chunk) : eyeArt(s, { style: 'gen9', chunk, line: INK2 }));
+  const mk = (side) => states.map((s) => ({ o: side < 0 ? [x - w / 2, y - h / 2, z] : [-x - w / 2, y - h / 2, z], s: [w, h, 0], plane: 'z', mirror: side > 0, tex: tex(s), glow: !!o.glow || s === 'heart' || s === 'star', id: (side < 0 ? 'eR-' : 'eL-') + s, hide: s !== 'open', outline: false }));
+  const slot = { default: 'open', states: Object.fromEntries(states.map((s) => [s, ['eR-' + s, 'eL-' + s]])) };
+  slot.states.wink = ['eR-open', 'eL-happy'];
+  return { bones: [{ name: 'eyeR', parent, pivot: [x, y, z], cubes: mk(-1) }, { name: 'eyeL', parent, pivot: [-x, y, z], cubes: mk(1) }], slot };
 }
-export const eyeFaces = (EYES, def) => ({ default: def, states: Object.fromEntries(Object.keys(EYES).map((k) => [k, ['eye-' + k]])) });
+// a quiff: three stacked feather boxes curling up and forward from (x, y, z), painted in the head's colours
+export function quiffCubes(base, cols, k = 1) {
+  const [x, y, z] = base, tex = plumage({ O: [x, y + 1.0 * k, z], R: [1.6 * k, 1.6 * k, 2.0 * k], cols, S: 5, RH: 3 });
+  return [
+    P([x - 1.2 * k, y, z - 1.4 * k], [2.4 * k, 1.2 * k, 1.8 * k], tex),
+    P([x - 1.0 * k, y + 0.9 * k, z - 0.8 * k], [2.0 * k, 1.1 * k, 1.9 * k], tex),
+    P([x - 0.8 * k, y + 1.5 * k, z + 0.6 * k], [1.6 * k, 0.9 * k, 1.2 * k], tex),
+    P([x - 0.6 * k, y + 0.8 * k, z + 1.4 * k], [1.2 * k, 1.0 * k, 0.7 * k], tex),
+  ];
+}
 
 // ---------------------------------------------------------------- metal
 // polished metal: bright sky above a dark horizon band, the ground reflected below; `from`/`to` = the
@@ -643,7 +661,7 @@ export const S1 = {
   EC: [0, 9.8, -1.2], R: [6.3, 5.8, 9.8], pitch: -20,
   neck: { pivot: [0, 15.0, 3.0], O: [0, 16.8, 3.0], R: [4.8, 4.0, 4.2], yTop: 20.2, yBot: 13.6 },
   head: { pivot: [0, 19.6, 3.2], O: [0, 22.4, 3.0], R: [4.4, 4.0, 4.0] },
-  eyes: { x0: 1.3, y: 21.4, z: 6.8, w: 7 / 3, h: 8 / 3 },
+  eyeAt: [-2.35, 22.7, 6.87], eyeSize: [2.9, 3.0],
   mouth: [0, 20.4, 9.7], shoulder: [6.0, 14.6, 3.6],
 };
 export const eggBox = (o, s, tex, x = {}) => P(o, s, tex, { pivot: S1.EC, rot: [S1.pitch, 0, 0], ...x });
@@ -670,7 +688,6 @@ export function stage1(o = {}) {
   const bodyP = plumage({ O: S1.EC, R: S1.R, cols: M.slate, region });
   const neckPt = neckP({ ...S1.neck, cols: M.head, below: M.slate, ir: M.ir, region: o.neckRegion });
   const headPt = plumage({ O: S1.head.O, R: S1.head.R, cols: M.head, S: 6, RH: 4, region: o.headRegion });
-  const EYES = o.eyes || kawaiiEyes();
   const [sx, sy, sz] = S1.shoulder;
   const leg = (s) => [P([s * 2.7 - 0.55, 0.3, 0.65], [1.1, 4.0, 1.1], legP), P([s * 2.7 - 1.45, 3.1, -0.25], [2.9, 2.3, 2.9], thighP(M.belly))];
   const bones = [
@@ -703,7 +720,6 @@ export function stage1(o = {}) {
       P([-0.8, 21.1, 6.7], [1.6, 0.9, 1.5], cereP),
       P([-0.7, 20.4, 6.8], [1.4, 0.95, 2.9], beakP(6.8, 9.7)),
       P([-0.55, 20.05, 9.3], [1.1, 0.85, 0.85], beakP(6.8, 9.7), { pivot: [0, 20.8, 9.6], rot: [18, 0, 0] }),
-      ...eyeCubes(EYES, { ...S1.eyes, def: o.eyeDef || 'open' }),
       ...(o.headExtra || []),
     ] },
     { name: 'jaw', parent: 'head', pivot: [0, 20.4, 6.9], cubes: [
@@ -729,7 +745,7 @@ export const S2 = {
   EC: [0, 15.2, -0.4], R: [6.2, 6.4, 9.0], pitch: -48,
   neck: { pivot: [0, 20.8, 3.8], O: [0, 23.2, 4.2], R: [4.6, 4.4, 4.0], yTop: 26.6, yBot: 19.6 },
   head: { pivot: [0, 26.2, 4.4], O: [0, 28.9, 4.4], R: [4.6, 4.2, 4.2] },
-  eyes: { x0: 1.35, y: 28.0, z: 8.0, w: 7 / 3, h: 8 / 3 },
+  eyeAt: [-2.4, 29.2, 8.07], eyeSize: [3.0, 3.1],
   mouth: [0, 26.9, 11.0], bill: [0, 27.0, 10.2], shoulder: [6.0, 20.6, 2.8],
 };
 const eggToWorld = (q, EC, pitch) => { const a = pitch * D2R, y = q[1] - EC[1], z = q[2] - EC[2]; return [q[0], EC[1] + y * Math.cos(a) - z * Math.sin(a), EC[2] + y * Math.sin(a) + z * Math.cos(a)]; };
@@ -815,7 +831,6 @@ export function stage2(o = {}) {
   const bodyP = plumage({ O: EC, R, cols: M.slate, region: teeRegion({ below }) });
   const neckPt = neckP({ ...S2.neck, cols: M.head, below: M.slate, ir: M.ir });
   const headPt = plumage({ O: S2.head.O, R: S2.head.R, cols: M.head, S: 6, RH: 4 });
-  const EYES = o.eyes || kawaiiEyes();
   const leg = (s) => [P([s * 3.0 - 0.65, 0.3, 1.0], [1.3, 6.4, 1.3], legP), P([s * 3.0 - 1.7, 5.8, -0.2], [3.4, 3.2, 3.2], thighP(M.belly))];
   const arm = (s) => {
     const x = s * 6.0, seg = wingSegP({ ...M, base: [x, 21.0, 5.2], dir: [0, -1, 0], len: 9.4, cdir: [0, 0, -1], chord: 5.0, kind: 'arm', sleeve: teeSleeve(0.38), bar1: 0.56, bar2: 0.74, barW: 0.08 });
@@ -848,7 +863,6 @@ export function stage2(o = {}) {
       P([-0.85, 27.6, 7.9], [1.7, 0.95, 1.6], cereP),
       P([-0.75, 26.9, 8.0], [1.5, 1.0, 3.1], beakP(8.0, 11.1)),
       P([-0.6, 26.55, 10.5], [1.2, 0.9, 0.9], beakP(8.0, 11.1), { pivot: [0, 27.3, 10.8], rot: [18, 0, 0] }),
-      ...eyeCubes(EYES, { ...S2.eyes, def: o.eyeDef || 'glare' }),
       ...(o.headExtra || []),
     ] },
     { name: 'jaw', parent: 'head', pivot: [0, 26.9, 8.1], cubes: [
@@ -867,6 +881,7 @@ export function stage2(o = {}) {
 // o: { prop: 'gun' | 'rose', MZ (muzzle, gun frame), BLOOM (bloom centre, rose frame), sway (♀ swings her hips more) }
 const CRESTS = ['crest0', 'crest1', 'crest2', 'crest3', 'crest4'];
 const flare = (P, k) => CRESTS.forEach((c, i) => P.rot(c, -10 * k * (1 + i * 0.2), 0, 0).scl(c, 1, 1 + 0.25 * k, 1));
+const ES = (P, x, y = x) => P.scl('eyeR', x, y, 1).scl('eyeL', x, y, 1);
 export function jungeonClips(o) {
   const gun = o.prop === 'gun', PB = gun ? 'gun' : 'rose', TIP = gun ? o.MZ : o.BLOOM, sw = o.sway ?? 1;
   const L = 8.0, pl = (P, dy) => plant(P, dy, L);
@@ -884,7 +899,8 @@ export function jungeonClips(o) {
       P.rot('head', 12 * nod - 3, s * 6, s * 4 * sw).pos('neck', 0, -0.4 * nod, 0.6 * nod);
       P.rot('wingR', 0, 0, -3 - 4 * Math.max(0, s)).rot('wingL', 0, 0, 3 + 4 * Math.max(0, -s)).rot('handR', 4 * nod, 0, 0).rot('handL', 4 * nod, 0, 0);
       P.pos('footR', 0, 0.9 * bump(ph, 0.45, 0.75), 0).rot('footR', -14 * bump(ph, 0.45, 0.75), 0, 0);
-      P.rot('tail', 0, -s * 10 * sw, 0); prop(P, t);
+      P.rot('tail', 0, -s * 10 * sw, 0); prop(P, t); ES(P, 1 + 0.06 * nod, 1 - 0.14 * nod);
+      const dart = Math.round(wave(t, 1 / 1.6, 0.5)) * 0.25; P.pos('eyeR', dart, 0, 0).pos('eyeL', dart, 0, 0);
       if (gun) P.rot('jaw', 3 + 3 * Math.max(0, wave(t, 1.3)));
     } },
     // the swagger: a loose head-bob strut, shoulders rolling, wings swinging like arms
@@ -902,7 +918,7 @@ export function jungeonClips(o) {
       P.rot('head', 18 * crouch - 18 * up + 34 * bang, 0, 0).rot('body', 10 * crouch - 8 * up + 10 * bang, 0, 0).pos('neck', 0, 0, 0.8 * bang);
       P.rot('wingR', -30 * up, 0, -70 * up).rot('wingL', -30 * up, 0, 70 * up).rot('handR', 0, 0, -20 * up).rot('handL', 0, 0, 20 * up);
       P.rot('jaw', 6 * crouch + 26 * up); flare(P, up);
-      P.face('eyes', up > 0.3 ? 'glare' : undefined); P.lookW = 1 - up;
+      P.face('eyes', up > 0.3 ? 'angry' : crouch > 0.3 ? 'shut' : undefined); P.scl('eyeR', 1, 1 + 0.25 * up, 1).scl('eyeL', 1, 1 + 0.25 * up, 1); P.lookW = 1 - up;
       P.burst(0.5, 'anger', 'head', [5, 34, 4], {}).burst(0.55, 'sparkle', 'head', [0, 36, 3], { n: 6 }).burst(0.86, 'note', 'head', [-5, 34, 3], {}).burst(1.16, 'note', 'head', [5, 34, 3], {});
       if (!gun) P.burst(0.6, 'pg_petal', 'rose', TIP, { n: 10 });
     } },
@@ -914,7 +930,8 @@ export function jungeonClips(o) {
       P.rot('head', -12 * wind + 18 * hit, 42 * wind - 52 * hit, 10 * wind - 14 * hit).rot('body', -8 * wind + 14 * hit, 22 * wind - 26 * hit, 0);
       P.rot('wingR', -20 * wind, 0, -26 * wind + 10 * hit).rot('wingL', 20 * hit, 0, 26 * hit);
       const dy = -1.2 * wind + wob(t, 0.42, -0.9, 3, 6); P.pos('body', 0, dy, 0).sq('body', -0.06 * wind + wob(t, 0.42, 0.06, 4, 7)); pl(P, dy);
-      flare(P, hit); P.face('eyes', t > 0.05 && t < 0.8 ? 'squint' : undefined);
+      flare(P, hit); P.face('eyes', t > 0.05 && t < 0.32 ? 'angry' : t < 0.8 ? 'shut' : undefined); ES(P, 1 + 0.15 * hit, 1 - 0.2 * wind);
+      P.burst(0.1, 'anger', 'head', [5, 34, 4], {});
       P.burst(0.42, 'spark', PB, TIP, { scale: 1.3 }).burst(0.42, 'star', PB, TIP, { n: 5 });
       if (!gun) P.burst(0.42, 'pg_petal', 'rose', TIP, { n: 8, speed: 1.6 });
     } },
@@ -924,7 +941,7 @@ export function jungeonClips(o) {
       len: 2.0, next: 'idle', f(P, t) {
         const aim = seg(t, 0.05, 0.4, E.back) * (1 - seg(t, 1.5, 1.9, E.inout));
         P.rot('head', 6 * aim, 18 * aim, -6 * aim).rot('body', 0, 10 * aim, 0).rot('wingR', -10 * aim, 0, -16 * aim);
-        P.face('eyes', t > 0.3 && t < 0.76 ? 'squint' : undefined);
+        P.face('eyes', t > 0.3 && t < 0.74 ? 'angry' : t < 0.95 ? 'shock' : t < 1.7 ? 'sleepy' : undefined); ES(P, 1 + 0.2 * bump(t, 0.74, 0.95), 1 - 0.3 * seg(t, 0.4, 0.7) * (1 - seg(t, 0.72, 0.76)) + 0.35 * bump(t, 0.74, 0.95));
         const kick = seg(t, 0.74, 0.78, E.out) * (1 - seg(t, 0.78, 1.2, E.inout));
         P.rot('head', -30 * kick, 0, 0).rot('body', -8 * kick, 0, 0).pos('body', 0, 0.4 * kick, -1.6 * kick).sq('body', wob(t, 0.76, 0.05, 4, 6)); flare(P, kick);
         P.burst(0.75, 'pg_flash', 'gun', TIP, {}).burst(0.75, 'ring', 'gun', TIP, { scale: 1.4 }).burst(0.75, 'spark', 'gun', TIP, { scale: 1.6 });
@@ -939,7 +956,7 @@ export function jungeonClips(o) {
         const out = seg(t, 0, 0.2, E.out) * (1 - seg(t, 1.25, 1.4)); P.rot('wingR', 0, 0, -60 * out).rot('wingL', 0, 0, 60 * out).pos('footL', 0, 1.6 * out, 0);
         const fling = seg(t, 1.25, 1.36, E.out) * (1 - seg(t, 1.6, 2.0, E.inout));
         P.rot('head', 22 * fling, 0, 0).rot('body', 10 * fling, 0, 0).pos('root', 0, 0, 2 * fling); flare(P, out + fling);
-        P.face('eyes', whirl > 0.05 && whirl < 0.95 ? 'closed' : fling > 0.3 ? 'glare' : undefined); P.lookW = 1 - out;
+        P.face('eyes', whirl > 0.05 && whirl < 0.95 ? 'happy' : fling > 0.3 ? 'angry' : t > 1.7 ? 'wink' : undefined); P.lookW = 1 - out; ES(P, 1, 1 + 0.2 * fling);
         if (t > 0.2 && t < 1.3) P.stream('pg_petal', 'root', [0, 8, 0], { rate: 80, dir: [0, 1, 0], speed: 2.4, spread: 1 }).stream('pg_petal', 'rose', TIP, { rate: 30, speed: 1.2 });
         P.burst(1.3, 'pg_petal', 'rose', TIP, { n: 44, dir: [0, 0.2, 1], speed: 3.4, spread: 0.45 }).burst(1.3, 'sparkle', 'rose', TIP, { n: 8, dir: [0, 0, 1], speed: 2 }).burst(1.32, 'ring', 'rose', TIP, { scale: 1.2 });
       } },
@@ -947,7 +964,8 @@ export function jungeonClips(o) {
       const k = seg(t, 0, 0.07, E.out) * (1 - seg(t, 0.2, 0.65, E.inout));
       P.pos('root', 0, 0, -2.6 * k).rot('body', -14 * k + wob(t, 0.2, 4, 3, 6), 0, wave(t, 16) * 4 * k).sq('body', -0.12 * k);
       P.rot('head', -20 * k, 0, 10 * k).scl('neck', 1 + 0.14 * k).rot('wingR', -20 * k, 0, -30 * k).rot('wingL', -20 * k, 0, 30 * k).rot('tail', 16 * k, 0, 0); flare(P, k);
-      P.face('eyes', t < 0.42 ? 'hurt' : undefined);
+      P.face('eyes', t < 0.1 ? 'shock' : t < 0.42 ? 'shut' : undefined); ES(P, 1 + 0.25 * bump(t, 0, 0.12), 1 + 0.4 * bump(t, 0, 0.12) - 0.25 * bump(t, 0.12, 0.42));
+      P.burst(0.05, 'sweat', 'head', [5, 32, 6], { n: 2, dir: [1, 0.6, 0] });
       P.burst(0.02, 'pg_feather', 'body', [0, 16, 2], { n: 8, speed: 1.6 }).burst(0.02, 'spark', 'body', [0, 18, 7], {});
     } },
     // staggers like the end of a long night, knees go, and it topples onto its back-side, legs in the air
@@ -958,7 +976,7 @@ export function jungeonClips(o) {
       P.rot('root', 0, 0, -84 * fall).pos('root', 6.8 * fall, 6.4 * fall, 0);
       P.rot('legR', -24 * fall, 0, 10 * fall).rot('legL', 20 * fall, 0, 16 * fall).rot('wingL', 0, 0, -20 * fall).rot('wingR', -30 * fall, 0, -30 * fall).rot('head', 0, 0, -16 * fall).rot('jaw', 22 * fall);
       CRESTS.forEach((c, i) => P.rot(c, 20 * fall, 0, 0));
-      P.face('eyes', 'swirl'); P.blinkOK = false; P.lookW = 0;
+      P.face('eyes', t < 0.45 ? 'teary' : 'swirl'); ES(P, 1 + 0.15 * bump(t, 0.4, 0.7), 1 + 0.15 * bump(t, 0.4, 0.7)); P.burst(0.3, 'tear', 'head', [-4, 29, 8], { n: 3, dir: [-1, 0.5, 0.5] }); P.blinkOK = false; P.lookW = 0;
       P.burst(0.25, 'star', 'head', [0, 35, 2], { n: 5 }).burst(1.45, 'dust', 'root', [8, 1, 0], { n: 8, spread: 1 }).burst(1.45, 'pg_feather', 'body', [0, 16, 0], { n: 5, speed: 1 });
     } },
     down: { len: 2.4, loop: true, f(P, t) {
@@ -976,7 +994,7 @@ export function jungeonClips(o) {
       P.rot('wingR', -40 * pose + strum * 12, 0, 20 * pose).rot('handR', -40 * pose, 0, strum * 10);
       const bang = Math.max(0, Math.sin(t * Math.PI * 2 * 2)) * pose; P.rot('head', 22 * bang - 6 * pose, 0, 10 * pose).rot('body', 6 * bang, 0, -6 * pose);
       const dy = -0.8 * bang; P.pos('body', 0, dy, 0); pl(P, dy); P.pos('footR', 0, 1.2 * bump(t, 0.3, 0.6) + 1.2 * bump(t, 1.1, 1.4), 0); flare(P, pose);
-      P.face('eyes', pose > 0.4 ? 'happy' : undefined);
+      P.face('eyes', pose > 0.4 ? (t < 1.4 ? 'star' : 'happy') : undefined); ES(P, 1 + 0.12 * pose, 1 + 0.12 * pose - 0.25 * bang);
       P.burst(0.3, 'note', 'head', [5, 34, 4], {}).burst(0.7, 'note', 'head', [-5, 34, 4], {}).burst(1.1, 'note', 'head', [4, 35, 3], {}).burst(1.5, 'sparkle', PB, TIP, { n: 4 });
     } },
     // asleep on its feet: slumped, the head lolling onto its chest, the prop drooping, Zzz
@@ -985,7 +1003,7 @@ export function jungeonClips(o) {
       P.pos('body', 0, dy, 0).rot('body', 8 + br * 2, 0, 0); pl(P, dy);
       P.rot('head', 34 + br * 3, 0, 14).pos('neck', 0, -1.0, 0.6).rot('wingR', 10, 0, 6).rot('wingL', 10, 0, -6).rot('handR', 10, 0, 0).rot('handL', 10, 0, 0);
       P.rot(PB, gun ? 20 : 30, 0, 0); CRESTS.forEach((c) => P.rot(c, 14, 0, 0));
-      P.face('eyes', 'closed'); P.blinkOK = false; P.lookW = 0; P.breathW = 0;
+      P.face('eyes', 'closed'); ES(P, 1.05, 0.8 + 0.06 * br); P.blinkOK = false; P.lookW = 0; P.breathW = 0;
       P.burst(0.5, 'z', 'head', [3, 33, 6], {}).burst(2.0, 'z', 'head', [3, 33, 6], {});
     } },
     // fidget: shifts the revolver to the other corner of its bill like a cigar / twirls the rose by its stem
@@ -993,7 +1011,7 @@ export function jungeonClips(o) {
       if (gun) { const sl = seg(t, 0.3, 0.7, E.inout) * (1 - seg(t, 1.5, 1.9, E.inout)); P.pos('gun', 2.2 * sl, 0, 0).rot('gun', 0, 50 * sl, 0); }
       else P.rot('rose', 360 * seg(t, 0.3, 1.5, E.inout), 0, 0);
       const ch = Math.max(0, Math.sin(t * Math.PI * 2 * 3)) * bump(t, 0.2, 2.0); P.rot('jaw', 8 * ch).rot('head', -4 * ch, 6 * wave(t, 0.5), 0);
-      P.face('eyes', t > 0.8 && t < 1.6 ? 'cool' : undefined);
+      P.face('eyes', t > 0.8 && t < 1.6 ? (gun ? 'sleepy' : 'wink') : undefined); ES(P, 1, 1 - 0.15 * bump(t, 0.75, 1.65));
       if (!gun) P.burst(0.9, 'pg_petal', 'rose', TIP, { n: 2, speed: 0.5 });
     } },
     // fidget: three punk stomps, dust kicked up, the crest shaking
@@ -1004,14 +1022,173 @@ export function jungeonClips(o) {
         P.burst(t0 + 0.27, 'dust', 'foot' + s, [s === 'R' ? -3 : 3, 0.5, 2], { n: 4, dir: [0, 0.3, 1], spread: 1, speed: 0.6, scale: 0.7 });
         P.sq('body', -0.06 * bump(t, t0 + 0.24, t0 + 0.36)); flare(P, bump(t, t0 + 0.24, t0 + 0.4) * 0.6);
       }
-      P.rot('head', 8 + 8 * Math.max(0, wave(t, 2.5)), 0, 0); P.face('eyes', 'glare');
+      P.rot('head', 8 + 8 * Math.max(0, wave(t, 2.5)), 0, 0); P.face('eyes', 'angry'); P.burst(0.2, 'anger', 'head', [-5, 34, 4], {});
     } },
     // fidget: a bow down for a crumb (the prop never leaves its bill)
     peck: { len: 2.0, next: 'idle', f(P, t) {
       const look = seg(t, 0, 0.3, E.out) * (1 - seg(t, 1.45, 1.9, E.inout)), pk = peck(t, 0.55, 0.3) + peck(t, 0.95, 0.3);
       P.rot('body', 34 * look + 8 * pk, 0, 0).rot('head', 26 * look + 20 * pk, 0, 0).pos('neck', 0, -1.6 * look - 1.6 * pk, 1.8 * look + 2 * pk);
       const dy = -1.2 * look; P.pos('body', 0, dy, 0); pl(P, dy); P.rot('tail', -14 * look, 0, 0);
+      P.face('eyes', t < 0.4 ? 'wide' : t > 1.3 && t < 1.8 ? 'happy' : undefined); ES(P, 1 + 0.15 * bump(t, 0.05, 0.45), 1 + 0.25 * bump(t, 0.05, 0.45));
       P.burst(0.68, 'pg_crumb', 'root', [0, 0.4, 13], { n: 6, dir: [0, 1, 0.4] }).burst(1.08, 'pg_crumb', 'root', [0, 0.4, 13], { n: 6, dir: [0, 1, 0.4] });
     } },
+  };
+}
+
+// ---------------------------------------------------------------- drip: the cool extras (tier 2 / 3 accessories)
+// a single-cut electric guitar (original): a sunburst body with cream binding, a black pickguard, two
+// humbuckers and a chrome bridge, a dark fretboard with dot inlays, a black headstock with gold tuners.
+// Built round the body's centre c, the neck along +y, the top facing +z. o: { k, id, hide, finish: [centre, edge] }
+export function guitarCubes(c, o = {}) {
+  const k = o.k || 1, [cx, cy, cz] = c, Q = (x, y, z) => [cx + x * k, cy + y * k, cz + z * k], S = (a, b, d) => [a * k, b * k, d * k];
+  const tag = { id: o.id, hide: !!o.hide }, fin = o.finish || ['#ffc040', '#e0601c', '#8a1e14', '#3a0c0a'];
+  const top = (p, w, h, face) => {
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      if (face === 'south') {
+        const d = Math.hypot((x + 0.5) / w - 0.5, ((y + 0.5) / h - 0.55) * 0.9) * 2;
+        p.px(x, y, d < 0.45 ? fin[0] : d < 0.75 ? fin[1] : d < 0.95 ? fin[2] : fin[3]);
+      } else p.px(x, y, face === 'north' ? '#4a1a10' : (y === 1 || y === h - 2) ? '#f4ead0' : fin[2]);
+    }
+    if (face === 'south' && o.pick !== false) {           // pickguard, pickups, bridge, knobs
+      const m = Math.floor(w / 2);
+      for (let y = Math.floor(h * 0.18); y < h * 0.62; y++) for (let x = m + 1; x < w - 2; x++) if (x - m < (y - h * 0.1) * 0.6) p.px(x, y, '#141018');
+      for (const yy of [Math.floor(h * 0.3), Math.floor(h * 0.5)]) for (let x = m - 2; x <= m + 2; x++) { p.px(x, yy, '#1a1a22'); p.px(x, yy + 1, x % 2 ? '#c8ccd8' : '#1a1a22'); }
+      for (let x = m - 2; x <= m + 2; x++) p.px(x, Math.floor(h * 0.68), '#e8ecf4');
+      p.px(w - 3, h - 4, '#ffd060'); p.px(w - 5, h - 3, '#ffd060'); p.px(w - 3, h - 2, '#ffd060');
+    }
+  };
+  const board = (p, w, h, face) => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, face === 'south' ? (y % 3 === 0 ? '#c8c0b0' : '#2a1a14') : '#5a2a18'); if (face === 'south') for (const y of [4, 8, 12, 16]) if (y < h) p.px(Math.floor(w / 2), y + 1, '#f4f0e8'); };
+  const head = (p, w, h, face) => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, face === 'south' ? (y === 1 && x > 0 && x < w - 1 ? '#ffd060' : '#141018') : '#1e1820'); if (face === 'east' || face === 'west') for (let y = 2; y < h; y += 2) p.px(1, y, '#e0d8b0'); };
+  return [
+    P(Q(-3.0, -3.0, -0.6), S(6.0, 4.2, 1.2), top, tag),
+    P(Q(-2.7, 1.0, -0.6), S(4.0, 2.8, 1.2), top, tag),
+    P(Q(1.1, 1.0, -0.55), S(1.0, 1.4, 1.1), top, tag),
+    P(Q(-0.45, 3.6, -0.3), S(0.9, 8.0, 0.6), board, tag),
+    P(Q(-0.8, 11.5, -0.35), S(1.6, 2.6, 0.5), head, tag),
+    P(Q(-2.0, -2.2, -0.75), S(4.0, 0.5, 0.2), (p, w, h) => p.rect(0, 0, w, h, '#2a1a10'), { ...tag, outline: false }),
+  ];
+}
+// shades pushed up on the head: two lenses on a bridge, temples running back. Built round the bridge point c,
+// facing +z. o: { k, id, hide, kind: 'aviator' | 'heart', lens, frame }
+export function shadesCubes(c, o = {}) {
+  const k = o.k || 1, [cx, cy, cz] = c, Q = (x, y, z) => [cx + x * k, cy + y * k, cz + z * k], S = (a, b, d) => [a * k, b * k, d * k];
+  const tag = { id: o.id, hide: !!o.hide }, frame = o.frame || '#ffd060', heart = o.kind === 'heart';
+  const lens = (p, w, h, face) => {
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const u = (x + 0.5) / w * 2 - 1, v = (y + 0.5) / h;
+      let inL = heart ? ((u * 1.1) ** 2 + ((v - 0.45) * 1.6 - Math.sqrt(Math.abs(u)) * 0.55) ** 2 <= 0.9) : (u * u * 0.9 + (v - 0.42) ** 2 * 3.2 <= 1 + (v > 0.5 ? -0.25 * (1 - Math.abs(u)) : 0));
+      if (face !== 'south' && face !== 'north') { p.px(x, y, frame); continue; }
+      if (!inL) { p.px(x, y, 0); continue; }
+      const L = o.lens || (heart ? ['#ff6a8a', '#e0204a', '#8a0c2a'] : ['#f0f6ff', '#8aa0c8', '#2a3456']);
+      p.px(x, y, v < 0.3 ? L[0] : v < 0.62 ? L[1] : L[2]);
+    }
+    if (face === 'south') p.px(Math.floor(w * 0.3), Math.floor(h * 0.25), '#ffffff');
+  };
+  const gold = (p, w, h) => p.rect(0, 0, w, h, frame);
+  return [
+    P(Q(-2.6, -1.0, -0.1), S(2.3, 2.0, 0.25), lens, tag), P(Q(0.3, -1.0, -0.1), S(2.3, 2.0, 0.25), lens, { ...tag, mirror: true }),
+    P(Q(-0.45, 0.45, -0.1), S(0.9, 0.3, 0.3), gold, tag),
+    P(Q(-2.7, 0.45, -3.2), S(0.25, 0.25, 3.2), gold, tag), P(Q(2.45, 0.45, -3.2), S(0.25, 0.25, 3.2), gold, tag),
+  ];
+}
+// a studded choker round a neck box (x half-width xs, from z0 to z1 at height y) with a little rose pendant
+export function chokerCubes(o) {
+  const { xs, y, z0, z1, id, hide } = o, h = o.h ?? 1.0, t = 0.4, tag = { id, hide: !!hide };
+  const band = (p, w, hh, face) => { for (let j = 0; j < hh; j++) for (let i = 0; i < w; i++) p.px(i, j, j === 0 ? '#4a4458' : '#1a1622'); if (face !== 'up' && face !== 'down') for (let i = 1; i < w - 1; i += 3) { p.px(i, 1, '#ffffff'); if (hh > 2) p.px(i, 2, '#9aa4c4'); } };
+  return [
+    P([-xs - t, y, z1 - 0.05], [2 * xs + 2 * t, h, t], band, tag), P([-xs - t, y, z0 - t + 0.05], [2 * xs + 2 * t, h, t], band, tag),
+    P([-xs - t, y, z0], [t, h, z1 - z0], band, tag), P([xs, y, z0], [t, h, z1 - z0], band, tag),
+    ...rose([0, y - 0.9, z1 + 0.6], 0.42, { stem: 0, leaves: false, id, hide }),
+  ];
+}
+// a gold rope chain round a neck box (xs half-width, z0…z1, at height y), a drop link and a pendant hanging on the
+// chest at `at`: 'rose' | 'skull' | 'heart' | 'cross'
+const GOLD = ['#fff4b0', '#ffd23e', '#d89a22', '#9a6414'];
+const ropeP = (p, w, h, face) => { for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) p.px(i, j, (i + j) % 3 === 0 ? GOLD[0] : (i + j) % 3 === 1 ? GOLD[1] : GOLD[face === 'down' ? 3 : 2]); };
+export function chainCubes(o) {
+  const { xs, y, z0, z1, at, id, kind = 'rose' } = o, t = 0.42, tag = { id, hide: true };
+  const out = [
+    P([-xs - t, y, z1 - 0.05], [2 * xs + 2 * t, t, t], ropeP, tag), P([-xs - t, y, z0 - t + 0.05], [2 * xs + 2 * t, t, t], ropeP, tag),
+    P([-xs - t, y, z0], [t, t, z1 - z0], ropeP, tag), P([xs, y, z0], [t, t, z1 - z0], ropeP, tag),
+  ];
+  // the drop: a short run of chain from the ring's front down to the pendant
+  const [px, py, pz] = at, dy = y - py, dz = pz - z1, len = Math.hypot(dy, dz), ang = Math.atan2(dz, dy) * 180 / Math.PI;
+  out.push(P([px - 0.2, y - len, z1 + 0.1], [0.4, len, 0.4], ropeP, { ...tag, pivot: [px, y, z1 + 0.3], rot: [ang, 0, 0] }));
+  const g = (p, w, h) => p.rect(0, 0, w, h, GOLD[1]);
+  if (kind === 'rose') out.push(...rose([px, py - 0.4, pz + 0.3], 0.5, { stem: 0, leaves: false, id, hide: true }));
+  if (kind === 'heart') out.push(P([px - 0.9, py - 1.6, pz], [1.8, 1.6, 0], (p, w, h) => { const c = (w - 1) / 2; for (let yy = 0; yy < h; yy++) for (let x = 0; x < w; x++) { const u = (x - c) / (w / 2), v = (yy - h * 0.35) / (h / 2); if ((u * u + v * v - 0.5) ** 3 - u * u * v * v * v < 0.02) p.px(x, yy, x < c && yy < h / 2 ? '#ff8aa0' : '#e0204a'); } }, { plane: 'z', ...tag }));
+  if (kind === 'cross') out.push(P([px - 0.25, py - 2.2, pz], [0.5, 2.2, 0.35], g, tag), P([px - 0.8, py - 0.9, pz], [1.6, 0.45, 0.35], g, tag));
+  if (kind === 'skull') out.push(P([px - 0.65, py - 1.5, pz], [1.3, 1.3, 0.6], (p, w, h, face) => { p.rect(0, 0, w, h, face === 'south' ? '#f2ecdc' : '#c8bca8'); if (face === 'south') { p.px(1, 1, '#1a0c14'); p.px(w - 2, 1, '#1a0c14'); p.px(Math.floor(w / 2), h - 1, '#1a0c14'); } }, tag));
+  return out;
+}
+// a black felt cowboy hat sitting at c (the crown's base centre): a wide brim curled up at the sides, a pinched
+// crown, a silver-studded band
+export function cowboyHatCubes(c, o = {}) {
+  const k = o.k || 1, [cx, cy, cz] = c, Q = (x, y, z) => [cx + x * k, cy + y * k, cz + z * k], S = (a, b, d) => [a * k, b * k, d * k], tag = { id: o.id, hide: true };
+  const felt = (p, w, h, face) => { for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) p.px(i, j, face === 'up' ? (j === Math.floor(h / 2) ? '#120f16' : '#3a3646') : face === 'down' ? '#0c0a10' : j === 0 ? '#4a4658' : '#221e2a'); };
+  const band = (p, w, h, face) => { for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) p.px(i, j, '#8a1424'); if (face !== 'up' && face !== 'down') for (let i = 1; i < w; i += 3) p.px(i, Math.floor(h / 2), '#e8ecf4'); };
+  return [
+    P(Q(-4.6, 0, -4.4), S(9.2, 0.45, 8.8), felt, tag),
+    P(Q(-6.4, 0.2, -3.6), S(1.9, 0.4, 7.2), felt, { ...tag, pivot: Q(-4.6, 0.2, 0), rot: [0, 0, -30] }),
+    P(Q(4.5, 0.2, -3.6), S(1.9, 0.4, 7.2), felt, { ...tag, pivot: Q(4.6, 0.2, 0), rot: [0, 0, 30] }),
+    P(Q(-3.0, 0.4, -2.8), S(6.0, 3.4, 5.6), felt, tag),
+    P(Q(-3.05, 0.4, -2.85), S(6.1, 0.9, 5.7), band, tag),
+  ];
+}
+// spiked leather shoulder pads on an arm-wing (s −1 right, +1 left) at the shoulder point sh; spikes of chrome
+export function padCubes(s, sh, o = {}) {
+  const [x, y, z] = sh, k = o.k || 1, tag = { id: o.id, hide: true }, leather = (p, w, h, face) => { for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) p.px(i, j, face === 'up' ? '#4c485c' : j === 0 ? '#5a566c' : j === h - 1 ? '#121016' : '#2a2632'); if (face !== 'up' && face !== 'down') for (let i = 1; i < w - 1; i += 3) p.px(i, h - 2, '#c8ccd8'); };
+  const spike = (p, w, h) => { const c = (w - 1) / 2; for (let j = 0; j < h; j++) { const hw = ((j + 0.6) / h) * (w / 2); for (let i = 0; i < w; i++) if (Math.abs(i - c) <= hw) p.px(i, j, i < c ? '#ffffff' : '#9aa4c4'); } };
+  const bx = s < 0 ? x - 2.0 * k : x - 0.6 * k, out = [P([bx, y - 1.0 * k, z - 2.2 * k], [2.6 * k, 1.6 * k, 4.4 * k], leather, tag)];
+  for (const dz of [-1.2, 0.2, 1.6]) for (const a of [0, 90]) out.push(P([x + s * 0.7 * k - 0.5 * k, y + 0.5 * k, z + dz * k], [1.0 * k, 1.5 * k, 0], spike, { plane: 'z', pivot: [x + s * 0.7 * k, y + 0.5 * k, z + dz * k], rot: [0, a, s * -20], ...tag }));
+  return out;
+}
+// the stage-1 bandana: black cotton with rose buds round the brow and over the crown, a knot at the back (on the
+// head bone), plus its two tails as spring bones and a tucked rose on another
+export function bandanaS1(id, o = {}) {
+  const B = roseBandanaP(o), B2 = roseBandanaP({ ...o, phase: 3 }), t = { id, hide: true };
+  return {
+    head: [
+      P([-4.15, 23.95, 6.75], [8.3, 1.4, 0.42], B, t), P([-4.15, 23.95, -0.85], [8.3, 1.4, 0.42], B2, t),
+      P([-4.15, 23.95, -0.45], [0.42, 1.4, 7.2], B2, t), P([3.73, 23.95, -0.45], [0.42, 1.4, 7.2], B, t),
+      ...(o.headband ? [] : [P([-3.95, 24.8, -0.8], [7.9, 0.9, 7.55], B, t), P([-3.0, 25.7, 0.0], [6.0, 0.4, 6.0], B, t)]),
+      P([-1.1, 23.4, -1.8], [2.2, 2.0, 1.0], B, t),
+    ],
+    bones: [
+      { name: 'bandR', parent: 'head', pivot: [-0.5, 24.0, -1.8], rot: [-30, -12, 0], cubes: [P([-0.5, 22.4, -5.8], [0, 2.0, 4.0], B, { plane: 'x', ...t })] },
+      { name: 'bandL', parent: 'head', pivot: [0.5, 23.6, -1.8], rot: [-44, 14, 0], cubes: [P([0.5, 22.2, -5.2], [0, 1.8, 3.4], B2, { plane: 'x', ...t })] },
+      { name: 'bud', parent: 'head', pivot: [4.0, 24.7, 2.6], rot: [0, 0, -62], cubes: rose([4.0, 25.6, 2.6], 0.64, { stem: 0, leaves: false, id, hide: true }) },
+    ],
+  };
+}
+// a rose tucked behind the head feathers (stage 1 head), on its own spring bone `name`
+export const tuckedRose = (name, id, at = [3.6, 23.4, 1.0]) => ({ name, parent: 'head', pivot: at, rot: [-16, 18, -52], cubes: [
+  ...rose([at[0], at[1] + 0.9, at[2]], 0.62, { stem: 0.6, leaves: false, id, hide: true }),
+  P([at[0] - 0.3, at[1] - 0.4, at[2] - 1.6], [0, 1.0, 2.0], leafP, { plane: 'x', id, hide: true }),
+] });
+
+// the stage-2 kerchief: a red rose-bud bandana knotted round the neck, its front a ripped triangle hinged out over
+// the chest, two tails on spring bones (scarfR / scarfL)
+export function kerchiefS2(id) {
+  const RED = ['#ff7a68', '#e2343e', '#b01c30', '#7a1026', '#4a0a1a'], CREAM = ['#fffaf2', '#f6e6dc', '#e8ccc4', '#c8a8a4', '#9a7a7a'];
+  const K = roseBandanaP({ cols: RED, bud: CREAM }), K2 = roseBandanaP({ cols: RED, bud: CREAM, phase: 3 }), t = { id, hide: true };
+  const tri = (p, w, h, face, c) => {
+    K(p, w, h, 'south', c);
+    for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) {
+      const u = Math.abs((i + 0.5) / w * 2 - 1), v = (j + 0.5) / h, rip = ((i * 5 + j * 3) % 7 === 0) ? 0.08 : 0;
+      if (u > 1 - v * 0.92 - rip) p.px(i, j, 0); else if (u > 1 - v * 0.92 - 0.12) p.px(i, j, '#5a0c1c');
+    }
+  };
+  return {
+    neck: [
+      P([-4.55, 19.4, 7.62], [9.1, 1.3, 0.42], K, t), P([-4.55, 19.4, -0.02], [9.1, 1.3, 0.42], K2, t),
+      P([-4.55, 19.4, 0.4], [0.42, 1.3, 7.3], K2, t), P([4.13, 19.4, 0.4], [0.42, 1.3, 7.3], K, t),
+      P([-3.2, 16.6, 8.1], [6.4, 3.2, 0], tri, { plane: 'z', pivot: [0, 19.8, 8.1], rot: [-30, 0, 0], ...t }),
+      P([-1.0, 18.6, -0.9], [2.0, 1.8, 1.0], K, t),
+    ],
+    bones: [
+      { name: 'scarfR', parent: 'neck', pivot: [-0.5, 19.6, -0.9], rot: [-24, -14, 0], cubes: [P([-0.5, 17.6, -4.6], [0, 2.2, 3.8], K, { plane: 'x', ...t })] },
+      { name: 'scarfL', parent: 'neck', pivot: [0.5, 19.2, -0.9], rot: [-38, 16, 0], cubes: [P([0.5, 17.4, -4.0], [0, 1.8, 3.2], K2, { plane: 'x', ...t })] },
+    ],
   };
 }

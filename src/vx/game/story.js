@@ -24,6 +24,7 @@ export class Story {
       await this.run(async () => {
         const w = app.world; await w.load(app.params.get('loc'), { mood: app.params.get('mood') || undefined });
         if (app.params.get('roam')) await this.startRoam(w.loc.spots.start || [w.cam.target.x, w.cam.target.z + 2, 0]);
+        if (app.params.get('closet')) { const { Closet, pajamas } = await import('./closet.js'); const at = w.loc.spots.start || [w.cam.target.x, w.cam.target.z + 2, 0]; const c = new Closet(app, pajamas(), at); c.rebuild(); await w.closeOn(w.actor('hero'), { dist: 4.6, h: 0.9, dur: 0 }); app.fade(0, 300); app.state.look = await c.open(); }
         await app.fade(0, 500);
       });
       return;

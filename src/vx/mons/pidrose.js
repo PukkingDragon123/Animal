@@ -1,25 +1,31 @@
 // Pidgun ♀ — the same street species, female form (homage: Guns N' Roses). An ash-red pigeon: rosy-cream
-// plumage, wine-red wing bars, a neck that flashes pink and violet, big dark kawaii eyes with a rose-red
-// glow and one tiny flick, and a long-stemmed red rose held up in her left wing like she's daring you to
-// take it. Her quirks: another rose tucked behind her head feathers, and rose petals along her tail band.
+// plumage, wine-red wing bars, a neck that flashes pink and violet, almond rose-red ring eyes with a single
+// lash flick, a little curled quiff on her crown, and a long-stemmed red rose held up in her left wing like she's daring you to
+// take it — her signature. Drip (one choice per tier): a second rose tucked behind her head feathers or a
+// rose-bud headband; a studded choker with a rose pendant or a gold chain with a heart; red heart shades pushed
+// up on her crown or a cherry guitar on her back. Rose petals are painted along her tail; a quiff curls on top.
 // Sassier than the male: a swaying strut, a hip-roll idle, a slap with the free wing, and a storm
 // of rose petals for a special.
 import { E, seg, bump, wob, wave, key } from '../anim.js';
-import { C, P, S1, MORPH, stage1, wingSegP, tipsP, kawaiiEyes, eyeFaces, rose, leafP, plant, strut, peck, ATTACH_S1 } from './pigeon_parts.js';
+import { C, P, S1, MORPH, stage1, wingSegP, tipsP, pigeonEyeRig, quiffCubes, shadesCubes, guitarCubes, chokerCubes, chainCubes, bandanaS1, tuckedRose, rose, leafP, plant, strut, peck, ATTACH_S1 } from './pigeon_parts.js';
 
 const M = MORPH.ash;
-const EYES = kawaiiEyes({ flick: true, fill: ['#2a1220', '#3a182a'], accent: ['#4a1428', '#8a2440', '#d0506e'] });
+// her own low-res eyes: almond rose-red rings round a dark pupil, one lash flick
+const EYES = pigeonEyeRig({ grid: [5, 5], ring: ['#ff5a74', '#d02c4c'], pupil: 'round', shape: 'almond', lash: true, py: 0.4, at: S1.eyeAt, size: [10 / 3, 10 / 3] });
+const ES = (P, x, y = x) => P.scl('eyeR', x, y, 1).scl('eyeL', x, y, 1);
 const HAND = wingSegP({ ...M, base: [6.8, 8.4, 1.2], dir: [0, 0, 1], len: 7.0, cdir: [0, -1, 0], chord: 4.4, kind: 'hand' });
+const BANDANA = bandanaS1('pr-band', { headband: true });
 const RB = [8.4, 15.6, 6.6], BLOOM = [8.4, 15.6, 6.6], BEAK = S1.mouth;
 
 export const def = {
   name: 'pidrose', ppu: 3, scale: 0.31, outline: { color: C.ink, px: 1.4 },
   bones: [
-    ...stage1({ M, eyes: EYES, eyeDef: 'open', wingL: false, tailPetals: true }),
-    { name: 'hairRose', parent: 'head', pivot: [3.6, 23.4, 1.0], rot: [-16, 18, -52], cubes: [
-      ...rose([3.6, 24.3, 1.0], 0.62, { stem: 0.6, leaves: false }),
-      P([3.3, 23.0, -0.6], [0, 1.0, 2.0], leafP, { plane: 'x' }),
-    ] },
+    ...stage1({ M, wingL: false, tailPetals: true, headExtra: [...quiffCubes([0, 24.9, 4.4], M.head, 0.85), ...BANDANA.head],
+      neckExtra: [
+        ...chokerCubes({ xs: 4.4, y: 16.6, z0: -0.6, z1: 6.6, id: 'pr-choker', hide: true }),
+        ...chainCubes({ xs: 4.45, y: 16.2, z0: -0.6, z1: 6.6, at: [0, 13.9, 9.4], id: 'pr-chain', kind: 'heart' }),
+      ] }),
+    ...EYES.bones,
     // the rose wing, held like an arm: coverts from the shoulder, the primaries closed round the stem
     { name: 'wingL', parent: 'body', pivot: [6.0, 14.6, 3.6], rot: [-22, 0, 4], cubes: [
       P([6.0, 6.6, -0.6], [1.3, 8.6, 4.8], wingSegP({ ...M, base: [6.0, 15.2, 4.2], dir: [0, -1, 0], len: 8.6, cdir: [0, 0, -1], chord: 4.8, kind: 'arm', bar1: 0.46, bar2: 0.66, barW: 0.08 })),
@@ -30,8 +36,18 @@ export const def = {
       P([6.6, 4.1, 5.4], [2.6, 2.4, 2.4], HAND),
     ] },
     { name: 'rose', parent: 'handL', pivot: [8.4, 5.2, 6.6], rot: [18, 0, 8], cubes: rose(RB, 1, { stem: 8 }) },
+    tuckedRose('hairRose', 'pr-rosetuck'), ...BANDANA.bones,
+    // red heart shades pushed up on her crown, behind the quiff
+    { name: 'shades', parent: 'head', pivot: [0, 26.2, 1.0], rot: [-38, 0, 0], cubes: shadesCubes([0, 26.2, 1.0], { k: 0.95, kind: 'heart', id: 'pr-shades', hide: true }) },
+    // a cherry single-cut slung on her back, the neck up over her right shoulder
+    { name: 'guitar', parent: 'body', pivot: [-0.4, 12.0, -7.9], rot: [-24, 180, -28], cubes: guitarCubes([-0.4, 12.0, -7.9], { k: 1.1, id: 'pr-guitar', hide: true, finish: ['#ff5a5a', '#d0203a', '#8a0c24', '#3a0610'] }) },
   ],
 };
+def.drip = [
+  [{ id: 'pr-rosetuck', name: 'Rose in her feathers' }, { id: 'pr-band', name: 'Rose-bud headband' }],
+  [{ id: 'pr-choker', name: 'Rose-pendant choker' }, { id: 'pr-chain', name: 'Gold heart chain' }],
+  [{ id: 'pr-shades', name: 'Heart shades' }, { id: 'pr-guitar', name: 'Cherry guitar' }],
+];
 def.attach = ATTACH_S1;
 
 // ---------------------------------------------------------------- animation
@@ -47,8 +63,10 @@ export const anim = {
     { bone: 'handR', tip: [0, 0, -9], k: 260, d: 13, gain: 0.3, max: 8 },
     { bone: 'rose', tip: [0, 9, 0], k: 240, d: 10, gain: 0.5, max: 12 },
     { bone: 'hairRose', tip: [0, 1.5, 0], k: 300, d: 12, gain: 0.3, max: 8 },
+    { bone: 'bandR', tip: [0, -1, -4], k: 110, d: 8, gain: 0.9, max: 30 },
+    { bone: 'bandL', tip: [0, -1, -3.5], k: 120, d: 8, gain: 0.9, max: 30 },
   ],
-  faces: { eyes: eyeFaces(EYES, 'open') },
+  faces: { eyes: EYES.slot },
   fidget: { every: [4.5, 8], clips: ['sniff', 'preen', 'peck'] },
   clips: {
     // all attitude: the hips roll, the tail swishes, the head tips with a slow sassy tilt, the rose turns
@@ -61,7 +79,7 @@ export const anim = {
       const tip = bump(t, 1.4, 2.4);
       P.rot('head', 2 + 2 * b, yaw, 12 * tip - sw * 4).scl('neck', 1 + 0.02 * b);
       P.rot('rose', 0, wave(t, 1 / 2.6) * 20, 0).rot('wingL', -2 * b, 0, 0);
-      P.face('eyes', bump(t, 1.5, 2.3) > 0.5 ? 'cool' : undefined);
+      P.face('eyes', bump(t, 1.5, 2.3) > 0.5 ? 'smug' : bump(t, 0.6, 1.2) > 0.6 ? 'wink' : undefined); P.pos('eyeR', yaw * 0.015, 0, 0).pos('eyeL', yaw * 0.015, 0, 0); ES(P, 1, 1 - 0.15 * bump(t, 1.5, 2.3));
     } },
     // the sassy strut: the head-bob, hips swinging wide, the tail swishing, the rose held high
     walk: { len: 0.84, loop: true, f(P, t) {
@@ -79,7 +97,7 @@ export const anim = {
       P.rot('wingR', 0, 0, -50 * thrust + wave(t, 6) * 6 * thrust).rot('handR', 0, -26 * thrust, 0);
       P.scl('neck', 1 + 0.18 * thrust, 1 + 0.05 * thrust, 1 + 0.18 * thrust).rot('head', -20 * thrust + wave(t, 12) * 3 * thrust, 0, 0).rot('jaw', 30 * thrust);
       P.rot('body', -8 * thrust, 0, 0).sq('body', 0.05 * thrust * (1 - seg(t, 0.78, 0.95)) + wob(t, 1.9, 0.04, 3, 5)).rot('tail', 14 * thrust, 0, 0).scl('tail', 1 + 0.3 * thrust, 1, 1);
-      P.face('eyes', thrust > 0.4 ? 'glare' : spin > 0 && spin < 1 ? 'closed' : undefined); P.lookW = 1 - thrust;
+      P.face('eyes', thrust > 0.4 ? 'angry' : spin > 0 && spin < 1 ? 'happy' : undefined); P.lookW = 1 - thrust; ES(P, 1 + 0.1 * thrust, 1 + 0.2 * thrust);
       P.burst(0.74, 'pg_petal', 'rose', BLOOM, { n: 14, speed: 1.4 }).burst(0.76, 'sparkle', 'rose', BLOOM, { n: 5 }).burst(0.8, 'anger', 'head', [-5, 27, 2], {});
     } },
     // attack (wing-slap): the free wing swings out wide, she steps in and slaps it across
@@ -90,7 +108,8 @@ export const anim = {
       P.rot('wingR', -30 * wind - 40 * hit, -50 * wind + 70 * hit, -70 * wind + 10 * hit).rot('handR', 0, -30 * wind + 20 * hit, 0);
       P.rot('body', -8 * wind + 12 * hit, 0, -6 * wind + 8 * hit).rot('head', -8 * wind + 8 * hit, 14 * wind - 16 * hit, 0).rot('jaw', 12 * hit);
       const dy = -0.8 * wind + wob(t, 0.4, -0.7, 3, 6); P.pos('body', 0, dy, 0).sq('body', -0.05 * wind + wob(t, 0.4, 0.05, 4, 7)); plant(P, dy, 4);
-      P.face('eyes', t > 0.05 && t < 0.75 ? 'glare' : undefined);
+      P.face('eyes', t > 0.05 && t < 0.3 ? 'angry' : t < 0.75 ? 'shut' : t < 1.0 ? 'smug' : undefined); ES(P, 1 + 0.15 * hit, 1 - 0.2 * wind);
+      P.burst(0.1, 'anger', 'head', [-5, 27, 3], {});
       P.burst(0.4, 'spark', 'root', [-3, 13, 13], { scale: 1.2 }).burst(0.4, 'star', 'root', [-3, 13, 13], { n: 4 }).burst(0.4, 'pg_feather', 'root', [-3, 13, 12], { n: 3 });
     } },
     // special (petal storm): she spins with the rose held out, a whirl of petals rising round her, then
@@ -101,7 +120,7 @@ export const anim = {
       P.rot('wingL', -70 * out, 0, -40 * out).rot('rose', 20 * out, 0, 0).rot('wingR', 0, 0, -40 * out * (1 - seg(t, 1.25, 1.4)));
       const fling = seg(t, 1.25, 1.38, E.out) * (1 - seg(t, 1.6, 2.0, E.inout));
       P.rot('wingL', -40 * fling, 0, 30 * fling).rot('body', 10 * fling, 0, 0).pos('root', 0, 0, 2 * fling).rot('head', 8 * fling, 0, 0);
-      P.face('eyes', whirl > 0.05 && whirl < 0.95 ? 'closed' : fling > 0.3 ? 'glare' : undefined); P.lookW = 1 - out;
+      P.face('eyes', whirl > 0.05 && whirl < 0.95 ? 'closed' : fling > 0.3 ? 'angry' : t > 1.7 ? 'heart' : undefined); P.lookW = 1 - out; ES(P, 1 + 0.15 * fling, 1 + 0.25 * fling);
       if (t > 0.25 && t < 1.3) P.stream('pg_petal', 'root', [0, 6, 0], { rate: 70, dir: [0, 1, 0], speed: 2.2, spread: 1 }).stream('pg_petal', 'rose', BLOOM, { rate: 30, speed: 1.2 });
       P.burst(1.3, 'pg_petal', 'rose', BLOOM, { n: 40, dir: [0, 0.2, 1], speed: 3.2, spread: 0.45 }).burst(1.3, 'sparkle', 'rose', BLOOM, { n: 8, dir: [0, 0, 1], speed: 2 });
       P.burst(1.32, 'ring', 'rose', BLOOM, { scale: 1.2 });
@@ -111,7 +130,8 @@ export const anim = {
       P.pos('root', 0, 0, -2.4 * k).rot('body', -14 * k + wob(t, 0.2, 4, 3, 6), 0, wave(t, 16) * 4 * k).sq('body', -0.12 * k);
       P.rot('head', -18 * k, 0, -10 * k).rot('jaw', 22 * k).scl('neck', 1 + 0.16 * k);
       P.rot('wingL', 20 * k, 0, 24 * k).rot('wingR', 0, 0, -40 * k).rot('handR', 0, -24 * k, 0).rot('tail', 18 * k, 0, 0);
-      P.face('eyes', t < 0.42 ? 'hurt' : undefined);
+      P.face('eyes', t < 0.1 ? 'shock' : t < 0.42 ? 'shut' : undefined); ES(P, 1 + 0.25 * bump(t, 0, 0.12), 1 + 0.4 * bump(t, 0, 0.12) - 0.2 * bump(t, 0.12, 0.42));
+      P.burst(0.06, 'sweat', 'head', [-5, 25, 5], { n: 2, dir: [-1, 0.5, 0] });
       P.burst(0.02, 'pg_feather', 'body', [0, 12, 0], { n: 7, speed: 1.6, tint: [1, 0.9, 0.9] }).burst(0.02, 'pg_petal', 'rose', BLOOM, { n: 4 }).burst(0.02, 'spark', 'body', [0, 13, 9], {});
     } },
     // a woozy pirouette, the rose drooping, and she swoons onto her side
@@ -122,7 +142,8 @@ export const anim = {
       const dy = -1.8 * dizzy; P.pos('body', 0, dy, 0); plant(P, dy, 4);
       P.rot('root', 0, 0, 86 * fall).pos('root', -4.4 * fall, 5.6 * fall, 0);
       P.rot('legR', 18 * fall, 0, -14 * fall).rot('legL', -20 * fall, 0, -10 * fall).rot('wingR', 0, 0, 10 * fall).rot('head', 0, 0, 14 * fall).rot('jaw', 20 * fall).rot('tail', 0, 0, -10 * fall);
-      P.face('eyes', t < 0.95 ? 'swirl' : 'x'); P.blinkOK = false; P.lookW = 0;
+      P.face('eyes', t < 0.4 ? 'teary' : t < 0.95 ? 'swirl' : 'x'); P.blinkOK = false; P.lookW = 0;
+      P.burst(0.25, 'tear', 'head', [3.5, 22, 7.2], { n: 3, dir: [1, 0.5, 0.5] });
       P.burst(0.25, 'star', 'head', [0, 27, 0], { n: 5 }).burst(1.4, 'dust', 'root', [-6, 1, 0], { n: 7, spread: 1 }).burst(1.4, 'pg_petal', 'rose', BLOOM, { n: 8, speed: 0.8 });
     } },
     down: { len: 2.4, loop: true, f(P, t) {
@@ -139,7 +160,7 @@ export const anim = {
       P.rot('wingL', -46 * pose, 0, -26 * pose).rot('handL', -20 * pose, -14 * pose, 0).rot('rose', -6 * pose, 0, 22 * pose);
       P.rot('wingR', 0, 0, -36 * pose).rot('handR', 0, -20 * pose, 0).scl('neck', 1 + 0.12 * pose).rot('body', -6 * pose, 0, 0);
       P.rot('head', -6 * pose, 0, 12 * pose).rot('tail', 0, wave(t, 2) * 10 * pose, 0).scl('tail', 1 + 0.25 * pose, 1, 1);
-      P.face('eyes', pose > 0.4 ? 'happy' : undefined);
+      P.face('eyes', pose > 0.4 ? (t < 1.3 ? 'happy' : 'wink') : undefined); ES(P, 1, 1 - 0.1 * pose);
       P.burst(0.7, 'pg_petal', 'rose', BLOOM, { n: 16, speed: 1.2 }).burst(0.72, 'sparkle', 'head', [0, 26, 4], { n: 5 });
     } },
     // asleep: fluffed up, head tucked into her shoulder, the rose cradled against her
@@ -148,7 +169,7 @@ export const anim = {
       P.pos('body', 0, dy, 0).scl('body', 1.06 + br * 0.015, 1.04 + br * 0.03, 1.05); plant(P, dy, 4);
       P.pos('neck', 0, -2.2, -1.4).rot('neck', 16, 0, 0).rot('head', 24 + br * 2, 28, -14);
       P.rot('wingL', 20, 0, -6).rot('handL', -16, 0, 0).rot('rose', -20, 0, 20).rot('tail', 6, 0, 0);
-      P.face('eyes', 'closed'); P.blinkOK = false; P.lookW = 0; P.breathW = 0;
+      P.face('eyes', 'closed'); ES(P, 1.05, 0.8 + 0.05 * br); P.blinkOK = false; P.lookW = 0; P.breathW = 0;
       P.burst(0.5, 'z', 'head', [-3, 25, 4], {}).burst(1.9, 'z', 'head', [-3, 25, 4], {});
     } },
     // fidget: brings the rose to her bill, eyes closed, a long sniff… and a petal drifts off
@@ -157,7 +178,7 @@ export const anim = {
       SNIFF(P, k); P.rot('head', 10 * k, 16 * k, -8 * k); P.lookW = 1 - k;
       const sn = bump(t, 0.8, 1.0) + bump(t, 1.05, 1.25); P.scl('neck', 1 + 0.06 * sn).rot('head', -5 * sn, 0, 0);
       const sigh = bump(t, 1.35, 1.9); P.sq('body', 0.05 * sigh).rot('head', -8 * sigh, 0, 0);
-      P.face('eyes', k > 0.6 && t < 1.9 ? (t > 1.35 ? 'happy' : 'closed') : undefined);
+      P.face('eyes', k > 0.6 && t < 1.9 ? (t > 1.35 ? 'heart' : 'closed') : undefined); ES(P, 1 + 0.1 * sigh, 1 + 0.15 * sigh);
       P.burst(1.45, 'pg_petal', 'rose', BLOOM, { n: 2, speed: 0.4 }).burst(1.4, 'sparkle', 'rose', BLOOM, { n: 3, speed: 0.5 });
     } },
     // fidget: a quick preen — the bill combs through the neck feathers, a ruffle, a shake
@@ -178,7 +199,7 @@ export const anim = {
       P.rot('tail', -8 * look - 8 * pk, 0, 0).rot('wingL', -20 * look, 0, 0);
       for (const t0 of [0.42, 0.85]) P.burst(t0 + 0.1, 'pg_crumb', 'root', [0, 0.4, 10], { n: 6, dir: [0, 1, 0.4] });
       const gulp = bump(t, 1.2, 1.45); P.scl('neck', 1 + 0.12 * gulp, 1 - 0.05 * gulp, 1 + 0.12 * gulp);
-      P.face('eyes', t > 1.15 && t < 1.5 ? 'happy' : undefined);
+      P.face('eyes', t < 0.4 ? 'wide' : t > 1.15 && t < 1.5 ? 'happy' : undefined); ES(P, 1 + 0.12 * bump(t, 0.05, 0.42), 1 + 0.22 * bump(t, 0.05, 0.42));
     } },
   },
 };
