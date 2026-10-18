@@ -340,7 +340,7 @@ function pose(d, clip, t) {
       const hop = Math.abs(Math.sin(s)) * (run ? 3.4 : 1.5) * A.hop;
       B('body', { dy: hop, rx: (run ? 12 : 3) * A.lean, rz: (run ? 3 : 4) * Math.sin(s), sy: 1 + 0.05 * Math.cos(2 * s) * (run ? 1 : 0.5), sx: 1 - 0.03 * Math.cos(2 * s) });
       B('head', { rx: (run ? -6 : 0) + 3 * Math.sin(2 * s - 0.6), rz: -3 * Math.sin(s - 0.4) });
-      each(/^leg/, (n) => { const ph = /L$/.test(n) ? 0 : Math.PI; B(n, { rx: -(run ? 42 : 26) * Math.sin(s + ph), dy: Math.max(0, Math.sin(s + ph)) * (run ? 2.4 : 1.2) }); });
+      each(/^leg/, (n) => { const ph = (/L$/.test(n) ? 0 : Math.PI) + (/B[LR]$/.test(n) ? Math.PI : 0); B(n, { rx: -(run ? 42 : 26) * Math.sin(s + ph), dy: Math.max(0, Math.sin(s + ph)) * (run ? 2.4 : 1.2) }); });   // quadrupeds trot in diagonal pairs
       each(/^wing/, (n) => B(n, { rz: side(n) * ((run ? 26 : 6) * Math.abs(Math.sin(2 * s)) + (run ? 18 : 0)) * A.flap }));
       each(/^(crest|hood|tuft|hair|flame)/, (n, i) => B(n, { rx: -(run ? 10 : 3) - 4 * Math.sin(2 * s - 1.2 * A.lag - i * 0.3) }));
       each(/^tail/, (n, i) => B(n, { ry: 8 * Math.sin(s - 1.2 * A.lag - i * 0.4), rx: -(run ? 10 : 2) }));
@@ -507,10 +507,13 @@ export function renderFrame(d, opts = {}) {
   };
   const NB = pr.NB, bonesArr = new Float32Array(NB * 16);
   bonesArr.set(I4(), 0);
+  let anyGlass = false;
   for (const p of pr.parts) {
     const m = worldOf(p), o = p.idx * 16;
     bonesArr.set(m4inv(m), o);
-    bonesArr[o + 3] = m.s; bonesArr[o + 7] = visible(p, expr, show, opts.bonded) ? 1 : 0; bonesArr[o + 11] = 0; bonesArr[o + 15] = 1;
+    const vis = visible(p, expr, show, opts.bonded);
+    if (p.glass && vis) anyGlass = true;
+    bonesArr[o + 3] = m.s; bonesArr[o + 7] = vis && !p.glass ? 1 : 0; bonesArr[o + 11] = 0; bonesArr[o + 15] = 1;
   }
   // camera: orthographic, pitched down, looking toward −z
   const pc = pitch * D2R;
@@ -533,6 +536,15 @@ export function renderFrame(d, opts = {}) {
   const raw = new Uint8Array(W2 * H2 * 4);
   g.readPixels(0, 0, W2, H2, g.RGBA, g.UNSIGNED_BYTE, raw);
   const surf = shade(d, pr, raw, w, h, sc);
+  // second pass: transparent parts (water balls, bubbles) drawn over the opaque sprite
+  if (anyGlass) {
+    for (const p of pr.parts) bonesArr[p.idx * 16 + 7] = p.glass && visible(p, expr, show, opts.bonded) ? 1 : 0;
+    g.uniformMatrix4fv(U_.uB, false, bonesArr);
+    g.clear(g.COLOR_BUFFER_BIT); g.drawArrays(g.TRIANGLES, 0, 3);
+    const raw2 = new Uint8Array(W2 * H2 * 4);
+    g.readPixels(0, 0, W2, H2, g.RGBA, g.UNSIGNED_BYTE, raw2);
+    glassOver(d, pr, raw2, surf, w, h);
+  }
   surf.ox = Math.round(pad[0] * sc); surf.oy = Math.round(pad[1] * sc);
   return surf;
 }
@@ -616,6 +628,38 @@ function shade(d, pr, raw, w, h, sc) {
   surf.data = dst; surf.touch();
   surf.glow = glow;
   return surf;
+}
+
+// transparent material over the sprite: a bright rim where it turns away (fresnel),
+// a crisp highlight, a faint tint inside (sparse dither over empty background)
+function glassOver(d, pr, raw, surf, w, h) {
+  const W2 = w * SS, H2 = h * SS, out = surf.data, pal = d.pal || {};
+  const cov = new Uint8Array(w * h), face = new Float32Array(w * h), mat = new Uint8Array(w * h), spec = new Uint8Array(w * h);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    let hits = 0, fc = 0, m = 0, sp = 0;
+    for (let j = 0; j < SS; j++) for (let i = 0; i < SS; i++) { const k = ((H2 - 1 - (y * SS + j)) * W2 + x * SS + i) * 4; if (raw[k]) { hits++; m = raw[k]; fc += raw[k + 2] / 255; if (raw[k + 1] === 255) sp++; } }
+    if (hits * 2 < SS * SS) continue;
+    const i = y * w + x; cov[i] = 1; face[i] = fc / hits; mat[i] = m; spec[i] = sp * 2 >= hits ? 1 : 0;
+  }
+  const info = (m) => { const k = pr.matKeys[m - 1], v = pal[k] ?? k, hex = typeof v === 'object' ? v.c : v; return (typeof v === 'object' && v.ramp) || ramp(hex); };
+  // ball centre/radius from the covered pixels
+  let x0 = w, x1 = -1, y0 = h, y1 = -1, mm = 0;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (cov[y * w + x]) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); mm = mat[y * w + x]; }
+  if (x1 < 0) return;
+  const cx = (x0 + x1 + 1) / 2, cy = (y0 + y1 + 1) / 2, r = Math.max(1, (x1 - x0 + 1 + y1 - y0 + 1) / 4), R = info(mm);
+  const src = new Uint32Array(out);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const i = y * w + x; if (!cov[i]) continue;
+    const edge = x === 0 || y === 0 || x === w - 1 || y === h - 1 || !cov[i - 1] || !cov[i + 1] || !cov[i - w] || !cov[i + w];
+    const dx = x + 0.5 - cx, dy = y + 0.5 - cy, rr = Math.hypot(dx, dy) / r, a = Math.atan2(dy, dx);
+    if (edge) { out[i] = P(R[1]); continue; }
+    if (rr > 0.66 && rr < 0.8 && a > -2.75 && a < -1.75) { out[i] = P(R[5]); continue; }                       // highlight arc
+    if (Math.hypot(dx + r * 0.42, dy + r * 0.5) < Math.max(1, r * 0.07)) { out[i] = P(R[5]); continue; }      // glint
+    if (rr > 0.86 && a > 0.1 && a < 1.9) { out[i] = P(R[3]); continue; }                                     // lit lower-right rim
+    if (rr > 0.9) { out[i] = P(R[2]); continue; }
+    if (src[i] >>> 24) surf.blend(x, y, R[4], 0.12);
+  }
+  surf.touch();
 }
 
 // ------------------------------------------------------------------ cache + player
