@@ -305,8 +305,8 @@ export function acting(o = {}) {
         P.pos('hips', sh * 0.25 * idleK, 0, 0).rot('hips', 0, 0, sh * 1.5 * idleK).rot('torso', 0, 0, -sh * 2 * idleK).rot('head', 0, 0, sh * 1.5 * idleK);
         P.rot('armR', 0, 0, -3 - sh * 1.5).rot('armL', 0, 0, 3 - sh * 1.5).rot('legR', 0, 0, -sh * 1.2).rot('legL', 0, 0, -sh * 1.2);
         if (o.idlePose === 'hips') P.rot('armR', 0, 0, -38).rot('handR', 0, 0, 50).rot('armL', 0, 0, 38).rot('handL', 0, 0, -50);
-        if (o.idlePose === 'crossed') { if (o.tall) P.rot('armR', -18, 18, -8).rot('foreR', -96, -40, 0).rot('armL', -22, -18, 8).rot('foreL', -88, 44, 0); else P.rot('armR', -55, 30, -12).rot('handR', -60, 0, 0).rot('armL', -55, -30, 12).rot('handL', -60, 0, 0); }
-        if (o.idlePose === 'hips' && o.tall) P.rot('foreR', -50, 0, 0).rot('foreL', -50, 0, 0);
+        if (o.idlePose === 'crossed') { if (o.tall) P.rot('armR', -12, 0, 9).rot('foreR', -92, 0, 64).rot('armL', -20, 0, -9).rot('foreL', -86, 0, -60); else P.rot('armR', -55, 30, -12).rot('handR', -60, 0, 0).rot('armL', -55, -30, 12).rot('handL', -60, 0, 0); }
+        if (o.idlePose === 'hips' && o.tall) P.rot('foreR', -20, 0, 70).rot('foreL', -20, 0, -70);
         if (o.idlePose === 'pockets') P.rot('armR', 8, 0, -6).rot('armL', 8, 0, 6);
         P.rot('foreR', -6, 0, 0).rot('foreL', -6, 0, 0).rot('shinR', 2 + sh * 2, 0, 0).rot('shinL', 2 - sh * 2, 0, 0);
         const gl = Math.floor(c.time / 1.7 + (o.name || '').length) % 7; P.face('gaze', ['c', 'c', 'l', 'c', 'r', 'c', 'ul'][gl]);
