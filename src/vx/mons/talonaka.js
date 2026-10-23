@@ -12,7 +12,8 @@ import { TK, brownP, chestP, headP, faceP, lockP, beakP, hookP, cereP, jawP, foo
 
 const print = aloha({ base: TK.sea, seed: 3 });
 const front = shirtFront(print, { lo: TK.seaLo, depth: 0.6 });
-const GTR = [-1.6, 8.6];                       // the guitar body's centre (model units, before the bone's tilt)
+const GTR = [-1.6, 8.6];
+const HAND_R = [-30, 0, 40], HAND_L = [-95, 0, -10];                       // the guitar body's centre (model units, before the bone's tilt)
 const burst = burstP(GTR, { r: 3.2 });
 const surfP = (p, w, h, face) => {            // the surfboard pendant: white board, orange stripe
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, Math.abs(x - (w - 1) / 2) < 0.6 ? '#ff6a3a' : face === 'down' ? '#c8c0b0' : '#fffaf0');
@@ -31,6 +32,12 @@ const FOOT = [
   B([-3.5, 0, -2.2], [1.0, 0.8, 1.4], footP),
 ];
 const EYES = eyeRig({ style: 'pix', chunk: 1, at: [-3.4, 20.1, 5.44], line: '#2a1408', iris: '#ffc23a', irisDark: '#c8701a', accent: '#ffe48a', pupilColor: '#1a0c08', extra: ['smug'], map: EYE_TALONAKA });
+const HAND = [
+  B([-8.3, 5.8, -2.0], [1.9, 4.4, 4.6], wingP),
+  B([-8.2, 3.8, -1.7], [1.7, 2.2, 1.3], primP), B([-8.2, 3.4, -0.25], [1.7, 2.6, 1.3], primP), B([-8.2, 3.8, 1.2], [1.7, 2.2, 1.3], primP),
+];
+// the strumming wing folds in over the guitar body; the fretting wing folds up along the neck
+const HANDS = [{ name: 'handR', parent: 'wingR', pivot: [-7.4, 10.0, 0.4], rot: HAND_R, cubes: HAND }, { name: 'handL', parent: 'wingL', pivot: [7.4, 10.0, 0.4], rot: HAND_L, cubes: HAND.map(L) }];
 const LENS = B([-5.8, 18.2, 5.62], [4.8, 3.8, 0.4], lensP);
 export const def = {
   name: 'talonaka', ppu: 3, scale: 0.46, outline: { color: '#1c0e0c', px: 1.4 },
@@ -70,10 +77,7 @@ export const def = {
       B([-8.8, 10.4, -2.6], [2.8, 4.6, 5.8], print),
       B([-8.4, 9.6, -2.1], [2.0, 1.2, 4.8], brownP),
     ] }),
-    ...twin({ name: 'handR', parent: 'wingR', pivot: [-7.4, 10.0, 0.4], rot: [-30, 0, 40], cubes: [
-      B([-8.3, 5.8, -2.0], [1.9, 4.4, 4.6], wingP),
-      B([-8.2, 3.8, -1.7], [1.7, 2.2, 1.3], primP), B([-8.2, 3.4, -0.25], [1.7, 2.6, 1.3], primP), B([-8.2, 3.8, 1.2], [1.7, 2.2, 1.3], primP),
-    ] }),
+    ...HANDS,
     { name: 'guitar', parent: 'body', pivot: [GTR[0], GTR[1], 6.2], rot: [0, 0, 24], cubes: [
       B([-4.4, 6.4, 5.6], [5.6, 4.4, 1.3], burst),
       B([-3.8, 10.8, 5.65], [4.0, 0.9, 1.2], burst),
