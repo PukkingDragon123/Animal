@@ -162,7 +162,8 @@ export async function day1(story) {
   const pier = await scene(w, 'pier39', 'chinatown', { mood: 'golden', life: false });
   S.unlockLocation(st, 'pier39');
   const B = pier ? w.spot('boss') : off(w.spot('square'), 0, 3);
-  const hero5 = w.addPerson('hero', st.look, off(B, -1.5, -5, Math.PI)), coach5 = w.addPerson('coach', 'coach', off(B, -3, -5.4, Math.PI)), yumi5 = w.addPerson('yumi', 'yumi', off(B, 0.2, -5.6, Math.PI));
+  const ally = (k, dx, dz) => (pier && w.sc.spots && w.sc.spots[k] ? w.sc.spots[k] : off(B, dx, dz, 0));
+  const hero5 = w.addPerson('hero', st.look, ally('allyHero', -1.5, -5)), coach5 = w.addPerson('coach', 'coach', ally('allyCoach', -3, -5.4)), yumi5 = w.addPerson('yumi', 'yumi', ally('allyYumi', 0.2, -5.6));
   const boss = await w.addMon('boss', 'barkorious_forced', off(B, 0, 0, 0), { clip: 'cry' });
   if (!boss.m.def.name.includes('forced')) { boss.m.group.scale.multiplyScalar(1.7); boss.m.scale *= 1.7; }
   w.setPlayer(hero5, null); void coach5; void yumi5;
@@ -229,9 +230,9 @@ async function tramIncident(story) {
   const at = (k, dx, dz, yaw) => (tram && w.sc.spots && w.sc.spots[k] ? w.sc.spots[k] : off(C, dx, dz, yaw));
   const hero = w.addPerson('hero', app.state.look, at('door', 0, 2.2, Math.PI), { clip: 'idle' });
   // passengers on their phones, a kid playing with a Tokon
-  for (let i = 0; i < 4; i++) { const p = w.addPerson('pax' + i, 'passerby' + (11 + i * 37), at('seat' + i, -1.2 + (i % 2) * 2.4, -1.5 - Math.floor(i / 2) * 1.4, i % 2 ? -Math.PI / 2 : Math.PI / 2), { clip: 'phone' }); void p; }
+  for (let i = 0; i < 4; i++) { const p = w.addPerson('pax' + i, 'passerby' + (11 + i * 37), at('seat' + i, -1.2 + (i % 2) * 2.4, -1.5 - Math.floor(i / 2) * 1.4, i % 2 ? -Math.PI / 2 : Math.PI / 2), { clip: tram ? 'sitPhone' : 'phone' }); void p; }
   await w.addMon('kidmon', 'zapanda', at('kidMon', 1.6, 0.8, 0), { clip: 'dance' });
-  const lau = w.addPerson('lau', 'lau', at('oldman', -0.8, -3.2, Math.PI / 2), { clip: 'sad' }), weak = await w.addMon('weak', 'lemmo', at('oldmanMon', -0.6, -2.4, Math.PI / 2), { clip: 'hurt' });
+  const lau = w.addPerson('lau', 'lau', at('oldman', -0.8, -3.2, Math.PI / 2), { clip: tram ? 'sitSad' : 'sad' }), weak = await w.addMon('weak', 'lemmo', at('oldmanMon', -0.6, -2.4, Math.PI / 2), { clip: 'hurt' });
   const spike = w.addPerson('spike', 'spike', at('punk', 0.6, -3.2, -Math.PI / 2), { clip: 'angry' }), duck = await w.addMon('duck', 'dreadrake', at('punkMon', 1.4, -3.6, -Math.PI / 2), { clip: 'menace' });
   const coach = w.addPerson('coach', 'coach', at('coachSeat', -1.3, 0.6, Math.PI / 2), { clip: 'sit' });
   w.setPlayer(hero, null);
@@ -258,7 +259,7 @@ async function tramIncident(story) {
   spike.play('shock'); duck.play('wet'); w.emote('spike', 'sweat', 2);
   await say('', 'SPLOOSH! A bubble the size of a beach ball slams into the punk and his Dreadrake. Both of them stand there, dripping.');
   coach.play('idle'); await coach.walkTo([[hero.g.position.x - 1.0, hero.g.position.z - 0.2]], { speed: 1.4 });
-  const kani = await w.addMon('kani', 'kanizumo', off([coach.g.position.x, coach.g.position.z], -0.8, 0.6, 0), { clip: 'win' });
+  const kani = await w.addMon('kani', 'kanizumo', off([coach.g.position.x, coach.g.position.z, 0, tram && w.sc.spots.aisle ? w.sc.spots.aisle[3] : undefined], -0.8, 0.6, 0), { clip: 'win' });
   await talkShot(w, coach, spike);
   await say('???', 'That\'s enough.', 'Shaking down an old man on the 11 o\'clock car. Your mother would be ashamed, Spike.');
   await say('Spike', 'C-Coach Gonda…?!');

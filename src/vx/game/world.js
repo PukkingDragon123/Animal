@@ -74,6 +74,9 @@ export class VxWorld {
     this.nav = new NavGrid(sc.vox); this.free = false; this.player = null; this.partner = null;
     for (const lp of sc.lamps || []) st.lamp(lp[0], lp[1], lp[2]);
     if (sc.setup) sc.setup(st);
+    // 3D-render posters into the scene's poster slots
+    const slots = sc.posterSlots || mod.posterSlots;
+    if (slots && slots.length) { const P = await import('../posters.js'); slots.forEach((sl, i) => P.posterDecal(st, { ...sl, poster: P.posterFor(sl, i, id) })); }
     this.extra = st.scene.children.filter((c) => !before.has(c));
     this.sc = sc; this.loc = L; this.id = id; this.mood = mood;
     this.shots = Object.assign({}, Object.fromEntries((sc.shots || []).map((s) => [s.name, s])), L.shots || {});

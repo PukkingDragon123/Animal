@@ -90,21 +90,22 @@ export async function paintPoster(cv, stage, P) {
     g.drawImage(pic, x, y, w, h);
   });
   // type
-  const ink = P.ink || '#1a1220', ac = P.accent || '#ffd040';
-  if (P.title) title(g, P.title, W / 2, H * (P.titleY ?? 0.17), Math.round(W * (P.titleK ?? 0.2)), P.titleFill || ac, { stroke: ink, shadow: 'rgba(0,0,0,0.35)', skew: P.skew ?? -0.08 });
-  if (P.title2) title(g, P.title2, W / 2, H * ((P.titleY ?? 0.17) + 0.085), Math.round(W * 0.1), '#fffaf0', { stroke: ink, sw: W * 0.012 });
-  if (P.sub) { g.fillStyle = ink; g.fillRect(0, H * 0.83, W, H * 0.075); title(g, P.sub, W / 2, H * 0.883, Math.round(W * 0.068), ac, {}); }
-  (P.lines || []).forEach((l, i) => title(g, l, W / 2, H * (0.94 + i * 0.045), Math.round(W * 0.045), P.lineFill || '#fffaf0', { stroke: ink, sw: W * 0.008 }));
-  if (P.corner) { g.save(); g.translate(W * 0.84, H * 0.3); g.rotate(-0.25); g.fillStyle = P.cornerBg || '#e83a3a'; g.beginPath(); for (let i = 0; i < 24; i++) { const r = i % 2 ? W * 0.09 : W * 0.115, a = (i / 24) * TAU; g.lineTo(Math.cos(a) * r, Math.sin(a) * r); } g.closePath(); g.fill(); title(g, P.corner[0], 0, -W * 0.005, Math.round(W * 0.055), '#fffaf0', {}); if (P.corner[1]) title(g, P.corner[1], 0, W * 0.045, Math.round(W * 0.04), '#fffaf0', {}); g.restore(); }
+  const ink = P.ink || '#1a1220', ac = P.accent || '#ffd040', Uk = Math.min(W, H * 0.85), wide = W > H * 1.4, tx = W * (P.titleX ?? 0.5);
+  // type scales with the short side, so banners and murals get proportionate lettering
+  if (P.title) title(g, P.title, tx, H * (P.titleY ?? (wide ? 0.3 : 0.17)), Math.round(Uk * (P.titleK ?? (wide ? 0.26 : 0.2))), P.titleFill || ac, { stroke: ink, shadow: 'rgba(0,0,0,0.35)', skew: P.skew ?? -0.08 });
+  if (P.title2) title(g, P.title2, tx, H * ((P.titleY ?? (wide ? 0.3 : 0.17)) + (wide ? 0.17 : 0.085)), Math.round(Uk * (wide ? 0.12 : 0.1)), '#fffaf0', { stroke: ink, sw: Uk * 0.012 });
+  if (P.sub) { const bh = wide ? H * 0.13 : H * 0.075, by = wide ? H * 0.84 : H * 0.83; g.fillStyle = ink; g.fillRect(0, by, W, bh); title(g, P.sub, W / 2, by + bh * 0.72, Math.round(Math.min(Uk * 0.068, bh * 0.72)), ac, {}); }
+  (P.lines || []).forEach((l, i) => title(g, l, W / 2, H * (0.94 + i * 0.045), Math.round(Uk * 0.045), P.lineFill || '#fffaf0', { stroke: ink, sw: Uk * 0.008 }));
+  if (P.corner) { g.save(); g.translate(W * (P.cornerX ?? 0.84), H * (P.cornerY ?? 0.3)); const W0 = W; { const W = Math.min(W0, H * 0.85); g.rotate(-0.25); g.fillStyle = P.cornerBg || '#e83a3a'; g.beginPath(); for (let i = 0; i < 24; i++) { const r = i % 2 ? W * 0.09 : W * 0.115, a = (i / 24) * TAU; g.lineTo(Math.cos(a) * r, Math.sin(a) * r); } g.closePath(); g.fill(); title(g, P.corner[0], 0, -W * 0.005, Math.round(W * 0.055), '#fffaf0', {}); if (P.corner[1]) title(g, P.corner[1], 0, W * 0.045, Math.round(W * 0.04), '#fffaf0', {}); } g.restore(); }
   // paper: frame, grain, wear, tape
-  if (P.frame !== false) { g.strokeStyle = P.frame || '#fffaf0'; g.lineWidth = W * 0.022; g.strokeRect(W * 0.011, H * 0.011, W - W * 0.022, H - H * 0.022); }
+  if (P.frame !== false) { const fw = Uk * 0.022; g.strokeStyle = P.frame || '#fffaf0'; g.lineWidth = fw; g.strokeRect(fw / 2, fw / 2, W - fw, H - fw); }
   grain(g, W, H, seed + 1, 0.045);
   const r = rnd(seed + 7); g.strokeStyle = 'rgba(255,255,255,0.18)'; g.lineWidth = 1; for (let i = 0; i < 6; i++) { const x = r() * W, y = r() * H; g.beginPath(); g.moveTo(x, y); g.lineTo(x + (r() - 0.5) * W * 0.3, y + (r() - 0.5) * 8); g.stroke(); }
-  if (P.tape !== false) { tape(g, W * 0.1, H * 0.02, W * 0.22, H * 0.04, -0.5); tape(g, W * 0.9, H * 0.02, W * 0.22, H * 0.04, 0.5); }
+  if (P.tape !== false && !wide) { tape(g, W * 0.1, H * 0.02, W * 0.22, H * 0.04, -0.5); tape(g, W * 0.9, H * 0.02, W * 0.22, H * 0.04, 0.5); }
 }
 // hang a poster on a wall: o like decal() ({ x, y, z, w, h, face, yaw, off }) + o.poster (spec); ppm ~ 400
 export function posterDecal(stage, o) {
-  const ppm = o.ppm || 400, W = Math.round(o.w * ppm), H = Math.round(o.h * ppm);
+  const ppm = Math.min(o.ppm || 400, 2048 / Math.max(o.w, o.h)), W = Math.round(o.w * ppm), H = Math.round(o.h * ppm);
   const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
   const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; t.minFilter = THREE.LinearMipmapLinearFilter; t.magFilter = THREE.LinearFilter;
   const g0 = cv.getContext('2d'); g0.fillStyle = (o.poster.bg || ['#f4ecd8'])[0]; g0.fillRect(0, 0, W, H);
@@ -139,4 +140,26 @@ export const POSTERS = {
   dojo: { bg: ['#3a0e0e', '#c83a2a'], burst: ['rgba(255,210,120,0.18)', 'rgba(0,0,0,0)'], dots: 'rgba(255,220,140,0.2)', title: 'GOLDEN CLAW', title2: 'TOKON DOJO', sub: 'DISCIPLINE · DRIP · DESTINY', accent: '#ffd040', titleFill: '#ffd040',
     mons: [{ id: 'kanizumo', clip: 'win', t: 1.2, yaw: 20, x: 0.5, y: 0.56, s: 0.58 }], seed: 81 },
 };
+// wide formats: murals, banners, cable-car ads
+Object.assign(POSTERS, {
+  leagueMural: { bg: ['#1a2a6a', '#3a1a5a'], burst: ['rgba(255,220,120,0.14)', 'rgba(255,255,255,0.03)'], dots: 'rgba(255,240,200,0.2)', title: 'TOKON LEAGUE', title2: 'SAN FRANCISCO · SEASON 7', sub: 'EVERY CITY HAS A CHAMPION — BE OURS', accent: '#ffd040', titleY: 0.36, titleK: 0.3,
+    mons: [{ id: 'kanizumo', clip: 'win', yaw: 30, x: 0.08, y: 0.5, s: 0.85 }, { id: 'paradove', clip: 'dance', yaw: 20, x: 0.2, y: 0.5, s: 0.8 }, { id: 'hellcoon', clip: 'win', yaw: 20, x: 0.31, y: 0.5, s: 0.8 }, { id: 'yeezilla', clip: 'win', yaw: -20, x: 0.69, y: 0.5, s: 0.85 }, { id: 'abbeyhorn', clip: 'win', yaw: -20, x: 0.8, y: 0.5, s: 0.8 }, { id: 'thundersabre', clip: 'roar', yaw: -25, x: 0.92, y: 0.5, s: 0.8 }], seed: 91, frame: false },
+  arenaBanner: { bg: ['#e8402a', '#8a1a2a'], burst: ['rgba(255,240,180,0.2)', 'rgba(0,0,0,0)'], title: 'STREET TOKON CUP', title2: 'UNDER THE FREEWAY · SATURDAYS', accent: '#ffd040', titleX: 0.58, titleK: 0.24,
+    mons: [{ id: 'chilichick', clip: 'dance', t: 1.3, yaw: 25, x: 0.14, y: 0.55, s: 0.95 }], seed: 92, frame: '#ffd040' },
+  dojoColumn: { bg: ['#3a0e0e', '#120a14'], burst: ['rgba(255,210,120,0.14)', 'rgba(0,0,0,0)'], title: 'TOKON', title2: 'LEAGUE', sub: 'BE THE LEGEND', accent: '#ffd040', titleY: 0.1,
+    mons: [{ id: 'thundersabre', clip: 'win', yaw: 15, x: 0.5, y: 0.48, s: 0.35 }, { id: 'zapkit', clip: 'dance', yaw: 15, x: 0.5, y: 0.75, s: 0.18 }], seed: 93 },
+  adSurf: { bg: ['#2a8ab0', '#f0d8a0'], title: 'EVERLONG SURF CLUB', title2: 'LESSONS AT OCEAN BEACH', accent: '#ff7a3a', titleFill: '#fffaf0', titleX: 0.6, ink: '#0e2a4a', mons: [{ id: 'foopod', clip: 'dance', yaw: 25, x: 0.15, y: 0.55, s: 0.95 }], seed: 94, frame: '#fffaf0' },
+  adBears: { bg: ['#f0e8d8', '#c8a8e8'], title: 'GRADCUB COLLEGE PREP', title2: 'DROP OUT IN STYLE', accent: '#5a2a8a', titleFill: '#5a2a8a', ink: '#2a1a3a', titleX: 0.6, mons: [{ id: 'gradcub', clip: 'dance', yaw: 20, x: 0.15, y: 0.55, s: 0.95 }], seed: 95, frame: '#5a2a8a' },
+  adSauce: { bg: ['#ffd040', '#e8402a'], title: 'CHILICHICK SAUCE', title2: 'NOW 2× HOTTER', accent: '#e8402a', titleFill: '#fffaf0', titleX: 0.6, mons: [{ id: 'chilichick', clip: 'sip', t: 1.5, yaw: 25, x: 0.15, y: 0.55, s: 0.95 }], seed: 96, frame: '#fffaf0' },
+  adPier: { bg: ['#4a8ac8', '#f0c890'], title: 'PIER 39 SEA LIONS', title2: 'NEXT STOP · BAY ST', accent: '#e8403a', titleFill: '#fffaf0', ink: '#1a2a4a', titleX: 0.6, mons: [{ id: 'barkorious', clip: 'win', yaw: 25, x: 0.15, y: 0.55, s: 0.95 }], seed: 97, frame: '#fffaf0' },
+  adOwl: { bg: ['#2e5a9c', '#8ab0e8'], title: 'MOM\'S NOODLE HOUSE', title2: 'CHINATOWN · OPEN LATE', accent: '#ffd040', titleFill: '#fffaf0', titleX: 0.6, mons: [{ id: 'wheezowl', clip: 'idle', yaw: 25, x: 0.15, y: 0.55, s: 0.95 }], seed: 98, frame: '#fffaf0' },
+});
 export function poster(name, extra = {}) { return { ...POSTERS[name], ...extra }; }
+// a poster for a scene's poster slot (by kind and shape)
+export function posterFor(slot, i = 0, loc = '') {
+  const a = slot.w / slot.h, pick = (l) => POSTERS[l[i % l.length]];
+  if (slot.kind === 'mural') return a > 2 ? POSTERS.leagueMural : POSTERS.dojoColumn;
+  if (slot.kind === 'banner') return POSTERS.arenaBanner;
+  if (slot.kind === 'ad' || a > 1.6) return pick(['adSauce', 'adSurf', 'adPier', 'adBears', 'adOwl']);
+  return pick(loc === 'pier39' ? ['pier', 'shrimp', 'chickTour', 'pigeons', 'bears', 'league'] : loc === 'arena' ? ['league', 'raccoons', 'chickTour', 'bears'] : ['league', 'chickTour', 'pigeons', 'raccoons', 'bears', 'shrimp', 'pier', 'dojo']);
+}
