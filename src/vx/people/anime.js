@@ -538,6 +538,12 @@ export class AnimePerson {
       const brim = tube([{ c: [0, HY(0.18), S(0.1)], rx: S(0.075), rz: S(0.02), v: 0 }, { c: [0, HY(0.17), S(0.17)], rx: S(0.07), rz: S(0.045), v: 1 }], 10, { cap1: true });
       attach('head', mesh(brim, mat(paintTex(16, 16, (g, W, H) => { g.fillStyle = shade(cc, 0.12); g.fillRect(0, 0, W, H); }))));
     }
+    if (acc.has('beanie')) {
+      const bc = o.capColor || '#3a4a6a', rings = [];
+      for (let i = 0; i <= 5; i++) { const t = i / 5, y = lerp(0.16, 0.262, Math.sin(t * Math.PI / 2)), [, rx, rz, z] = headAt(Math.min(0.237, y)); rings.push({ c: [0, HY(y), S(z)], rx: S(rx * 1.16 + 0.008) * (1 - t * t * 0.96), rz: S(rz * 1.16 + 0.008) * (1 - t * t * 0.96), v: t }); }
+      attach('head', mesh(tube(rings, 14, { cap1: true }), mat(paintTex(64, 48, (g, W, H) => { g.fillStyle = vgrad(g, H, [[0, lite(bc, 0.1)], [0.6, bc], [0.75, shade(bc, 0.2)], [1, shade(bc, 0.12)]]); g.fillRect(0, 0, W, H); g.fillStyle = rgba(shade(bc, 0.4), 0.5); for (let x = 0; x < W; x += 3) g.fillRect(x, 0, 1, H); g.fillStyle = rgba(lite(bc, 0.3), 0.35); for (let x = 1; x < W; x += 3) g.fillRect(x, 0, 1, H); g.fillStyle = shade(bc, 0.3); g.fillRect(0, H * 0.72, W, 2); }))));
+      attach('head', mesh(new THREE.IcosahedronGeometry(S(0.03), 1).translate(...F(0, 0.275, -0.01)), mat(paintTex(8, 8, (g) => { g.fillStyle = lite(bc, 0.35); g.fillRect(0, 0, 8, 8); }))));
+    }
     if (acc.has('headphones')) {
       for (const s of [-1, 1]) attach('head', mesh(tube([{ c: [s * S(0.098), HY(0.1), 0], rx: S(0.012), rz: S(0.03), v: 0 }, { c: [s * S(0.115), HY(0.1), 0], rx: S(0.012), rz: S(0.03), v: 1 }], 10, { cap0: true, cap1: true }).rotateZ(0), mat(paintTex(16, 16, (g, W, H) => { g.fillStyle = o.phoneColor || '#e8603a'; g.fillRect(0, 0, W, H); g.fillStyle = '#2a2a32'; g.fillRect(0, 0, W, 4); }))));
       const pts = []; for (let i = 0; i <= 8; i++) { const a = (i / 8 - 0.5) * Math.PI; pts.push(F(Math.sin(a) * 0.112, 0.12 + Math.cos(a) * 0.15, 0)); }
