@@ -208,6 +208,13 @@ export const sleeveP = (p, w, h, face) => {
   for (let x = 0; x < w; x++) { p.px(x, 0, '#f4ecd8'); p.px(x, h - 1, '#c8bca0'); }
   for (let y = 0; y < h; y++) { p.px(0, y, '#f4ecd8'); p.px(w - 1, y, '#c8bca0'); }
 };
+// the helm guitar's round top as a plane: clear outside the circle, so it sits flush on the octagonal body
+export const wheelTop = (p, w, h, face) => { wheelFace(p, w, h, 'south'); const cx = w / 2, cy = h / 2, R = Math.min(w, h) / 2; for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (Math.hypot(x + 0.5 - cx, y + 0.5 - cy) > R) p.px(x, y, 0); };
+// a visor with gold oak leaves along its edge (a captain's "scrambled eggs")
+export const visorGoldP = (p, w, h, face) => { visorP(p, w, h, face); if (face === 'up' || face === 'south') for (let x = 0; x < w; x++) { const y = face === 'up' ? h - 2 : 0; p.px(x, y, x % 3 === 0 ? GOLD[0] : GOLD[1]); if (face === 'up' && x % 3 === 1) p.px(x, y - 1, GOLD[2]); } };
+// a jacket sleeve with a navy cuff and gold rings
+export const cuffP = (p, w, h, face) => { clothP(p, w, h, face); if (face === 'up' || face === 'down') return; for (let y = h - 4; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, y === h - 3 ? GOLD[1] : TK.navy); };
+
 // the vinyl peeking out of the sleeve (a plane: transparent outside the disc, sits flush behind the sleeve)
 export const vinylP = (p, w, h) => {
   const cx = w / 2, cy = h / 2, R = Math.min(w, h) / 2;
@@ -287,7 +294,7 @@ export const eagleForm = formMap(({ h, s, l }, glow, hex) => {
 // lower iris (accent). Irises are shaped fills with a pupil and two highlights — never concentric rings.
 // Talonaka: a sharp amber eagle eye, no whites, the brow's lid line slanting down toward the beak
 export const EYE_TALONAKA = {
-  open: ['ll..........', '.llllll.....', '..llllllllll', '.lIIIIIIIIIl', '.liiIhhkkIil', '.liiihhkkiil', '.liiikkkhiil', '.lciiikkiicl', '..lcciiiccl.', '...llllll...'],
+  open: ['............', 'lll.........', '.lllllllllll', '.lIIIIIIIIIl', '.liiIhhkkIil', '.liiihhkkiil', '.liiikkkhiil', '.lciiikkiicl', '..lcciiiccl.', '...llllll...'],
   angry: ['............', 'lll.........', '.llllll.....', '.lIIllllllll', '.liiIIIIllll', '.liiihhkkIil', '.liiikkkhiil', '.lciiikkiicl', '..lcciiiccl.', '...llllll...'],
   sad: ['............', '..........ll', '.......lllll', '.llllllllIIl', '.lllIIIIiiil', '.liiihhkkiil', '.liiikkkhiil', '.lciiikkiicl', '..lcciiiccl.', '...llllll...'],
   happy: ['............', '............', '............', '....llll....', '..llllllll..', '.lll....lll.', '.ll......ll.', '.l........l.', '............', '............'],

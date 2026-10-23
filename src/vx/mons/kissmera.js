@@ -329,8 +329,9 @@ export const anim = {
       leanIn(P, lean); P.rot('snake', 30 * sulk, 20 * sulk, 0);
       P.rot('head', -4 * win, 55 * turn, 10 * turn); crouch(P, 0.4 + 0.4 * win); P.lookW = 0;
       const tl = Math.max(L1, 1.7 * L2, 2.6 * win), ts = Math.max(1.6 * S1, 2.6 * S2);
-      mouth(P, 0.3 + 0.3 * Math.min(1, tl), tl, { droop: 6 }); hiss(P, Math.max(0.5 * S1, 0.7 * S2), ts);
-      wings(P, 0.3 * win, 10 * win * Math.abs(wave(t, 4)));
+      mouth(P, 0.18 + 0.14 * Math.min(1, tl), tl, { droop: -14 }); hiss(P, Math.max(0.5 * S1, 0.7 * S2), ts);
+      P.rot('wingL', 0, 46 * lean, -24 * lean);   // the near wing folds back so the duel can be seen
+      P.rot('wingR', 0, -10 * win, -30 * win - 10 * win * Math.abs(wave(t, 4)));
       P.face('eyes', win > 0.3 ? 'smug' : L2 > 0.4 ? 'angry' : S1 > 0.5 || S2 > 0.5 ? 'wide' : L1 > 0.3 ? 'happy' : undefined); P.blinkOK = false;
       P.burst(2.8, 'kstar', 'head', HEAD, { n: 8, speed: 1.5 }).burst(2.8, 'sparkle', 'head', MOUTH, { n: 8 }).burst(3.05, 'sweat', 'snake', [2, 33, -8], { n: 2, dir: [1, 1, 0], speed: 0.8 }).burst(1.55, 'anger', 'head', [-6, 27, 10], {});
     } },

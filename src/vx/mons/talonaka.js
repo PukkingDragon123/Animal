@@ -115,7 +115,7 @@ export const def = {
       B([-6.2, 16.0, -5.8], [12.4, 9.0, 0.6], lockP({ ...TK.hair, ragged: true })),
       ...both(B([-7.6, 21.4, 1.0], [1.4, 3.6, 3.0], lockP({ ...TK.hair, ragged: true }), { pivot: [-6.8, 24.0, 2.5], rot: [0, 0, 26] })),
       // dripped (or): the white sailor cap with a navy band and a black visor
-      ...acc('acc-cap', [B([-5.6, 26.4, -4.8], [11.2, 2.8, 9.8], clothP), B([-5.8, 26.2, -5.0], [11.6, 0.9, 10.2], shade(TK.navy, { top: '#3a4a8a', bottom: TK.navyLo })), B([-5.0, 25.9, 4.8], [10.0, 0.6, 2.8], visorP), B([-0.6, 26.9, 5.08], [1.2, 0.5, 0.2], braidP)]),
+      ...acc('acc-cap', [B([-6.6, 26.0, -6.0], [13.2, 1.2, 12.0], shade(TK.navy, { top: '#3a4a8a', bottom: TK.navyLo })), B([-7.0, 27.2, -6.4], [14.0, 1.6, 12.8], clothP), B([-6.2, 28.8, -5.6], [12.4, 0.5, 11.2], clothP), B([-5.6, 25.8, 5.8], [11.2, 0.5, 2.8], visorP, { pivot: [0, 26.0, 6.0], rot: [-10, 0, 0] }), B([-0.8, 27.5, 6.4], [1.6, 1.0, 0.25], braidP)]),
     ] },
   ],
   drip: [

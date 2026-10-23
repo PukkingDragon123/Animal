@@ -29,11 +29,11 @@ const maneHalo = halo(C.mane, { hi: C.maneHi, lo: C.maneLo, line: C.maneLine, ti
 const vestP = leather({ studs: 4 });
 const pantsP = leather({ cols: C.pants });
 // the greasepaint face: a white oval, a black star round the right eye, a bat-wing flare round the left
-const EYE = [2.15, 17.3];
+const EYE = [1.95, 17.2];
 const batPts = (ex, ey, s) => [[-1.5, -0.8], [-0.5, -1.7], [1.1, -1.6], [2.0, -0.6], [2.9, 1.5], [1.8, 1.0], [2.0, 2.6], [1.0, 1.6], [0.3, 2.8], [-0.3, 1.7], [-1.3, 2.0], [-1.7, 0.6]].map(([x, y]) => [ex + x * s, ey + y]);
-const BAT = batPts(EYE[0], EYE[1], 1).map(([x, y]) => [EYE[0] + (x - EYE[0]) * 1.25, EYE[1] + (y - EYE[1]) * 1.15]);
+const BAT = batPts(EYE[0], EYE[1], 1).map(([x, y]) => [EYE[0] + (x - EYE[0]) * 1.08, EYE[1] + (y - EYE[1]) * 1.0]);
 const faceP = painted(headFur, { mask: { x: 0, y: 16.2, rx: 4.75, ry: 4.7, col: K.white, lo: K.whiteLo, line: K.whiteLine },
-  marks: [{ star: [-EYE[0], EYE[1] + 0.1, 3.4, 0.52, 0], col: K.paint }, { fn: (X, Y) => (inPoly(BAT, X, Y) ? K.paint : null) }] });
+  marks: [{ star: [-EYE[0], EYE[1] + 0.05, 2.95, 0.54, 0], col: K.paint }, { fn: (X, Y) => (inPoly(BAT, X, Y) ? K.paint : null) }] });
 const whiteP = (p, w, h, face) => fill(p, w, h, (x, y) => (face === 'up' ? K.white : face === 'down' ? K.whiteLo : ramp([K.white, K.white, K.whiteLo], h > 1 ? y / (h - 1) : 0.5, x, y)));
 // the muzzle: white paint, whisker dots, a black lip line; its underside is the roof of the mouth with two fangs
 const muzzleP = (p, w, h, face, cube) => {

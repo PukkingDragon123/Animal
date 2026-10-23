@@ -23,7 +23,7 @@ export const FUR = {
   // Piledrilla: frosty white gorilla fur with blue shadows
   pile: { c: '#d6dee8', hi: '#f6faff', lo: '#a2b0c4', deep: '#6c7a92', belly: '#5a5868', bellyLo: '#3e3c4a' },
   // Fluorescape: midnight indigo with violet light
-  fluo: { c: '#34306a', hi: '#5450a8', lo: '#201e46', deep: '#121030', belly: '#46428a', bellyLo: '#2a2860' },
+  fluo: { c: '#4a40a0', hi: '#7c6cdc', lo: '#2c2668', deep: '#181240', belly: '#5a50b8', bellyLo: '#3a3290' },
 };
 export const A = {
   pink: '#f08a9a', pinkHi: '#ffb4bc', pinkLo: '#c8607a', pinkDeep: '#8e3a52', lidPink: '#d8687e',
@@ -131,11 +131,14 @@ export const crystalP = (c, hi, lo) => (p, w, h, face) => {
 export const facetP = (c, hi, lo) => (p, w, h, face) => {
   fill(p, w, h, (x, y) => {
     if (face === 'up') return hi; if (face === 'down') return lo;
-    const u = x / Math.max(1, w - 1), v = y / Math.max(1, h - 1);
-    return u + v < 0.5 ? hi : u - v > 0.45 ? lo : Math.abs(u - v) < 0.06 || Math.abs(u + v - 1) < 0.06 ? '#ffffff' : c;
+    const u = (x + 0.5) / w, v = (y + 0.5) / h, g = 0.32;                       // a girdle line, a crown above, a V of pavilion facets below
+    if (Math.abs(v - g) < 0.5 / h) return '#ffffff';
+    if (v < g) return u < 0.33 ? hi : u > 0.66 ? c : shift(hi, -0.06);
+    const k = (v - g) / (1 - g), l = 0.5 - 0.5 * (1 - k), r = 0.5 + 0.5 * (1 - k);
+    if (Math.abs(u - l) < 0.6 / w || Math.abs(u - r) < 0.6 / w) return shift(hi, 0.1);
+    return u < l ? c : u > r ? lo : shift(c, -0.08);
   });
 };
-
 // ---------------------------------------------------------------- props
 export const combP = (p, w, h, face) => { fill(p, w, h, (x, y) => (face === 'up' ? '#3a3036' : y === 0 ? '#5a4a52' : '#2a2026')); if (face === 'east' || face === 'west') for (let x = 0; x < w; x += 2) for (let y = Math.floor(h / 2); y < h; y++) p.px(x, y, 0); };
 export const lensP = (tint) => (p, w, h, face) => { fill(p, w, h, (x, y) => (face !== 'south' ? '#c89a2a' : x === 0 || x === w - 1 || y === 0 || y === h - 1 ? '#e0b040' : y < h / 2 ? shift(tint, 0.12) : tint)); if (face === 'south' && w > 3) p.px(1, 1, '#ffffff'); };
@@ -227,7 +230,7 @@ export const AMFX = {
 // turns to gold-veined diamond (white with gold), fluorescent glows go electric blue
 export const SCARF = { c: '#c83a4a', hi: '#ff6a6a', lo: '#7a1a2a' };
 export const arcticForm = (F, extra = {}) => formMap(({ h, s, l }, glow, hex) => {
-  if (glow) return s > 0.2 ? fromHsl(205, Math.min(1, s), Math.min(0.95, Math.max(0.55, l))) : undefined;
+  if (glow) { if (s <= 0.2) return undefined; if ((h > 270 && h < 345) || (h > 55 && h < 110)) return gilt(Math.max(0.6, l)); return fromHsl(198, Math.min(0.9, s), Math.min(0.95, Math.max(0.68, l))); }
   if (extra[hex]) return extra[hex];
   if (F && hex === F.hi) return 'gold';                                                  // lit fur tufts → gold frosting
   if (F && (hex === F.c || hex === F.lo || hex === F.deep)) return 'black';              // the coat → black lacquer

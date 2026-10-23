@@ -182,7 +182,7 @@ function paintPlaster(g, W, H, o, ppm, x0 = 0, y0 = 0) {
 }
 // wallpaper patterns inside a rect; period-aligned to the rect so a full-width strip tiles
 function paintPaper(g, x0, y0, W, H, o, ppm) {
-  const c = o.c, c2 = o.c2 || shade(c, 0.12), c3 = o.c3 || lite(c, 0.4), rep = (o.rep || 0.25) * ppm, kind = o.kind || 'stripe', r = rnd(o.seed || 21);
+  const c = o.c, c2 = o.c2 || shade(c, 0.12), c3 = o.c3 || lite(c, 0.4), rep = (o.rep || 0.25) * ppm, kind = o.pattern || (o.kind !== 'paper' && o.kind) || 'stripe', r = rnd(o.seed || 21);
   g.save(); g.beginPath(); g.rect(x0, y0, W, H); g.clip();
   g.fillStyle = c; g.fillRect(x0, y0, W, H);
   const nx = Math.max(1, Math.round(W / rep)), step = W / nx;
@@ -428,6 +428,11 @@ const MATS = new Map();
 // MeshLambert + map, vertex colours on (tints / baked shading). o: { side: 2, glow, keep, transparent, alphaTest, opacity, depthWrite, basic }
 export function mat(tex, o = {}) {
   const key = tex.uuid + JSON.stringify(o); if (MATS.has(key)) return MATS.get(key);
+  const m = makeMat(tex, o); MATS.set(key, m); return m;
+}
+// a fresh (uncached) material, for things that switch on and off
+export function ownMat(tex, o = {}) { return makeMat(tex, o); }
+function makeMat(tex, o) {
   const P = { map: tex, vertexColors: o.vc !== false, side: o.side === 2 ? THREE.DoubleSide : o.side === 1 ? THREE.BackSide : THREE.FrontSide, transparent: !!o.transparent, alphaTest: o.alphaTest || 0, opacity: o.opacity ?? 1, depthWrite: o.depthWrite ?? !o.transparent };
   const m = o.basic ? new THREE.MeshBasicMaterial({ ...P, toneMapped: o.toneMapped ?? true }) : new THREE.MeshLambertMaterial(P);
   if (o.color) m.color.set(o.color);
@@ -435,10 +440,8 @@ export function mat(tex, o = {}) {
   if (o.keep || o.basic) m.userData.keep = true;
   if (o.transparent) { m.polygonOffset = true; m.polygonOffsetFactor = o.po ?? -2; m.polygonOffsetUnits = o.po ?? -2; }
   m.userData.noShadow = !!o.noShadow; m.userData.order = o.order || 0;
-  MATS.set(key, m); return m;
+  return m;
 }
-// a fresh (uncached) material, for things that switch on and off
-export function ownMat(tex, o = {}) { const k = '__own' + Math.random(); const m = mat(tex, { ...o, _k: k }); MATS.delete(tex.uuid + JSON.stringify({ ...o, _k: k })); return m; }
 
 // ---------------------------------------------------------------- geometry
 export function makeGeo(P, UV, I, N) {
@@ -533,18 +536,16 @@ export function sweep(rows, ring, o = {}) {
   const sideCount = P.length / 3;
   const cap = (j, up) => {
     const base = P.length / 3, pts = R[j]; let cx = 0, cz = 0; for (const p of pts) { cx += p[0] / n; cz += p[1] / n; }
+    let ext = 1e-4; for (const p of pts) ext = Math.max(ext, Math.hypot(p[0] - cx, p[1] - cz));
     P.push(cx, rows[j].y, cz); UV.push(o.fit ? 0.5 : cx, o.fit ? 0.5 : cz);
-    for (let i = 0; i < n; i++) { P.push(pts[i][0], rows[j].y, pts[i][1]); UV.push(o.fit ? 0.5 + (pts[i][0] - cx) : pts[i][0], o.fit ? 0.5 + (pts[i][1] - cz) : pts[i][1]); }
-    for (let i = 0; i < n; i++) { const a = base + 1 + i, b = base + 1 + ((i + 1) % n); if (up) I.push(base, b, a); else I.push(base, a, b); }
+    for (let i = 0; i < n; i++) { P.push(pts[i][0], rows[j].y, pts[i][1]); UV.push(o.fit ? 0.5 + (pts[i][0] - cx) / (2 * ext) : pts[i][0], o.fit ? 0.5 - (pts[i][1] - cz) / (2 * ext) : pts[i][1]); }
+    for (let i = 0; i < n; i++) { const a = base + 1 + i, b = base + 1 + ((i + 1) % n); if (up) I.push(base, a, b); else I.push(base, b, a); }
   };
   if (o.cap0) cap(0, false); if (o.cap1) cap(rows.length - 1, true);
   const g = makeGeo(P, UV, I);
   // the u seam: average the normals of the duplicated first / last vertex of each row
   const N = g.attributes.normal;
   for (const s of seams) { const a = s, b = s + n; if (b >= sideCount) continue; const x = N.getX(a) + N.getX(b), y = N.getY(a) + N.getY(b), z = N.getZ(a) + N.getZ(b), l = Math.hypot(x, y, z) || 1; N.setXYZ(a, x / l, y / l, z / l); N.setXYZ(b, x / l, y / l, z / l); }
-  // caps keep flat normals
-  for (let i = sideCount; i < N.count; i++) N.setXYZ(i, 0, P[i * 3 + 1] === rows[0].y && o.cap0 && i < sideCount + n + 1 ? -1 : 1, 0);
-  if (o.cap0 && o.cap1) for (let i = sideCount + n + 1; i < N.count; i++) N.setXYZ(i, 0, 1, 0);
   if (o.fit) g.userData.fit = true;
   return g;
 }
@@ -578,7 +579,7 @@ export function slab(w, d, h, o = {}) {
 export function superq(w, h, d, o = {}) {
   const n = o.n || 14, m = o.m || 9, e1 = o.e1 ?? 0.6, e2 = o.e2 ?? 0.6, a = w / 2, b = h / 2, c = d / 2;
   const sp = (x, e) => Math.sign(x) * Math.pow(Math.abs(x), e), rows = [];
-  for (let j = 0; j <= m; j++) { const eta = -Math.PI / 2 + (j / m) * Math.PI; rows.push({ y: b + sp(Math.sin(eta), e1) * b * (o.bulge ? 1 : 1), k: sp(Math.cos(eta), e1), v: j / m }); }
+  for (let j = 0; j <= m; j++) { const eta = -Math.PI / 2 + (j / m) * Math.PI; rows.push({ y: b + sp(Math.sin(eta), e1) * b, k: sp(Math.cos(eta), e1), v: j / m }); }
   const g = sweep(rows, (row) => { const pts = []; for (let i = 0; i < n; i++) { const w2 = (i / n - 0.5) * TAU; pts.push([sp(Math.sin(w2), e2) * a * Math.max(1e-4, row.k) * (o.taperTop && row.y > b ? lerp(1, o.taperTop, (row.y - b) / b) : 1), sp(Math.cos(w2), e2) * c * Math.max(1e-4, row.k)]); } return pts; }, { smoothV: true, fit: o.fit });
   if (o.sag) { const p = g.attributes.position; for (let i = 0; i < p.count; i++) { const x = p.getX(i), z = p.getZ(i), y = p.getY(i); p.setY(i, y - o.sag * Math.max(0, 1 - (x * x) / (a * a) - (z * z) / (c * c)) * (y / h)); } g.computeVertexNormals(); }
   if (!o.fit) boxUV(g, o);
@@ -617,7 +618,7 @@ export function tube(pts, r, o = {}) {
     const bin = new V3().crossVectors(tan[j], nrm), rr2 = typeof r === 'function' ? r(j / (pv.length - 1)) : r;
     for (let i = 0; i <= n; i++) { const a = (i / n) * TAU, c = Math.cos(a) * rr2, s = Math.sin(a) * rr2; P.push(p.x + nrm.x * c + bin.x * s, p.y + nrm.y * c + bin.y * s, p.z + nrm.z * c + bin.z * s); UV.push((i / n) * TAU * Math.max(rr2, 0.005), len); }
   });
-  for (let j = 0; j < pv.length - 1; j++) for (let i = 0; i < n; i++) { const a = j * W + i, b = a + 1, c = a + W, d = c + 1; I.push(a, d, b, a, c, d); }
+  for (let j = 0; j < pv.length - 1; j++) for (let i = 0; i < n; i++) { const a = j * W + i, b = a + 1, c = a + W, d = c + 1; I.push(a, b, d, a, d, c); }
   if (o.cap) for (const [j, s] of [[0, -1], [pv.length - 1, 1]]) { const base = P.length / 3, p = pv[j]; P.push(p.x, p.y, p.z); UV.push(0, 0); for (let i = 0; i < n; i++) { const a = j * W + i; if (s > 0) I.push(base, a, a + 1); else I.push(base, a + 1, a); } }
   const g = makeGeo(P, UV, I);
   const N = g.attributes.normal; for (let j = 0; j < pv.length; j++) { const a = j * W, b = a + n, x = N.getX(a) + N.getX(b), y = N.getY(a) + N.getY(b), z = N.getZ(a) + N.getZ(b), l = Math.hypot(x, y, z) || 1; N.setXYZ(a, x / l, y / l, z / l); N.setXYZ(b, x / l, y / l, z / l); }
@@ -636,6 +637,12 @@ export function sheet(f, nu, nv, o = {}) {
   pts.forEach((p, k) => { P.push(...p); if (o.fit) UV.push((k % W) / nu, Math.floor(k / W) / nv); else UV.push(U[k], Vv[k]); });
   for (let j = 0; j < nv; j++) for (let i = 0; i < nu; i++) { const a = j * W + i, b = a + 1, c = a + W, e = c + 1; if (o.flip) I.push(a, e, b, a, c, e); else I.push(a, b, e, a, e, c); }
   const g = makeGeo(P, UV, I); if (o.fit) g.userData.fit = true; return g;
+}
+// deform a geometry: fn(x, y, z) → [x, y, z]; normals recomputed (seams of swept shapes stay smooth enough)
+export function warp(g, fn) {
+  const p = g.attributes.position;
+  for (let i = 0; i < p.count; i++) { const q = fn(p.getX(i), p.getY(i), p.getZ(i)); p.setXYZ(i, q[0], q[1], q[2]); }
+  p.needsUpdate = true; g.computeVertexNormals(); g.boundingBox = null; return g;
 }
 // faceted look: split every triangle (flat normals)
 export function flatten(g) { const f = g.index ? g.toNonIndexed() : g.clone(); f.computeVertexNormals(); f.userData = { ...g.userData }; return f; }
@@ -678,7 +685,7 @@ export class Batch {
     return this;
   }
   // a separate (unmerged) mesh, e.g. for something that moves
-  mesh(geo, material, t = {}) { const g = new THREE.Group(); const b = new Batch(); b.add(geo, material, { ...t, p: [0, 0, 0], r: 0, s: 1, m: undefined }); b.build(g); const o = g.children[0]; if (t.p) o.position.set(...t.p); if (t.r !== undefined) { if (Array.isArray(t.r)) o.rotation.set(t.r[0], t.r[1], t.r[2], 'YXZ'); else o.rotation.y = t.r; } if (t.s) o.scale.setScalar(t.s); this.meshes.push(o); return o; }
+  mesh(geo, material, t = {}) { const g = new THREE.Group(); const b = new Batch(); b.add(geo, material, { ...t, p: [0, 0, 0], r: 0, s: 1, m: undefined }); b.build(g); const o = g.children[0]; if (t.p) o.position.set(...t.p); if (t.r !== undefined) { if (Array.isArray(t.r)) o.rotation.set(t.r[0], t.r[1], t.r[2], 'YXZ'); else o.rotation.y = t.r; } if (t.s) { if (Array.isArray(t.s)) o.scale.set(...t.s); else o.scale.setScalar(t.s); } this.meshes.push(o); return o; }
   build(parent) {
     for (const [material, L] of this.parts) {
       const g = new THREE.BufferGeometry();
@@ -693,30 +700,40 @@ export class Batch {
     this.parts.clear(); this.meshes = [];
     return parent;
   }
+  // a local frame (position, yaw / euler, scale): parts added to it are placed relative to it; frames nest
+  at(p, r = 0, s) { return new Frame(this, xform({ p, r, s }).clone()); }
+  get B() { return this; }
+  pt(x, y, z) { return [x, y, z]; }
   // stats
   count() { let tris = 0; for (const L of this.parts.values()) tris += L.I.length / 3; return { mats: this.parts.size, tris }; }
 }
 
+export class Frame {
+  constructor(B, m) { this.B = B; this.m = m; }
+  add(geo, material, t = {}) { const m = this.m.clone().multiply(xform({ ...t, m: undefined }).clone()); this.B.add(geo, material, { ...t, m }); return this; }
+  at(p, r = 0, s) { return new Frame(this.B, this.m.clone().multiply(xform({ p, r, s }).clone())); }
+  // world position of a local point
+  pt(x, y, z) { const v = new THREE.Vector3(x, y, z).applyMatrix4(this.m); return [v.x, v.y, v.z]; }
+}
+
 // ---------------------------------------------------------------- soft shadows (unlit, transparent, batched)
-let SHADOW = null;
-function shadowMats() {
-  if (!SHADOW) {
-    const mk = (t) => { const m = new THREE.MeshBasicMaterial({ map: t, color: 0x1a0e22, transparent: true, depthWrite: false, opacity: 0.55, vertexColors: true }); m.userData.keep = true; m.userData.noShadow = true; m.polygonOffset = true; m.polygonOffsetFactor = -3; m.polygonOffsetUnits = -3; m.userData.order = 1; return m; };
-    SHADOW = { blob: mk(T.blob()), fade: mk(T.fade()) };
-  }
-  return SHADOW;
+const SHADOW = new Map();
+function shadowMat(kind, k) {
+  const q = Math.max(1, Math.min(10, Math.round(k * 10))), key = kind + q;
+  if (!SHADOW.has(key)) { const m = new THREE.MeshBasicMaterial({ map: kind === 'blob' ? T.blob() : T.fade(), color: 0x1a0e22, transparent: true, depthWrite: false, opacity: 0.6 * (q / 10) }); m.userData.keep = true; m.userData.noShadow = true; m.polygonOffset = true; m.polygonOffsetFactor = -3; m.polygonOffsetUnits = -3; m.userData.order = 1; SHADOW.set(key, m); }
+  return SHADOW.get(key);
 }
 // a soft round contact shadow on a floor at height y. k: strength 0..1
 export function blobShadow(B, x, y, z, rx, rz, k = 1, rot = 0) {
   const g = makeGeo([-0.5, 0, -0.5, 0.5, 0, -0.5, 0.5, 0, 0.5, -0.5, 0, 0.5], [0, 0, 1, 0, 1, 1, 0, 1], [0, 2, 1, 0, 3, 2], [0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0]); g.userData.fit = true;
-  B.add(g, shadowMats().blob, { p: [x, y + 0.004, z], r: rot, s: [rx * 2, 1, rz * 2], tint: toHex(255 * k, 255 * k, 255 * k), uvOff: false });
+  B.add(g, shadowMat('blob', k), { p: [x, y + 0.004, z], r: rot, s: [rx * 2, 1, rz * 2], uvOff: false });
 }
 // a strip of shadow fading away from an edge: from point a to b (the dark edge), extending `w` metres along `dir` ([dx, dy, dz])
 export function edgeShadow(B, a, b, dir, w, k = 1) {
   const P = [a[0] + dir[0] * w, a[1] + dir[1] * w, a[2] + dir[2] * w, b[0] + dir[0] * w, b[1] + dir[1] * w, b[2] + dir[2] * w, b[0], b[1], b[2], a[0], a[1], a[2]];
   const e1 = [b[0] - a[0], b[1] - a[1], b[2] - a[2]], n = [e1[1] * dir[2] - e1[2] * dir[1], e1[2] * dir[0] - e1[0] * dir[2], e1[0] * dir[1] - e1[1] * dir[0]], l = Math.hypot(...n) || 1;
-  const g = makeGeo(P, [0, 0, 1, 0, 1, 1, 0, 1], [0, 1, 2, 0, 2, 3, 0, 2, 1, 0, 3, 2], [n[0] / l, n[1] / l, n[2] / l, n[0] / l, n[1] / l, n[2] / l, n[0] / l, n[1] / l, n[2] / l, n[0] / l, n[1] / l, n[2] / l]); g.userData.fit = true;
-  B.add(g, shadowMats().fade, { tint: toHex(255 * k, 255 * k, 255 * k), uvOff: false });
+  const g = makeGeo(P, [0, 1, 1, 1, 1, 0, 0, 0], [0, 1, 2, 0, 2, 3, 0, 2, 1, 0, 3, 2], [n[0] / l, n[1] / l, n[2] / l, n[0] / l, n[1] / l, n[2] / l, n[0] / l, n[1] / l, n[2] / l, n[0] / l, n[1] / l, n[2] / l]); g.userData.fit = true;
+  B.add(g, shadowMat('fade', k), { uvOff: false });
 }
 // leave the scene: a per-frame hook that removes itself once `obj` is no longer in the scene
 export function hook(stage, obj, fn) {
