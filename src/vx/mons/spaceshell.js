@@ -14,7 +14,7 @@ import {
 } from './kiss_parts.js';
 import { bounce } from '../anim.js';
 
-const C = { eye: '#4ad8ff', eyeLo: '#1a6aa8', eyeHi: '#b8f4ff', skin: '#8a96a0', skinHi: '#b4c0c8', skinLo: '#56606c', beak: ['#5a6070', '#3a3e4c', '#24262e', '#121318'], hair: '#1c1a28', hairHi: '#3c3a58', burst: ['#f4f6fa', '#b8bcc8', '#5a5e6c', '#141418'] };
+const C = { eye: '#4ad8ff', eyeLo: '#1a6aa8', eyeHi: '#b8f4ff', skin: '#6e9a8a', skinHi: '#9cc4b2', skinLo: '#3e6458', beak: ['#5a6070', '#3a3e4c', '#24262e', '#121318'], hair: '#1c1a28', hairHi: '#3c3a58', burst: ['#f4f6fa', '#b8bcc8', '#5a5e6c', '#141418'] };
 const SILVER = ['#ffffff', '#d4d8e4', '#9aa0b4', '#4a4e60'];
 // ---------------------------------------------------------------- painters
 const skinP = scalesP(C.skin, { size: 3, top: C.skinHi, bottom: C.skinLo });
@@ -52,7 +52,7 @@ const bootStar = painted(chrome({ cols: ['#ffffff', '#e4e8f0', '#b0b6c8', '#6a70
 const sole = soleP({ cols: ['#ffffff', '#a4aabc', '#6a7084', '#3a3e4c'] }), trim = chrome();
 const beltP = (p, w, h, face) => { fill(p, w, h, (x, y) => (face === 'up' ? '#3a3444' : '#16141c')); if (face === 'south') { const m = Math.floor(w / 2); p.rect(m - 2, 0, 4, h, SILVER[1]).rect(m - 1, 1, 2, h - 2, '#ffffff'); } };
 const tailP = snakeBands('z', { per: 1.6 });
-const sheadP = snakeHead({ eye: (X, Y, Z) => (Z < -8.2 && Z > -8.9 && Y > 8.35 && Y < 8.9 ? (Math.abs(Z + 8.55) < 0.17 ? 'k' : 'i') : null) });
+const sheadP = snakeHead({ eye: (X, Y, Z) => (Z < -9.2 && Z > -9.9 && Y > 6.55 && Y < 7.1 ? (Math.abs(Z + 9.55) < 0.17 ? 'k' : 'i') : null) });
 // the silver-burst single-cut guitar: silver at the centre bursting to black, three black pickups
 const guitarP = (p, w, h, face) => {
   const cx = (w - 1) / 2, cy = (h - 1) * 0.55;
@@ -112,8 +112,8 @@ export const def = {
     { name: 'root', pivot: [0, 0, 0], cubes: [] },
     { name: 'pelvis', parent: 'root', pivot: [0, 8.6, 0], cubes: [B(-4.6, 7.4, -3.0, 4.6, 10.2, 3.0, suitStud), B(-4.7, 9.4, -3.1, 4.7, 10.4, 3.2, beltP)] },
     // the little snake tail, peeking out under the boosters
-    { name: 'stail', parent: 'pelvis', pivot: [0, 8.0, -2.8], rot: [0, -50, 0], cubes: [B(-0.7, 7.4, -6.6, 0.7, 8.8, -2.6, tailP)] },
-    { name: 'snek', parent: 'stail', pivot: [0, 8.2, -6.2], rot: [0, 70, 0], cubes: [B(-0.9, 7.6, -9.0, 0.9, 9.0, -6.0, sheadP)] },
+    { name: 'stail', parent: 'pelvis', pivot: [0, 6.4, -2.4], rot: [0, -80, 0], cubes: [B(-0.75, 5.7, -7.6, 0.75, 7.1, -2.2, tailP)] },
+    { name: 'snek', parent: 'stail', pivot: [0, 6.4, -7.2], rot: [0, -100, 0], cubes: [B(-0.95, 5.8, -10.2, 0.95, 7.3, -7.0, sheadP)] },
     { name: 'torso', parent: 'pelvis', pivot: [0, 9.8, 0], cubes: [
       B(-5.0, 9.8, -3.0, 5.0, 17.4, 3.4, plastronP),
       B(-4.2, 16.6, -2.6, 4.2, 18.4, 3.4, ruffP),
@@ -124,8 +124,8 @@ export const def = {
     ] },
     // the silver-burst single-cut, slung across the front
     { name: 'guitar', parent: 'torso', pivot: [-1.0, 10.8, 4.2], rot: [0, 0, -50], cubes: [
-      B(-3.4, 7.4, 3.6, 1.6, 12.0, 4.8, guitarP), B(-3.4, 12.0, 3.7, -0.6, 13.4, 4.7, guitarP),
-      B(-1.35, 12.0, 3.95, -0.65, 19.6, 4.45, fretP), B(-1.75, 19.6, 3.85, -0.25, 21.2, 4.55, headstockP),
+      B(-4.2, 5.8, 3.6, 2.2, 11.8, 5.0, guitarP), B(-4.2, 11.8, 3.7, -0.4, 13.6, 4.9, guitarP),
+      B(-1.4, 11.8, 4.0, -0.6, 20.6, 4.6, fretP), B(-1.8, 20.6, 3.9, -0.2, 22.6, 4.7, headstockP),
     ] },
     { name: 'shell', parent: 'torso', pivot: [0, 13.0, -3.0], cubes: [
       B(-6.0, 7.4, -7.0, 6.0, 18.0, -2.8, shellBig), B(-4.8, 8.6, -8.4, 4.8, 16.8, -7.0, shellTop), B(-3.4, 10.0, -9.2, 3.4, 15.4, -8.4, shellTop),
@@ -175,7 +175,7 @@ def.attach = {
 };
 
 // ---------------------------------------------------------------- animation
-const HEAD = [0, 26, 1], MOUTH = [0, 18.2, 5.8], GHEAD = [-1.0, 21.2, 4.2], ANT = [0, 22.4, -6.0], NOZZLES = [0, 3.8, -9.0];
+const HEAD = [0, 26, 1], MOUTH = [0, 18.2, 5.8], GHEAD = [-1.0, 22.4, 4.3], ANT = [0, 22.4, -6.0], NOZZLES = [0, 3.8, -9.0];
 const beak = (P, k) => P.rot('jaw', 26 * k, 0, 0);
 const thrust = (P, t, on) => P.face('thrust', on ? (Math.floor(t * 14) % 2 ? 'b' : 'a') : 'off');
 // fingers on the strings: left hand up the neck, right hand at the strings (k), strumming (s)
@@ -196,8 +196,8 @@ export const anim = {
     { bone: 'guitar', tip: [0, 8, 0], k: 220, d: 11, gain: 0.35, max: 8 },
     { bone: 'finR', tip: [0, 4, -3], k: 200, d: 10, gain: 0.4, max: 10 },
     { bone: 'finL', tip: [0, 4, -3], k: 200, d: 10, gain: 0.4, max: 10 },
-    { bone: 'stail', tip: [0, 0, -3], k: 140, d: 8, gain: 0.8, max: 16 },
-    { bone: 'snek', tip: [0, 0, -2], k: 140, d: 8, gain: 0.8, max: 16 },
+    { bone: 'stail', tip: [0, 0, -4], k: 140, d: 8, gain: 0.8, max: 16 },
+    { bone: 'snek', tip: [0, 0, -3], k: 140, d: 8, gain: 0.8, max: 16 },
   ],
   faces: { eyes: EYES.slot, thrust: { default: 'off', states: { off: [], a: ['th-0'], b: ['th-1'] } } },
   fidget: { every: [3.5, 7], clips: ['dance', 'dance', 'rocketsolo', 'rocketsolo', 'hide'] },

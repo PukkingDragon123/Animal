@@ -13,7 +13,7 @@ import { TK, brownP, chestP, headP, faceP, lockP, beakP, hookP, cereP, jawP, foo
 const print = aloha({ base: TK.sea, seed: 3 });
 const front = shirtFront(print, { lo: TK.seaLo, depth: 0.6 });
 const GTR = [-1.6, 8.6];
-const HAND_R = [-30, 0, 40], HAND_L = [-95, 0, -10];                       // the guitar body's centre (model units, before the bone's tilt)
+const HAND_R = [-30, 0, 40], HAND_L = [-80, 0, 35];                       // the guitar body's centre (model units, before the bone's tilt)
 const burst = burstP(GTR, { r: 3.2 });
 const surfP = (p, w, h, face) => {            // the surfboard pendant: white board, orange stripe
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, Math.abs(x - (w - 1) / 2) < 0.6 ? '#ff6a3a' : face === 'down' ? '#c8c0b0' : '#fffaf0');
