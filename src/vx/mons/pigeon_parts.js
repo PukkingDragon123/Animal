@@ -357,7 +357,7 @@ export const tongueP = (p, w, h) => { for (let y = 0; y < h; y++) for (let x = 0
 // ---------------------------------------------------------------- eyes and hair
 // Eyes come from the shared Gen 8–9 kit (eyes.js → eyeRig): each form of the line has its own design, set up
 // in its model file at the positions below. Hair: a little curled quiff of feathers (stage 1).
-import { eyeArt, chunky } from './eyes.js';
+import { eyeArt, chunky, eyeRig as baseEyeRig } from './eyes.js';
 export { eyeRig } from './eyes.js';
 // Pigeon eyes at full texture resolution (W×H texels; the right eye, outer side at x = 0, the left eye is its
 // mirror): an ink rim, the bare orbital skin ring every pigeon has, an iris shaded darker under the lid with a
@@ -446,13 +446,19 @@ function pgEye(o, mode) {
 const PG_OWN = ['open', 'angry', 'sad', 'sleepy', 'smug', 'teary', 'closed', 'happy', 'wide', 'shock'];
 const PG_KIT = ['shut', 'x', 'swirl', 'heart', 'star'];
 // the rig: bones eyeR / eyeL (pivots at the eye centres, for squash, stretch and darts) and the face slot
+// Cobblemon eye language (flat blocks, a lid line on top only, two-tone iris, square highlights) —
+// one hand-drawn 10 × 10 map per form (right eye, outer side at x = 0); the orbital skin is a flat lower-lid block.
+const PG_MAPS = {
+  sharp: ['..........', 'llll......', '.lllllll..', '.IIIIIllll', '.IhhIkkII.', '.ihhkkkki.', '.iiikkkii.', '..iiiiic..', '...cccc...', '..........'],
+  heavy: ['..........', '..........', 'llllllllll', '.llllllll.', '.IIIIkIII.', '.ihhikiii.', '.iiiikiii.', '..iiikiic.', '...cccc...', '..........'],
+  almond: ['..........', '.l........', '.lllllll..', '..IIIIIll.', '.IhhIkkIIl', '.ihhkkkkii', '..iikkkii.', '...iiiic..', '....ccc...', '..........'],
+  round: ['..........', '.llllllll.', 'llllllllll', '.IIIIIIII.', '.IhhIkkII.', '.ihhkkkki.', '.iiikkkii.', '..iiiiii..', '...cccc...', '..........'],
+  core: ['..........', '.llllllll.', 'llllllllll', '.IIIIIIII.', '.IhhwwwII.', '.ihwwwwwi.', '.iiwwwwii.', '.iiiiiiii.', '..iiiiii..', '..........'],
+};
 export function pigeonEyeRig(o) {
-  const { at, size, parent = 'head', chunk = 1 } = o, [x, y, z] = at, [w, h] = size, states = [...PG_OWN, ...PG_KIT];
-  const tex = (s) => (PG_OWN.includes(s) ? chunky(pgEye(o, s), chunk) : eyeArt(s, { style: 'gen9', chunk, line: INK2 }));
-  const mk = (side) => states.map((s) => ({ o: side < 0 ? [x - w / 2, y - h / 2, z] : [-x - w / 2, y - h / 2, z], s: [w, h, 0], plane: 'z', mirror: side > 0, tex: tex(s), glow: !!o.glow || s === 'heart' || s === 'star', id: (side < 0 ? 'eR-' : 'eL-') + s, hide: s !== 'open', outline: false }));
-  const slot = { default: 'open', states: Object.fromEntries(states.map((s) => [s, ['eR-' + s, 'eL-' + s]])) };
-  slot.states.wink = ['eR-open', 'eL-happy'];
-  return { bones: [{ name: 'eyeR', parent, pivot: [x, y, z], cubes: mk(-1) }, { name: 'eyeL', parent, pivot: [-x, y, z], cubes: mk(1) }], slot };
+  const key = o.socket || o.pupil === 'none' ? 'core' : PG_MAPS[o.shape] ? o.shape : 'round';
+  const map = { open: o.pupil === 'slit' && key !== 'heavy' ? PG_MAPS[key].map((r) => r.replace(/kk/, 'ik')) : PG_MAPS[key] };
+  return baseEyeRig({ style: 'pix', chunk: o.chunk ?? 1, at: o.at, parent: o.parent || 'head', map, line: INK2, iris: o.ring[0], irisDark: o.ring[1], pupilColor: '#160a10', accent: (o.skin || [])[1] || '#a096aa', glow: o.glow ? 'all' : undefined, extra: ['smug', 'glint'] });
 }
 // a quiff: three stacked feather boxes curling up and forward from (x, y, z), painted in the head's colours
 export function quiffCubes(base, cols, k = 1) {
