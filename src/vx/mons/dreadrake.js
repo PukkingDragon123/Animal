@@ -132,11 +132,11 @@ const EYES = eyeRig({ style: 'pix', chunk: 1, at: [-3.2, 35.0, 5.64], line: '#14
   'll..........',
   'lllllll.....',
   '.lIIIIllllll',
-  '.lIIkkkIIIIl',
-  '..lhkkkkiiil',
-  '..liikkkiil.',
-  '...lcciiccl.',
-  '....lllll...',
+  '..IIkkkIIII.',
+  '...hkkkkiii.',
+  '...iikkkii..',
+  '....cciicc..',
+  '............',
 ] } });
 const THORNS = [0, 1, 2, 3, 4, 5, 6, 7].map((i) => { const a = (i / 8) * Math.PI * 2, x = Math.sin(a) * 5.4, z = 0.6 + Math.cos(a) * 5.0; return B([x - 0.3, 39.6, z - 0.3], [0.6, 1.8, 0.6], thornP, { pivot: [x, 39.6, z], rot: [Math.cos(a) * 24, 0, -Math.sin(a) * 24] }); });
 export const def = {

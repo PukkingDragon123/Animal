@@ -79,12 +79,12 @@ const shieldP = (p, w, h) => { heartAt(p, w, h, '#ff6a9a', '#ffe0ec', '#ff3a7a')
 const EYES = eyeRig({ style: 'pix', chunk: 1, at: [-2.3, 34.4, 4.83], line: '#22120a', iris: '#9a5428', irisDark: '#4a2410', extra: ['smug', 'glint'], map: { open: [
   'llllllllllll',
   'lsssIIIIssll',
-  'lswIIhiIIwwl',
-  'lwwIiikkIwwl',
-  'lwwIiikkIwwl',
-  '.lwwIiiIwwl.',
-  '..llwwwwll..',
-  '....llll....',
+  'lswIIhIIIwwl',
+  '.wwiiikkiww.',
+  '.wwiiikkiww.',
+  '..wwiiiiww..',
+  '....wwww....',
+  '............',
 ] } });
 const MOUTHS = ['smile', 'grin', 'o', 'grit', 'frown', 'flat', 'wavy', 'tongue'];
 

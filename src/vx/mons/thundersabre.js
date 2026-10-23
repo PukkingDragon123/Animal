@@ -82,10 +82,10 @@ const EYES = eyeRig({ style: 'pix', chunk: 1, at: [-3.0, 25.6, 20.04], glow: 'al
   'll..........',
   'lcllllll....',
   '.lcwwcclllll',
-  '.licwwwwccil',
-  '..liicwwciil',
-  '...lIIiiiIl.',
-  '....llllll..',
+  '..IcwwwwccI.',
+  '...iicwwcii.',
+  '....iiiiii..',
+  '............',
 ] } });
 const LEG = [B([-7.6, 3.6, 4.6], [4.8, 11.6, 4.8], furP)];
 const PAW = [B([-8.0, 0, 4.2], [5.6, 2.6, 6.8], pawP)];

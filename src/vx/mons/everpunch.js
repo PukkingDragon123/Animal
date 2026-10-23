@@ -89,13 +89,13 @@ const EYES = eyeRig({ style: 'pix', chunk: 1, at: [-3.6, 47.4, 7.087], parentR: 
   'lllIIIIIIIll',
   'lIIIIIkIIIIl',
   'lIhhIIkIIIIl',
-  'lIhhiikiiIIl',
+  '.IhhIIkIIII.',
   'cccccccccccc',
   'cccccccccccc',
-  '.liiiikiiiil',
-  '..liiikiihil',
-  '...liiiiiiil',
-  '....lllllll.',
+  '..iiiikiiii.',
+  '...iiikiihi.',
+  '....iiiiiii.',
+  '............',
 ] } });
 const MOUTH = mouthRig({ chunk: 1, at: [0, 33.3, 9.02], size: [5.4, 2.2], line: '#120a1c', inner: '#4a1430', tongue: '#ff6c8e', def: 'grit', states: ['grit', 'grin', 'o', 'frown', 'flat', 'smile', 'wavy'] });
 const EYEP = { band: C.band, lid: C.blue };
