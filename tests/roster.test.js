@@ -14,6 +14,10 @@ import { SPECIES as SF_WILD } from '../src/data/species/sf_wild.js';
 import { SPECIES as SF_LEGENDS } from '../src/data/species/sf_legends.js';
 import { MOVES as M1 } from '../src/data/moves/sf_lines.js';
 import { MOVES as M2 } from '../src/data/moves/sf_wild.js';
+import { SPECIES as SF_DOOM } from '../src/data/species/sf_doom.js';
+import { SPECIES as SF_REDBONE } from '../src/data/species/sf_redbone.js';
+import { MOVES as M3 } from '../src/data/moves/sf_doom.js';
+import { MOVES as M4 } from '../src/data/moves/sf_redbone.js';
 import * as S from '../src/game/state.js';
 
 const store = new Map();
@@ -21,7 +25,8 @@ globalThis.localStorage = { getItem: (k) => store.get(k) ?? null, setItem: (k, v
 const NEW = ['pidgun', 'jungeon', 'paradove', 'trashcoon', 'dynacoon', 'hellcoon', 'gradcub', 'bearbreak', 'yeezilla', 'polobruin', 'foopod', 'everpunch', 'barkorious',
   'woodbub', 'hartbox', 'utero', 'grillfin', 'astroshark', 'sandmander', 'justatue', 'creepetal', 'plastree', 'weirdfin', 'snarlpup', 'wonderwoof', 'supernoir', 'coolpillar',
   'pupalace', 'killaqueen', 'bohemonarch', 'zapkit', 'thundersabre', 'zeppra', 'stairgasus', 'rollick', 'neverdecker', 'johnlemon', 'starrfish', 'yokat', 'blackvolt', 'prismoon',
-  'beatlet', 'pepperhorn', 'abbeyhorn', 'walrusk', 'wheezowl', 'mopzart', 'dreadrake', 'barkorious_forced'];
+  'beatlet', 'pepperhorn', 'abbeyhorn', 'walrusk', 'wheezowl', 'mopzart', 'dreadrake', 'barkorious_forced',
+  'metalfang', 'wyvillain', 'doomsdrake', 'blowhale', 'tartanic'];
 const COND_KEYS = new Set(['level', 'wins', 'friendship', 'precise', 'healed', 'blocked', 'beats', 'charged', 'teamCombos', 'dojo', 'foods', 'location', 'hours', 'defeat', 'battle', 'activity', 'more', 'weather', 'holding', 'squad']);
 const snap = (sp, lv = 10, extra = {}, opts = {}) => { const m = createElemon(sp, Object.assign({ level: lv, form: 'm', look: 1 }, opts)); Object.assign(m.skills, extra); return battleSnapshot(m); };
 const duel = (a, b, rules = {}, more = {}) => createBattle({ seed: more.seed ?? 5, rules: Object.assign({ orders: false, switchTime: 0, bond: false }, rules),
@@ -30,7 +35,7 @@ const duel = (a, b, rules = {}, more = {}) => createBattle({ seed: more.seed ?? 
 function run(st, maxT, onTick) { const evs = []; while (!st.over && st.t < maxT) { step(st, DT); for (const e of st.events) evs.push(e); if (st.qte) resolveQte(st, st.qte.id, 0.8); onTick && onTick(st); } return evs; }
 
 section('new species data');
-const MODS = [SF_LINES, SF_WILD, SF_LEGENDS];
+const MODS = [SF_LINES, SF_WILD, SF_LEGENDS, SF_DOOM, SF_REDBONE];
 for (const id of NEW) ok(`${id} is registered`, !!SPECIES[id] && MODS.some((m) => m[id]));
 for (const id of ['lenshorn', 'starrab']) ok(`retired ${id} removed`, !SPECIES[id]);
 for (const id of ['mccarapace', 'harrisun']) ok(`${id} stays (Fab Four)`, !!SPECIES[id] && /Fab Four/.test(SPECIES[id].role));
@@ -53,7 +58,7 @@ ok('legendaries are strong and rare', ['blackvolt', 'prismoon'].every((id) => SP
 ok('story cast: wheezowl (gift) and mopzart (NPC) are not catchable, dreadrake is', SPECIES.wheezowl.catch === 0 && SPECIES.mopzart.catch === 0 && SPECIES.dreadrake.catch > 0);
 { const f = SPECIES.barkorious_forced, sum = (sp) => Object.values(sp.base).reduce((a, b) => a + b, 0);
   ok('barkorious_forced: uncatchable boss, reverts to barkorious, boss-tier stats', f.boss && f.catch === 0 && f.revertsTo === 'barkorious' && !!SPECIES[f.revertsTo] && sum(f) >= 60 && sum(f) > sum(SPECIES.barkorious)); }
-const NEWSK = [...M1, ...M2];
+const NEWSK = [...M1, ...M2, ...M3, ...M4];
 ok('signature skills are unique ids', new Set(NEWSK.map((s) => s.id)).size === NEWSK.length);
 for (const s of NEWSK) ok(`${s.id} well-formed`, s.kind === 'passive' ? !!s.mods : Array.isArray(s.eff) && s.eff.length > 0 && (s.kind !== 'ultimate' || !!s.qte));
 
