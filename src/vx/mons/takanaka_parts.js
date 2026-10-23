@@ -18,6 +18,7 @@ export const TK = {
   sea: '#1fb0aa', seaHi: '#5adcd0', seaLo: '#11777c', hib: '#ff5a6e', hibHi: '#ffa4ac', hibLo: '#c42a48', hibC: '#ffe04a',
   leaf: '#22925a', leafLo: '#0e5a3a', coral: '#ff7a52',
   sun: ['#ffe27a', '#ffb02a', '#ff6a3a', '#e8306a', '#8a2a8a'], dusk: '#3a2a7a', night: '#1a1440',
+  hair: { c: '#2e211c', hi: '#5c4434', lo: '#1a120f', deep: '#0e0a08' },
   ink: '#1a0e10', cloth: '#f8f8f4', clothLo: '#c8ccd6', navy: '#1e2a5a', navyLo: '#101838',
 };
 const side = (f) => f !== 'up' && f !== 'down';
@@ -135,7 +136,7 @@ export function burstP(ctr, o = {}) {
 }
 // hardware on the guitar's face (a thin plate flush on the body)
 export const guitarFace = (p, w, h, face) => {
-  if (face !== 'south') { p.rect(0, 0, w, h, '#141014'); return; }
+  if (face !== 'south' && face !== 'plane') { p.rect(0, 0, w, h, '#141014'); return; }
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, 0);
   const cx = Math.floor(w / 2);
   p.rect(cx - 3, 1, 7, 3, '#141014').rect(cx - 3, h - 6, 7, 3, '#141014');                  // pickups

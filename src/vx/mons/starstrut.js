@@ -244,7 +244,7 @@ export const anim = {
     // shower of splinters and sparks, and a cool look over the shoulder
     smash: { len: 3.8, next: 'idle', f(P, t) {
       const play = seg(t, 0.1, 0.35, E.back) * (1 - seg(t, 1.2, 1.4)), lift = seg(t, 1.3, 1.75, E.out) * (1 - seg(t, 1.9, 2.02, E.in3)), hitT = 2.0, slam = seg(t, 1.9, 2.02, E.in3) * (1 - seg(t, 2.6, 3.0, E.inout)), cool = seg(t, 2.9, 3.15, E.back) * (1 - seg(t, 3.5, 3.8, E.inout));
-      P.face('prop', t > 0.08 && t < hitT ? 'on' : 'off');
+      P.face('prop', t > 0.08 && t < hitT ? 'on' : 'off'); if (t > 0.08 && t < hitT) P.scl('axe', 0.001, 0.001, 0.001);   // the worn guitar steps aside for the prop
       const strum = Math.abs(Math.sin(t * TAU * 3)) * play;
       legs(P, R, { y: -0.6 * play - 2.6 * slam, pitch: 10 * slam, spread: 8 * play, fR: [0, 1.6 * slam], fL: [0, -1.6 * slam] });
       P.rot('torso', 6 * play - 14 * lift + 30 * slam, -10 * play, 0).rot('head', -10 * lift + 10 * slam - 6 * cool, 0, -8 * cool + 20 * cool);

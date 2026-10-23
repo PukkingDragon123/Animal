@@ -230,8 +230,12 @@ export const arcticForm = (F, extra = {}) => formMap(({ h, s, l }, glow, hex) =>
   if (glow) return s > 0.2 ? fromHsl(205, Math.min(1, s), Math.min(0.95, Math.max(0.55, l))) : undefined;
   if (extra[hex]) return extra[hex];
   if (F && hex === F.hi) return 'gold';                                                  // lit fur tufts → gold frosting
+  if (F && (hex === F.c || hex === F.lo || hex === F.deep)) return 'black';              // the coat → black lacquer
+  if (F && (hex === F.belly || hex === F.bellyLo)) return l > 0.6 ? 'gold' : 'black';
   if (hex === SCARF.c || hex === SCARF.hi) return 'gold'; if (hex === SCARF.lo) return 'black';
   if (hex === A.hair || hex === A.hairHi || hex === A.hairLo || hex === A.gloss) return hex === A.gloss ? gilt(0.6) : 'black';
+  if (h > 185 && h < 240 && s < 0.4) return l > 0.85 ? 'gold' : 'black';                 // frosty white fur (and its shading)
+  if (h >= 240 && h < 262 && l < 0.45) return 'black';                                  // indigo fur
   if (h >= 320 || h < 20) return s > 0.3 && l > 0.45 ? 'keep' : undefined;                 // pink skin, tongues stay
   if (s < 0.14) return l > 0.82 ? 'gold' : l < 0.3 ? 'keep' : 'black';                    // white fur → gold, grey → black
   if (h > 185 && h < 225 && l > 0.6) return l > 0.85 ? '#ffffff' : gilt(l * 0.9);          // ice → diamond with gold
