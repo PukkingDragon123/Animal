@@ -133,7 +133,10 @@ function decide(st, u, prof, b, T) {
     if (bench.length) { trainerCommand(st, T.id, { type: 'switch', to: bench[0].id }); return; }
   }
   // ultimate (bonded only)
-  if (u.ultSkill && u.ult >= 100 && (u.bonded || !st.rules.bond) && d < 6 && st.rng.chance(0.6)) { command(st, u.id, { type: 'ult', id: tgt.id }); return; }
+  // a self-destructing ult (Last Night on Earth) only with a teammate left to carry on, or to finish a hurt foe
+  const boom = u.ultSkill && SKILLS[u.ultSkill] && (SKILLS[u.ultSkill].eff || []).some((e) => e.t === 'recoil' && e.ko);
+  const boomOk = !boom || st.units.some((o) => o !== u && o.side === u.side && o.hp > 0) || tgt.hp < tgt.maxHp * 0.5;
+  if (u.ultSkill && u.ult >= 100 && (u.bonded || !st.rules.bond) && d < 6 && boomOk && st.rng.chance(0.6)) { command(st, u.id, { type: 'ult', id: tgt.id }); return; }
   // emotes: punks taunt from range, showmen dance on the beat
   if ((prof.emote || 0) > 0 && u.emoteCd <= 0 && d > 2.5 && st.rng.chance(prof.emote)) {
     const id = prof.taunt ? 'taunt' : prof.beat ? 'dance' : st.rng.pick(['dance', 'flex', 'taunt']);

@@ -779,6 +779,11 @@ function runEffects(st, u, sk, aim, mult = 1, grow = 1) {
         }
         break;
       }
+      case 'recoil': {   // the user pays: a share of its max HP, or everything (ko: self-destruct), now or after a delay
+        const j = { kind: 'recoil', u: u.id, k: e.k || 0, ko: !!e.ko };
+        if (e.delay) st.pending.push(Object.assign(j, { at: st.t + e.delay })); else runRecoil(st, j);
+        break;
+      }
       case 'pull': {
         if (e.who === 'target') { const t = unitById(st, aim.tid); if (alive(t) && !t.mods.knockImmune) { const [dx, dz] = dirTo(t, u); const d = Math.max(0, Math.min(e.k, len(t.x - u.x, t.z - u.z) - t.r - u.r - 0.4)); t.x += dx * d; t.z += dz * d; ev(st, 'pull', { u: u.id, tgt: t.id }); } }
         else for (const o of enemiesOf(st, u)) { const d = len(o.x - u.x, o.z - u.z); if (d > e.range || o.mods.knockImmune) continue; const [dx, dz] = dirTo(o, u); const m = Math.min(e.k, d - o.r - u.r - 0.3); if (m > 0) { o.x += dx * m; o.z += dz * m; } }
@@ -1463,6 +1468,16 @@ function hitProps(st, x, z, r, power, src) {
 }
 
 // ------------------------------------------------------------------ faint / end
+function runRecoil(st, p) {
+  const u = unitById(st, p.u); if (!alive(u)) return;
+  let dmg = p.ko ? u.hp : Math.min(Math.round(u.maxHp * p.k), u.hp - 1);
+  if (st.rules.noFaint && u.side === 0) dmg = Math.min(dmg, Math.max(0, u.hp - 1));
+  if (dmg <= 0) return;
+  u.shield = 0; u.hp -= dmg;
+  ev(st, 'hit', { u: u.id, tgt: u.id, dmg, kind: 'recoil' });
+  if (p.ko) ev(st, 'selfDestruct', { u: u.id });
+  if (u.hp <= 0) faint(st, u, null);
+}
 function faint(st, u, src) {
   if (u.state === 'faint') return;
   const burning = has(u, 'burn'), bonded = u.bonded; // read before statuses/bond are cleared
@@ -1609,6 +1624,7 @@ export function step(st, dt = DT) {
     else if (p.kind === 'line') runLine(st, p);
     else if (p.kind === 'melee') { if (alive(u)) meleeSweep(st, u, p.reach, p.arc, p.hit); }
     else if (p.kind === 'proj') { if (alive(u)) { const [dx, dz] = p.dx(); spawnProj(st, u, p.p, dx, dz); } }
+    else if (p.kind === 'recoil') runRecoil(st, p);
     else if (p.kind === 'clonehit') { const t = unitById(st, p.tgt); if (alive(t)) { applyHit(st, u, t, p.hit); ev(st, 'cloneStrike', { u: u.id, tgt: t.id, x: p.cx, z: p.cz }); } }
   }
   for (const u of st.units) if (u.onField) stepUnit(st, u, dt);

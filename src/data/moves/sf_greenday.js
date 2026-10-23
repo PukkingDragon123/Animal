@@ -2,9 +2,8 @@
 // a Green Day song. NOT shared with other lines. Format: src/data/skills.js.
 //
 // Self-damage: Having a Blast and Last Night on Earth carry a { t: 'recoil', k, ko, delay } effect —
-// k × max HP of damage to the user after the blast (ko: true always knocks it out). The battle sim
-// does not run 'recoil' yet (unknown effect types are skipped), so until it does these moves deal
-// their blast without the self-damage.
+// k × max HP of damage to the user after the blast (ko: true always knocks it out; src/battle/sim.js
+// runRecoil). The AI only fires Last Night on Earth with a teammate left or against a hurt foe.
 const L = (line, list) => list.map((s) => Object.assign({ line }, s));
 
 // ===================================================================== Grenaday → Armagreddon (Green Day)
