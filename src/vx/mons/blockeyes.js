@@ -1,7 +1,6 @@
-// Cobblemon-style block eyes for the Grenaday and Snoozaque lines (creature_rules §8): every eye is
-// built from FLAT colour blocks — a white sclera block with stepped corners, a two-tone iris block,
-// a dark pupil block, square highlight pixels — and a dark lid line along the TOP ONLY (no outline
-// ring, no gradients, no halos). Each emotion is its own designed map: a stepped diagonal lid for
+// Hand-drawn pixel eyes for the Grenaday and Snoozaque lines (creature_rules §7 / §9): a white eye
+// with shaped corners, a shaded iris fill (darker at the top) holding a defined pupil, clean square
+// highlights, a lid line (and, for liner eyes, an under-lash and smudge) — never a bullseye of rings. Each emotion is its own designed map: a stepped diagonal lid for
 // angry, a drooping one for sad, half lids for smug and sleepy, ^ blocks for happy, a flat line for
 // closed, a small pupil in more white for shock. Maps use the eyes.js 'pix' palette:
 //   l line · w white · s shaded white · k pupil · h highlight · i iris · I dark iris · c accent (lid skin)
@@ -46,8 +45,14 @@ export function blockEye(o, lid, m = {}) {
     const ly = Math.round(lid(x));
     let any = false; for (let y = 0; y < o.h; y++) if (inEye(x, y) || inEye(x + 1, y)) any = true;
     if (!any) continue;
-    for (let y = 0; y < ly; y++) G.set(x, y, (m.skin ?? o.lidSkin) && y >= ey0 - 1 && (inEye(x, y) || x === ex0 - 1) ? 'c' : inEye(x, y) ? '.' : G.get(x, y));
+    for (let y = 0; y < ly; y++) G.set(x, y, inEye(x, y) ? ((m.skin ?? o.lidSkin) ? 'c' : '.') : G.get(x, y));
     for (let y = ly; y < ly + t; y++) if (y >= 0 && y <= ey1 + 1 && (inEye(x, y) || y <= ey0 || x === ex0 - 1)) G.set(x, y, 'l');
+  }
+  // liner eyes: a lash line hugging the bottom of the eye and a smoky smudge under it
+  if (m.under ?? o.under) for (let x = ex0; x <= ex1; x++) {
+    let yb = -1; for (let y = 0; y < o.h; y++) if ('wsiIkh'.includes(G.get(x, y))) yb = y;
+    if (yb < 0) continue;
+    G.set(x, yb + 1, 'l'); if ((m.smudge ?? o.smudge) && x > ex0 && x < ex1) G.set(x, yb + 2, 'c');
   }
   for (const [x, y] of m.wing ?? o.wing ?? []) G.set(x, y, 'l');
   return G.rows();

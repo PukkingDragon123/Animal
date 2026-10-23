@@ -12,7 +12,7 @@ import {
   chimFur, chimMane, chimHalo, snakeBands, snakeHead, hoodP, chain, cobEyes, mouth, glances, kissForm, feathers, E, seg, bump, wob, wave, TAU,
 } from './kiss_parts.js';
 
-const C = { eye: '#e8283a', eyeLo: '#7a0a1c', chest: '#d8d4e4', talon: K.silver };
+const C = { eye: '#e8283a', eyeLo: '#7a0a1c', eyeHi: '#ff8a5a', chest: '#d8d4e4', talon: K.silver };
 // ---------------------------------------------------------------- painters
 const bodyFur = chimFur(13, { s: 10 }), headFur = chimFur(11), legFur = chimFur(23, { s: 7, tipH: 3 });
 const bodyP = (p, w, h, face, cube) => { bodyFur(p, w, h, face, cube); if (face === 'down') fill(p, w, h, (x, y) => ((x + y) % 4 ? '#5e5876' : '#4e4864')); };
@@ -58,7 +58,7 @@ const headstockP = (p, w, h, face) => { fill(p, w, h, () => '#16141c'); if (isSi
 // fierce red eyes in the Cobblemon block language: no whites, a sharp slanted block with a lash flick, two flat
 // reds (dark on top), a slit pupil and a pair of square glints; the black paint round it makes the edge
 const EYE_MAPS = {
-  open: ['ll..........', '.lllllll....', '..IIIIIIlll.', '..ihhIIkIIl.', '..iiiiikiii.', '...iiiikii..', '....iiiii...'],
+  open: ['ll..........', '.lllllll....', '..IIIIIIlll.', '..ihhIIkIIl.', '..iiiiikiii.', '...ciikkcc..', '....ccccc...'],
   angry: ['l...........', 'lll.........', '.IIlll......', '..ihhIlll...', '..iiiiikllll', '...iiiikii..', '....iiiii...'],
   sad: ['............', '......llll..', '...llllIIl..', '.lllhhIkIIl.', '..iiiiikiii.', '...iiiikii..', '....iiiii...'],
   happy: ['............', '....llll....', '...llllll...', '..lll..lll..', '.lll....lll.', '.ll......ll.', '............'],
@@ -69,7 +69,7 @@ const EYE_MAPS = {
   sleepy: ['............', '............', '............', '............', '..lllllllll.', '...iiiikii..', '....iiiii...'],
   teary: ['ll..........', '.lllllll....', '..IIIIIIlll.', '..ihhIIkIIl.', '..iiiiikiii.', '...bbiibb...', '....bbbbb...'],
 };
-const EYES = cobEyes({ at: [-EYE[0], EYE[1], 13.06], line: '#0c0610', pupilColor: '#120206', iris: C.eye, irisDark: C.eyeLo, maps: EYE_MAPS });
+const EYES = cobEyes({ at: [-EYE[0], EYE[1], 13.06], line: '#0c0610', pupilColor: '#120206', iris: C.eye, irisDark: C.eyeLo, accent: C.eyeHi, maps: EYE_MAPS });
 const A = (id, c) => ({ ...c, id, hide: true });
 const sp = (id, x, y, z, s, len, rot) => spike(x, y, z, s, len, { x: { pivot: [x, y, z], rot } }).map((c) => A(id, c));
 const swag = (s) => chain([[6.5 * s, 17.6, -8.6], [6.75 * s, 15.0, -5.4], [6.75 * s, 14.4, -2.4], [6.75 * s, 15.0, 0.6], [6.5 * s, 17.6, 3.8]], { len: 1.1, w: 0.8, t: 0.35, step: 0.85, gold: SILVER }).map((c) => A('acc-chains', c));
@@ -349,4 +349,4 @@ export const anim = {
 };
 def.anim = anim;
 // the ultra-drip form: black-lacquer fur with gold tips, a gold shell and talons, white paint and burning red eyes kept
-def.dripForm = kissForm({ keep: [C.eye, C.eyeLo], swap: { [CH.furTip]: '#ffd84a', [CH.maneTip]: '#e0a030', [CH.furHi]: '#5a4a3a' } });
+def.dripForm = kissForm({ keep: [C.eye, C.eyeLo, C.eyeHi], swap: { [CH.furTip]: '#ffd84a', [CH.maneTip]: '#e0a030', [CH.furHi]: '#5a4a3a' } });

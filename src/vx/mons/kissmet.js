@@ -19,7 +19,7 @@ const C = {
   pad: '#b898b8', padLo: '#7a5a7a', nose: '#141016',
   shell: ['#62947a', '#3a624e', '#223c30', '#0c1812'],
   pants: ['#4e4a5c', '#24202e', '#16131c', '#0a090e'],
-  eye: '#9a5aff', eyeLo: '#4a1e9a',
+  eye: '#9a5aff', eyeLo: '#4a1e9a', eyeHi: '#d0a8ff',
 };
 // ---------------------------------------------------------------- painters
 const furP = (seed, o = {}) => fur(C.fur, { hi: C.furHi, lo: C.furLo, line: C.furLine, tip: C.furTip, lite: C.furLite, s: 8, pt: 0.6, seed, ...o });
@@ -93,7 +93,7 @@ const R = { hipX: 2.3, hipY: 6.2, ankleY: 2.6, L1: 1.9, L2: 1.8 };
 // violet chimera eyes in the Cobblemon block language: a white block with a lash flick, a two-tone violet iris
 // block on the inner side, a 2×2 pupil and a square glint; the black paint round it makes the edge
 const EYE_MAPS = {
-  open: ['.llllllll.', 'lwwwIIIIw.', 'wwwwhkkIw.', 'wwwwikkiw.', '.wwwiiiiw.', '..wwwwww..'],
+  open: ['.llllllll.', 'lwwwIIIIw.', 'wwwwhkkIw.', 'wwwwikkiw.', '.wwwicciw.', '..wwwwww..'],
   angry: ['ll........', 'wwlll.....', 'wwwwhll...', 'wwwwikkll.', '.wwwiiiiw.', '..wwwwww..'],
   sad: ['.......ll.', '.....llIw.', '..lllkkIw.', 'llwwikkiw.', '.wwwiiiiw.', '..wwwwww..'],
   happy: ['..........', '...llll...', '..llllll..', '.lll..lll.', '.ll....ll.', '..........'],
@@ -104,7 +104,7 @@ const EYE_MAPS = {
   sleepy: ['..........', '..........', '..........', 'lllllllll.', '.wwwiiiiw.', '..wwwwww..'],
   teary: ['.llllllll.', 'lwwwIIIIw.', 'wwwwhkkIw.', 'wwwwikkiw.', '.bbwiiiib.', '..bbbbbb..'],
 };
-const EYES = cobEyes({ at: [-EYE[0], EYE[1], 4.06], line: '#0c0814', pupilColor: '#08040e', iris: C.eye, irisDark: C.eyeLo, maps: EYE_MAPS });
+const EYES = cobEyes({ at: [-EYE[0], EYE[1], 4.06], line: '#0c0814', pupilColor: '#08040e', iris: C.eye, irisDark: C.eyeLo, accent: C.eyeHi, maps: EYE_MAPS });
 const A = (id, c) => ({ ...c, id, hide: true });
 const sp = (id, x, y, z, s, len, rot) => spike(x, y, z, s, len, { x: { pivot: [x, y, z], rot } }).map((c) => A(id, c));
 const CHAIN = chain([[-3.0, 12.6, 2.4], [-2.7, 11.3, 3.2], [-1.5, 10.3, 3.2], [0, 10.0, 3.2], [1.5, 10.3, 3.2], [2.7, 11.3, 3.2], [3.0, 12.6, 2.4]], { len: 1.0, w: 0.7, t: 0.35, step: 0.75, gold: SILVER }).map((c) => A('acc-chain', c));
@@ -359,4 +359,4 @@ export const anim = {
 };
 def.anim = anim;
 // the ultra-drip form: black lacquer fur, a gold shell, gold studs and chrome; white paint and violet eyes kept
-def.dripForm = kissForm({ keep: [C.eye, C.eyeLo], swap: { [C.furTip]: '#ffd84a', [C.maneTip]: '#e0a030', [C.furHi]: '#5a4a3a' } });
+def.dripForm = kissForm({ keep: [C.eye, C.eyeLo, C.eyeHi], swap: { [C.furTip]: '#ffd84a', [C.maneTip]: '#e0a030', [C.furHi]: '#5a4a3a' } });

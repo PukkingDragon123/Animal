@@ -19,7 +19,7 @@ const fill = (p, w, h, fn) => { for (let y = 0; y < h; y++) for (let x = 0; x < 
 // ---------------------------------------------------------------- palettes
 export const FUR = {
   // Snoozaque: warm silver-beige snow-monkey fluff
-  snooz: { c: '#b6a896', hi: '#d8ccbc', lo: '#8c7e6c', deep: '#62564a', belly: '#e6dccc', bellyLo: '#c4b6a2' },
+  snooz: { c: '#aa967e', hi: '#cebca2', lo: '#806c58', deep: '#5a4a3c', belly: '#d8c8b0', bellyLo: '#b4a088' },
   // Piledrilla: frosty white gorilla fur with blue shadows
   pile: { c: '#d6dee8', hi: '#f6faff', lo: '#a2b0c4', deep: '#6c7a92', belly: '#5a5868', bellyLo: '#3e3c4a' },
   // Fluorescape: midnight indigo with violet light
@@ -29,7 +29,7 @@ export const A = {
   pink: '#f08a9a', pinkHi: '#ffb4bc', pinkLo: '#c8607a', pinkDeep: '#8e3a52', lidPink: '#d8687e',
   dusk: '#b8899a', duskHi: '#d8aab8', duskLo: '#8a5c70', lidDusk: '#9a6a7e',
   lilac: '#c8a8f0', lilacHi: '#eadcff', lilacLo: '#9a78c8', lidLilac: '#9e7ad0',
-  hair: '#2a2024', hairHi: '#5a4a4e', hairLo: '#140e12', gloss: '#9a8a94',
+  hair: '#22202a', hairHi: '#4c4a5c', hairLo: '#100e16', gloss: '#a8a8c0',
   leather: '#1e1c22', leatherHi: '#44404c', leatherLo: '#0c0b10', zip: '#c8ccd8',
   snow: '#f6faff', snowLo: '#c8d8f0',
   ice: '#bfe6ff', iceHi: '#f2fbff', iceLo: '#74b8ec', iceDeep: '#3c78c8',
@@ -89,7 +89,7 @@ export const quiffP = (o = {}) => (p, w, h, face) => {
     const k = (x + Math.floor(y * (o.slant ?? 0.6))) % 4;               // comb streaks
     if (k === 0) c = shift(c, -0.3); else if (k === 2 && t < 0.6) c = shift(c, 0.12);
     if (face !== 'up' && Math.abs(y - h * (o.band ?? 0.3)) < 1 && x % 3 !== 2) c = A.gloss;     // the shine
-    if (face === 'up' && (x * 3 + y) % 9 === 0) c = A.gloss;
+    if (face === 'up') c = x % 3 === 0 ? shift(A.hair, -0.3) : x % 3 === 1 && y % 5 < 2 ? A.gloss : A.hair;
     return c;
   });
 };
@@ -225,8 +225,12 @@ export const AMFX = {
 // ---------------------------------------------------------------- the ultra-drip forms
 // fur → black lacquer, pale fur / belly / snow → gold, faces stay pink, the leather stays black, ice
 // turns to gold-veined diamond (white with gold), fluorescent glows go electric blue
-export const arcticForm = (F) => formMap(({ h, s, l }, glow, hex) => {
+export const SCARF = { c: '#c83a4a', hi: '#ff6a6a', lo: '#7a1a2a' };
+export const arcticForm = (F, extra = {}) => formMap(({ h, s, l }, glow, hex) => {
   if (glow) return s > 0.2 ? fromHsl(205, Math.min(1, s), Math.min(0.95, Math.max(0.55, l))) : undefined;
+  if (extra[hex]) return extra[hex];
+  if (F && hex === F.hi) return 'gold';                                                  // lit fur tufts → gold frosting
+  if (hex === SCARF.c || hex === SCARF.hi) return 'gold'; if (hex === SCARF.lo) return 'black';
   if (hex === A.hair || hex === A.hairHi || hex === A.hairLo || hex === A.gloss) return hex === A.gloss ? gilt(0.6) : 'black';
   if (h >= 320 || h < 20) return s > 0.3 && l > 0.45 ? 'keep' : undefined;                 // pink skin, tongues stay
   if (s < 0.14) return l > 0.82 ? 'gold' : l < 0.3 ? 'keep' : 'black';                    // white fur → gold, grey → black

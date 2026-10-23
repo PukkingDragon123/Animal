@@ -6,8 +6,8 @@
 // pulls up a ragged green hooded cloak; stage 3 is "the Doom" — riveted villain iron, a green tunic,
 // a gold-buckled belt and a long hooded cloak. Rhyme-flow touches: silver "rhyme dimes" spill when it
 // raps, the cheek guards are slotted like a mic grille, the mask band carries an engraved flow line.
-// Faces follow creature_rules §8: flat Cobblemon block eyes (a gold iris block, a slit pupil block,
-// square highlights, a lid line along the top only) with every key emotion hand-drawn.
+// Faces (creature_rules §7/§9): full-res hand-drawn dragon eyes — a shaded gold iris, a slit pupil, two
+// highlights and a lid line — with every key emotion hand-drawn.
 // This file: palette, painters, particles, eye maps, an FK/IK helper that solves the bottle-to-mouth
 // pose per stage, the parametric model builder and the shared clips.
 import * as THREE from '../../../vendor/three.module.js';
@@ -25,7 +25,7 @@ export const C = {
   horn: ['#f4ead0', '#dccca6', '#ab9772', '#5e4c36'],
   claw: '#ece2c8', clawLo: '#9a8a68',
   mem: '#6c2e50', memHi: '#9c4a72', memLo: '#3e1830',
-  beard: '#2a201e', beardHi: '#4e3e36', beardGrey: '#8e867a',
+  beard: '#3a2c26', beardHi: '#6a5244', beardGrey: '#a09888',
   strap: '#3a2a22', strapHi: '#5c4636',
   glass: ['#c8843a', '#8e4c1a', '#5c2c0e', '#361606'], label: '#f0e4c4', labelLo: '#cdb88c', band: '#7a1e22', cap: '#dcb446',
   cloak: '#2f6c3c', cloakHi: '#4e9c58', cloakLo: '#1a3e24', cloakIn: '#0f2418',
@@ -131,15 +131,15 @@ const hornTipP = (p, w, h, f) => { gradient([C.horn[1], C.horn[2], C.horn[3], '#
 const clawP = gradient([C.claw, C.claw, C.clawLo]);
 const fangP = (p, w, h, f) => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, y === h - 1 ? C.fangLo : C.fang); };
 const goldFangP = (p, w, h, f) => { gradient(GOLD)(p, w, h, f); if (side(f)) p.px(0, 0, '#ffffff'); };
-// the beard: dark scruffy curls with grey flecks
+// the beard: dark scruffy strands with a few grey ones (the villain's unkempt chin under the mask)
 const beardP = (p, w, h, f) => {
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-    const k = (x * 5 + y * 3 + ((x * y) % 4)) % 7;
-    p.px(x, y, k === 0 ? C.beardGrey : k < 3 ? C.beardHi : (x + y) % 2 ? C.beard : shift(C.beard, -0.2));
+    const k = (x + (y >> 1)) % 3; let c = !side(f) ? C.beard : k === 0 ? C.beardHi : k === 1 ? C.beard : shift(C.beard, -0.28);
+    if ((x * 7 + y * 5) % 19 === 0) c = C.beardGrey;
+    p.px(x, y, c);
   }
-  if (side(f)) for (let x = 0; x < w; x += 2) p.px(x, h - 1, 0);                     // ragged tips (clear)
 };
-const beardSolidP = (p, w, h, f) => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const k = (x * 5 + y * 3) % 7; p.px(x, y, k === 0 ? C.beardGrey : k < 3 ? C.beardHi : C.beard); } };
+const beardSolidP = beardP;
 // the wing membrane (a plane): hangs under the spar, scalloped between three finger bones.
 // tipAtX0: the wing tip is at texel x = 0 (the right wing, which reaches toward −x)
 function membraneP(tipAtX0) {
@@ -194,8 +194,8 @@ const buckleP = (p, w, h, f) => {
   if (f === 'south') { region(p, w, h, (x, y) => Math.hypot(x + 0.5 - w / 2, y + 0.5 - h / 2) < Math.min(w, h) * 0.32, (x, y) => (y < h / 2 ? GOLD[2] : GOLD[3])); p.px(Math.floor(w / 2) - 1, Math.floor(h / 2) - 1, GOLD[0]); }
 };
 // drip painters
-const beanieP = knit('#3a3a44', { hi: '#5a5a66', lo: '#22222a' });
-const beanieRibP = rib('#3a3a44', { hi: '#5a5a66', lo: '#22222a' });
+const beanieP = knit('#30344a', { hi: '#4c5272', lo: '#1e2030' });
+const beanieRibP = rib('#30344a', { hi: '#4c5272', lo: '#1e2030' });
 const micHeadP = (p, w, h, f) => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, (x + y) % 2 ? ST[2] : ST[3]); if (side(f)) for (let x = 0; x < w; x++) p.px(x, 0, ST[0]); };
 const micBodyP = (p, w, h, f) => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, y < 2 ? ST[1] : x === 0 ? '#3a3a46' : '#1c1c24'); };
 const cuffP = (p, w, h, f) => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, '#1c1a22'); if (side(f)) for (let x = 1; x < w - 1; x += 3) { p.px(x, 1, ST[0]); p.px(x, 2, ST[2]); } };
@@ -239,21 +239,22 @@ export const DFX = {
 };
 const GREEN_T = [0.55, 1, 0.5];
 
-// ---------------------------------------------------------------- eyes (§8: flat blocks, lid on top only)
-// A gold iris block (two flat tones), a black slit pupil block, a square highlight, the lid line along
-// the top dropping toward the nose. No whites: a dragon's eye, seen through the mask's eye holes.
+// ---------------------------------------------------------------- eyes (§7/§9: full-res, hand-drawn, no bullseye rings)
+// A dragon's eye seen through the mask's eye holes: no whites, a gold iris shaded dark under the lid and
+// bright along the bottom, a black slit pupil, two square highlights, the lid line dropping toward the
+// nose with a flick at the outer corner. Every key emotion is hand-drawn.
 export const EYE_MAPS = {
-  open: ['ll..........', 'lllll.......', 'iiillllllll.', 'iiiiikkillll', 'ihhiikkiiii.', 'ihhiikkiiII.', '.IIIIkkIII..', '..IIIIIII...'],
-  angry: ['l...........', 'llll........', 'iilllll.....', 'ihhikklllll.', 'ihhikkiiilll', '.IIIkkIIII..', '..IIIIIII...', '............'],
-  sad: ['............', '.........lll', '......llllii', 'lllllliiiiii', 'iiiiikkiiii.', 'ihhiikkiiII.', '.IIIIkkIII..', '..IIIIIII...'],
+  open: ['ll..........', 'lllll.......', 'IIIllllllll.', 'IIIIIkkIllll', 'ihhiikkiiii.', 'ihhiikkiiic.', '.cciikkicc..', '..ccccccc...'],
+  angry: ['l...........', 'llll........', 'IIlllll.....', 'IhhIkklllll.', 'ihhikkiiilll', '.ccikkiccc..', '..ccccccc...', '............'],
+  sad: ['............', '.........lll', '......llllII', 'llllllIIIIII', 'iiiiikkiiii.', 'ihhiikkiiic.', '.cciikkicc..', '..ccccccc...'],
   happy: ['............', '............', '....llll....', '..llllllll..', '.lll....lll.', 'll........ll', 'l..........l', '............'],
   closed: ['............', '............', '............', '............', 'llllllllllll', '.llllllllll.', '............', '............'],
-  shock: ['lllllllll...', 'iiiiiiiiill.', 'ihhiiiiiiii.', 'ihhiiiiiiii.', 'iiiiikkiiii.', 'iiiiikkiiII.', '.IIIIIIIII..', '..IIIIIII...'],
-  wide: ['lllllllll...', 'iiiiiiiiill.', 'ihhiikkiiii.', 'ihhiikkiiii.', 'iiiiikkiiii.', 'iiiiiiiiiII.', '.IIIIIIIII..', '..IIIIIII...'],
-  smug: ['............', '............', 'llll........', 'llllllllllll', 'iiiiikkiiii.', 'ihhiikkiiII.', '.IIIIkkIII..', '..IIIIIII...'],
-  sleepy: ['............', '............', '............', '............', 'llllllllllll', 'iiiiikkiiII.', '.IIIIkkIII..', '..IIIIIII...'],
+  shock: ['lllllllll...', 'IIIIIIIIIll.', 'ihhiiiiiiii.', 'ihhiiiiiiii.', 'iiiiikkiiii.', 'iiiiikkiiic.', '.ccccccccc..', '..ccccccc...'],
+  wide: ['lllllllll...', 'IIIIIIIIIll.', 'ihhiikkiiii.', 'ihhiikkiiii.', 'iiiiikkiiii.', 'iiiiiiiiiic.', '.ccccccccc..', '..ccccccc...'],
+  smug: ['............', '............', 'llll........', 'llllllllllll', 'IIIIIkkIIII.', 'ihhiikkiiic.', '.cciikkicc..', '..ccccccc...'],
+  sleepy: ['............', '............', '............', '............', 'llllllllllll', 'IIIIIkkIIIc.', '.cciikkicc..', '..ccccccc...'],
 };
-const EYE_OPT = { style: 'pix', chunk: 1, line: C.ink, iris: '#f2b62a', irisDark: '#b0661a', pupilColor: '#140a08', accent: '#ffe08a', extra: ['smug'], map: EYE_MAPS };
+const EYE_OPT = { style: 'pix', chunk: 1, line: C.ink, iris: '#f2b62a', irisDark: '#a8561a', pupilColor: '#140a08', accent: '#ffe48a', extra: ['smug'], map: EYE_MAPS };
 
 // ---------------------------------------------------------------- forward kinematics (solving poses at load)
 function chainOf(byName, bone) { const c = []; for (let b = byName[bone]; b; b = b.parent ? byName[b.parent] : null) c.unshift(b); return c; }
@@ -286,30 +287,30 @@ const GEO = {
   1: { scale: 0.44, ol: 1.4,
     foot: { x: 3.1, w: 3.8, h: 1.5, d: 4.6, z0: -1.6 }, leg: { w: 3.6, d: 3.8, y0: 1.2, y1: 5.8, z0: -1.8 },
     belly: { w: 10, d: 8.4, y0: 4.4, y1: 12, z0: -4.0 }, chest: { w: 8.8, d: 7.2, y0: 11.4, y1: 14.2, z0: -3.4 },
-    head: { y0: 13.4, w: 11, h: 9.2, d: 9.6, z0: -4.4, pz: 0.4 }, snout: { w: 7.2, h: 4.4, l: 4.8, dy: 0.8 },
-    jaw: { w: 5.2, h: 2.0, l: 5.6 }, eye: { x: 2.9, dy: 7.1 },
+    head: { y0: 13.4, w: 10.6, h: 9.0, d: 9.4, z0: -4.3, pz: 0.4 }, snout: { w: 6.2, h: 4.2, l: 4.8, dy: 0.8 },
+    jaw: { w: 4.8, h: 2.0, l: 5.6 }, eye: { x: 2.8, dy: 6.9 },
     arm: { sh: [-4.6, 12.0, 0.6], upW: 2.6, up: [12.6, 8.4], el: 8.8, foreW: 2.4, fore: [9.0, 5.0], claw: 1.1 },
     bottle: { s: 1 }, wing: { root: [-2.4, 12.8, -3.7], span: 6, drop: 5.2, spar: 0.9 },
     tail: { root: [0, 6.4, -3.6], segs: [[4.6, 3.4, 3.0], [4.0, 2.4, 2.2], [3.2, 1.6, 1.6]], spade: 3.0 },
-    horn: { x: 3.3, l1: 2.8, l2: 2.4, w: 1.6 }, beard: 1, lie: 4.4 },
+    horn: { x: 3.2, l1: 3.4, l2: 3.0, w: 1.8 }, beard: 1, lie: 4.4 },
   2: { scale: 0.48, ol: 1.5,
     foot: { x: 3.6, w: 4.2, h: 1.6, d: 5.4, z0: -1.8 }, leg: { w: 4.0, d: 4.2, y0: 1.2, y1: 8.8, z0: -2.0 },
     belly: { w: 11, d: 9, y0: 7.4, y1: 15.4, z0: -4.4 }, chest: { w: 12, d: 8.2, y0: 15.0, y1: 20.2, z0: -4.0 }, neck: { w: 5.4, d: 5.4, y0: 19.6, y1: 22.6, z0: -2.4 },
     head: { y0: 22.0, w: 10, h: 8.4, d: 9.0, z0: -3.8, pz: 0.6 }, snout: { w: 6.4, h: 4.2, l: 6.2, dy: 0.4 },
-    jaw: { w: 4.8, h: 2.0, l: 6.6 }, eye: { x: 2.6, dy: 6.0 },
+    jaw: { w: 4.8, h: 2.0, l: 6.6 }, eye: { x: 2.7, dy: 6.0 },
     arm: { sh: [-6.4, 19.2, 0.4], upW: 2.8, up: [19.8, 13.4], el: 13.8, foreW: 2.6, fore: [14.0, 8.8], claw: 1.3 },
     bottle: { s: 1.15 }, wing: { root: [-2.8, 19.6, -6.4], span: 9, drop: 7.4, spar: 1.1 },
     tail: { root: [0, 8.4, -4.2], segs: [[6, 3.8, 3.4], [5, 2.8, 2.6], [4, 1.8, 1.8]], spade: 3.6 },
-    horn: { x: 3.2, l1: 3.4, l2: 3.0, w: 1.7 }, beard: 1.2, lie: 5.0, hood: true, cape: { y1: 20.4, y0: 8.8, z: -5.0, w: 14 } },
+    horn: { x: 3.2, l1: 3.8, l2: 3.4, w: 1.8 }, beard: 1.2, lie: 5.0, hood: true, cape: { y1: 20.4, y0: 8.8, z: -5.0, w: 14 } },
   3: { scale: 0.56, ol: 1.6,
     foot: { x: 4.0, w: 4.8, h: 1.8, d: 6.2, z0: -2.0 }, leg: { w: 4.6, d: 4.6, y0: 1.4, y1: 11.6, z0: -2.3 },
     belly: { w: 12.4, d: 9.4, y0: 10.2, y1: 16.8, z0: -4.6 }, chest: { w: 14, d: 9.6, y0: 16.4, y1: 24.6, z0: -4.8 }, neck: { w: 9.2, d: 7.0, y0: 23.8, y1: 26.2, z0: -3.4 },
     head: { y0: 25.8, w: 10, h: 8.6, d: 9.0, z0: -3.8, pz: 0.6 }, snout: { w: 6.4, h: 4.4, l: 6.6, dy: 0.4 },
-    jaw: { w: 4.8, h: 2.0, l: 6.8 }, eye: { x: 2.6, dy: 6.2 },
+    jaw: { w: 4.8, h: 2.0, l: 6.8 }, eye: { x: 2.7, dy: 6.2 },
     arm: { sh: [-7.8, 23.0, 0.4], upW: 3.4, up: [23.6, 16.6], el: 17.0, foreW: 3.6, fore: [17.2, 10.6], claw: 0, fist: true },
     wing: { root: [-3.2, 24.0, -7.0], span: 13, drop: 10.5, spar: 1.3 },
     tail: { root: [0, 11.0, -4.6], segs: [[7, 4.4, 3.8], [6, 3.2, 2.8], [5, 2.0, 2.0]], spade: 4.4 },
-    horn: { x: 3.2, l1: 3.8, l2: 3.4, w: 1.8 }, beard: 1.4, lie: 6.2, hood: true, armour: true, cape: { y1: 24.8, y0: 2.6, z: -5.4, w: 16, split: true } },
+    horn: { x: 3.2, l1: 4.2, l2: 3.8, w: 2.0 }, beard: 1.4, lie: 6.2, hood: true, armour: true, cape: { y1: 24.8, y0: 2.6, z: -5.4, w: 16, split: true } },
 };
 
 // ---------------------------------------------------------------- the builder
@@ -335,13 +336,13 @@ export function doomDef(stage) {
   }
   // ---- body
   const Bl = g.belly, Ch = g.chest;
-  cubes.body.push(B([-Bl.w / 2, Bl.y0, Bl.z0], [Bl.w, Bl.y1 - Bl.y0, Bl.d], scaleP), B([-Ch.w / 2, Ch.y0, Ch.z0], [Ch.w, Ch.y1 - Ch.y0, Ch.d], g.armour ? cuirassP : scaleP));
+  cubes.body.push(B([-Bl.w / 2, Bl.y0, Bl.z0], [Bl.w, Bl.y1 - Bl.y0, Bl.d], g.armour ? steel({ rivets: true, every: 6 }) : scaleP), B([-Ch.w / 2, Ch.y0, Ch.z0], [Ch.w, Ch.y1 - Ch.y0, Ch.d], g.armour ? cuirassP : scaleP));
   if (!g.armour) cubes.body.push(B([-Bl.w * 0.36, Bl.y0 + 0.4, Bl.z0 + Bl.d - 0.2], [Bl.w * 0.72, (Ch.y1 - 0.6) - (Bl.y0 + 0.4), 0.7], bellyP));
   if (g.neck) cubes.body.push(B([-g.neck.w / 2, g.neck.y0, g.neck.z0], [g.neck.w, g.neck.y1 - g.neck.y0, g.neck.d], g.armour ? steel({ rivets: true }) : scaleP));
   // dorsal spikes down the back (hidden under the cloak on later stages)
   if (!g.cape) for (const [k, y] of [[0, Bl.y0 + 2.4], [1, Bl.y0 + 5.0], [2, Ch.y1 - 1.2]]) cubes.body.push(B([-0.6, y, Bl.z0 - 1.0 + k * 0.2], [1.2, 1.4, 1.2], clawP, { pivot: [0, y, Bl.z0], rot: [-30, 0, 0] }));
   if (g.armour) {
-    const tu = { y0: Bl.y0 - 2.2, y1: Bl.y1 - 0.4 };
+    const tu = { y0: Bl.y0 - 2.4, y1: Bl.y0 + 3.4 };
     cubes.body.push(B([-Bl.w / 2 - 0.4, tu.y0, Bl.z0 - 0.4], [Bl.w + 0.8, tu.y1 - tu.y0, Bl.d + 0.8], tunicP));
     cubes.body.push(B([-Bl.w / 2 - 0.6, Bl.y1 - 1.2, Bl.z0 - 0.6], [Bl.w + 1.2, 1.8, Bl.d + 1.2], beltP), B([-1.6, Bl.y1 - 1.6, Bl.z0 + Bl.d + 0.5], [3.2, 2.6, 0.6], buckleP));
   }
@@ -355,17 +356,17 @@ export function doomDef(stage) {
   const clawsL = [-1, 0, 1].map((k) => B([fx + k * (A.foreW / 3) - 0.35, A.fore[1] - A.claw, az + 0.2], [0.7, A.claw, 0.8], clawP));
   cubes.handL.push(...cubes.handR.map(L), ...(g.armour ? [] : clawsL.map(L)));
   // the right hand holds the bottle (stages 1–2); its claws wrap round the glass
-  const BT = g.bottle, bs = BT ? BT.s : 1, grip = [fx - 0.2, A.fore[1] - 0.4 * bs, az + A.foreW / 2 + 1.1 * bs];
+  const BT = g.bottle, bs = BT ? BT.s : 1, grip = [fx, A.fore[1] - 0.5, az + 0.3];
   const bottleCubes = [];
   if (BT) {
+    // carried by the neck, hanging at its side: the neck passes through the fist, the body hangs below
     const [bx, by, bz] = grip, bw = 2.2 * bs;
     bottleCubes.push(
-      B([bx - bw / 2, by - 2.6 * bs, bz - bw / 2], [bw, 3.4 * bs, bw], glassP),
-      B([bx - 0.75 * bs, by + 0.8 * bs, bz - 0.75 * bs], [1.5 * bs, 0.6 * bs, 1.5 * bs], neckP),
-      B([bx - 0.45 * bs, by + 1.4 * bs, bz - 0.45 * bs], [0.9 * bs, 1.4 * bs, 0.9 * bs], neckP),
-      B([bx - 0.55 * bs, by + 2.8 * bs, bz - 0.55 * bs], [1.1 * bs, 0.4 * bs, 1.1 * bs], capP));
-    cubes.handR.push(B([fx - A.foreW / 2 + 0.1, A.fore[1] - 1.0, az], [A.foreW - 0.2, 1.0, A.foreW / 2 + 0.4], scaleP),
-      ...[0, 1].map((k) => B([bx - bw / 2 - 0.1, by - 1.4 * bs + k * 0.9 * bs, bz + bw / 2], [bw + 0.2, 0.7 * bs, 0.6], clawP)));
+      B([bx - bw / 2, by - 5.0 * bs, bz - bw / 2], [bw, 3.4 * bs, bw], glassP),
+      B([bx - 0.75 * bs, by - 1.6 * bs, bz - 0.75 * bs], [1.5 * bs, 0.6 * bs, 1.5 * bs], neckP),
+      B([bx - 0.45 * bs, by - 1.0 * bs, bz - 0.45 * bs], [0.9 * bs, 1.6 * bs, 0.9 * bs], neckP),
+      B([bx - 0.55 * bs, by + 0.6 * bs, bz - 0.55 * bs], [1.1 * bs, 0.4 * bs, 1.1 * bs], capP));
+    cubes.handR.push(B([fx - 1.1, A.fore[1] - 1.2, az - 0.9], [2.2, 1.4, 2.4], scaleP), ...[-1, 0, 1].map((k) => B([fx + k * 0.65 - 0.25, A.fore[1] - 1.0, az + 1.5], [0.5, 0.8, 0.5], clawP)));
   } else if (!g.armour) cubes.handR.push(...clawsL);
   // ---- head: skull, the mask, horns, fangs
   const x0 = -H.w / 2;
@@ -375,32 +376,39 @@ export function doomDef(stage) {
   cubes.head.push(B([-0.7, snTop - 0.1, zf], [1.4, browY - snTop + 0.1, 0.7], noseBarP));                       // nose bridge
   cubes.head.push(B([-0.6, snTop, zf + 0.4], [1.2, 0.6, sn.l - 0.8], steelP));                                  // ridge down the snout
   const chTop = eyeY - eyeH / 2 - 0.1, chY0 = sny0 - 0.5, chW = H.w / 2 + 0.3 - sn.w / 2;
-  cubes.head.push(...both(B([x0 - 0.3, chY0, zf], [chW, chTop - chY0, 0.8], cheekP), B([x0 - 0.4, chY0, zf - 3.4], [0.5, chTop - chY0, 4.2], cheekP), B([-sn.w / 2 + 0.15, sny0 - 1.3, zf + sn.l - 1.1], [0.8, 1.4, 0.8], fangP)));
+  cubes.head.push(...both(B([x0 - 0.3, chY0, zf], [chW, chTop - chY0, 0.8], cheekP), B([x0 - 0.35, chY0, zf - 1.6], [0.5, chTop - chY0, 2.4], cheekP), B([-sn.w / 2 + 0.15, sny0 - 1.3, zf + sn.l - 1.1], [0.8, 1.4, 0.8], fangP)));
   const HN = g.horn;
-  cubes.head.push(...both(B([-HN.x - HN.w / 2, hTop - 0.6, H.z0 + 2.0], [HN.w, HN.l1, HN.w], hornP, { pivot: [-HN.x, hTop - 0.6, H.z0 + 2.8], rot: [-38, 0, 12] }),
-    B([-HN.x - HN.w * 0.35, hTop - 0.6 + HN.l1 - 0.4, H.z0 + 2.0 + HN.w * 0.15], [HN.w * 0.7, HN.l2, HN.w * 0.7], hornTipP, { pivot: [-HN.x, hTop - 0.6, H.z0 + 2.8], rot: [-62, 0, 14] })));
+  cubes.head.push(...both(B([-HN.x - HN.w / 2, hTop - 0.6, H.z0 + 2.0], [HN.w, HN.l1, HN.w], hornP, { pivot: [-HN.x, hTop - 0.6, H.z0 + 2.8], rot: [-26, 0, 14] }),
+    B([-HN.x - HN.w * 0.35, hTop - 0.6 + HN.l1 - 0.4, H.z0 + 2.0 + HN.w * 0.15], [HN.w * 0.7, HN.l2, HN.w * 0.7], hornTipP, { pivot: [-HN.x, hTop - 0.6, H.z0 + 2.8], rot: [-50, 0, 16] })));
   // ---- the jaw and the beard (a scruffy chin tuft and sideburns)
   const bd = g.beard;
   cubes.jaw.push(B([-jw.w / 2, jawY0, jawZ0], [jw.w, jw.h, jw.l], jawP));
-  cubes.jaw.push(B([-1.6 * bd, jawY0 - 1.8 * bd, jawZ0 + jw.l - 2.6 * bd], [3.2 * bd, 1.9 * bd, 2.4 * bd], beardSolidP), B([-1.0 * bd, jawY0 - 3.0 * bd, jawZ0 + jw.l - 2.2 * bd], [2.0 * bd, 1.3 * bd, 1.8 * bd], beardP));
+  cubes.jaw.push(B([-1.3 * bd, jawY0 - 1.7 * bd, jawZ0 + jw.l - 2.4 * bd], [2.6 * bd, 1.8 * bd, 2.2 * bd], beardP), B([-0.8 * bd, jawY0 - 2.8 * bd, jawZ0 + jw.l - 2.0 * bd], [1.6 * bd, 1.2 * bd, 1.6 * bd], beardP), B([-0.4 * bd, jawY0 - 3.5 * bd, jawZ0 + jw.l - 1.7 * bd], [0.8 * bd, 0.8 * bd, 1.0 * bd], beardP));
   cubes.jaw.push(...both(B([-jw.w / 2 - 0.4, jawY0 - 0.8, jawZ0 + 0.4], [0.7, 1.6, jw.l - 1.4], beardSolidP)));
   // ---- the hood (stages 2–3): framing the mask, horns poking through
   const hood = [];
   if (g.hood) {
-    const hx = H.w / 2 + 0.8, hz0 = H.z0 - 1.0, hz1 = zf + 0.4, hy0 = H.y0 - 1.0, hy1 = hTop + 1.4;
-    hood.push(B([-hx, hTop, hz0], [hx * 2, 1.4, hz1 - hz0 - 0.4], cloakP({ in: ['down'] })));
-    hood.push(...both(B([-hx, hy0, hz0], [1.0, hTop - hy0 + 0.2, hz1 - hz0], cloakP({ in: ['east'], hem: true }))));
-    hood.push(B([-hx, hy0 - 0.8, hz0 - 1.2], [hx * 2, hy1 - hy0 + 0.8, 1.2], cloakP({ in: ['south'] })));
-    hood.push(B([-hx, hTop + 0.2, hz1 - 0.6], [hx * 2, 1.2, 1.4], cloakP({ in: ['down'] }), { pivot: [0, hTop + 0.8, hz1 - 0.6], rot: [14, 0, 0] }));
-    hood.push(B([-1.8, hTop + 0.6, hz0 - 0.6], [3.6, 2.2, 3.4], cloakP({}), { pivot: [0, hTop + 0.6, hz0 + 1.0], rot: [-28, 0, 0] }));
+    // a soft cowl: an overhanging crown that shadows the brow, side panels with a dark opening, drapes that
+    // flare onto the shoulders, and a pointed tip falling back from the crown
+    const hx = H.w / 2 + 0.9, hz0 = H.z0 - 1.2, hz1 = zf + 1.0, piv = [0, hTop, hz0];
+    hood.push(B([-hx, hTop - 0.2, hz0], [hx * 2, 1.6, hz1 - hz0 + 0.4], cloakP({ in: ['down'] }), { pivot: piv, rot: [7, 0, 0] }));
+    hood.push(B([-hx + 0.2, hTop - 0.9, hz1 - 0.2], [hx * 2 - 0.4, 1.0, 0.9], cloakP({ in: ['down', 'north'] }), { pivot: piv, rot: [7, 0, 0] }));
+    hood.push(...both(B([-hx, H.y0 - 0.8, hz0], [1.1, hTop - H.y0 + 0.8, hz1 - hz0], cloakP({ in: ['east', 'south'] })),
+      B([-hx - 0.5, H.y0 - 3.6, hz0 + 0.4], [1.3, 3.4, hz1 - hz0 - 1.6], cloakP({ in: ['east'], hem: true }), { pivot: [-hx, H.y0 - 0.4, 0], rot: [0, 0, -16] })));
+    hood.push(B([-hx, H.y0 - 2.6, hz0 - 1.2], [hx * 2, hTop - H.y0 + 3.6, 1.2], cloakP({ in: ['south'] })));
+    hood.push(B([-1.9, hTop - 1.2, hz0 - 3.4], [3.8, 2.0, 4.2], cloakP({}), { pivot: [0, hTop, hz0], rot: [-34, 0, 0] }));
+    hood.push(B([-1.1, hTop - 1.6, hz0 - 6.0], [2.2, 1.4, 3.0], cloakP({}), { pivot: [0, hTop, hz0], rot: [-52, 0, 0] }));
   }
   // ---- the cloak: a mantle round the shoulders, lapels down the chest, the cape on two spring bones
   const cape = g.cape, capeBones = [];
   if (cape) {
-    const my0 = Ch.y1 - 1.6, mz0 = Ch.z0 - 1.0, mz1 = Ch.z0 + Ch.d + 0.6;
+    const my0 = Ch.y1 - 1.6, mz0 = Ch.z0 - 1.0, mz1 = g.armour ? Ch.z0 + Ch.d * 0.55 : Ch.z0 + Ch.d + 0.6;
     cubes.body.push(B([-Ch.w / 2 - 1.2, my0, mz0], [Ch.w + 2.4, 2.4, mz1 - mz0], cloakP({ in: ['down'] })));
-    cubes.body.push(...both(B([-Ch.w / 2 - 0.8, Bl.y0 + (g.armour ? 4.6 : 2.0), Ch.z0 + Ch.d - 0.6], [Ch.w * 0.3, my0 - (Bl.y0 + (g.armour ? 4.6 : 2.0)), 1.4], cloakP({ in: ['north'], hem: !g.armour, trim: g.armour }))));
-    if (g.armour) cubes.body.push(...both(B([-Ch.w * 0.3 - 1.4, my0 - 0.8, Ch.z0 + Ch.d + 0.6], [1.8, 1.8, 0.6], buckleP)), B([-Ch.w * 0.3, my0 - 0.4, Ch.z0 + Ch.d + 0.7], [Ch.w * 0.6, 0.7, 0.4], chainP));
+    if (g.armour) {
+      // the cloak falls from the shoulders and is held across the iron chest by two gold clasps and a chain
+      cubes.body.push(...both(B([-Ch.w / 2 - 1.2, Ch.y0 + 1.0, mz0], [1.4, my0 - Ch.y0 - 0.8, mz1 - mz0 + 1.0], cloakP({ in: ['east'], trim: true })), B([-Ch.w / 2 + 0.6, my0 - 0.6, Ch.z0 + Ch.d - 0.2], [2.2, 2.2, 0.7], buckleP)));
+      cubes.body.push(B([-Ch.w / 2 + 2.6, my0 + 0.1, Ch.z0 + Ch.d - 0.1], [Ch.w - 5.2, 0.8, 0.5], chainP));
+    } else cubes.body.push(...both(B([-Ch.w / 2 - 0.8, Bl.y0 + 2.0, Ch.z0 + Ch.d - 0.6], [Ch.w * 0.3, my0 - (Bl.y0 + 2.0), 1.4], cloakP({ in: ['north'], hem: true }))));
     const cw = cape.w, ymid = cape.y0 + (cape.y1 - cape.y0) * 0.5;
     capeBones.push({ name: 'cape1', parent: 'body', pivot: [0, cape.y1, cape.z], cubes: [B([-cw / 2, ymid - 0.2, cape.z - 1.2], [cw, cape.y1 - ymid + 0.2, 1.2], cloakP({ in: ['south'] }))] });
     const low = (x0c, w) => B([x0c, cape.y0, cape.z - 1.4], [w, ymid - cape.y0 + 0.2, 1.2], cloakP({ in: ['south'], hem: !g.armour, trim: g.armour }));
@@ -447,7 +455,7 @@ export function doomDef(stage) {
   // a rhyme book on a cord at the hip (stages 2–3)
   if (stage >= 2) D.body.push(...acc('acc-book', [B([Bl.w / 2 - 0.2, Bl.y0 + 0.4, -1.6], [1.0, 3.4, 3.0], bookP, { pivot: [Bl.w / 2, Bl.y0 + 3.8, 0], rot: [0, 0, 8] }), B([Bl.w / 2 - 0.4, Bl.y0 + 3.6, -0.3], [0.5, 2.2, 0.4], strapBlk)]));
   // gold horn caps (King of the three-headed sky dragon)
-  if (stage >= 2) D.head.push(...acc('acc-goldhorns', both(B([-HN.x - HN.w * 0.45, hTop - 0.6 + HN.l1 - 0.6, H.z0 + 2.0 + HN.w * 0.05], [HN.w * 0.9, HN.l2 + 0.3, HN.w * 0.9], goldP, { pivot: [-HN.x, hTop - 0.6, H.z0 + 2.8], rot: [-62, 0, 14] }), B([-HN.x - HN.w * 0.6, hTop - 0.8, H.z0 + 1.8], [HN.w * 1.2, 0.9, HN.w * 1.2], goldP, { pivot: [-HN.x, hTop - 0.6, H.z0 + 2.8], rot: [-38, 0, 12] }))));
+  if (stage >= 2) D.head.push(...acc('acc-goldhorns', both(B([-HN.x - HN.w * 0.45, hTop - 0.6 + HN.l1 - 0.6, H.z0 + 2.0 + HN.w * 0.05], [HN.w * 0.9, HN.l2 + 0.3, HN.w * 0.9], goldP, { pivot: [-HN.x, hTop - 0.6, H.z0 + 2.8], rot: [-50, 0, 16] }), B([-HN.x - HN.w * 0.6, hTop - 0.8, H.z0 + 1.8], [HN.w * 1.2, 0.9, HN.w * 1.2], goldP, { pivot: [-HN.x, hTop - 0.6, H.z0 + 2.8], rot: [-26, 0, 14] }))));
   // the Doom's sceptre: an iron mic-stand staff with a gold mic on top, in the left fist
   if (g.armour) D.handL.push(...acc('acc-scepter', [B([-fx - 0.45, A.fore[1] - 9.0, az + 1.2], [0.9, 21.0, 0.9], scepterP), B([-fx - 1.0, A.fore[1] + 11.8, az + 0.65], [2.0, 2.4, 2.0], goldP), B([-fx - 0.8, A.fore[1] + 12.0, az + 0.85], [1.6, 2.6, 1.6], micHeadP), B([-fx - 1.2, A.fore[1] - 9.4, az + 0.45], [2.4, 0.8, 2.4], goldP)]));
 
@@ -498,7 +506,7 @@ export function doomDef(stage) {
     CHEEK: [H.w / 2 + 0.2, sny0 + 1.2, zf - 1.0], handPt: [-fx, A.fore[1] - 0.6, az + 0.8], wingBig: stage === 3, hTop, zf, sny0 };
   const neckRot = g.neck ? [-6, 0, 0] : [0, 0, 0];
   if (BT) {
-    const corner = [-jw.w / 2 + 0.2, sny0 - 0.2, jawZ0 + 1.6], uHead = new THREE.Vector3(0.62, -0.08, -0.78).normalize(), Lb = 3.2 * bs;
+    const corner = [-jw.w / 2 + 0.2, sny0 - 0.2, jawZ0 + 1.6], uHead = new THREE.Vector3(0.62, -0.08, -0.78).normalize(), Lb = 1.0 * bs;
     const prefer = [-20, -14, -68, 0, -18, -64];
     const r = descend(prefer, (x) => {
       const pose = { neck: neckRot, head: [x[0], x[1], -4], armR: [x[2], x[3], x[4]], handR: [x[5], 0, 0] };
@@ -546,7 +554,7 @@ function doomAnim(S, EYES) {
       const b = beat(t, 0.5), dy = -0.5 * b.pulse, sd = b.n % 2 ? 1 : -1;
       P.pos('body', 0, dy, 0).rot('body', 0, sd * 3, sd * 1.5).sq('body', -0.02 * b.pulse); plant(P, LEGS, dy, LEG);
       P.rot('head', -2 + 6 * b.pulse, sd * 4, -sd * 2).rot('jaw', 3 + 2 * b.pulse);
-      armR(P, [-8 + 3 * b.pulse, 0, -6 - 2 * b.pulse], [S.bottle ? -24 : -10, 0, 0]); armL(P, [3 * b.pulse, 0, 8], [-12 - 6 * b.pulse, 0, 0]);
+      armR(P, [(S.bottle ? -16 : -8) + 3 * b.pulse, 0, -8 - 2 * b.pulse], [S.bottle ? -30 : -10, 0, 0]); armL(P, [3 * b.pulse, 0, 8], [-12 - 6 * b.pulse, 0, 0]);
       tailSway(P, t); wings(P, 4 * b.pulse);
       eyesAt(P, ...glance(t + c.loopN * 1.3, [[0, 0], [-0.3, 0], [0, 0], [0.32, 0.05]], 0.5));
       if (c.loopN % 3 === 2) { P.face('eyes', t > 0.6 && t < 1.7 ? 'smug' : undefined); P.rot('head', 0, 0, 6 * env(t, 0.6, 1.7)); }
@@ -693,17 +701,19 @@ function doomAnim(S, EYES) {
     // green fire bursts out — then rises slowly, head tilted, eyes narrowed. A villain's entrance.
     flourish: { len: 3.2, next: 'idle', f(P, t) {
       P.blinkOK = false; P.lookW = 0;
-      const spin = seg(t, 0.1, 0.75, E.inout), kneel = seg(t, 0.7, 0.95, E.out) * (1 - seg(t, 2.2, 2.8, E.inout)), rise = seg(t, 2.2, 2.8, E.inout);
-      P.rot('root', 0, 360 * spin, 0).pos('root', 0, 1.6 * bump(t, 0.1, 0.75), 0);
-      armR(P, [(-120 * bump(t, 0.1, 0.75)) + 20 * kneel, 0, -40 * bump(t, 0.1, 0.75) + 30 * kneel], [-20 * kneel, 0, 0]);
-      const dy = -LEG * 0.55 * kneel; P.pos('body', 0, dy, 0).rot('body', 16 * kneel, 0, 0); P.rot('legR', -70 * kneel).pos('legR', 0, dy * 0.5, 2 * kneel).rot('footR', 60 * kneel).rot('legL', 30 * kneel).pos('legL', 0, dy * 0.6, -1 * kneel);
-      armL(P, [-10 * kneel, 0, -10 * kneel], [-30 * kneel, 0, 0]);
-      armR(P, [-70 * kneel, 0, 0], [-10 * kneel, 0, 0]);
-      P.rot('head', 30 * kneel - 14 * rise * (1 - seg(t, 2.9, 3.2)), 0, 12 * rise).rot('jaw', 10 * kneel); wings(P, -30 * kneel + 40 * bump(t, 0.95, 1.6));
-      for (const c of CAPES) P.rot(c, -30 * bump(t, 0.1, 0.8));
-      P.face('eyes', spin > 0.05 && spin < 0.95 ? 'smug' : kneel > 0.5 && t < 1.6 ? 'closed' : t < 2.2 ? 'angry' : 'smug');
-      P.burst(0.95, 'ring', 'root', [0, 1, 4], { scale: 2.4, tint: GREEN_T }).burst(0.95, DFX.flame, 'root', [0, 1, 4], { n: 30, spread: 1, speed: 1.6 }).burst(0.97, 'dust', 'root', [0, 0, 4], { n: 14, spread: 1, speed: 2 }).burst(0.98, 'rock', 'root', [0, 1, 6], { n: 6 });
-      if (t > 1.0 && t < 2.2) P.stream(DFX.flame, 'root', [0, 0.5, 4], { rate: 20, spread: 1 });
+      const spin = seg(t, 0.1, 0.75, E.inout), land = seg(t, 0.72, 0.92, E.out) * (1 - seg(t, 2.2, 2.8, E.inout)), lift = bump(t, 0.1, 0.75);
+      P.rot('root', 0, 360 * spin, 0).pos('root', 0, 1.8 * lift, 0);
+      armR(P, [-120 * lift, 0, -40 * lift], [0, 0, 0]); armL(P, [-60 * lift, 0, 50 * lift], [0, 0, 0]);
+      // the landing: a deep crouch, the right fist planted on the ground, the left arm swept back, head up
+      const dy = -LEG * 0.42 * land; P.pos('body', 0, dy, 0).rot('body', 14 * land, 0, 0); plant(P, LEGS, dy, LEG);
+      P.rot('legR', -18 * land).rot('legL', 12 * land);
+      armR(P, [-34 * land, 0, -12 * land], [-8 * land, 0, 0]); armL(P, [40 * land, 0, 36 * land], [-30 * land, 0, 0]);
+      const rise = seg(t, 2.2, 2.8, E.inout), tilt = env(t, 1.2, 2.3, 0.3, 0.3);
+      P.rot('head', -12 * land - 6 * rise * (1 - seg(t, 2.9, 3.2)), 0, 10 * tilt).rot('jaw', 6 * land + 20 * bump(t, 0.92, 1.3)); wings(P, 34 * land + 20 * bump(t, 0.9, 1.4));
+      for (const c of CAPES) P.rot(c, -30 * lift + 10 * land);
+      P.face('eyes', spin > 0.05 && spin < 0.95 ? 'smug' : t < 1.7 && land > 0.5 ? 'angry' : t < 2.3 ? 'smug' : undefined);
+      P.burst(0.92, 'ring', 'root', [-3, 1, 5], { scale: 2.6, tint: GREEN_T }).burst(0.92, DFX.flame, 'root', [-3, 1, 5], { n: 30, spread: 1, speed: 1.8 }).burst(0.94, 'dust', 'root', [-3, 0, 5], { n: 14, spread: 1, speed: 2 }).burst(0.95, 'rock', 'root', [-3, 1, 6], { n: 6 });
+      if (t > 0.95 && t < 2.2) { P.stream(DFX.flame, 'root', [-5, 0.5, 4], { rate: 14, spread: 0.8 }); P.stream(DFX.flame, 'root', [5, 0.5, 3], { rate: 14, spread: 0.8, key: 'b' }); }
       P.burst(2.5, 'sparkle', 'head', [0, S.EYE[1], S.EYE[2]], { n: 4 });
     } },
   };

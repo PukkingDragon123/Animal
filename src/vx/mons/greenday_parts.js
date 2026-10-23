@@ -240,10 +240,10 @@ export function trefoil(base, o = {}) {
 }
 
 // ---------------------------------------------------------------- faces
-// Cobblemon-style block eyes (creature_rules §8). Grenaday: a tall white block with stepped corners,
-// a two-tone green iris block on the inner side, a black pupil block, a 2 × 2 square highlight and a
-// glint pixel; a thick guyliner lid line across the top that flicks out at the outer corner.
-const GE = { w: 13, h: 11, eye: [2, 3, 11, 10], cut: [0, 1, 1, 2], iris: [5, 3, 10, 10], dark: 2, pupil: [7, 5, 9, 8], hi: [[6, 5], [7, 5], [6, 6], [7, 6]], glint: [[9, 9]], t: 2, wing: [[0, 0], [0, 1], [1, 1]] };
+// Hand-drawn eyes (creature_rules §7 / §9). Grenaday: a tall rounded white eye, a shaded green iris on
+// the inner side (darker at the top) with a black pupil, a 2 × 2 highlight and a glint; heavy guyliner —
+// a thick lid line that flicks out at the outer corner, an under-lash and a smoky smudge.
+const GE = { w: 13, h: 12, eye: [2, 3, 11, 9], cut: [1, 2, 2, 2], under: true, smudge: true, iris: [5, 3, 10, 10], dark: 2, pupil: [7, 5, 9, 8], hi: [[6, 5], [7, 5], [6, 6], [7, 6]], glint: [[9, 9]], t: 2, wing: [[0, 0], [0, 1], [1, 1]] };
 export const GUYLINER = {
   line: '#0e0a10', pupilColor: '#0a0c08', iris: '#56c23a', irisDark: '#246a1e', accent: '#4a3446',
   map: {
@@ -259,7 +259,7 @@ export const GUYLINER = {
   },
 };
 // Armagreddon: a wide menacing slit block, a neon two-tone iris, a tall slit pupil, a heavier lid
-const BE = { w: 18, h: 13, eye: [2, 3, 17, 11], cut: [0, 2, 1, 3], iris: [8, 3, 16, 11], dark: 2, pupil: [11, 4, 13, 10], hi: [[9, 4], [10, 4], [9, 5], [10, 5]], glint: [[15, 10], [14, 10]], t: 2, wing: [[0, 0], [1, 0], [0, 1], [1, 1], [0, 2]] };
+const BE = { w: 18, h: 14, eye: [2, 3, 17, 11], cut: [1, 3, 2, 3], under: true, smudge: true, iris: [8, 3, 16, 11], dark: 2, pupil: [11, 4, 13, 10], hi: [[9, 4], [10, 4], [9, 5], [10, 5]], glint: [[15, 10], [14, 10]], t: 2, wing: [[0, 0], [1, 0], [0, 1], [1, 1], [0, 2]] };
 export const BOMB_EYES = {
   line: '#0c080c', pupilColor: '#081006', iris: '#7aff3a', irisDark: '#1e8a14', accent: '#3a2a3c',
   map: {

@@ -295,11 +295,11 @@ export const hoodP = (o = {}) => (p, w, h) => {
   for (const s of [-1, 1]) { const ex = cx + s * w * 0.18, ey = h * 0.42; fill(p, w, h, (x, y) => { const d = Math.hypot((x + 0.5 - ex) / (w * 0.09), (y + 0.5 - ey) / (h * 0.08)); return d < 1 ? (d < 0.5 ? (o.eye || K.white) : (o.mark || K.blood[1])) : null; }); }
 };
 
-// ---------------------------------------------------------------- Cobblemon-language eyes
-// Flat colour blocks: a white sclera block and a two-tone iris block (or a no-whites iris block),
-// square highlight pixels, a lid line along the top only — never an outline ring, a glow or a
-// gradient. maps: hand-drawn rows per state (open, angry, sad, happy, closed, shock, wide, smug,
-// sleepy, teary…); the line states (x, swirl, heart, star) come from eyes.js.
+// ---------------------------------------------------------------- hand-drawn eyes
+// Full-res hand-pixelled eyes (eyes.js 'pix', chunk 1), one design per species: a shaped iris fill with a darker
+// top and a lighter lower tone, a defined pupil, square highlights and a lid line — never a bullseye of rings.
+// maps: hand-drawn rows per state (open, angry, sad, happy, closed, shock, wide, smug, sleepy, teary…); the
+// line states (x, swirl, heart, star) come from eyes.js.
 export function cobEyes(o) {
   const { maps, ...rest } = o;
   return eyeRig({ style: 'pix', chunk: 1, extra: ['smug'], ...rest, map: maps });
