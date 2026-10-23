@@ -57,7 +57,8 @@ export class VxApp {
   // ------------------------------------------------------------------ layout & input
   layout() {
     const W = innerWidth, H = innerHeight, dpr = Math.min(2, devicePixelRatio || 1);
-    const k = Math.min(dpr, (+(this.params.get('res') || 1600)) / Math.max(W, H) * (W >= H ? 1 : 1));
+    // render at native resolution (up to 2560 px); resK drops it a little when frames run slow (see loop)
+    const k = Math.min(dpr, (+(this.params.get('res') || 2560)) / Math.max(W, H)) * (this.resK || 1);
     this.rw = Math.max(320, Math.round(W * k)); this.rh = Math.max(180, Math.round(H * k));
     this.view.width = this.rw; this.view.height = this.rh; this.view.style.width = W + 'px'; this.view.style.height = H + 'px';
     this.stage.setSize(this.rw, this.rh);
@@ -82,6 +83,9 @@ export class VxApp {
   loop(now) {
     requestAnimationFrame(this.loop);
     const dt = Math.min(0.05, Math.max(0, (now - this.last) / 1000)); this.last = now; this.t += dt;
+    // adaptive resolution: average the frame time over 2 s; below ~40 fps step down 15% (to 55%), above ~57 fps step back up
+    if (!this.params.get('res')) { const P = this.perf || (this.perf = { n: 0, sum: 0 }); P.n++; P.sum += (now - (P.prev || now)) / 1000; P.prev = now;
+      if (P.sum > 2) { const avg = P.sum / P.n; P.n = 0; P.sum = 0; const k0 = this.resK || 1; let k1 = k0; if (avg > 1 / 40) k1 = Math.max(0.55, k0 * 0.85); else if (avg < 1 / 57 && k0 < 1) k1 = Math.min(1, k0 / 0.85); if (k1 !== k0) { this.resK = k1; this.layout(); } } }
     try {
       this.world.update(dt);
       if (this.battle && this.battle.active) this.battle.update(dt);
