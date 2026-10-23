@@ -284,7 +284,8 @@ export function person(o) {
 }
 
 // ---------------------------------------------------------------- acting clips
-const FACE = { eyes: ['open', 'closed', 'happy', 'angry', 'sad', 'wide'], brows: ['calm', 'angry', 'sad', 'up'], mouth: ['closed', 'smile', 'frown', 'smirk', 'grin', 'open', 'o', 'shout', 'laugh'], prop: ['none', 'phone', 'capsule'] };
+const FACE = { eyes: ['open', 'closed', 'happy', 'angry', 'sad', 'wide', 'half', 'smug'], brows: ['calm', 'angry', 'sad', 'up'], mouth: ['closed', 'smile', 'frown', 'smirk', 'grin', 'open', 'o', 'shout', 'laugh'], gaze: ['c', 'l', 'r', 'u', 'd', 'ul', 'ur'], prop: ['none', 'phone', 'capsule'] };
+const SLOT_ID = { eyes: 'eye-', brows: 'brow-', mouth: 'mouth-', gaze: 'gaze-' };
 function talk(P, t, k = 1, rest = 'closed') { const n = Math.floor(t * 9); P.face('mouth', (n * 7919) % 5 < 2 ? rest : ['open', 'o', 'open', 'smile'][n % 4]); P.rot('head', Math.sin(t * 7) * 3 * k, Math.sin(t * 2.3) * 4 * k, 0); }
 const swing = (P, ph, a, legs = 1) => { const s = Math.sin(ph); P.rot('armR', -s * a, 0, -3).rot('armL', s * a, 0, 3).rot('legR', s * a * 1.15 * legs).rot('legL', -s * a * 1.15 * legs); };
 export function acting(o = {}) {
@@ -296,29 +297,32 @@ export function acting(o = {}) {
     blink: { slot: 'eyes', closed: 'closed', every: [2.5, 5.5], dur: 0.12 },
     look: { bone: 'head', yaw: 40, pitch: 16, speed: 4 },
     springs: [{ bone: 'tail', tip: [0, -5, -1], k: 120, d: 8, gain: 0.8, max: 25 }],
-    faces: Object.fromEntries(Object.entries(FACE).map(([slot, list]) => [slot, { default: base[slot] || (slot === 'mouth' ? o.mouth || 'closed' : list[0]), states: Object.fromEntries(list.map((s) => [s, slot === 'prop' ? (s === 'none' ? [] : [s]) : [(slot === 'eyes' ? 'eye-' : slot === 'brows' ? 'brow-' : 'mouth-') + s]])) }])),
+    faces: Object.fromEntries(Object.entries(FACE).map(([slot, list]) => [slot, { default: base[slot] || (slot === 'mouth' ? o.mouth || 'closed' : list[0]), states: Object.fromEntries(list.map((s) => [s, slot === 'prop' ? (s === 'none' ? [] : [s]) : [SLOT_ID[slot] + s]])) }])),
     fidget: { every: [6, 11], clips: ['look', 'stretch'] },
     clips: {
-      idle: { len: 3.2, loop: true, f(P, t) {
+      idle: { len: 3.2, loop: true, f(P, t, c) {
         const sh = Math.sin((t / 3.2) * Math.PI * 2);
         P.pos('hips', sh * 0.25 * idleK, 0, 0).rot('hips', 0, 0, sh * 1.5 * idleK).rot('torso', 0, 0, -sh * 2 * idleK).rot('head', 0, 0, sh * 1.5 * idleK);
         P.rot('armR', 0, 0, -3 - sh * 1.5).rot('armL', 0, 0, 3 - sh * 1.5).rot('legR', 0, 0, -sh * 1.2).rot('legL', 0, 0, -sh * 1.2);
         if (o.idlePose === 'hips') P.rot('armR', 0, 0, -38).rot('handR', 0, 0, 50).rot('armL', 0, 0, 38).rot('handL', 0, 0, -50);
-        if (o.idlePose === 'crossed') P.rot('armR', -55, 30, -12).rot('handR', -60, 0, 0).rot('armL', -55, -30, 12).rot('handL', -60, 0, 0);
+        if (o.idlePose === 'crossed') { if (o.tall) P.rot('armR', -18, 18, -8).rot('foreR', -96, -40, 0).rot('armL', -22, -18, 8).rot('foreL', -88, 44, 0); else P.rot('armR', -55, 30, -12).rot('handR', -60, 0, 0).rot('armL', -55, -30, 12).rot('handL', -60, 0, 0); }
+        if (o.idlePose === 'hips' && o.tall) P.rot('foreR', -50, 0, 0).rot('foreL', -50, 0, 0);
         if (o.idlePose === 'pockets') P.rot('armR', 8, 0, -6).rot('armL', 8, 0, 6);
+        P.rot('foreR', -6, 0, 0).rot('foreL', -6, 0, 0).rot('shinR', 2 + sh * 2, 0, 0).rot('shinL', 2 - sh * 2, 0, 0);
+        const gl = Math.floor(c.time / 1.7 + (o.name || '').length) % 7; P.face('gaze', ['c', 'c', 'l', 'c', 'r', 'c', 'ul'][gl]);
       } },
       look: { len: 2.6, next: 'idle', f(P, t) { const k = bump(t, 0.1, 2.4); P.rot('head', 0, 36 * Math.sin(t * 2.4) * k, 0).rot('torso', 0, 8 * Math.sin(t * 2.4) * k, 0); } },
       stretch: { len: 2.2, next: 'idle', f(P, t) { const k = bump(t, 0.1, 2.0); P.rot('armR', 0, 0, -160 * k).rot('armL', 0, 0, 160 * k).sq('torso', 0.06 * k).rot('head', -14 * k, 0, 0).face('eyes', k > 0.5 ? 'closed' : undefined).face('mouth', k > 0.5 ? 'o' : undefined); P.blinkOK = false; } },
       talk: { len: 2.4, loop: true, f(P, t) { talk(P, t, 1, base.mouth || 'closed'); const g = bump(t % 2.4, 0.3, 1.6); P.rot('armR', -40 * g, 0, -12 * g).rot('handR', -30 * g, 0, 0).rot('torso', 0, 6 * g, 0); } },
-      walk: { len: 0.9, loop: true, f(P, t) { const ph = (t / 0.9) * Math.PI * 2; swing(P, ph, 26); P.pos('hips', 0, Math.abs(Math.cos(ph)) * 0.5, 0).rot('torso', 3, Math.sin(ph) * 5, 0).rot('head', 0, -Math.sin(ph) * 3, 0); } },
-      run: { len: 0.56, loop: true, f(P, t) { const ph = (t / 0.56) * Math.PI * 2; swing(P, ph, 50); P.rot('armR', 0, 0, 0).pos('hips', 0, Math.abs(Math.cos(ph)) * 1.2, 0).rot('torso', 14, Math.sin(ph) * 8, 0).rot('hips', 6, 0, 0).rot('handR', -60).rot('handL', -60); } },
+      walk: { len: 0.9, loop: true, f(P, t) { const ph = (t / 0.9) * Math.PI * 2, s = Math.sin(ph); swing(P, ph, 26); P.pos('hips', 0, Math.abs(Math.cos(ph)) * 0.5, 0).rot('torso', 3, s * 5, 0).rot('head', 0, -s * 3, 0); P.rot('shinR', Math.max(0, -Math.sin(ph - 0.6)) * 34, 0, 0).rot('shinL', Math.max(0, Math.sin(ph - 0.6)) * 34, 0, 0).rot('foreR', -14 - Math.max(0, s) * 18, 0, 0).rot('foreL', -14 - Math.max(0, -s) * 18, 0, 0); } },
+      run: { len: 0.56, loop: true, f(P, t) { const ph = (t / 0.56) * Math.PI * 2; swing(P, ph, 50); P.rot('armR', 0, 0, 0).pos('hips', 0, Math.abs(Math.cos(ph)) * 1.2, 0).rot('torso', 14, Math.sin(ph) * 8, 0).rot('hips', 6, 0, 0).rot('handR', -60).rot('handL', -60); P.rot('shinR', 20 + Math.max(0, -Math.sin(ph - 0.5)) * 80, 0, 0).rot('shinL', 20 + Math.max(0, Math.sin(ph - 0.5)) * 80, 0, 0).rot('foreR', -70, 0, 0).rot('foreL', -70, 0, 0); } },
       wave: { len: 2, next: 'idle', f(P, t) { const up = seg(t, 0, 0.25, E.back) * (1 - seg(t, 1.7, 2)); P.rot('armR', 0, 0, -150 * up).rot('handR', 0, 0, wave(t, 2.6) * 30 * up).face('mouth', up > 0.5 ? 'smile' : undefined).face('eyes', up > 0.5 ? 'happy' : undefined).rot('torso', 0, 0, 4 * up); P.blinkOK = up < 0.5; } },
       point: { len: 1.6, next: 'idle', f(P, t) { const up = seg(t, 0, 0.18, E.back) * (1 - seg(t, 1.3, 1.6)); P.rot('armR', -88 * up, -10 * up, -6 * up).rot('torso', 0, -12 * up, 0).rot('head', 0, -6 * up, 0).face('brows', up > 0.5 ? 'up' : undefined).face('mouth', up > 0.5 ? 'open' : undefined); } },
       cheer: { len: 1.4, next: 'idle', f(P, t) {
         const j = t < 0.9 ? Math.max(0, Math.sin(seg(t, 0.15, 0.75, E.lin) * Math.PI)) : 0, crouch = bump(t, 0, 0.2) + bump(t, 0.72, 1.0) * 0.8;
         P.pos('root', 0, j * 4, 0).pos('hips', 0, -crouch * 1.2, 0).rot('legR', -20 * crouch).rot('legL', -20 * crouch).rot('armR', 0, 0, -165 * seg(t, 0.1, 0.3)).rot('armL', 0, 0, 165 * seg(t, 0.1, 0.3)).face('mouth', 'laugh').face('eyes', 'happy'); P.blinkOK = false;
       } },
-      think: { len: 3, loop: true, f(P, t) { P.rot('armR', -100, 20, 0).rot('handR', -80, 0, 0).rot('armL', -30, -30, 10).rot('head', 6, 0, 10 + Math.sin(t * 1.2) * 3).face('eyes', 'open').face('brows', 'sad').face('mouth', 'frown'); } },
+      think: { len: 3, loop: true, f(P, t) { P.rot('armR', -100, 20, 0).rot('handR', -80, 0, 0).face('gaze', 'ur').rot('armL', -30, -30, 10).rot('head', 6, 0, 10 + Math.sin(t * 1.2) * 3).face('eyes', 'open').face('brows', 'sad').face('mouth', 'frown'); } },
       shock: { len: 1.1, next: 'idle', f(P, t) { const k = seg(t, 0, 0.1, E.out) * (1 - seg(t, 0.75, 1.1)); P.pos('root', 0, 1.6 * bump(t, 0, 0.3), -1.2 * k).rot('torso', -10 * k, 0, 0).rot('armR', -30 * k, 0, -60 * k).rot('armL', -30 * k, 0, 60 * k).sq('torso', 0.06 * bump(t, 0, 0.3)).face('eyes', 'wide').face('brows', 'up').face('mouth', 'o'); P.blinkOK = false; } },
       angry: { len: 1.2, loop: true, f(P, t) { P.rot('armR', 12, 0, -14).rot('armL', 12, 0, 14).rot('torso', 6, 0, wave(t, 7) * 1.5).rot('head', 8, 0, wave(t, 9) * 2).face('eyes', 'angry').face('brows', 'angry'); talk(P, t, 1.6, 'frown'); if ((t * 9 | 0) % 3) P.face('mouth', 'shout'); } },
       laugh: { len: 0.9, loop: true, f(P, t) { const b = Math.abs(Math.sin((t / 0.45) * Math.PI)); P.rot('head', -14 - b * 6, 0, 0).rot('torso', -6 - b * 3, 0, 0).pos('torso', 0, b * 0.4, 0).rot('armR', -20, 0, -20).rot('armL', -20, 0, 20).face('eyes', 'happy').face('mouth', 'laugh'); P.blinkOK = false; } },
@@ -329,7 +333,14 @@ export function acting(o = {}) {
         P.rot('armR', 40 * wind - 150 * fling, 0, -20 * wind).rot('torso', -8 * wind + 12 * fling, 30 * wind - 25 * fling, 0).rot('legR', 12 * wind - 18 * fling).rot('legL', -10 * wind + 14 * fling).face('mouth', fling > 0.3 ? 'shout' : 'closed').face('brows', 'angry');
         P.face('prop', t < 0.5 ? 'capsule' : 'none'); if (P.at(0.5)) P.burst(0.5, 'sparkle', 'handR', null, { n: 6 });
       } },
-      sit: { len: 3, loop: true, f(P, t) { P.pos('hips', 0, -4.2, 0).rot('legR', -90).rot('legL', -90).rot('armR', -20, 0, -4).rot('armL', -20, 0, 4).rot('handR', -40).rot('handL', -40); } },
+      sit: { len: 3, loop: true, f(P, t) { P.pos('hips', 0, -(o.sitDrop ?? 4.2), 0).rot('legR', -90).rot('legL', -90).rot('shinR', 90).rot('shinL', 90).rot('armR', -20, 0, -4).rot('armL', -20, 0, 4).rot('foreR', -30).rot('foreL', -30).rot('handR', -20).rot('handL', -20).rot('torso', -3 + Math.sin(t * 2) * 1.5, 0, 0); } },
+      // more acting
+      nod: { len: 1, next: 'idle', f(P, t) { P.rot('head', bump(t, 0.05, 0.4) * 16 + bump(t, 0.45, 0.8) * 12, 0, 0).face('eyes', t > 0.2 && t < 0.7 ? 'happy' : undefined).face('mouth', 'smile'); } },
+      shrug: { len: 1.4, next: 'idle', f(P, t) { const k = bump(t, 0.1, 1.2); P.rot('armR', -10 * k, 0, -28 * k).rot('armL', -10 * k, 0, 28 * k).rot('foreR', -70 * k, 30 * k, 0).rot('foreL', -70 * k, -30 * k, 0).rot('handR', 0, 0, 30 * k).rot('handL', 0, 0, -30 * k).pos('torso', 0, 0.5 * k, 0).rot('head', 0, 0, 10 * k).face('brows', k > 0.4 ? 'up' : undefined).face('eyes', k > 0.4 ? 'half' : undefined).face('mouth', k > 0.4 ? 'smirk' : undefined); } },
+      facepalm: { len: 2, next: 'idle', f(P, t) { const k = bump(t, 0.15, 1.8); P.rot('armR', -60 * k, 0, -10 * k).rot('foreR', -110 * k, 20 * k, 0).rot('handR', -20 * k, 0, 0).rot('head', 22 * k, 0, -8 * k).rot('torso', 8 * k, 0, 0).face('eyes', k > 0.5 ? 'closed' : undefined).face('mouth', k > 0.5 ? 'frown' : undefined).face('brows', 'sad'); P.blinkOK = false; } },
+      proud: { len: 2.4, next: 'idle', f(P, t) { const k = bump(t, 0.12, 2.2); P.rot('armR', 0, 0, -38 * k).rot('foreR', -60 * k, 0, 0).rot('handR', 0, 0, 40 * k).rot('armL', 0, 0, 38 * k).rot('foreL', -60 * k, 0, 0).rot('handL', 0, 0, -40 * k).rot('head', -12 * k, 0, 0).rot('torso', -5 * k, 0, 0).face('eyes', k > 0.5 ? 'smug' : undefined).face('mouth', k > 0.5 ? 'grin' : undefined).face('brows', 'up'); } },
+      shy: { len: 2.4, next: 'idle', f(P, t) { const k = bump(t, 0.15, 2.2); P.rot('head', 16 * k, -18 * k, 8 * k).rot('armR', -30 * k, 0, 18 * k).rot('foreR', -60 * k, 0, 0).rot('armL', -30 * k, 0, -18 * k).rot('foreL', -60 * k, 0, 0).rot('shinR', 12 * k).face('gaze', 'd').face('eyes', 'half').face('mouth', 'smile'); } },
+      jump: { len: 1.0, next: 'idle', f(P, t) { const j = Math.max(0, Math.sin(seg(t, 0.15, 0.7, E.lin) * Math.PI)), c0 = bump(t, 0, 0.18) + bump(t, 0.68, 0.95); P.pos('root', 0, j * 5, 0).pos('hips', 0, -c0 * 1.5, 0).rot('legR', -30 * c0 - 20 * j).rot('legL', -30 * c0 + 10 * j).rot('shinR', 60 * c0 + 50 * j).rot('shinL', 60 * c0 + 30 * j).rot('armR', 0, 0, -150 * j).rot('armL', 0, 0, 150 * j).face('eyes', 'wide').face('mouth', 'shout'); P.blinkOK = false; } },
     },
   };
 }

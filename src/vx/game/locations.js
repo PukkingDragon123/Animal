@@ -15,6 +15,7 @@ export const LOCATIONS = {
     hotspots: [
       { id: 'home', label: 'Home', icon: 'door', at: [38.2, 3, 14.6], walk: [38.2, 16.4], act: async (app) => app.story.goHome() },
       { id: 'bakery', label: 'Lucky Moon Bakery', icon: 'bowl', at: [17.7, 3, 14.6], walk: [17.7, 16.4], act: async (app) => app.story.bakery() },
+      { id: 'gear', label: 'Gateway Music & Gear', icon: 'gear', at: [3.5, 3, 14.6], walk: [3.5, 16.4], act: async (app) => app.story.gearShop() },
       { id: 'chess', label: 'Xiangqi uncle', icon: 'talk', at: [45, 3, 38], act: async (app) => app.story.chessUncle() },
       { id: 'tram', label: 'Cable car stop', icon: 'map', at: [55, 3.6, 26], walk: [54.5, 26], act: async (app) => app.story.tramStop() },
     ],

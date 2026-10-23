@@ -23,6 +23,7 @@ export class Story {
       this.loadSave();
       await this.run(async () => {
         const w = app.world; await w.load(app.params.get('loc'), { mood: app.params.get('mood') || undefined });
+        if (app.params.get('lights') && w.sc.lights) w.sc.lights(true);
         if (app.params.get('roam')) await this.startRoam((w.loc.spots && w.loc.spots.start) || (w.sc.spots && (w.sc.spots.start || w.sc.spots.entrance || w.sc.spots.door)) || [w.cam.target.x, w.cam.target.z + 2, 0]);
         if (app.params.get('closet')) { const { Closet, pajamas } = await import('./closet.js'); const at = w.sc.spots && w.sc.spots.closet ? w.spot('closet') : (w.loc.spots && w.loc.spots.start) || [w.cam.target.x, w.cam.target.z + 2, 0]; if (w.sc.lights) w.sc.lights(true); const c = new Closet(app, pajamas(), at); c.rebuild(); if (w.shots.closet) await w.shot('closet', 0); else await w.closeOn(w.actor('hero'), { dist: 4.6, h: 0.9, dur: 0 }); app.fade(0, 300); app.state.look = await c.open(); }
         await app.fade(0, 500);
@@ -209,6 +210,12 @@ export class Story {
       await app.say('Baker', 'Fresh egg tarts, flaky as a cloud! For your mom? Ha — tell her it\'s on the house this time.');
       app.toast('Got a box of egg tarts', { icon: 'bowl', color: T.amber, dur: 2.2 }); Q.next('tarts');
     } else await app.say('Baker', 'Come back tomorrow — the pineapple buns are coming out at six!');
+  }
+  async gearShop() {
+    const app = this.app;
+    if (!app.state.flags.gearShopMet) { app.state.flags.gearShopMet = true; await app.say('Clerk', 'Welcome to Gateway Music & Gear! Picks, pedals, amps, kicks — gear makes your Tokonmon hit harder.', 'Drip? Chains, crowns, jackets? Ha — that you earn out there, kid. Can\'t buy style.'); }
+    const { GearShop } = await import('./shop.js');
+    await new GearShop(app).open();
   }
   async chessUncle() {
     const app = this.app, Q = app.quests;

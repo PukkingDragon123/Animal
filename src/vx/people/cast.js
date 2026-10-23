@@ -3,6 +3,7 @@
 // Shirt prints are functions of (x metres from the chest centre, fy 0..1 up the torso) → colour.
 import { person } from './person.js';
 import { VoxPerson } from './voxperson.js';
+import { AnimePerson } from './anime.js';
 
 const disc = (x, fy, cy, r) => Math.hypot(x, (fy - cy) * 0.3) < r;
 const PRINTS = {
@@ -58,3 +59,8 @@ export function cast(name) {
 }
 // a sculpted voxel person (a Model-compatible instance for the Animator)
 export function castVox(name, extra = {}) { return new VoxPerson({ name, ...R[name], ...extra }); }
+// a low-poly anime person (anime.js): a cast name, a passer-by seed name or a recipe object
+export function castAnime(who, extra = {}) {
+  const r = typeof who === 'string' ? (R[who] || (who.startsWith('passerby') ? passerby(+who.slice(8) || 1) : R.hero)) : who;
+  return new AnimePerson({ name: typeof who === 'string' ? who : r.name || 'person', ...r, ...extra });
+}

@@ -7,7 +7,7 @@ import * as THREE from '../../../vendor/three.module.js';
 import { Model, dripForm } from '../model.js';
 import { Animator, E } from '../anim.js';
 import { FX } from '../fx.js';
-import { cast } from '../people/cast.js';
+import { cast, castAnime } from '../people/cast.js';
 import { person } from '../people/person.js';
 import { LOCATIONS } from './locations.js';
 import { T } from '../../px/game/ui.js';
@@ -158,7 +158,8 @@ export class VxWorld {
     return a;
   }
   addPerson(id, who, at, o = {}) {
-    const m = new Model(typeof who === 'string' ? cast(who) : person(who)), a = new Actor(this, id, m, 'person');
+    const box = this.app && this.app.params && this.app.params.get('people') === 'box';
+    const m = box ? new Model(typeof who === 'string' ? cast(who) : person(who)) : castAnime(who), a = new Actor(this, id, m, 'person');
     this.st.actors.add(m.group); this.actors.set(id, a);
     const [x, z, yaw, y] = typeof at === 'string' ? this.spot(at) : at; a.place(x, z, o.yaw ?? yaw ?? 0, o.y ?? y);
     if (o.clip) a.play(o.clip, { fade: 0 });
@@ -192,7 +193,7 @@ export class VxWorld {
     if (r < 0.35 && fid.length) { a.play(fid[Math.floor(Math.random() * fid.length)], { restart: true }); L.wait = 2 + Math.random() * 2; return; }
     a.walkTo([x0 + Math.random() * (x1 - x0), z0 + Math.random() * (z1 - z0)]).then(() => { L.wait = 1 + Math.random() * 3; });
   }
-  remove(id) { const a = this.actors.get(id); if (a) { this.st.actors.remove(a.g); this.actors.delete(id); } }
+  remove(id) { const a = this.actors.get(id); if (a) { this.st.actors.remove(a.g); this.actors.delete(id); if (a.m.dispose) a.m.dispose(); } }
   emote(id, kind = 'anger', n = 1) { const a = this.actor(id); if (a) this.fx.emit(kind, a.headPos(), { n, scale: 1 }); }
   burst(kind, at, o = {}) { this.fx.emit(kind, new THREE.Vector3(...at), o); }
   // ---- camera

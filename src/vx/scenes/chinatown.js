@@ -197,7 +197,7 @@ export function build(o = {}) {
     const sf = storefront({ x0, x1, pier: '#8a8278' });
     shopWin(4, 22, { mull: 6, bulk: '#2e4a3c' }); door(24, 31, { col: '#2e4a3c', glass: true }); shopWin(33, 59, { mull: 9, bulk: '#2e4a3c', lamp: false });
     signBox(4, sf.sy0, 59, sf.sy1, '#1f3a2e');
-    dS(4, sf.sy0, 59, sf.sy1, ZF + 2, P.board({ cjk: '華埠禮品', en: 'GATEWAY GIFTS & TEA', bg: '#1f3a2e', bg2: '#244436', text: '#f0d070', frame: '#c89a3a' }), { ppm: 48 });
+    dS(4, sf.sy0, 59, sf.sy1, ZF + 2, P.board({ cjk: '華埠樂器', en: 'GATEWAY MUSIC & GEAR', bg: '#1f3a2e', bg2: '#244436', text: '#f0d070', frame: '#c89a3a' }), { ppm: 96 });
     awning(k, { x0: 4, x1: 59, y: sf.sy0 - 2, zf: ZF, D: 9, drop: 4, cols: ['#2e6a4c', '#e8e0cc'], sw: 4 });
     for (let f = 1; f <= 2; f++) for (const x of [4, 18, 35, 49]) win(k, { x0: x, x1: x + 8, y0: fl(f) + 5, y1: fl(f) + 19, zf: ZF, night, head: 'brick', brickHead: '#a88e70', frame: '#2e4a3c', trim: '#efe6d4' });
     fireEscape(k, { x0: 2, x1: 30, zf: ZF, levels: [fl(1) + 4, fl(2) + 4], D: 7, ladderX: 24, drop: fl(1) - 6 });

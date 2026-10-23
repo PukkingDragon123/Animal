@@ -15,6 +15,7 @@ import { Dress } from '../dress.js';
 import { SPR } from '../cards.js';
 import { skyline } from '../stage.js';
 import { decal, loadSignFonts } from '../decals.js';
+import { posterDecal, poster } from '../posters.js';
 import {
   bx, one, many, cylY, ell, line3, shade, widePalette, foldPalette, decalSet, lightRig, devParam, groundFn, planks, checker, brick,
   stairs, doorZ, doorX, windowZ, bed, wardrobe, garments, folded, sneaker, shoePair, laundryPile, bookStack, skateboard, guitar, plush, beanbag, backpack,
@@ -35,7 +36,7 @@ export const shots = [
   { name: 'hub', target: [7.0, 3.45, 3.6], dist: 18.6, yaw: 0, pitch: 20 },           // the whole dollhouse
   { name: 'bedroomDark', target: [11.7, 5.55, 1.4], dist: 6.4, yaw: -10, pitch: 11 },  // the bed in the dark, neon on the quilt
   { name: 'bedroom', target: [8.4, 5.5, 2.2], dist: 10.5, yaw: 0, pitch: 14 },        // the bedroom, lights on
-  { name: 'closet', target: [3.48, 5.8, 1.2], dist: 6.1, yaw: 0, pitch: 6 },          // the open wardrobe (dress-up)
+  { name: 'closet', target: [3.48, 5.55, 1.2], dist: 7.0, yaw: 0, pitch: 6 },          // the open wardrobe (dress-up)
   { name: 'stairs', target: [1.4, 3.5, 3.4], dist: 10.5, yaw: 32, pitch: 10 },          // the stair between the floors
   { name: 'kitchen', target: [10.7, 2.3, 1.3], dist: 7.6, yaw: 6, pitch: 9 },          // stove, wok, rice cooker, fridge
   { name: 'table', target: [6.2, 1.9, 5.0], dist: 5.0, yaw: 14, pitch: 32 },          // lunch at the round table
@@ -143,7 +144,7 @@ export function build(o = {}) {
   const sy2 = wd.shelves[2] + 1; B(32, sy2, 7, 34, sy2, 10, one(k, '#c8302c')); B(32, sy2 + 1, 7, 34, sy2 + 1, 9, one(k, '#c8302c')); B(36, sy2, 7, 38, sy2, 10, one(k, '#2e5a9c')); B(36, sy2 + 1, 7, 38, sy2 + 1, 9, one(k, '#2e5a9c'));   // caps
   d.E(wd.doorL.z0 + 2, wd.doorL.y0 + 3, wd.doorL.z1 - 2, wd.doorL.y1 - 2, wd.doorL.x, P2.mirror(), { ppm: 32 });
   d.W(wd.doorR.z0 + 2, wd.doorR.y0 + 8, wd.doorR.z1 - 4, wd.doorR.y1 - 2, wd.doorR.x, P2.photoStrip(), { ppm: 40 });
-  d.W(wd.doorR.z1 - 3, wd.doorR.y0 + 3, wd.doorR.z1 - 1, wd.doorR.y0 + 6, wd.doorR.x, P2.posterMon(), { ppm: 40 });
+  d.W(wd.doorR.z1 - 3, wd.doorR.y0 + 3, wd.doorR.z1 - 1, wd.doorR.y0 + 6, wd.doorR.x, P2.posterMon(), { poster: poster('shrimp', { tape: false }) });
   // a scarf thrown over the right door, a cap on the left door's top
   for (let y = F2 + 12; y <= wd.top; y++) set(41, y, 18, y % 2 ? '#e8b830' : '#c8302c');
   B(39, wd.top, 17, 41, wd.top, 19, one(k, '#c8302c'));
@@ -165,8 +166,8 @@ export function build(o = {}) {
   B(63, F2, ZB, 79, F2 + 9, 8, (x, y, z) => (x === 63 || x === 79 || y === F2 + 9 ? one(k, '#8a6a48') : one(k, '#3a2a1e')));
   d.S(64, F2, 78, F2 + 8, 8, P2.spines(), { ppm: 32 });
   plush(k, 65, F2 + 10, 6, 'owl'); plush(k, 75, F2 + 10, 6, 'bun'); B(69, F2 + 10, 6, 71, F2 + 13, 7, one(k, '#3ab0c8')); set(70, F2 + 14, 6, '#ff7ab0');
-  d.S(64, F2 + 12, 71, F2 + 22, 4, P2.posterTofu(), { ppm: 40 });
-  d.S(72, F2 + 12, 79, F2 + 22, 4, P2.posterDumpling(), { ppm: 40 });
+  d.S(64, F2 + 12, 71, F2 + 22, 4, P2.posterTofu(), { poster: poster('chickTour'), tilt: 0.02 });
+  d.S(72, F2 + 12, 79, F2 + 22, 4, P2.posterDumpling(), { poster: poster('pigeons'), tilt: -0.025 });
   guitar(k, 82, F2, 6, { body: '#c87a3a' });
   // the bed under the window: patchwork quilt, two pillows, plushies, an alarm clock on the headboard
   const bd = bed(k, { x0: 85, x1: XR, z0: ZB, z1: 16, y: F2, head: 1, quilt: ['#c8423a', '#d0503e', '#b8382f'], lumps: [[93, 10, 2]] });
@@ -180,8 +181,8 @@ export function build(o = {}) {
   B(84, F2 + 22, 5, 105, F2 + 22, 5, one(k, '#5a3a22'));
   for (const [a, b] of [[84, 88], [101, 105]]) B(a, F2 + 9, 5, b, F2 + 21, 5, (x, y) => ((x + (y >> 1)) % 3 === 0 ? one(k, '#e8b040') : (x % 2 ? one(k, '#2e7a6a') : one(k, '#348474'))));
   // posters on the side walls, a Tokonmon poster above the stairwell
-  d.W(7, F2 + 12, 15, F2 + 21, 107, P2.posterRollers(), { ppm: 40 });
-  d.E(17, F2 + 10, 25, F2 + 20, 4, P2.posterMon(), { ppm: 40 });
+  d.W(7, F2 + 12, 15, F2 + 21, 107, P2.posterRollers(), { poster: poster('raccoons') });
+  d.E(17, F2 + 10, 25, F2 + 20, 4, P2.posterMon(), { poster: poster('league') });
   // the floor: a rug, laundry piles, sneakers, a skateboard, a beanbag, comics, a backpack
   d.U(26, 14, 81, 29, 35, P2.rug({ a: '#9a2a2a', b: '#2a4470', c: '#e8d4a8' }), { ppm: 24 });
   laundryPile(k, 45, F2, 25, 3, 3); laundryPile(k, 82, F2, 23, 3, 7);
@@ -321,7 +322,7 @@ export function build(o = {}) {
     vox: v, mood: o.mood || 'night', lamps: [], view: vw, shots, spots, floors, dress: dr, palette: pal, ground: groundFn(v),
     setup(st) {
       dr.build(st);
-      for (const q of D) decal(st, q);
+      for (const q of D) (q.poster ? posterDecal(st, q) : decal(st, q));
       const R = rig = lightRig(st), M = (a) => a.map((q) => q / 8);
       // always on: neon through the bedroom window, the laptop, the altar candles, the aquarium, a cool moon fill
       R.point(m(90), m(F2 + 15), m(6), 0xff4aa8, 8, 7.5, { always: true });
