@@ -8,7 +8,7 @@ import { E, seg, bump, wob, wave, bounce, hop } from '../anim.js';
 import { shade, ramp, shift } from './kit.js';
 import { eyeRig, eyesAt, eyesScale, glance, keepEyes } from './eyes.js';
 import { B, L, both, twin, acc, goldP, chainP, strapP, plant, beat, env } from './story_parts.js';
-import { TK, brownP, chestP, headP, faceP, lockP, beakP, hookP, cereP, jawP, footP, toeP, pantsP, wingP, primP, tailP, aloha, shirtFront, burstP, guitarFace, neckP, headstockP, sleeveP, vinylP, lensP, frameP, leiP, clothP, visorP, braidP, TKFX, eagleForm, EYE_TALONAKA } from './takanaka_parts.js';
+import { TK, HAIR_FORM, brownP, chestP, headP, faceP, lockP, beakP, hookP, cereP, jawP, footP, toeP, pantsP, wingP, primP, tailP, aloha, shirtFront, burstP, guitarFace, neckP, headstockP, sleeveP, vinylP, lensP, frameP, leiP, clothP, visorP, braidP, TKFX, eagleForm, EYE_TALONAKA } from './takanaka_parts.js';
 
 const print = aloha({ base: TK.sea, seed: 3 });
 const front = shirtFront(print, { lo: TK.seaLo, depth: 0.6 });
@@ -131,7 +131,7 @@ export const def = {
   },
 };
 // the form: eagleForm, with gold sheen streaks through the black mop
-def.dripForm = { map: keepEyes(EYES, (c, glow) => (c === TK.hair.hi ? '#d8a83a' : c === TK.hair.c ? '#1c1418' : eagleForm(c, glow))) };
+def.dripForm = { map: keepEyes(EYES, (c, glow) => (HAIR_FORM[c] || eagleForm(c, glow))) };
 
 // ---------------------------------------------------------------- animation
 const LEG = 4.6, LEGS = ['legR', 'legL'], MOUTH = [0, 15.6, 9.0], TOP = [0, 28, 0], NECK_END = [10.6, 8.6, 6.4];

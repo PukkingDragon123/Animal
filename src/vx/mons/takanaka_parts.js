@@ -265,18 +265,15 @@ export const badgeP = (p, w, h, face) => {
 
 // ---------------------------------------------------------------- particles
 const hibSpr = (p, w, h) => stamp(p, FLOWER, { f: TK.hib, F: TK.hibHi, d: TK.hibLo, c: TK.hibC }, 0, 0);
-const waveSpr = (p, w, h, f) => {           // a small curling wave crest
-  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-    const u = x / (w - 1), v = y / (h - 1), crest = 0.35 + 0.45 * Math.sin(u * Math.PI * (0.9 + f * 0.1));
-    if (v < 1 - crest) continue;
-    p.px(x, y, v < 1 - crest + 0.15 ? '#ffffff' : v < 0.7 ? '#5adcd0' : '#1fb0aa');
-  }
-};
+const WAVE = ['.......ww...', '.....wwbbw..', '....wbbB.bw.', '...wbbBB..w.', '..wbbBBb....', '.wbbbBbbb...', 'wbbBbbbbbbw.', 'bbbbbbbbbbbb'];
+const waveSpr = (p) => stamp(p, WAVE, { w: '#ffffff', b: '#2ab8c8', B: '#1a7ab0' }, 0, 0);
 export const TKFX = {
   hibiscus: defineFx('tk-hibiscus', { w: 5, h: 5, paint: hibSpr, life: [1.0, 1.6], size: [0.12, 0.12], speed: [0.5, 1.2], grav: 0.5, drag: 2, spread: 1, flutter: true, spin: 2 }),
   wave: defineFx('tk-wave', { w: 12, h: 8, frames: [0, 1].map(() => waveSpr), life: [0.5, 0.8], size: [0.2, 0.45], speed: [0.4, 0.9], grav: 1.2, drag: 1.4, spread: 0.6, fade: true }),
 };
 
+// the mop in the ultra-drip form: near-black with a subtle bronze sheen (gold-tipped where it has tips)
+export const HAIR_FORM = { [TK.hair.c]: '#1c1418', [TK.hair.hi]: '#5a4228', [TK.hair.lo]: '#100c0e' };
 // ---------------------------------------------------------------- the ultra-drip form
 // brown plumage → black lacquer, white head and cloth stay, beak and talons → gold, the aloha
 // ground → deep teal-black with gold flowers, sunset colours → rose gold

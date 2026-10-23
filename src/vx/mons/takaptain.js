@@ -9,7 +9,7 @@ import { E, seg, bump, wob, wave, hop } from '../anim.js';
 import { shade, ramp, shift } from './kit.js';
 import { eyeRig, eyesAt, glance, keepEyes } from './eyes.js';
 import { B, L, both, twin, acc, region, goldP, chainP, GOLD, strapP, plant, beat, env } from './story_parts.js';
-import { TK, brownP, headP, faceP, lockP, beakP, hookP, cereP, jawP, footP, toeP, primP, tailP, aloha, teakP, brassP, wheelTop, neckP, headstockP, sleeveP, vinylP, lensP, frameP, clothP, visorGoldP, braidP, badgeP, cuffP, TKFX, eagleForm, EYE_CAPTAIN } from './takanaka_parts.js';
+import { TK, HAIR_FORM, brownP, headP, faceP, lockP, beakP, hookP, cereP, jawP, footP, toeP, primP, tailP, aloha, teakP, brassP, wheelTop, neckP, headstockP, sleeveP, vinylP, lensP, frameP, clothP, visorGoldP, braidP, badgeP, cuffP, TKFX, eagleForm, EYE_CAPTAIN } from './takanaka_parts.js';
 
 const print = aloha({ base: TK.sea, seed: 7 });
 // the jacket front: double-breasted, the lapels open on the aloha collar and chest feathers, gold buttons, navy belt
@@ -151,7 +151,7 @@ export const def = {
 };
 // the form: an admiral in white and gold — navy turns to black lacquer, the mop gets gold streaks
 const navy = new Set([TK.navy, TK.navyLo, '#2e3a6a']);
-def.dripForm = { map: keepEyes(EYES, (c, glow) => (c === TK.hair.hi ? '#d8a83a' : c === TK.hair.c ? '#1c1418' : navy.has(c) ? '#14121c' : eagleForm(c, glow))) };
+def.dripForm = { map: keepEyes(EYES, (c, glow) => (HAIR_FORM[c] || (navy.has(c) ? '#14121c' : eagleForm(c, glow)))) };
 
 // ---------------------------------------------------------------- animation
 const LEG = 7.4, LEGS = ['legR', 'legL'], MOUTH = [0, 22.6, 10.4], TOP = [0, 37, 0], NECK_END = [14, 18.6, 7.2];
