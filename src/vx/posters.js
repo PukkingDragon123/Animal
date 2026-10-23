@@ -163,3 +163,31 @@ export function posterFor(slot, i = 0, loc = '') {
   if (slot.kind === 'ad' || a > 1.6) return pick(['adSauce', 'adSurf', 'adPier', 'adBears', 'adOwl']);
   return pick(loc === 'pier39' ? ['pier', 'shrimp', 'chickTour', 'pigeons', 'bears', 'league'] : loc === 'arena' ? ['league', 'raccoons', 'chickTour', 'bears'] : ['league', 'chickTour', 'pigeons', 'raccoons', 'bears', 'shrimp', 'pier', 'dojo']);
 }
+
+// ---------------------------------------------------------------- packaging
+// a product box (cereal, snacks, soda packs, toys) as a real 3D box: the front is printed like a poster (brand,
+// flavour, a Tokonmon render), the sides carry a nutrition panel / barcode and the brand stripe.
+// o: { x, y (bottom), z, w, h, d (metres), yaw, pack: { brand, flavor, bg: [a, b], accent, ink, mon: { id, clip, … }, badge } }
+export function packBox(stage, o) {
+  const P = o.pack, ppm = Math.min(o.ppm || 700, 1024 / Math.max(o.w, o.h)), W = Math.round(o.w * ppm), H = Math.round(o.h * ppm), D = Math.max(8, Math.round(o.d * ppm));
+  const mk = (w, h) => { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; };
+  const front = mk(W, H), side = mk(D, H), top = mk(W, D);
+  const tex = (c) => { const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return t; };
+  const sideP = (c) => { const g = c.getContext('2d'); const gr = g.createLinearGradient(0, 0, 0, c.height); gr.addColorStop(0, P.bg[0]); gr.addColorStop(1, P.bg[1]); g.fillStyle = gr; g.fillRect(0, 0, c.width, c.height);
+    g.fillStyle = '#fffaf0'; g.fillRect(c.width * 0.1, c.height * 0.45, c.width * 0.8, c.height * 0.42); g.fillStyle = '#2a2228'; for (let i = 0; i < 9; i++) g.fillRect(c.width * 0.14, c.height * (0.48 + i * 0.04), c.width * (0.3 + ((i * 37) % 40) / 100), Math.max(1, c.height * 0.012));
+    for (let i = 0; i < 14; i++) g.fillRect(c.width * (0.2 + i * 0.04), c.height * 0.9, Math.max(1, c.width * (i % 3 ? 0.012 : 0.024)), c.height * 0.06); };
+  sideP(side); { const g = top.getContext('2d'); g.fillStyle = P.bg[0]; g.fillRect(0, 0, top.width, top.height); g.fillStyle = P.accent || '#ffd040'; g.fillRect(0, top.height * 0.4, top.width, top.height * 0.2); }
+  const ft = tex(front), mats = [tex(side), tex(side), tex(top), tex(top), ft, tex(side)].map((t) => { const m = new THREE.MeshLambertMaterial({ map: t }); m.userData.keep = true; return m; });
+  const m = new THREE.Mesh(new THREE.BoxGeometry(o.w, o.h, o.d).translate(0, o.h / 2, 0), mats); m.castShadow = m.receiveShadow = true;
+  m.position.set(o.x, o.y, o.z); m.rotation.y = o.yaw || 0;
+  (stage.decals || (stage.decals = new THREE.Group(), stage.scene.add(stage.decals), stage.decals)).add(m);
+  paintPoster(front, stage, { bg: P.bg, burst: [P.burstA || 'rgba(255,255,255,0.18)', 'rgba(255,255,255,0)'], burstY: 0.6, title: P.brand, titleY: 0.16, titleK: 0.22, title2: P.flavor, sub: P.sub, accent: P.accent, ink: P.ink, titleFill: P.titleFill, mons: P.mon ? [{ s: 0.52, x: 0.5, y: 0.6, ...P.mon }] : [], corner: P.badge, cornerY: 0.42, tape: false, frame: false, seed: P.seed || 5 }).then(() => { ft.needsUpdate = true; });
+  return m;
+}
+export const PACKS = {
+  chiliFlakes: { brand: 'CHILI FLAKES', flavor: 'SPICY SAUCE CRUNCH', sub: 'PART OF A HOT BREAKFAST', bg: ['#ffcf3a', '#e8402a'], accent: '#ffe86a', titleFill: '#e8402a', mon: { id: 'chilichick', clip: 'sip', t: 1.5, yaw: 20 }, badge: ['NEW!'], seed: 11 },
+  bubbleSoda: { brand: 'BUBBLION POP', flavor: 'BLUEBERRY FIZZ', sub: '12 FL OZ · ICE COLD', bg: ['#6ac8ff', '#2a5ac8'], accent: '#ffffff', titleFill: '#ffffff', ink: '#0e2a5a', mon: { id: 'bubblion', clip: 'win', yaw: 20 }, seed: 12 },
+  strawMilk: { brand: 'STRAWBAA MILK', flavor: 'STRAWBERRY · EXTRA FLUFFY', sub: '1 L', bg: ['#fff0f4', '#ff9ab4'], accent: '#e8406a', titleFill: '#e8406a', ink: '#5a1a2a', mon: { id: 'strawbaa', clip: 'win', yaw: -20 }, seed: 13 },
+  lemonDrops: { brand: 'LEMMO DROPS', flavor: 'SOUR CANDY', sub: 'PUCKER POWER', bg: ['#fff27a', '#8ad84a'], accent: '#2a8a2a', titleFill: '#2a8a2a', ink: '#1a3a1a', mon: { id: 'lemmo', clip: 'win', yaw: 20 }, badge: ['SOUR!'], seed: 14 },
+  crabChips: { brand: 'KANI CHIPS', flavor: 'SEA SALT SUMO', sub: 'FAMILY SIZE', bg: ['#e8402a', '#8a1a2a'], accent: '#ffcc2e', titleFill: '#ffcc2e', mon: { id: 'kanizumo', clip: 'win', yaw: 20 }, seed: 15 },
+};

@@ -50,17 +50,20 @@ export class Story {
     const cc = await w.addMon('t-cc', 'chilichick', w.loc.spots.start || [v.target[0], v.target[2] + 2, 0], { clip: 'sleep' });
     void cc;
     this.title = { t: 0, hasSave: S.hasSave() };
+    const T_ = this.title, artP = import('./keyart.js').then((m) => m.showKeyArt(app)).then((a) => { T_.art = a; return a; }).catch((e) => { console.warn('key art', e); return null; });
     await app.fade(0, 900);
     const pick = await new Promise((r) => { this.title.pick = r; });
-    this.title = null;
+    this.title = null; artP.then((a) => a && a.remove());
     if (pick === 'continue') { this.loadSave(); await this.run(() => this.resume()); }
     else await this.run(() => this.opening());
   }
   drawTitle(ui, dt) {
     const T_ = this.title; T_.t += dt; const W = ui.w, H = ui.h, a = Math.min(1, T_.t / 1.5);
-    ui.text('TOKONMON', W >> 1, Math.round(H * 0.2) - Math.round((1 - a) * 10), T.amber, { align: 'center', scale: 3, outline: '#2a0e10', shadow: '#000000' });
-    ui.text('SAN FRANCISCO', W >> 1, Math.round(H * 0.2) + 28, T.cyan, { align: 'center', outline: '#0c1420' });
-    const by = Math.round(H * 0.62), bw = 110;
+    if (!T_.art) {   // the pixel logo only until the high-res key art (keyart.js) is ready
+      ui.text('TOKONMON', W >> 1, Math.round(H * 0.2) - Math.round((1 - a) * 10), T.amber, { align: 'center', scale: 3, outline: '#2a0e10', shadow: '#000000' });
+      ui.text('SAN FRANCISCO', W >> 1, Math.round(H * 0.2) + 28, T.cyan, { align: 'center', outline: '#0c1420' });
+    }
+    const by = Math.round(H * (T_.art ? 0.46 : 0.62)), bw = 110;
     if (ui.button((W >> 1) - bw / 2, by, bw, 18, 'NEW GAME', { color: T.amber, hotkey: 'Enter' })) T_.pick('new');
     if (T_.hasSave && ui.button((W >> 1) - bw / 2, by + 22, bw, 18, 'CONTINUE', { color: T.cyan, hotkey: 'c' })) T_.pick('continue');
     ui.text('an original homage to the music of everywhere', W >> 1, H - 12, T.dim, { align: 'center', mini: true });
