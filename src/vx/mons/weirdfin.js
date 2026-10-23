@@ -44,8 +44,6 @@ const headP = (p, w, h, face, cube) => fill(p, w, h, (x, y) => {
   const [X, Y, Z] = at(face, cube, x, y);
   let c = band(C.face, face, x, y, h);
   if (face === 'south' && Y < 11.7) return Y > 11.3 ? C.gum : C.mouth;
-  // a lighter slate face mask round the eyes, so the dark eye blocks read against it
-  if (face === 'south' && Y > 12.4 && Y < 18.9 && Math.abs(X) < 4.6) return (x * 7 + y * 11) % 23 === 0 ? '#7a80d0' : Y > 17.9 ? '#4e54a0' : '#6268b8';
   if ((face === 'east' || face === 'west') && Z < 5.6) { for (const g of [3.6, 4.4, 5.2]) if (Math.abs(Z - g - (Y - 14) ** 2 * 0.02) < 0.2 && Math.abs(Y - 14) < 3.6) return '#7ae0ff'; }
   if ((x * 7 + y * 11) % 23 === 0) c = shift(c, 0.12); else if ((x * 5 + y * 3) % 31 === 0) c = '#5a6ad8';
   return c;
@@ -240,7 +238,28 @@ const EYE = {
     '.bbbbbbbbbb.',
   ],
 };
-const EYES = eyeRig({ style: 'pix', chunk: 1, glow: 'all', extra: ['smug'], at: [-2.4, 15.5, 9.22], line: C.ink, iris: '#3ad0e0', irisDark: '#2456c8', pupilColor: '#06081a', map: { ...pixStates(EYE.open), ...EYE } });
+// 3D eyes: two bulging eyeballs at the front corners of the head, turned out like a fish's. The socket skin
+// is navy (so closed / happy show a lid); the open eye on the front is a big glossy deep-sea eye: dark, a deep
+// blue top edge, a cyan crescent of reflected light along the bottom and two highlights — no rim, no rings.
+const EYE3D = [
+  'IIIIIIIIIIII',
+  'IkkkkkkkkkkI',
+  'kkhhkkkkkkkk',
+  'khhhkkkkkkkk',
+  'kkhkkkkkkkkk',
+  'kkkkkkkkkkkk',
+  'kkkkkkkkkhkk',
+  'kkkkkkkkkkkk',
+  'ikkkkkkkkkki',
+  'iikkkkkkkkii',
+  'iiiikkkkiiii',
+  'iiiiiiiiiiii',
+];
+const EYEBALL = { x: 3.55, y: 15.7, z: 10.0, turn: 22 };      // the right eyeball's front-face centre (model units)
+const socketP = (p, w, h, face) => fill(p, w, h, (x, y) => (face === 'south' ? C.ink : y === 0 && face !== 'up' ? '#6268b8' : band(C.face, face, x, y, h)));
+const eyeball = (s) => ({ name: s < 0 ? 'eyeballR' : 'eyeballL', parent: 'head', pivot: [s * EYEBALL.x, EYEBALL.y, EYEBALL.z - 1.3], rot: [0, s * EYEBALL.turn, 0],
+  cubes: [B(s * EYEBALL.x - 2.1, EYEBALL.y - 2.1, EYEBALL.z - 2.8, s * EYEBALL.x + 2.1, EYEBALL.y + 2.1, EYEBALL.z, socketP)] });
+const EYES = eyeRig({ style: 'pix', chunk: 1, extra: ['smug'], at: [-EYEBALL.x, EYEBALL.y, EYEBALL.z + 0.03], parentR: 'eyeballR', parentL: 'eyeballL', line: C.ink, iris: '#3ad0e0', irisDark: '#2456c8', pupilColor: '#06081a', map: { ...pixStates(EYE3D), open: EYE3D } });
 
 // ---------------------------------------------------------------- the model
 const RAYS = 9;
@@ -286,6 +305,7 @@ export const def = {
       B(-4.0, 9.0, 3.8, 4.0, 11.6, 9.9, jawP),
       ...[-2.2, 2.2].map((x) => B(x - 0.3, 11.6, 9.2, x + 0.3, 12.3, 9.6, toothP, { outline: false })),
     ] },
+    eyeball(-1), eyeball(1),
     ...EYES.bones,
     { name: 'fringe', parent: 'head', pivot: [-1.0, 19.4, 9.2], cubes: [
       B(-4.8, 17.4, 9.1, -1.4, 20.0, 9.7, fringeP, { pivot: [-1.4, 19.8, 9.4], rot: [0, 0, 10] }),
