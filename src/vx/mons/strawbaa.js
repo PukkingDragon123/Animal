@@ -204,14 +204,14 @@ function berryP(p, w, h, face) {
 // eyes, Wooloo-sized, sitting low and wide on the big cream face
 const EYES = eyeRig({ style: 'pix', chunk: 1, at: [-2.95, 16.4, 10.27], line: '#2a0a1c', iris: '#3e1028', irisDark: '#1e0614', pupilColor: '#0e0208', accent: '#d0446e', extra: ['smug', 'glint'], map: {
   open: [
-    '........',
-    '.llllll.',
-    'llllllll',
+    '..IIII..',
+    '.IIIIII.',
     'IhhIkkII',
-    'ihhkkkki',
-    'iiikkkii',
+    'Ihhkkkki',
+    'iikkkkii',
+    'iiikkiic',
     '.iiiiic.',
-    '........',
+    '..iiii..',
   ],
   happy: ['........', '........', '..llll..', '.l....l.', 'l......l', '........', '........', '........'],
   closed: ['........', '........', '........', '........', 'l......l', '.l....l.', '..llll..', '........'],

@@ -74,16 +74,16 @@ const scarfP = (p, w, h, f) => { cloth(C.hair, { hi: C.hairHi, lo: C.hairLo, fol
 const PAW = [B([-3.8, 0, -1.4], [2.8, 1.2, 3.0], sockP)];
 const EYES = eyeRig({ style: 'pix', chunk: 1, at: [-2.8, 13.0, 8.04], line: '#140a0a', iris: '#ffc81e', irisDark: '#c8701a', accent: '#fff08a', pupilColor: '#100608', extra: ['smug', 'glint'], map: { open: [
   '............',
-  'l...........',
-  'lllllllllll.',
-  '.llllllllll.',
-  '.IIIIkkIIII.',
-  '.iihikkiiii.',
-  '.iihikkiiii.',
-  '.iiiikkiiic.',
-  '..ciikkiicc.',
-  '...cccccc...',
-  '............',
+  '.l..........',
+  '.llllllll...',
+  '.lIIIIIiill.',
+  'liiiikiiiil.',
+  'liihikkiiiil',
+  'liihikkiiiil',
+  'liiiikkiiiil',
+  '.licikkiicl.',
+  '..lcccccll..',
+  '...llllll...',
 ] } });
 const HAIR = [
   B([-3.4, 17.8, -0.6], [6.8, 1.0, 6.4], hairP),

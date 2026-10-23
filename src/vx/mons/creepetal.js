@@ -1,6 +1,6 @@
 // Creepetal — a sad, shy, wilting flower (Bio/Ecto), a Radiohead homage ("Creep"). It is sure it's
 // a creep and that it doesn't belong here. Its face is the flower's ivory centre: droopy, watery
-// violet block eyes, a small wobbly frown and one single tear that keeps welling up and rolling off its
+// violet eyes, a small wobbly frown and one single tear that keeps welling up and rolling off its
 // cheek. Five periwinkle petals wilt around the face like a hood and shaggy curtains of hair, dip-dyed
 // at the tips in a bleached straw blond (the early-90s frontman's bleached mop), with a ragged blond
 // fringe swept over one eye. A bent stem body on two little root feet, leaf hands that fidget
@@ -104,132 +104,21 @@ const poolP = (p, w, h) => fill(p, w, h, (x, y) => { const r = Math.hypot(x + 0.
 const strapP = (p, w, h) => fill(p, w, h, (x, y) => (y === 0 ? '#6a5a7a' : (x + y) % 4 === 0 ? '#2a2236' : '#3a3048'));
 
 // ---------------------------------------------------------------- face
-// eyes in the Cobblemon language, drawn bigger and more expressive: a droopy dark block (no whites),
-// its lash line stepping down to the outer corner, a two-tone violet iris, a square pupil block with a
-// 2×2 highlight cluster and one low glint; every key emotion hand-drawn
-const EYE = {
-  open: [
-    '......llll',
-    '...lllIIII',
-    '.llIIIIIII',
-    'lIIIIIIIII',
-    'IIIIhhkkII',
-    'iiiihhkkii',
-    'iiiikkkkii',
-    '.iiikkkhii',
-    '..iiiiiii.',
-    '...iiiii..',
-  ],
-  angry: [
-    '..........',
-    '..........',
-    '.lll......',
-    'llllll....',
-    'lIIIllll..',
-    'Iiiihhllll',
-    'iiiikkkkll',
-    '.iiikkkhII',
-    '..iiiiiii.',
-    '...iiiii..',
-  ],
-  sad: [
-    '..........',
-    '.......lll',
-    '.....lllll',
-    '...llllIII',
-    '.llllhkkII',
-    'lllIhhkkii',
-    'lIIikkkkii',
-    '.iiikkkhii',
-    '..iiiiiii.',
-    '...bbbbb..',
-  ],
-  happy: [
-    '..........',
-    '..........',
-    '..........',
-    '...llll...',
-    '..lIIIIl..',
-    '.lII..IIl.',
-    'lII....IIl',
-    'II......II',
-    '..........',
-    '..........',
-  ],
-  closed: [
-    '..........',
-    '..........',
-    '..........',
-    '..........',
-    '..........',
-    '......llll',
-    '..llllllll',
-    'llll......',
-    '..........',
-    '..........',
-  ],
-  shock: [
-    '....llllll',
-    '..llwwwwww',
-    '.lwwwwwwww',
-    'lwwwwwwwww',
-    'wwwwwhkwww',
-    'wwwwwkkwws',
-    'swwwwwwwws',
-    '.swwwwwwss',
-    '..sswwwss.',
-    '...sssss..',
-  ],
-  smug: [
-    '..........',
-    '..........',
-    '..........',
-    '..........',
-    'llllllllll',
-    'llllllllll',
-    'IIIIhkkkII',
-    '.iiikkkhii',
-    '..iiiiiii.',
-    '...iiiii..',
-  ],
-  sleepy: [
-    '..........',
-    '..........',
-    '..........',
-    '..........',
-    '..........',
-    'llllllllll',
-    'llllllllll',
-    '.IIIkkkhII',
-    '..iiiiiii.',
-    '...iiiii..',
-  ],
-  wide: [
-    '...lllllll',
-    '.llIIIIIII',
-    'lIIIIIIIII',
-    'IIIIIIIIII',
-    'IIIIIhkIII',
-    'iiiiikkiii',
-    'iiiiiiiiii',
-    '.iiiiiiiii',
-    '..iiiiiii.',
-    '...iiiii..',
-  ],
-  teary: [
-    '......llll',
-    '...lllIIII',
-    '.llIIIIIII',
-    'lIIIIIIIII',
-    'IIIIhhkkII',
-    'iiiihhkkii',
-    'iiiikkkkii',
-    '.bbikkkhbb',
-    '..bbbbbbb.',
-    '...bbbbb..',
-  ],
-};
-const EYES = eyeRig({ style: 'pix', chunk: 1, extra: ['smug'], at: [-2.05, 15.3, 2.62], line: C.ink, iris: '#7a70e8', irisDark: '#3a2c8a', pupilColor: '#140c2a', map: { ...pixStates(EYE.open), ...EYE } });
+// droopy, watery violet eyes: the outer corner sags under a heavy lid, whites on the inner side, a
+// big soft iris, one catchlight high, one low, and the lower rim always a little wet
+const EYE = [
+  '.......lll',
+  '.....lllll',
+  '...llllIsl',
+  '..lllIIIsl',
+  '.llIhiiiwl',
+  'llwikkiiwl',
+  'lwwikkiiwl',
+  '.lwikkhil.',
+  '..lbiibl..',
+  '...llll...',
+];
+const EYES = eyeRig({ style: 'pix', chunk: 1, at: [-2.05, 15.3, 2.62], line: C.ink, iris: '#6a64e0', irisDark: '#30287c', pupilColor: '#0e0a24', map: { open: EYE, ...pixStates(EYE) } });
 const MOUTH = mouthSet({
   sad: ['........', '...ll...', '..l..l..', '.l....l.', '........'],
   wobble: ['........', '........', '.ll..ll.', 'l..ll..l', '........'],

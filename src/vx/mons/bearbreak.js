@@ -124,11 +124,11 @@ const EYES = eyeRig({ style: 'pix', chunk: 1, at: [-2.15, 31.6, 4.63], line: '#1
   '.......lllll',
   '....llllssIl',
   '..lllsswIIIl',
-  '.l.swwwIhII.',
-  'lswwwwiikki.',
-  '.wwwwwikkki.',
-  '...wwwwiii..',
-  '............',
+  '.llswwwIhiIl',
+  'lswwwwIikkil',
+  'lwwwwwIkkkil',
+  '.llwwwwiiill',
+  '...lllllll..',
 ] } });
 const MOUTHS = ['frown', 'o', 'flat', 'wavy', 'grit', 'smile', 'tongue'];
 

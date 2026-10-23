@@ -194,18 +194,18 @@ const PIN = [
   B([-9.6, 8.6, -0.4], [0.4, 2.0, 2.2], pinBody), B([-9.55, 10.6, 0.5], [0.3, 2.2, 0.5], neckP), B([-9.6, 12.6, 0.3], [0.4, 0.8, 0.9], headstockP),
 ];
 const EYES = eyeRig({ style: 'pix', chunk: 1, at: [-3.5, 18.6, 6.24], line: '#2a1810', iris: '#f2a028', irisDark: '#a8581a', accent: '#ffd878', extra: ['smug', 'glint'], map: { open: [
-  '............',
-  '.llllllllll.',
-  'llllllllllll',
-  '.IIIIIIIIII.',
-  '.IIkkkkkkII.',
-  '.ihhkkkkkii.',
-  '.ihhkkkkkii.',
-  '.iikkkkkkii.',
-  '.iikkkkkhii.',
-  '.iiikkkkiii.',
-  '.ciiiiiiiic.',
-  '..cccccccc..',
+  '...llllll...',
+  '.llIIIIIIll.',
+  '.lIIIIIIIIl.',
+  'lIIikkkkiiIl',
+  'lIihhkkkkiIl',
+  'liihhkkkkiil',
+  'liikkkkkkiil',
+  'liikkkkkhiil',
+  'lciikkkkiicl',
+  '.lcciiiiccl.',
+  '.llccccccll.',
+  '...llllll...',
 ] } });
 const LEI = [[-5.4, 11.2], [-3.9, 9.6], [-2.0, 8.6], [0, 8.2], [2.0, 8.6], [3.9, 9.6], [5.4, 11.2]];
 const LEIC = [['#e8283a', '#9a1020'], ['#ff8ab4', '#c84a7a'], ['#ffd23a', '#d08a1a']];

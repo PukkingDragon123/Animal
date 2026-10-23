@@ -293,7 +293,7 @@ const EYES = eyeRig({ style: 'pix', chunk: 1, at: [-3.5, 26.1, 8.05], line: C.in
     '..llllllll..',
     '.llllllllll.',
     'lwwwIIIIwwwl',
-    '.swwhkkiwws.',
+    'lswwhkkiwwsl',
     '.ssswiiiwss.',
     '...ssssss...',
   ],

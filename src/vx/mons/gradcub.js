@@ -147,16 +147,16 @@ const ballP = (p, w, h, face) => fill(p, w, h, (x, y) => ((x * 3 + y * 5) % 4 ==
 // ---------------------------------------------------------------- face
 // eyes: amber teddy glass eyes, round with a big black pupil and one hot glint (hand-pixelled, low-res)
 const EYES = eyeRig({ style: 'pix', chunk: 1, at: [-2.6, 17.6, 5.44], line: '#2a1408', iris: '#f0a838', irisDark: '#a85e10', accent: '#ffd890', extra: ['smug', 'glint'], map: { open: [
-  '............',
-  '.llllllllll.',
-  'llllllllllll',
-  '.IIIIIIIIII.',
-  '.IhhIkkkIII.',
-  '.ihhikkkkii.',
-  '.iiikkkkiii.',
-  '.iiiikkiiii.',
-  '..iiiiiiii..',
-  '............',
+  '...llllll...',
+  '.llIIIIIIll.',
+  '.lIIIIIIIIl.',
+  'lIhhiiiiiIIl',
+  'lIhhikkkiiIl',
+  'liiikkkkiiil',
+  'liiikkkkicil',
+  '.liiikkiiil.',
+  '..lliiiill..',
+  '....llll....',
 ] } });
 // mouths on the muzzle (full resolution): a one-sided smirk by default
 const smirk = (p, w, h) => { const L = C.muzLine, cx = Math.floor(w / 2), y = h - 3; p.px(cx, 0, L).px(cx, 1, L).px(cx, 2, L); for (let x = 1; x < w - 3; x++) p.px(x, y, L); p.px(0, y - 1, L); p.px(w - 3, y - 1, L).px(w - 2, y - 2, L).px(w - 1, y - 3, L); for (let x = cx - 2; x <= cx + 1; x++) p.px(x, y + 1, sh(C.muz, -0.14)); };
