@@ -229,7 +229,7 @@ export class FX {
       lay.arr.iPos.set([q.x, q.y, q.z], j * 3); lay.arr.iSize.set([s * aspect, s], j * 2); lay.arr.iUv.set(uv, j * 4); lay.arr.iRot[j] = q.rot;
       let c = [1, 1, 1];
       if (P.tint) { const t = k * (P.tint.length - 1), a = Math.floor(t), b = Math.min(P.tint.length - 1, a + 1), f = t - a; c = P.tint[a].map((v, m) => v + (P.tint[b][m] - v) * f); }
-      if (q.tint) c = c.map((v, m) => v * q.tint[m]);
+      if (q.tint) { const tq = typeof q.tint === 'string' ? (q.tint = hexTint(q.tint)) : q.tint; c = c.map((v, m) => v * tq[m]); }
       const glowK = P.glow ? 1.08 : 1;
       lay.arr.iCol.set([c[0] * glowK, c[1] * glowK, c[2] * glowK, P.fade ? 1 - k * k : P.glow ? 1 : (k > 0.8 ? 1 - (k - 0.8) / 0.2 : 1)], j * 4);
     }
@@ -237,3 +237,5 @@ export class FX {
   }
   clear() { this.ps.length = 0; }
 }
+// a '#rrggbb' particle tint → [r, g, b] multipliers
+function hexTint(h) { const n = parseInt(h.slice(1, 7), 16); return [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255]; }

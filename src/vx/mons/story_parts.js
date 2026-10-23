@@ -99,11 +99,11 @@ export function cords(c, o = {}) {
       return;
     }
     for (let x = 0; x < w; x++) {
-      const k = x % cw, col = Math.floor(x / cw), ph = (col * 5) % 4, cut = o.ragged ? Math.floor(h2(col, 3, o.seed || 1) * (o.ragged + 1)) : 0;
+      const k = x % cw, col = Math.floor(x / cw), ph = (col * 3) % 5, cut = o.ragged ? Math.floor(h2(col, 3, o.seed || 1) * (o.ragged + 1)) : 0;
       for (let y = 0; y < h; y++) {
         if (y >= h - cut) { p.px(x, y, 0); continue; }
-        const t = tOf(face, y, h), base = ramp([hi, c, lo], t * 0.85, x, y), tw = (y + ph + k * 2) % 4;
-        let cc = k === cw - 1 ? (o.gap || deep) : tw === 0 ? shift(base, -0.12) : tw === 1 && k === 0 ? shift(base, 0.1) : base;
+        const t = tOf(face, y, h), base = ramp([hi, c, lo], t * 0.85, x, y), tw = (y + ph + k * 2) % 5;
+        let cc = k === cw - 1 ? (o.gap || lo) : tw === 0 ? shift(base, -0.07) : tw === 1 && k === 0 ? shift(base, 0.08) : base;
         if (y === h - cut - 1 && k !== cw - 1) cc = shift(base, -0.15);
         p.px(x, y, cc);
       }
@@ -112,14 +112,15 @@ export function cords(c, o = {}) {
 }
 // a periwig roll seen from the side: a horizontal sausage curl; its south / north face shows the spiral
 export function roll(c, o = {}) {
-  const hi = o.hi || shift(c, 0.14), lo = o.lo || shift(c, -0.24), deep = o.deep || shift(c, -0.42);
+  const hi = o.hi || shift(c, 0.14), lo = o.lo || shift(c, -0.24), deep = o.deep || shift(c, -0.42), ends = o.axis === 'x' ? ['east', 'west'] : ['south', 'north'];
   return (p, w, h, face) => {
-    if (face === 'south' || face === 'north') {
+    if (ends.includes(face)) {
       const cx = w / 2, cy = h / 2;
       for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-        const dx = x + 0.5 - cx, dy = y + 0.5 - cy, r = Math.hypot(dx / (w / 2), dy / (h / 2)), a = Math.atan2(dy, dx);
-        const s = (r * 2.2 + a / (Math.PI * 2) + 10) % 1;
-        p.px(x, y, r > 1.02 ? lo : s < 0.22 ? deep : s < 0.5 ? lo : dy < 0 ? hi : c);
+        const dx = x + 0.5 - cx, dy = y + 0.5 - cy, r = Math.hypot(dx / (w / 2), dy / (h / 2)), a = Math.atan2(dy, dx), lit = dx + dy < 0;
+        // a curl seen end-on: a rim, one dark groove ring opening at the bottom, a lit core
+        const groove = r > 0.48 && r < 0.72 && !(a > 0.6 && a < 1.9);
+        p.px(x, y, r > 0.9 ? lo : groove ? deep : r < 0.3 ? (lit ? hi : c) : lit ? hi : c);
       }
       return;
     }
@@ -205,3 +206,26 @@ export const SPFX = {
   boltblue: defineFx('sp-boltblue', { w: 7, h: 16, frames: [0, 1].map(() => zapSpr(['#ffffff', '#8ae0ff', '#3a7aff'])), glow: true, life: [0.08, 0.16], size: [0.25, 0.3], speed: [0, 0.4], grav: 0, spread: 1, spin: 3 }),
   water: defineFx('sp-water', { w: 16, h: 16, paint: waterSpr, life: [0.32, 0.32], size: [0.3, 0.42], speed: [6, 6], grav: 0, drag: 0, spread: 0 }),
 };
+
+// ---------------------------------------------------------------- the storm-cat line (Zapkit, Thundersabre)
+// the chest emblem: an original mark — a gold cat-head silhouette (two ears, round cheeks, a pointed
+// chin) split by a red lightning bolt, painted straight on the fur (no ring, no oval)
+export function catEmblem(o = {}) {
+  const gold = o.gold || '#ffd23a', goldLo = o.goldLo || '#c88a1a', red = o.red || '#e8202a', line = o.line || '#140c10';
+  return (p, w, h, face) => {
+    if (o.base) o.base(p, w, h, face);
+    if (face !== 'south') return;
+    const head = (x, y) => {
+      const u = (x + 0.5) / w, v = (y + 0.5) / h;
+      const face1 = ((u - 0.5) / 0.36) ** 2 + ((v - 0.56) / 0.3) ** 2 <= 1;
+      const chin = v > 0.6 && v < 0.95 && Math.abs(u - 0.5) < (0.95 - v) * 0.9;
+      const ear = (cx) => v > 0.06 && v < 0.42 && Math.abs(u - cx) < (v - 0.06) * 0.55;
+      return face1 || chin || ear(0.25) || ear(0.75);
+    };
+    region(p, w, h, head, (x, y) => (y / h < 0.5 ? gold : goldLo), line);
+    const pts = [[0.58, 0.12], [0.36, 0.52], [0.52, 0.52], [0.4, 0.92]].map(([u, v]) => [u * w, v * h]);
+    stroke(p, pts, red, Math.max(1, Math.round(w / 9)));
+  };
+}
+// a lightning-bolt plane (glow): gold with a white core
+export const boltP = (p, w, h) => boltShape(p, w, h, (x, y) => (Math.abs(x + 0.5 - w * 0.55) < w * 0.12 ? '#ffffff' : y < h * 0.5 ? '#fff070' : '#ffc81e'), '#ff9a1a');
