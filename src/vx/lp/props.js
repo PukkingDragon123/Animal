@@ -354,3 +354,287 @@ export function guitar(F, p, o = {}) {
   for (const sx of [-1, 1]) for (let i = 0; i < 3; i++) f.add(cyl(0.006, 0.03, { n: 6 }), M.metal('#e8d8a0'), { p: [sx * 0.04, 1.06 + i * 0.04, -0.005], r: [0, 0, sx * Math.PI / 2] });
   if (F.B) blobShadow(F.B, ...F.pt(0, 0, 0.06), 0.24, 0.12, 0.8);
 }
+
+// ================================================================ furniture by bounds (metres)
+// a single bed against walls, headboard at x1 (o.head > 0) — returns { top, pillow }
+// o: { x0, x1, z0, z1, y, wood, quilt (material), quiltTo (x where the quilt ends), lump: [x, z, r, h], sheet, pillowCol }
+export function bed(B, o) {
+  const { x0, x1, z0, z1, y } = o, Wd = M.wood(o.wood || '#6e4a30', { seed: 31, figure: 2 }), hb = 0.25, bx1 = x1 - hb, top = y + 0.5, zf = z1 - 0.08;
+  // frame: rails, legs, a low foot rail
+  for (const z of [z0 + 0.04, z1 - 0.04]) box(B, Wd, x0, y + 0.08, z - 0.04, bx1, y + 0.25, z + 0.04, { b: 0.012, ao: 0.2 });
+  box(B, Wd, x0, y + 0.08, z0, x0 + 0.08, y + 0.25, z1, { b: 0.012 });
+  for (const [x, z] of [[x0 + 0.04, z0 + 0.05], [x0 + 0.04, z1 - 0.05]]) box(B, Wd, x - 0.04, y, z - 0.04, x + 0.04, y + 0.42, z + 0.04, { b: 0.01, grain: 'y', ao: 0.4 });
+  box(B, Wd, x0, y + 0.3, z0 + 0.05, x0 + 0.06, y + 0.4, z1 - 0.05, { b: 0.012 });
+  // headboard: posts with ball finials, slats, a capped top rail and a lower panel
+  for (const z of [z0 + 0.05, z1 - 0.05]) { box(B, Wd, x1 - 0.13, y, z - 0.05, x1 - 0.01, y + 1.22, z + 0.05, { b: 0.014, grain: 'y', ao: 0.4 }); B.add(sphere(0.05, { n: 10, m: 6 }), Wd, { p: [x1 - 0.07, y + 1.22, z] }); }
+  box(B, Wd, x1 - 0.14, y + 1.08, z0 + 0.05, x1, y + 1.18, z1 - 0.05, { b: 0.02 });
+  box(B, Wd, x1 - 0.12, y + 0.2, z0 + 0.05, x1 - 0.03, y + 0.62, z1 - 0.05, { b: 0.01 });
+  const ns = Math.round((z1 - z0 - 0.2) / 0.16); for (let i = 1; i < ns; i++) { const z = z0 + 0.05 + (i / ns) * (z1 - z0 - 0.1); box(B, Wd, x1 - 0.1, y + 0.62, z - 0.025, x1 - 0.05, y + 1.08, z + 0.025, { b: 0.008, grain: 'y' }); }
+  // mattress
+  B.add(slab(bx1 - x0 - 0.02, zf - z0 - 0.01, 0.24, { r: 0.05, c: 0.03 }), mat(T.fabric({ c: '#efe9e0', kind: 'ticking', c2: '#b8c4d8', rep: 0.09, seed: 32, size: [0.6, 0.6] })), { p: [(x0 + bx1) / 2, top - 0.24, (z0 + zf) / 2] });
+  // the quilt: a sheet over the mattress top, rounding the front edge and the foot end and falling to the floor rail
+  const qx1 = o.quiltTo ?? lerp(x0, bx1, 0.68), over = 0.5, rb = 0.06, arc = (Math.PI / 2) * rb, lump = o.lump;
+  const qg = sheet((u, v) => {
+    let x = lerp(x0 - over, qx1, u), z = lerp(z0 + 0.01, zf + over, v), yy = top + 0.06;
+    const dz = Math.max(0, z - zf), dx = Math.max(0, x0 + 0.01 - x), d = Math.hypot(dx, dz);
+    if (lump) { const q = Math.hypot(x - lump[0], z - lump[1]) / lump[2]; if (q < 1) yy += lump[3] * (1 + Math.cos(q * Math.PI)) * 0.5; }
+    yy += Math.sin(x * 9 + z * 4) * 0.012 + Math.sin(z * 13 - x * 3) * 0.008 + (u > 0.93 ? (u - 0.93) * 0.9 : 0);
+    if (d > 0) {
+      const ex = x + dx, ez = z - dz, nx = -dx / d, nz = dz / d; let out, drop;
+      if (d <= arc) { const t = d / rb; out = Math.sin(t) * rb; drop = rb * (1 - Math.cos(t)); } else { out = rb + (d - arc) * 0.12; drop = rb + (d - arc); }
+      const flutter = Math.sin((nx !== 0 && nz === 0 ? z : x) * 26) * 0.018 * cl((d - arc) / 0.3);
+      x = ex + nx * (out + flutter); z = ez + nz * (out + flutter); yy = Math.max(y + 0.3, yy - drop);
+    }
+    return [x, yy, z];
+  }, 34, 26, { flip: true });
+  B.add(qg, o.quilt || mat(T.quilt({ cols: ['#c8423a', '#e8d4b0', '#2e4a7a', '#e88a3a', '#f0ece4', '#8a2a3a'], seed: 33 }), { side: 2 }), {});
+  // the folded-back sheet at the head end of the quilt
+  B.add(warp(cyl(0.045, zf - z0 - 0.02, { n: 8, cap: false }), (x, yy, z) => [x, yy, z * 0.6]), mat(T.fabric({ c: '#f4f0e8', kind: 'stripe', c2: '#d8e0ec', rep: 0.06, seed: 34 })), { p: [qx1 + 0.02, top + 0.07, z0 + 0.01], r: [Math.PI / 2, 0, 0] });
+  // pillows
+  const pc = mat(T.fabric({ c: o.pillowCol || '#f4efe6', kind: 'dots', c3: '#f8c8c8', rep: 0.07, seed: 35, folds: 6 }));
+  const px = bx1 - 0.32, zm = (z0 + zf) / 2;
+  pillow(B, [px, top - 0.01, lerp(z0, zm, 0.5)], 0.42, 0.17, 0.62, pc, { r: Math.PI / 2 + 0.06 });
+  pillow(B, [px - 0.02, top - 0.01, lerp(zm, zf, 0.5)], 0.42, 0.17, 0.62, pc, { r: Math.PI / 2 - 0.1 });
+  blobShadow(B, (x0 + x1) / 2, y, (z0 + z1) / 2 + 0.05, (x1 - x0) * 0.55, (z1 - z0) * 0.55, 1);
+  return { top, pillow: [px, top + 0.15, zm] };
+}
+
+// a big wardrobe with both doors swung open toward +z. o: { x0, x1, z0, z1, y, top, mid (divider x), wood, inner }
+export function wardrobe(B, o) {
+  const { x0, x1, z0, z1, y, top, mid } = o, Wd = M.wood(o.wood || '#7a5232', { seed: 41, figure: 3 }), Dk = M.wood('#4e321f', { seed: 42 }), In = M.wood(o.inner || '#b08c62', { seed: 43 }), t = 0.05;
+  box(B, In, x0, y, z0, x1, top, z0 + 0.03, { b: 0.004 });                                        // back
+  for (const [a, b] of [[x0, x0 + t], [x1 - t, x1]]) box(B, Wd, a, y, z0, b, top, z1, { b: 0.01, grain: 'y', ao: 0.3 });
+  box(B, Wd, x0, top - t, z0, x1, top, z1, { b: 0.01 });
+  box(B, Dk, x0, y, z0, x1, y + 0.13, z1, { b: 0.01, ao: 0.4 });
+  box(B, Wd, x0 - 0.06, top, z0, x1 + 0.06, top + 0.07, z1 + 0.07, { b: 0.02 });                   // crown
+  box(B, Dk, x0 - 0.02, top + 0.07, z0, x1 + 0.02, top + 0.15, z1 + 0.03, { b: 0.02 });
+  box(B, Wd, x0 - 0.08, top + 0.15, z0, x1 + 0.08, top + 0.2, z1 + 0.09, { b: 0.015 });
+  box(B, Wd, mid - 0.025, y + 0.13, z0, mid + 0.025, top - t, z1, { b: 0.006, grain: 'y' });   // divider
+  // the right bay: drawers under three shelves
+  const shelves = [y + 1.0, y + 1.5, y + 2.0];
+  for (const sy of shelves) box(B, Wd, mid, sy - 0.04, z0 + 0.03, x1 - t, sy, z1 - 0.01, { b: 0.006 });
+  const dTop = y + 0.85, nd = 2;
+  for (let i = 0; i < nd; i++) { const a = y + 0.13 + i * ((dTop - y - 0.13) / nd), b = a + (dTop - y - 0.13) / nd; box(B, Wd, mid + 0.01, a + 0.01, z1 - 0.04, x1 - t - 0.01, b - 0.01, z1 - 0.005, { b: 0.012 }); for (const kx of [0.3, 0.7]) B.add(cbox(0.08, 0.018, 0.02, { b: 0.006 }), M.metal('#d8b440'), { p: [lerp(mid, x1 - t, kx), (a + b) / 2 - 0.009, z1] }); }
+  box(B, Wd, mid, dTop, z0 + 0.03, x1 - t, dTop + 0.04, z1 - 0.01, { b: 0.006 });
+  // the hanging bay: top shelf, chrome rail with brackets
+  const ts = top - 0.38; box(B, Wd, x0 + t, ts - 0.035, z0 + 0.03, mid, ts, z1 - 0.01, { b: 0.006 });
+  const railY = top - 0.62, railZ = (z0 + z1) / 2 + 0.06;
+  B.add(cyl(0.014, mid - x0 - t, { n: 8 }), M.metal('#d0d4dc'), { p: [x0 + t, railY, railZ], r: [0, 0, -Math.PI / 2] });
+  for (const x of [x0 + t + 0.01, mid - 0.01]) B.add(cyl(0.03, 0.012, { n: 10 }), M.metal('#d0d4dc'), { p: [x, railY, railZ], r: [0, 0, Math.PI / 2] });
+  // doors, swung open 90°: panelled, hinged at the front corners
+  const dw = (x1 - x0) / 2, door = (x, side) => {
+    const f = B.at([x, y + 0.13, z1], side < 0 ? -Math.PI / 2 : Math.PI / 2), H = top - y - 0.2;
+    // local: the door runs along +x (out from the hinge toward +z in the world), its face toward +z = room side
+    f.add(cbox(dw, H, 0.035, { b: 0.008 }), Wd, { p: [dw / 2, 0, 0] });
+    for (const [a, b] of [[0.08, H * 0.42], [H * 0.47, H - 0.08]]) for (const s of [1, -1]) { f.add(cbox(dw - 0.16, b - a, 0.012, { b: 0.008 }), Wd, { p: [dw / 2, a, s * 0.02], tint: '#f4ece0' }); f.add(cbox(dw - 0.2, b - a - 0.04, 0.012, { b: 0.006 }), Wd, { p: [dw / 2, a + 0.02, s * 0.026], tint: '#e8dccc' }); }
+    for (const s of [1, -1]) f.add(sphere(0.022, { n: 8, m: 4, center: true }), M.metal('#d8b440'), { p: [dw - 0.06, H * 0.45, s * 0.04] });
+    return f;
+  };
+  const dl = door(x0, -1), dr = door(x1, 1);
+  blobShadow(B, (x0 + x1) / 2, y, (z0 + z1) / 2 + 0.2, (x1 - x0) * 0.62, 0.7, 1);
+  return { shelves, railY, railZ, ts, top, dl, dr, dw };
+}
+
+// a desk with a drawer pedestal at the +x end. o: { x0, x1, z0, z1, y, top (surface y), wood }
+export function desk(B, o) {
+  const { x0, x1, z0, z1, y, top } = o, Wd = M.wood(o.wood || '#a87a4e', { seed: 51, figure: 3 }), Dk = M.wood('#6a4a2e', { seed: 52 });
+  B.add(slab(x1 - x0 + 0.04, z1 - z0 + 0.04, 0.04, { r: 0.015, c: 0.01 }), Wd, { p: [(x0 + x1) / 2, top - 0.04, (z0 + z1) / 2] });
+  for (const z of [z0 + 0.04, z1 - 0.04]) box(B, Wd, x0 + 0.02, y, z - 0.03, x0 + 0.08, top - 0.04, z + 0.03, { b: 0.008, grain: 'y', ao: 0.4 });
+  box(B, Wd, x0 + 0.04, y + 0.1, z0 + 0.04, x0 + 0.07, y + 0.14, z1 - 0.04, { b: 0.006 });
+  const dx0 = x1 - 0.7; box(B, Wd, dx0, y, z0, x1, top - 0.04, z1, { b: 0.01, ao: 0.35 });
+  box(B, Dk, x0 + 0.08, top - 0.18, z0, dx0, top - 0.04, z0 + 0.03, { b: 0.006 });
+  const n = 3, h0 = y + 0.06, h1 = top - 0.06;
+  for (let i = 0; i < n; i++) { const a = h0 + (i / n) * (h1 - h0), b = h0 + ((i + 1) / n) * (h1 - h0); box(B, Wd, dx0 + 0.03, a + 0.008, z1, x1 - 0.03, b - 0.008, z1 + 0.02, { b: 0.01 }); B.add(cbox(0.1, 0.02, 0.022, { b: 0.008 }), M.metal('#d8b440'), { p: [(dx0 + x1) / 2, (a + b) / 2 - 0.01, z1 + 0.02] }); }
+  blobShadow(B, (x0 + x1) / 2, y, (z0 + z1) / 2 + 0.1, (x1 - x0) * 0.58, 0.45, 0.9);
+}
+
+// a low open bookcase against a +z-facing wall, books on two shelves. o: { x0, x1, z0, z1, y, h, wood, seed }
+export function bookcase(B, o) {
+  const { x0, x1, z0, z1, y, h } = o, Wd = M.wood(o.wood || '#8a6a48', { seed: 61, figure: 2 }), r = rnd(o.seed || 62), t = 0.04;
+  box(B, M.wood('#3a2a1e', { seed: 63 }), x0, y, z0, x1, y + h, z0 + 0.02, { b: 0.002 });
+  for (const [a, b] of [[x0, x0 + t], [x1 - t, x1]]) box(B, Wd, a, y, z0, b, y + h, z1, { b: 0.008, grain: 'y', ao: 0.3 });
+  box(B, Wd, x0 - 0.02, y + h - 0.04, z0, x1 + 0.02, y + h, z1 + 0.02, { b: 0.01 });
+  box(B, Wd, x0, y, z0, x1, y + 0.07, z1, { b: 0.008, ao: 0.4 });
+  const mid = y + h * 0.5; box(B, Wd, x0 + t, mid - 0.03, z0, x1 - t, mid, z1, { b: 0.006 });
+  const cols = ['#c8423a', '#2e5a9c', '#e8c040', '#3a8a5a', '#f0ece4', '#e88a3a', '#8a4ab4', '#e86a8a', '#2a2a30', '#5ac8c8', '#f0a0b8'];
+  for (const [fy, hh] of [[y + 0.07, mid - 0.03 - y - 0.07], [mid, y + h - 0.04 - mid]]) {
+    let x = x0 + t + 0.01;
+    while (x < x1 - t - 0.06) {
+      if (r() < 0.06) { x += 0.05 + r() * 0.08; continue; }                         // a gap
+      if (r() < 0.07) { const n = 2 + Math.floor(r() * 3); bookStack(B, [x + 0.08, fy, (z0 + z1) / 2 + 0.02], n, Math.floor(r() * 99), { w: 0.14, d: 0.13 }); x += 0.18; continue; }
+      const w = 0.018 + r() * 0.025, bh = Math.min(hh - 0.02, hh * (0.62 + r() * 0.3)), d = (z1 - z0) * (0.7 + r() * 0.15), lean = r() < 0.08 ? 0.18 : 0;
+      book(B, [x + w / 2 + (lean ? bh * 0.09 : 0), fy, z1 - d / 2 - 0.01], [w, bh, d], cols[Math.floor(r() * cols.length)], { r: 0 });
+      if (lean) { /* leaning books are drawn upright: the gap after them reads as a lean */ }
+      x += w + 0.002;
+    }
+  }
+  blobShadow(B, (x0 + x1) / 2, y, z1, (x1 - x0) * 0.55, 0.25, 0.8);
+}
+
+// a red lacquered sideboard (doors facing +z), top board. o: { x0, x1, z0, z1, y, h }
+export function sideboard(B, o) {
+  const { x0, x1, z0, z1, y, h } = o, R = mat(T.wood({ c: '#8e2a24', seed: 71, fine: 6, figure: 1, var: 0.02, lacquer: '#a0302a' })), Dk = M.wood('#5a1a16', { seed: 72 }), top = M.wood('#6a2a20', { seed: 73 });
+  box(B, R, x0, y + 0.06, z0, x1, y + h, z1, { b: 0.01 });
+  box(B, Dk, x0 + 0.03, y, z0, x1 - 0.03, y + 0.07, z1 - 0.02, { b: 0.006, ao: 0.5 });
+  box(B, top, x0 - 0.06, y + h, z0, x1 + 0.06, y + h + 0.05, z1 + 0.05, { b: 0.015 });
+  const n = Math.max(2, Math.round((x1 - x0) / 0.7)), dw = (x1 - x0) / n;
+  for (let i = 0; i < n; i++) {
+    const a = x0 + i * dw;
+    box(B, R, a + 0.025, y + 0.1, z1, a + dw - 0.025, y + h - 0.04, z1 + 0.02, { b: 0.01 });
+    box(B, Dk, a + 0.08, y + 0.16, z1 + 0.012, a + dw - 0.08, y + h - 0.1, z1 + 0.024, { b: 0.006, tint: '#c88070' });
+    B.add(cyl(0.025, 0.012, { n: 10 }), M.metal('#d8a840'), { p: [a + (i % 2 ? 0.06 : dw - 0.06), y + h * 0.55, z1 + 0.02], r: [Math.PI / 2, 0, 0] });
+  }
+  blobShadow(B, (x0 + x1) / 2, y, (z0 + z1) / 2 + 0.15, (x1 - x0) * 0.56, 0.4, 0.9);
+}
+
+// a run of kitchen base cabinets with a worktop; doors face +z (front plane z1); o: { x0, x1, z0, z1, y, top, step (door width), skip: [[xa, xb], ...] (sink cut-outs) }
+export function counter(B, o) {
+  const { x0, x1, z0, z1, y, top } = o, D = M.enamel('#ece4d0', { seed: 81 }), Fr = M.enamel('#c8bca4', { seed: 82 });
+  const TOP = mat(T.enamel({ c: '#d0c8bc', amp: 0.08, seed: 83 }));
+  box(B, Fr, x0, y + 0.1, z0, x1, top - 0.04, z1 - 0.02, { b: 0.006 });
+  box(B, M.flat('#4a4038'), x0, y, z0, x1, y + 0.1, z1 - 0.06, { b: 0.004 });
+  const step = o.step || 0.6, n = Math.max(1, Math.round((x1 - x0) / step)), dw = (x1 - x0) / n;
+  for (let i = 0; i < n; i++) {
+    const a = x0 + i * dw;
+    box(B, D, a + 0.015, y + 0.12, z1 - 0.02, a + dw - 0.015, top - 0.2, z1, { b: 0.012 });
+    box(B, D, a + 0.06, y + 0.17, z1 - 0.005, a + dw - 0.06, top - 0.25, z1 + 0.008, { b: 0.008, tint: '#f8f2e4' });
+    box(B, D, a + 0.015, top - 0.18, z1 - 0.02, a + dw - 0.015, top - 0.06, z1, { b: 0.01 });                 // drawer
+    B.add(cbox(0.12, 0.018, 0.02, { b: 0.006 }), M.metal('#9aa0a8'), { p: [a + dw / 2, top - 0.13, z1 + 0.01] });
+    B.add(sphere(0.016, { n: 8, m: 4, center: true }), M.metal('#9aa0a8'), { p: [a + (i % 2 ? 0.08 : dw - 0.08), top - 0.32, z1 + 0.012] });
+  }
+  // worktop with the sink cut-outs
+  const cuts = (o.skip || []).slice().sort((a, b) => a[0] - b[0]); let xa = x0 - 0.02;
+  const seg = (a, b, za = z0, zb = z1 + 0.04) => { if (b - a > 0.005) box(B, TOP, a, top - 0.04, za, b, top, zb, { b: 0.008 }); };
+  for (const [ca, cb, cz0, cz1] of cuts) { seg(xa, ca); seg(ca, cb, z0, cz0); seg(ca, cb, cz1, z1 + 0.04); xa = cb; }
+  seg(xa, x1);
+  box(B, M.flat('#b8b0a2'), x0, top - 0.002, z0, x1, top + 0.08, z0 + 0.015, { b: 0.004 });                    // back splash lip
+  edgeShadowFloor(B, x0, x1, z1 - 0.06, y);
+}
+function edgeShadowFloor(B, x0, x1, z, y) { blobShadow(B, (x0 + x1) / 2, y, z + 0.05, (x1 - x0) * 0.52, 0.18, 0.8); }
+
+// an old rounded fridge facing +z. o: { x0, x1, z0, z1, y, h } → front plane z
+export function fridge(B, o) {
+  const { x0, x1, z0, z1, y, h } = o, E = mat(T.enamel({ c: '#ece6d6', amp: 0.04, seed: 91 })), w = x1 - x0, d = z1 - z0, cx = (x0 + x1) / 2;
+  B.add(slab(w, d, h - 0.06, { r: 0.08, c: 0.05, seg: 4 }), E, { p: [cx, y + 0.05, (z0 + z1) / 2], ao: 0.2 });
+  box(B, M.flat('#3a3a40'), x0 + 0.04, y, z0 + 0.04, x1 - 0.04, y + 0.06, z1 - 0.06, { b: 0.004 });
+  box(B, M.flat('#b8b4a6'), x0 + 0.03, y + h * 0.66, z1 - 0.01, x1 - 0.03, y + h * 0.66 + 0.012, z1 + 0.006, { b: 0.002 });
+  for (const [a, b] of [[y + h * 0.72, y + h * 0.88], [y + h * 0.36, y + h * 0.56]]) B.add(tube([[x1 - 0.1, a, z1 + 0.01], [x1 - 0.09, a + 0.01, z1 + 0.05], [x1 - 0.09, b - 0.01, z1 + 0.05], [x1 - 0.1, b, z1 + 0.01]], 0.014, { n: 6 }), M.metal('#c8ccd4'), {});
+  blobShadow(B, cx, y, (z0 + z1) / 2 + 0.06, w * 0.62, d * 0.62, 1);
+  return { front: z1 + 0.005 };
+}
+// a two-burner gas range with a wok and a stockpot on the worktop (top at y). Returns { steam, wok }
+export function stove(B, x0, y, z0, o = {}) {
+  const w = 0.68, d = 0.5, cx = x0 + w / 2, cz = z0 + d / 2 + 0.02, blk = mat(T.enamel({ c: '#2a2a2e', amp: 0.05, seed: 101 })), st = M.metal('#b8bcc4');
+  B.add(slab(w, d, 0.06, { r: 0.02, c: 0.008 }), blk, { p: [cx, y, cz] });
+  box(B, st, x0, y, z0 + d - 0.02, x0 + w, y + 0.07, z0 + d + 0.04, { b: 0.008 });
+  for (const kx of [0.12, 0.26, 0.42, 0.56]) B.add(cyl(0.02, 0.022, { n: 10, chamfer: 0.004 }), M.flat('#e8e8ec'), { p: [x0 + kx * w / 0.68, y + 0.04, z0 + d + 0.04], r: [Math.PI / 2, 0, 0] });
+  const burners = [cx - 0.17, cx + 0.17];
+  for (const bx of burners) {
+    B.add(cyl(0.06, 0.02, { n: 12 }), M.flat('#1a1a1e'), { p: [bx, y + 0.06, cz - 0.02] });
+    for (let i = 0; i < 4; i++) B.add(cbox(0.2, 0.012, 0.014, { b: 0.003 }), M.flat('#18181c'), { p: [bx, y + 0.08, cz - 0.02], r: (i / 4) * Math.PI });
+  }
+  // wok + stir-fry, a long wooden handle out to the left
+  const wx = burners[0], wz = cz - 0.02, wy = y + 0.1;
+  B.add(lathe([[0.04, 0], [0.12, 0.04], [0.19, 0.1], [0.185, 0.1], [0.115, 0.042], [0.0, 0.012]], { n: 20, smoothV: true }), mat(T.metal({ c: '#3a3a42', seed: 102 })), { p: [wx, wy, wz] });
+  const fry = print('stirfry', 0.32, 0.32, (g, W, H) => { const gr = g.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, W / 2); gr.addColorStop(0, '#8a4a22'); gr.addColorStop(1, '#3a2a22'); g.fillStyle = gr; g.fillRect(0, 0, W, H); const r = rnd(5); for (let i = 0; i < 70; i++) { const c = ['#5a9a3a', '#e8783a', '#f0d070', '#7ac050', '#c84a2a', '#f4ecd8'][Math.floor(r() * 6)], x = W * (0.2 + r() * 0.6), yy = H * (0.2 + r() * 0.6); g.fillStyle = c; g.beginPath(); g.ellipse(x, yy, 4 + r() * 10, 3 + r() * 5, r() * 3, 0, TAU); g.fill(); g.fillStyle = 'rgba(255,255,255,0.4)'; g.fillRect(x - 2, yy - 2, 3, 2); } }, 512);
+  B.add(warp(cyl(0.13, 0.012, { n: 16, fit: true, cap0: false }), (x, yy, z) => [x, yy + Math.sin(x * 40) * 0.006 + Math.cos(z * 30) * 0.006 + (0.13 - Math.hypot(x, z)) * 0.15, z]), mat(fry), { p: [wx, wy + 0.04, wz] });
+  B.add(tube([[wx - 0.18, wy + 0.09, wz], [wx - 0.3, wy + 0.12, wz], [wx - 0.44, wy + 0.14, wz]], 0.016, { n: 6, cap: true }), M.wood('#5a3a24', { seed: 103 }), {});
+  // the stockpot with its lid ajar
+  const px = burners[1], pz = cz - 0.02;
+  B.add(cyl(0.14, 0.26, { n: 18, chamfer: 0.01 }), st, { p: [px, y + 0.09, pz], ao: 0.25 });
+  B.add(cyl(0.142, 0.012, { n: 18, cap: false }), M.metal('#d8dce2'), { p: [px, y + 0.31, pz] });
+  for (const s of [-1, 1]) B.add(cbox(0.05, 0.02, 0.03, { b: 0.006 }), st, { p: [px + s * 0.16, y + 0.29, pz] });
+  B.add(lathe([[0.15, 0], [0.13, 0.025], [0.04, 0.04], [0.02, 0.045], [0.022, 0.06], [0.001, 0.065]], { n: 18 }), M.metal('#c8ccd4'), { p: [px - 0.03, y + 0.36, pz], r: [0, 0, 0.12] });
+  blobShadow(B, cx, y + 0.06, cz, w * 0.5, d * 0.45, 0.6);
+  return { steam: [px, y + 0.42, pz], wok: [wx, wy + 0.06, wz] };
+}
+// a rice cooker standing at p; returns the steam point
+export function riceCooker(B, p, o = {}) {
+  const f = B.at(p, o.r || 0), body = mat(T.enamel({ c: '#f2eee4', amp: 0.03, seed: 111 }));
+  f.add(lathe([[0.12, 0], [0.135, 0.02], [0.14, 0.16], [0.13, 0.19], [0.0, 0.2]], { n: 20, smoothV: false }), body, { ao: 0.25 });
+  f.add(cyl(0.141, 0.03, { n: 20, cap: false }), M.flat('#e88aa0'), { p: [0, 0.05, 0] });
+  f.add(lathe([[0.13, 0], [0.12, 0.04], [0.06, 0.07], [0.0, 0.075]], { n: 20 }), body, { p: [0, 0.19, 0] });
+  f.add(cbox(0.12, 0.03, 0.04, { b: 0.012 }), M.flat('#3a3a40'), { p: [0, 0.255, -0.02] });
+  f.add(cbox(0.09, 0.06, 0.02, { b: 0.008 }), M.flat('#3a3a40'), { p: [0, 0.08, 0.13] });
+  f.add(sphere(0.008, { n: 6, m: 3, center: true }), mat(T.flat('#ff6a3a', { noise: false }), { glow: 1.6, keep: true }), { p: [-0.02, 0.11, 0.142] });
+  blobShadow(B, p[0], p[1], p[2], 0.17, 0.17, 0.8);
+  return f.pt(0, 0.28, 0);
+}
+// a metal range hood (x0..x1, bottom at y, against the back wall z0, depth to z1)
+export function hood(B, x0, x1, y, z0, z1) {
+  const m = M.metal('#9ea2aa');
+  box(B, m, x0, y, z0, x1, y + 0.12, z1, { b: 0.01 });
+  B.add(cbox(x1 - x0 - 0.1, 0.2, z1 - z0 - 0.02, { b: 0.01, taper: 0.7 }), m, { p: [(x0 + x1) / 2, y + 0.12, (z0 + z1) / 2 - 0.02] });
+  box(B, m, (x0 + x1) / 2 - 0.2, y + 0.32, z0, (x0 + x1) / 2 + 0.2, y + 0.9, z0 + 0.28, { b: 0.01 });
+  box(B, M.flat('#3a3e46'), x0 + 0.02, y - 0.004, z0 + 0.02, x1 - 0.02, y + 0.01, z1 - 0.02, { b: 0 });
+}
+// a utensil rail at height y along x on a wall (front plane z): ladle, spatula, strainer, cleaver
+export function utensils(B, x0, x1, y, z) {
+  const m = M.metal('#c8ccd4'), wd = M.wood('#6a4428', { seed: 121 });
+  B.add(cyl(0.01, x1 - x0, { n: 6 }), M.metal('#8a8e98'), { p: [x0, y, z + 0.04], r: [0, 0, -Math.PI / 2] });
+  const kinds = ['ladle', 'spatula', 'strainer', 'ladle', 'cleaver', 'spatula'], n = Math.floor((x1 - x0) / 0.2);
+  for (let i = 0; i < n; i++) {
+    const x = x0 + 0.1 + i * ((x1 - x0 - 0.2) / Math.max(1, n - 1)), kd = kinds[i % kinds.length];
+    B.add(tube([[x, y + 0.01, z + 0.04], [x + 0.01, y + 0.03, z + 0.055], [x, y - 0.01, z + 0.06]], 0.004, { n: 4 }), M.metal('#8a8e98'), {});
+    if (kd === 'cleaver') { B.add(cbox(0.03, 0.12, 0.025, { b: 0.008, grain: 'y' }), wd, { p: [x, y - 0.13, z + 0.06] }); B.add(cbox(0.2, 0.1, 0.006, { b: 0.002 }), m, { p: [x - 0.06, y - 0.24, z + 0.06] }); continue; }
+    B.add(cyl(0.008, 0.26, { n: 6 }), kd === 'strainer' ? M.metal('#e8a840') : m, { p: [x, y - 0.27, z + 0.065] });
+    if (kd === 'ladle') B.add(lathe([[0.0, 0], [0.04, 0.012], [0.05, 0.04], [0.047, 0.04], [0.0, 0.015]], { n: 12, cap1: true }), m, { p: [x, y - 0.33, z + 0.08], r: [0.3, 0, 0] });
+    else if (kd === 'spatula') B.add(cbox(0.08, 0.1, 0.006, { b: 0.002, taper: 1.2 }), m, { p: [x, y - 0.37, z + 0.065] });
+    else B.add(lathe([[0.0, 0], [0.05, 0.02], [0.065, 0.05], [0.0, 0.05]], { n: 12 }), mat(T.metal({ c: '#e8a840', seed: 4 })), { p: [x, y - 0.36, z + 0.09], r: [Math.PI / 2 - 0.2, 0, 0] });
+  }
+}
+// an aquarium on a stand: water, gravel, weed, fish (returned as separate meshes for animation)
+export function fishTank(B, o) {
+  const { x0, x1, y, z0, z1, h } = o, fr = M.flat('#2a2a30'), y1 = y + h;
+  for (const [a, b] of [[y, y + 0.03], [y1 - 0.03, y1]]) box(B, fr, x0, a, z0, x1, b, z1, { b: 0.004 });
+  for (const [x, z] of [[x0, z0], [x1, z0], [x0, z1], [x1, z1]]) box(B, fr, x - (x === x0 ? 0 : 0.02), y, z - (z === z0 ? 0 : 0.02), x + (x === x0 ? 0.02 : 0), y1, z + (z === z0 ? 0.02 : 0), { b: 0 });
+  const gravel = print('gravel', 0.4, 0.2, (g, W, H) => { g.fillStyle = '#a89878'; g.fillRect(0, 0, W, H); const r = rnd(3); for (let i = 0; i < 900; i++) { g.fillStyle = ['#d8c8a0', '#c8b890', '#8a7a60', '#e8d8b0', '#c86a4a', '#6a8ac8'][Math.floor(r() * 6)]; g.beginPath(); g.ellipse(r() * W, r() * H, 2 + r() * 3, 1.5 + r() * 2.5, r() * 3, 0, TAU); g.fill(); } }, 512);
+  box(B, mat(gravel), x0 + 0.02, y + 0.03, z0 + 0.02, x1 - 0.02, y + 0.08, z1 - 0.02, { b: 0, fit: true });
+  for (let i = 0; i < 5; i++) { const x = lerp(x0 + 0.1, x1 - 0.1, i / 4) + (i % 2) * 0.03, z = lerp(z0 + 0.06, z1 - 0.12, (i * 0.37) % 1), pts = []; for (let k = 0; k <= 6; k++) pts.push([x + Math.sin(k * 1.3 + i) * 0.025, y + 0.06 + k * (h * 0.11), z]); B.add(tube(pts, (t) => 0.012 * (1 - t * 0.7), { n: 4 }), M.flat(i % 2 ? '#3a9a4a' : '#5ab05a'), {}); }
+  B.add(superq(0.12, 0.08, 0.1, { e1: 0.8, e2: 0.8 }), M.flat('#8a8a90'), { p: [x1 - 0.2, y + 0.06, (z0 + z1) / 2] });
+  const water = mat(T.enamel({ c: '#5ab4c8', amp: 0.08, streaks: false }), { transparent: true, opacity: 0.42, side: 2, keep: true, depthWrite: false });
+  box(B, water, x0 + 0.015, y + 0.04, z0 + 0.015, x1 - 0.015, y1 - 0.05, z1 - 0.015, { b: 0 });
+  box(B, M.glow(T.flat('#c8f0ff', { noise: false }), 1.2), x0 + 0.03, y1 - 0.03, z0 + 0.03, x1 - 0.03, y1 - 0.02, z0 + 0.08, { b: 0 });
+  const fish = [];
+  for (const [c, k] of [['#ff8a2a', 0.3], ['#ffd040', 0.6], ['#ff4a6a', 0.45]]) {
+    const shape = [[-0.03, 0], [-0.012, 0.012], [0.012, 0.01], [0.022, 0], [0.012, -0.01], [-0.012, -0.012], [-0.03, 0], [-0.045, 0.014], [-0.045, -0.014]];
+    const m = B.mesh(extrude(shape, 0.008, { bevel: 0.003 }), M.flat(c), { p: [lerp(x0, x1, k), y + h * (0.35 + k * 0.3), lerp(z0, z1, 0.4)] });
+    fish.push({ m, k, x0: x0 + 0.08, x1: x1 - 0.08, y: m.position.y });
+  }
+  return { fish, light: [(x0 + x1) / 2, y1, (z0 + z1) / 2] };
+}
+// an owl perch: crossed feet, a post, a rope-wrapped bar along z; top y returned
+export function perch(B, p, h) {
+  const Wd = M.wood('#7a5232', { seed: 131 }), f = B.at(p, 0);
+  for (const r of [0, Math.PI / 2]) f.add(cbox(0.82, 0.06, 0.1, { b: 0.015 }), Wd, { r, ao: 0.4 });
+  f.add(cyl(0.04, h - 0.06, { n: 10 }), Wd, { p: [0, 0.06, 0] });
+  f.add(cyl(0.05, 0.86, { n: 12, chamfer: 0.01 }), mat(T.rope({ c: '#c8a870' })), { p: [0, h, -0.43], r: [Math.PI / 2, 0, 0] });
+  for (const z of [-0.47, 0.47]) f.add(sphere(0.055, { n: 10, m: 6, center: true }), Wd, { p: [0, h + 0.05, z] });
+  f.add(lathe([[0.04, 0], [0.06, 0.05], [0.055, 0.05], [0.035, 0.008]], { n: 12, cap0: true, cap1: true }), M.metal('#c8ccd4'), { p: [0.08, h - 0.24, 0.25] });
+  blobShadow(B, p[0], p[1], p[2], 0.45, 0.45, 0.8);
+  return p[1] + h + 0.1;
+}
+// a wicker dog basket (the low side toward +z), cushion and a rumpled blanket; returns the bed top y
+export function dogBasket(B, p, R, o = {}) {
+  const f = B.at(p, o.r || 0), wk = mat(T.wicker({ c: '#b88a50' }));
+  f.add(warp(lathe([[R * 0.8, 0], [R, 0.08], [R * 1.04, 0.36], [R * 0.98, 0.38], [R * 0.92, 0.36], [R * 0.86, 0.07], [0.0, 0.05]], { n: 22, smoothV: true, cap0: true }), (x, y, z) => [x, y > 0.1 ? y - 0.2 * sstep(0, R, z) * ((y - 0.1) / 0.28) : y, z]), wk, { ao: 0.35 });
+  f.add(tube(Array.from({ length: 23 }, (_, i) => { const a = (i / 22) * TAU, z = Math.cos(a) * R; return [Math.sin(a) * R * 1.0, 0.37 - 0.2 * sstep(0, R, z), z]; }), 0.03, { n: 6 }), mat(T.wicker({ c: '#a87a44', row: 0.03, col: 0.02, seed: 4 })), {});
+  f.add(superq(R * 1.7, 0.14, R * 1.7, { e1: 0.5, e2: 0.9, sag: 0.05 }), mat(T.fabric({ c: o.cushion || '#7a9ab8', kind: 'plain', seed: 141, folds: 8 })), { p: [0, 0.05, 0] });
+  f.add(sheet((u, v) => { const x = lerp(-R * 0.75, R * 0.55, u), z = lerp(-R * 0.7, R * 0.4, v); return [x, 0.19 + Math.sin(u * 7 + v * 3) * 0.03 + Math.max(0, 0.3 - Math.hypot(x + R * 0.3, z + R * 0.3)) * 0.4, z]; }, 12, 10, { flip: true }), mat(T.fabric({ c: '#efe4cc', kind: 'plaid', c2: '#c8423a', c3: '#2e4a7a', rep: 0.12, seed: 142 }), { side: 2 }), {});
+  blobShadow(B, p[0], p[1], p[2], R * 1.2, R * 1.2, 1);
+  return p[1] + 0.19;
+}
+// a standing electric fan facing +x
+export function fan(B, p, o = {}) {
+  const f = B.at(p, o.r || 0), wht = mat(T.enamel({ c: '#e8e8ec', amp: 0.02 })), mt = M.metal('#c8ccd4');
+  f.add(cyl(0.15, 0.04, { n: 16, chamfer: 0.01 }), wht, { ao: 0.4 });
+  f.add(cyl(0.016, 1.15, { n: 8 }), mt, { p: [0, 0.04, 0] });
+  const hy = 1.32, hd = f.at([0, hy, 0], 0);
+  hd.add(superq(0.18, 0.13, 0.13, { e1: 0.7, e2: 0.8 }), wht, { p: [-0.12, -0.065, 0] });
+  for (const rr2 of [0.3, 0.2, 0.1]) hd.add(tube(Array.from({ length: 25 }, (_, i) => { const a = (i / 24) * TAU; return [0.06, Math.sin(a) * rr2, Math.cos(a) * rr2]; }), 0.004, { n: 4 }), mt, {});
+  for (let i = 0; i < 12; i++) { const a = (i / 12) * TAU; hd.add(tube([[0.06, Math.sin(a) * 0.3, Math.cos(a) * 0.3], [0.1, Math.sin(a) * 0.15, Math.cos(a) * 0.15], [0.11, 0, 0]], 0.003, { n: 3 }), mt, {}); hd.add(tube([[0.06, Math.sin(a) * 0.3, Math.cos(a) * 0.3], [0.0, Math.sin(a) * 0.2, Math.cos(a) * 0.2], [-0.02, 0, 0]], 0.003, { n: 3 }), mt, {}); }
+  const blade = [[0, 0], [0.08, 0.06], [0.24, 0.07], [0.27, 0.0], [0.2, -0.05], [0.06, -0.03]];
+  for (let i = 0; i < 3; i++) hd.at([0.04, 0, 0], [0, Math.PI / 2, 0]).at([0, 0, 0], [0, 0, (i / 3) * TAU]).add(extrude(blade, 0.006, {}), mat(T.enamel({ c: '#5a8ae8', amp: 0.02 }), { side: 2 }), { r: [0, 0.3, 0] });
+  hd.add(cyl(0.05, 0.04, { n: 12, chamfer: 0.01 }), mat(T.enamel({ c: '#3a6ac8' })), { p: [0.05, 0, 0], r: [0, 0, -Math.PI / 2] });
+  blobShadow(B, p[0], p[1], p[2], 0.2, 0.2, 0.8);
+}
