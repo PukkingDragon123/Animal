@@ -1,8 +1,8 @@
 // Weirdfin — an eerie, beautiful deep-sea fish (Hydro/Echo), a Radiohead homage ("Weird Fishes /
 // Arpeggi"). A deep navy body striped round with seven rainbow bands, like the notes of an arpeggio,
-// and a row of photophores down each flank that light up note by note. Big, glassy deep-sea eyes that
-// shine in the dark (a ringed iris, a huge pupil with eyeshine, no whites), a pale underbite with
-// four needle fangs, ragged violet fin filaments falling over one eye (the singer's shaggy 2007 hair),
+// and a row of photophores down each flank that light up note by note. Big dark deep-sea block eyes that
+// glow faintly (a dark block, a two-tone iris block, no whites), a pale underbite with
+// two small fangs, ragged violet fin filaments falling over one eye (the singer's shaggy 2007 hair),
 // a long glowing lure arching from its brow whose light steps through the rainbow. Translucent fins
 // that ripple: a long dorsal sail in four segments, fan-like pectorals, a forked trailing tail. It
 // floats and swims in arcs.
@@ -44,6 +44,8 @@ const headP = (p, w, h, face, cube) => fill(p, w, h, (x, y) => {
   const [X, Y, Z] = at(face, cube, x, y);
   let c = band(C.face, face, x, y, h);
   if (face === 'south' && Y < 11.7) return Y > 11.3 ? C.gum : C.mouth;
+  // a lighter slate face mask round the eyes, so the dark eye blocks read against it
+  if (face === 'south' && Y > 12.4 && Y < 18.9 && Math.abs(X) < 4.6) return (x * 7 + y * 11) % 23 === 0 ? '#7a80d0' : Y > 17.9 ? '#4e54a0' : '#6268b8';
   if ((face === 'east' || face === 'west') && Z < 5.6) { for (const g of [3.6, 4.4, 5.2]) if (Math.abs(Z - g - (Y - 14) ** 2 * 0.02) < 0.2 && Math.abs(Y - 14) < 3.6) return '#7ae0ff'; }
   if ((x * 7 + y * 11) % 23 === 0) c = shift(c, 0.12); else if ((x * 5 + y * 3) % 31 === 0) c = '#5a6ad8';
   return c;
@@ -83,25 +85,162 @@ const photo = (i) => (p, w, h) => fill(p, w, h, (x, y) => (x === 0 && y === 0 ? 
 const strapP = (p, w, h) => fill(p, w, h, (x, y) => (y === 0 ? '#7a6a5a' : (x + y) % 4 === 0 ? '#2a2018' : '#3a2c22'));
 
 // ---------------------------------------------------------------- face
-// big glassy deep-sea eyes: a luminous teal rim, a dark ring, a blue iris, a huge pupil with a
-// crescent of eyeshine at its foot and a glassy catchlight — they glow in the dark
-const EYE = [
-  '.....llll.....',
-  '...llccccll...',
-  '..lcIIIIIIcl..',
-  '.lcIiiiiiiIcl.',
-  'lcIihhkkkiiIcl',
-  'lcIihkkkkkiIcl',
-  'lcIikkkkkkiIcl',
-  'lcIikkkkkkiIcl',
-  'lcIikkkkkkiIcl',
-  'lcIickkkkciIcl',
-  '.lcIicccciIcl.',
-  '..lcIIiiIIcl..',
-  '...llccccll...',
-  '.....llll.....',
-];
-const EYES = eyeRig({ style: 'pix', chunk: 1, glow: 'all', extra: ['smug'], at: [-2.4, 15.5, 9.22], line: C.ink, iris: '#2a8ad8', irisDark: '#16245e', pupilColor: '#04060e', accent: '#5af0d0', map: { open: EYE, ...pixStates(EYE, { lid: 2 }) } });
+// big deep-sea eyes in the Cobblemon language: a dark rounded-rect block (stepped corners, a lash line
+// over the top only), a two-tone iris block filling its lower inner part (blue over sea-glass teal), a
+// 2×2 square highlight up top and one low glint — they glow faintly in the dark; key emotions hand-drawn
+const EYE = {
+  open: [
+    '.llllllllll.',
+    'lkkkkkkkkkkl',
+    'kkhhkkkkkkkk',
+    'kkhhkkkkkkkk',
+    'kkkkkkkkkkkk',
+    'kkkkkkkkkkkk',
+    'kkkIIIIIIIII',
+    'kkkIIIIIIIII',
+    'kkkiiiiiiiii',
+    'kkkiiiiiiiii',
+    'kkkiiiiiihii',
+    'kkkiiiiiiiii',
+    '.kkiiiiiiii.',
+  ],
+  angry: [
+    '............',
+    'll..........',
+    'llll........',
+    'kkllll......',
+    'kkhhllll....',
+    'kkhhkkllll..',
+    'kkkIIIIIllll',
+    'kkkIIIIIIIll',
+    'kkkiiiiiiiii',
+    'kkkiiiiiiiii',
+    'kkkiiiiiihii',
+    'kkkiiiiiiiii',
+    '.kkiiiiiiii.',
+  ],
+  sad: [
+    '............',
+    '..........ll',
+    '........llll',
+    '......llllkk',
+    '....llllhhkk',
+    '..llllkkhhkk',
+    'llllIIIIIIII',
+    'llkIIIIIIIII',
+    'kkkiiiiiiiii',
+    'kkkiiiiiiiii',
+    'kkkiiiiiihii',
+    'kkkiiiiiiiii',
+    '.bbbbbbbbbb.',
+  ],
+  happy: [
+    '............',
+    '............',
+    '............',
+    '............',
+    '....llll....',
+    '...lkkkkl...',
+    '..lkk..kkl..',
+    '.lkk....kkl.',
+    'lkk......kkl',
+    'ii........ii',
+    '............',
+    '............',
+    '............',
+  ],
+  closed: [
+    '............',
+    '............',
+    '............',
+    '............',
+    '............',
+    '............',
+    'llllllllllll',
+    '.llllllllll.',
+    '............',
+    '............',
+    '............',
+    '............',
+    '............',
+  ],
+  shock: [
+    '.llllllllll.',
+    'lIIIIIIIIIIl',
+    'IIIIIIIIIIII',
+    'iiiiiiiiiiii',
+    'iiiiiiiiiiii',
+    'iiiiihkiiiii',
+    'iiiiikkiiiii',
+    'iiiiiiiiiiii',
+    'iiiiiiiiiiii',
+    'iiiiiiiiiiii',
+    'iiiiiiiiiiii',
+    'iiiiiiiiiiii',
+    '.iiiiiiiiii.',
+  ],
+  smug: [
+    '............',
+    '............',
+    '............',
+    '............',
+    '............',
+    'llllllllllll',
+    'llllllllllll',
+    'kkhhIIIIIIII',
+    'kkhhiiiiiiii',
+    'kkkiiiiiiiii',
+    'kkkiiiiiihii',
+    'kkkiiiiiiiii',
+    '.kkiiiiiiii.',
+  ],
+  sleepy: [
+    '............',
+    '............',
+    '............',
+    '............',
+    '............',
+    '............',
+    'llllllllllll',
+    'llllllllllll',
+    'kkhiiiiiiiii',
+    'kkkiiiiiiiii',
+    'kkkiiiiiihii',
+    'kkkiiiiiiiii',
+    '.kkiiiiiiii.',
+  ],
+  wide: [
+    '.llllllllll.',
+    'lkkkkkkkkkkl',
+    'kkhhkkkkkkkk',
+    'kkhhkkkkkkkk',
+    'kkkIIIIIIIII',
+    'kkkIIIIIIIII',
+    'kkkiiiiiiiii',
+    'kkkiiiiiiiii',
+    'kkkiiiiiiiii',
+    'kkkiiiiiiiii',
+    'kkkiiiiiihii',
+    'kkkiiiiiiiii',
+    '.kkiiiiiiii.',
+  ],
+  teary: [
+    '.llllllllll.',
+    'lkkkkkkkkkkl',
+    'kkhhkkkkkkkk',
+    'kkhhkkkkkkkk',
+    'kkkkkkkkkkkk',
+    'kkkkkkkkkkkk',
+    'kkkIIIIIIIII',
+    'kkkIIIIIIIII',
+    'kkkiiiiiiiii',
+    'kkkiiiiiiiii',
+    'kkkiiiiiihii',
+    'kkkbbbbbbbbb',
+    '.bbbbbbbbbb.',
+  ],
+};
+const EYES = eyeRig({ style: 'pix', chunk: 1, glow: 'all', extra: ['smug'], at: [-2.4, 15.5, 9.22], line: C.ink, iris: '#3ad0e0', irisDark: '#2456c8', pupilColor: '#06081a', map: { ...pixStates(EYE.open), ...EYE } });
 
 // ---------------------------------------------------------------- the model
 const RAYS = 9;

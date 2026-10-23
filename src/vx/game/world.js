@@ -71,6 +71,7 @@ export class VxWorld {
     const before = new Set(st.scene.children);
     const sc = mod.build({ mood });
     st.setWorld(sc.vox); st.setMood(mood); this.app.setPost(mood);
+    st.world.visible = !sc.hideVox;                 // low-poly scenes keep the voxels only for walking / navigation
     this.nav = new NavGrid(sc.vox); this.free = false; this.player = null; this.partner = null;
     for (const lp of sc.lamps || []) st.lamp(lp[0], lp[1], lp[2]);
     if (sc.setup) sc.setup(st);

@@ -80,19 +80,112 @@ const stringP = (p, w, h) => fill(p, w, h, () => C.string);
 const strapP = (p, w, h) => fill(p, w, h, (x, y) => (y === 0 ? '#c8a07a' : (x + y) % 4 === 0 ? '#6a3a1a' : '#8a5228'));
 
 // ---------------------------------------------------------------- face
-// calm, half-lidded toy-paint eyes: a heavy painted lid, a sap-green iris in a pale painted ring,
-// a big glossy pupil and a flat gloss bar, the way paint sits on moulded plastic
-const EYE = [
-  '..lllllll..',
-  '.lllllllll.',
-  'lIIIIIIIIIl',
-  'lcihhkkiicl',
-  'lcikkkkkicl',
-  '.lcikkkhcl.',
-  '..lcciccl..',
-  '...lllll...',
-];
-const EYES = eyeRig({ style: 'pix', chunk: 1, parent: 'body', at: [-2.3, 15.2, 3.72], line: C.ink, iris: '#46b058', irisDark: '#1c5a2c', pupilColor: '#0c140c', accent: '#c4f0ae', map: { open: EYE, ...pixStates(EYE, { lid: 2 }) } });
+// toy-paint eyes in the Cobblemon language: a heavy painted lid line, a flat white sclera block shaded
+// under the lid, a sap-green iris block (two flat tones) with a pupil block and a highlight bar; the
+// key emotions hand-drawn
+const EYE = {
+  open: [
+    '..lllllll..',
+    'lllllllllll',
+    'sssssIIIIss',
+    'wwwwwihkiww',
+    'wwwwwihkiww',
+    '.wwwwikkiw.',
+    '..wwwiiiiw.',
+    '....wwww...',
+  ],
+  angry: [
+    '...........',
+    'lll........',
+    'llllll.....',
+    'sssllllll..',
+    'wwwssIlllll',
+    '.wwwwihkIl.',
+    '..wwwiiiis.',
+    '....wwww...',
+  ],
+  sad: [
+    '...........',
+    '........lll',
+    '.....llllll',
+    '..llllllIss',
+    'lllllIhkiww',
+    '.lsssikkiw.',
+    '..wwwiiiiw.',
+    '....bbbb...',
+  ],
+  happy: [
+    '...........',
+    '...........',
+    '....lll....',
+    '...llIll...',
+    '..ll...ll..',
+    '.ll.....ll.',
+    'll.......ll',
+    '...........',
+  ],
+  closed: [
+    '...........',
+    '...........',
+    '...........',
+    '...........',
+    'lllllllllll',
+    '.lllllllll.',
+    '...........',
+    '...........',
+  ],
+  shock: [
+    '.lllllllll.',
+    'wwwwwwwwwww',
+    'wwwwwwwwwww',
+    'wwwwwwhkwww',
+    'wwwwwwkkwww',
+    'swwwwwwwwws',
+    '.sswwwwwss.',
+    '...sssss...',
+  ],
+  smug: [
+    '...........',
+    '...........',
+    '...........',
+    'lllllllllll',
+    'lllllllllll',
+    '.ssssIhkIs.',
+    '..wwwiiiiw.',
+    '....wwww...',
+  ],
+  sleepy: [
+    '...........',
+    '...........',
+    '...........',
+    '...........',
+    'lllllllllll',
+    '.lllllllll.',
+    '..sssIIIIs.',
+    '....wwww...',
+  ],
+  wide: [
+    '.lllllllll.',
+    'wwwwwwwwwww',
+    'wwwwwIIIIww',
+    'wwwwwihkiww',
+    'wwwwwikkiww',
+    'swwwwiiiiws',
+    '.sswwwwwss.',
+    '...sssss...',
+  ],
+  teary: [
+    '..lllllll..',
+    'lllllllllll',
+    'sssssIIIIss',
+    'wwwwwihkiww',
+    'wwwwwihkiww',
+    '.wwwwikkiw.',
+    '..bbbbbbbb.',
+    '....bbbb...',
+  ],
+};
+const EYES = eyeRig({ style: 'pix', chunk: 1, parent: 'body', extra: ['smug'], at: [-2.3, 15.2, 3.72], line: C.ink, iris: '#46b058', irisDark: '#1c5a2c', pupilColor: '#0c140c', map: { ...pixStates(EYE.open), ...EYE } });
 const MOUTH = mouthSet({
   serene: ['.........', '.........', '.l.....l.', '..lllll..', '.........'],
   sad: ['.........', '...lll...', '..l...l..', '.l.....l.', '.........'],
