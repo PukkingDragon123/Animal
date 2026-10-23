@@ -17,7 +17,7 @@ const APPS = [
   ['Dex', 'eye', '#7ce07a'], ['League', 'star', '#ff7ab8'], ['Friends', 'talk', '#a88aff'],
   ['Save', 'check', '#9fb3ff'], ['Settings', 'gear', '#c8c0d8'],
 ];
-const ELC = { pyro: '#ff7a3a', hydro: '#5ab8f0', bio: '#7ce07a', geo: '#d8a060', echo: '#c08aff', volto: '#ffe23a', cryo: '#9fefff', aero: '#a8f5c8', ecto: '#8a5aff', ferro: '#b8c4d0', astro: '#ffd98a', nucleo: '#8aff3a' };
+const ELC = { pyro: '#ff7a3a', hydro: '#5ab8f0', bio: '#7ce07a', geo: '#d8a060', echo: '#c08aff', volto: '#ffe23a', cryo: '#9fefff', aero: '#a8f5c8', ecto: '#8a5aff', ferro: '#b8c4d0', astro: '#ffd98a', nucleo: '#8aff3a', draco: '#9a6aff' };
 
 export class Phone {
   constructor(app) { this.app = app; this.open = false; this.t = 0; this.view = 'home'; this.sel = 0; this.scroll = 0; this.minis = new Map(); }

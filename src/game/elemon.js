@@ -179,6 +179,12 @@ export function addFriendship(mon, n) { mon.friendship = Math.max(0, Math.min(25
 // { more: [evA, evB] } (battle event A counted more often than B), { weather }, { holding: gearId }.
 const inHours = (h, [a, b]) => h != null && (a <= b ? h >= a && h < b : h >= a || h < b); // [20, 5] wraps past midnight
 const evCount = (mon, ev) => ensureProg(mon).ev[ev] || 0;
+// { squad: { of: [speciesIds], n } } — this one plus n − 1 others of those species owned (ctx.state: party + box).
+// With consume: true the others merge into the evolved one (state.js consumeSquad).
+export function squadCount(mon, sq, ctx = {}) {
+  const st = ctx.state; if (!st) return 0;
+  return [...(st.party || []), ...(st.box || [])].filter((m) => sq.of.includes(m.species)).length;
+}
 export function evolutionOptions(mon, ctx = {}) {
   const sp = SPECIES[mon.species];
   if (!sp.evolve) return [];
@@ -204,6 +210,7 @@ export function condMet(mon, c, ctx = {}) {
   if (c.activity && !condOk(mon, { activity: c.activity })) return false;
   if (c.more && !(evCount(mon, c.more[0]) > evCount(mon, c.more[1]))) return false;
   if (c.holding && !(mon.gear || []).includes(c.holding)) return false;
+  if (c.squad && squadCount(mon, c.squad, ctx) < c.squad.n) return false;
   if (c.defeat) for (const [sid, n] of Object.entries(c.defeat)) if ((k.defeat[sid] || 0) < n) return false;
   return true;
 }
@@ -229,6 +236,7 @@ export function condProgress(mon, c, ctx = {}) {
   if (c.battle) add(BATTLE_EVENTS[c.battle.ev] || c.battle.ev, Math.floor(evCount(mon, c.battle.ev)), c.battle.n || 1);
   if (c.activity) add(c.activity.id, ensureProg(mon).acts[c.activity.id] || 0, c.activity.n || 1);
   if (c.more) add(`${BATTLE_EVENTS[c.more[0]] || c.more[0]} > ${BATTLE_EVENTS[c.more[1]] || c.more[1]}`, evCount(mon, c.more[0]), evCount(mon, c.more[1]) + 1);
+  if (c.squad) add(`${c.squad.label || 'Squad'} in your team & box`, squadCount(mon, c.squad, ctx), c.squad.n);
   if (c.holding) out.push({ label: `Holding ${GEAR[c.holding] ? GEAR[c.holding].name : c.holding}`, ok: (mon.gear || []).includes(c.holding) });
   return out;
 }

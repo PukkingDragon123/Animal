@@ -13,18 +13,19 @@ export const ELEMENTS = {
   ferro: { name: 'Ferro', color: '#b8c4d0', accent: '#5a6470', icon: '⛓️', role: 'Iron', desc: 'Heavy armor, magnetism and brutal grabs.' },
   astro: { name: 'Astro', color: '#ffd98a', accent: '#6a8aff', icon: '✨', role: 'Cosmic', desc: 'Legendary star power.' },
   nucleo: { name: 'Nucleo', color: '#8aff3a', accent: '#203a10', icon: '☢️', role: 'Fission', desc: 'Radiation that eats away at everything.' },
+  draco: { name: 'Draco', color: '#7a3aff', accent: '#ff3a5a', icon: '🐉', role: 'Dominance', desc: 'Draconic might. Roars that break guards, scales that shrug off status. Rare and proud.' },
 };
 export const STARTER_ELEMENTS = ['pyro', 'hydro', 'bio', 'geo', 'echo'];
 
 const STRONG = {
   hydro: ['pyro', 'geo'], pyro: ['bio', 'cryo', 'ferro'], bio: ['geo', 'hydro'], geo: ['echo', 'volto', 'pyro'], echo: ['hydro', 'ecto'],
-  volto: ['hydro', 'aero', 'ferro'], cryo: ['bio', 'aero'], aero: ['bio', 'echo'], ecto: ['ecto', 'echo'], ferro: ['cryo', 'geo'],
-  astro: ['ecto', 'nucleo'], nucleo: ['bio', 'geo', 'ferro'],
+  volto: ['hydro', 'aero', 'ferro'], cryo: ['bio', 'aero', 'draco'], aero: ['bio', 'echo'], ecto: ['ecto', 'echo'], ferro: ['cryo', 'geo'],
+  astro: ['ecto', 'nucleo', 'draco'], nucleo: ['bio', 'geo', 'ferro'], draco: ['draco', 'echo', 'aero'],
 };
 const WEAK = { // attacker → defenders that resist
   hydro: ['bio', 'hydro'], pyro: ['hydro', 'geo', 'pyro'], bio: ['pyro', 'aero', 'ferro'], geo: ['bio', 'aero'], echo: ['geo', 'ferro'],
   volto: ['geo', 'volto'], cryo: ['pyro', 'ferro', 'cryo'], aero: ['volto', 'ferro'], ecto: ['astro'], ferro: ['pyro', 'volto', 'ferro'],
-  astro: [], nucleo: ['astro'],
+  astro: [], nucleo: ['astro'], draco: ['ferro'],
 };
 export function effectiveness(atk, def) {
   if (!atk || !def) return 1;
@@ -73,11 +74,12 @@ export const REACTIONS = {
   'echo+ecto': { id: 'haunt', name: 'HAUNT', color: '#c08aff', fx: [{ status: { s: 'confuse', dur: 2.5 } }], sfx: 'ecto' },
   'ferro+volto': { id: 'magnetize', name: 'MAGNETIZE', color: '#b0c8ff', fx: [{ pull: { r: 4.5 } }, { status: { s: 'stun', dur: 0.6, aoe: 2 } }], sfx: 'ferro' },
 };
-// Ecto/Astro/Nucleo react with *any* other aura.
+// Ecto/Astro/Nucleo/Draco react with *any* other aura.
 export const WILD_REACTIONS = {
   ecto: { id: 'curse', name: 'CURSE', color: '#9a6aff', fx: [{ status: { s: 'curse', dur: 5, k: 0.2 } }], sfx: 'ecto' },
   astro: { id: 'starfall', name: 'STARFALL', color: '#ffe8a0', fx: [{ burst: { r: 3, k: 2.0, knock: 3 } }], sfx: 'astro' },
   nucleo: { id: 'fission', name: 'FISSION', color: '#9aff4a', fx: [{ burst: { r: 2.6, k: 1.8, knock: 4 } }, { dot: { s: 'radiation', dur: 5, k: 0.4 } }], sfx: 'nucleo' },
+  draco: { id: 'dragonroar', name: 'DRAGON ROAR', color: '#a07aff', fx: [{ mult: { k: 1.5 } }, { status: { s: 'defdown', dur: 4, k: 0.25 } }], sfx: 'pyro_boom' },
 };
 export function reactionFor(aura, incoming) {
   if (!aura || !incoming || aura === incoming) return null;

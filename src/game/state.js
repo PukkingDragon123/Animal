@@ -70,6 +70,14 @@ export function equipGearItem(s, mon, id) {
   addItem(s, id, -1); if (r.off) addItem(s, r.off, 1);
   return true;
 }
+// a squad evolution that merges the squad: the other n − 1 members (box first, lowest level first) leave
+export function consumeSquad(s, mon, sq) {
+  if (!sq || !sq.consume) return [];
+  const pool = [...s.box.map((m) => ['box', m]), ...s.party.map((m) => ['party', m])].filter(([, m]) => m !== mon && sq.of.includes(m.species)).sort((a, b) => (a[0] === b[0] ? a[1].level - b[1].level : a[0] === 'box' ? -1 : 1));
+  const gone = pool.slice(0, sq.n - 1).map(([, m]) => m);
+  s.box = s.box.filter((m) => !gone.includes(m)); s.party = s.party.filter((m) => !gone.includes(m));
+  return gone;
+}
 export function unequipGearItem(s, mon, id) { if (!unequipGear(mon, id)) return false; addItem(s, id, 1); return true; }
 // Use a food/boost item on an Elemon outside battle.
 export function useItemOn(s, id, mon) {

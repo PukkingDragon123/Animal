@@ -18,7 +18,7 @@ import { weatherOf } from '../../game/time.js';
 import * as S from '../../game/state.js';
 
 const ELC = (e) => (ELEMENTS[e] && ELEMENTS[e].color) || '#ffffff';
-const HIT_FX = { pyro: 'fire', hydro: 'splash', bio: 'leaf', volto: 'bolt', geo: 'rock', echo: 'note', ecto: 'ghostfire', cryo: 'sparkle', ferro: 'shard', aero: 'dust', astro: 'star', nucleo: 'ember' };
+const HIT_FX = { pyro: 'fire', hydro: 'splash', bio: 'leaf', volto: 'bolt', geo: 'rock', echo: 'note', ecto: 'ghostfire', cryo: 'sparkle', ferro: 'shard', aero: 'dust', astro: 'star', nucleo: 'ember', draco: 'ghostfire' };
 const MELEE = new Set(['attack', 'bite', 'slash', 'peck', 'punch', 'kick', 'ram', 'bigHit', 'slam', 'parry', 'grab', 'dodge']);
 const _v = new THREE.Vector3(), _r = new THREE.Raycaster(), _p = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), _n = new THREE.Vector2();
 
@@ -297,10 +297,12 @@ export class Battle3D {
       if (this.spec.money) { s.money += this.spec.money; out.push(`+$${this.spec.money}`); }
     } else if (!won) for (const m of s.party) if (!m.hp) m.hp = 0.15;
     // evolutions whose conditions are now met (battle events, level, time, weather, held gear)
-    const ctx = { location: this.app.world.id, hour: s.time && s.time.hour, weather: s.time ? weatherOf(s.time) : null };
-    for (const mon of s.party) {
+    const ctx = { location: this.app.world.id, hour: s.time && s.time.hour, weather: s.time ? weatherOf(s.time) : null, state: s };
+    for (const mon of [...s.party]) {
+      if (!s.party.includes(mon)) continue;
       const opts = evolutionOptions(mon, ctx); if (!opts.length) continue;
       const from = SPECIES[mon.species].name; evolve(mon, opts[0].to);
+      if (opts[0].cond.squad) S.consumeSquad(s, mon, opts[0].cond.squad);
       out.push(`${from} evolved into ${SPECIES[mon.species].name}!`);
     }
     this.app.save();

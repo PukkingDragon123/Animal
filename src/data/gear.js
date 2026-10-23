@@ -17,6 +17,7 @@ export const GEAR = {
   whammy_bar: { name: 'Whammy Bar', icon: '〰️', price: 1600, mods: { critChance: 0.05 }, desc: '+5% critical-hit chance.' },
   aviator_shades: { name: 'Aviator Shades', icon: '🕶️', price: 1300, mods: { immune: ['blind'] }, desc: 'Immune to blindness. Too cool for flashes.' },
   earplugs: { name: 'Stage Earplugs', icon: '🎧', price: 1300, mods: { immune: ['confuse'] }, desc: 'Immune to confusion. Can\'t hear the heckling.' },
+  greasepaint_stone: { name: 'Greasepaint Stone', icon: '🖤', price: 3200, stats: { elm: 0.04 }, desc: '+4% Element. A black stone streaked with white star-paint. A Draco chimera that holds it splits into one of four masked legends.' },
   egg: { name: 'Egg', icon: '🥚', price: 800, stats: { hp: 0.05 }, desc: '+5% Health. I am the eggman… a Pepperhorn holding it evolves differently.' },
 };
 export const GEAR_IDS = Object.keys(GEAR);

@@ -22,7 +22,7 @@ const NEW = ['pidgun', 'jungeon', 'paradove', 'trashcoon', 'dynacoon', 'hellcoon
   'woodbub', 'hartbox', 'utero', 'grillfin', 'astroshark', 'sandmander', 'justatue', 'creepetal', 'plastree', 'weirdfin', 'snarlpup', 'wonderwoof', 'supernoir', 'coolpillar',
   'pupalace', 'killaqueen', 'bohemonarch', 'zapkit', 'thundersabre', 'zeppra', 'stairgasus', 'rollick', 'neverdecker', 'johnlemon', 'starrfish', 'yokat', 'blackvolt', 'prismoon',
   'beatlet', 'pepperhorn', 'abbeyhorn', 'walrusk', 'wheezowl', 'mopzart', 'dreadrake', 'barkorious_forced'];
-const COND_KEYS = new Set(['level', 'wins', 'friendship', 'precise', 'healed', 'blocked', 'beats', 'charged', 'teamCombos', 'dojo', 'foods', 'location', 'hours', 'defeat', 'battle', 'activity', 'more', 'weather', 'holding']);
+const COND_KEYS = new Set(['level', 'wins', 'friendship', 'precise', 'healed', 'blocked', 'beats', 'charged', 'teamCombos', 'dojo', 'foods', 'location', 'hours', 'defeat', 'battle', 'activity', 'more', 'weather', 'holding', 'squad']);
 const snap = (sp, lv = 10, extra = {}, opts = {}) => { const m = createElemon(sp, Object.assign({ level: lv, form: 'm', look: 1 }, opts)); Object.assign(m.skills, extra); return battleSnapshot(m); };
 const duel = (a, b, rules = {}, more = {}) => createBattle({ seed: more.seed ?? 5, rules: Object.assign({ orders: false, switchTime: 0, bond: false }, rules),
   sides: [{ trainers: [{ id: 'p', name: 'P', ai: more.pai === undefined ? 'normal' : more.pai, isPlayer: !!more.player, team: Array.isArray(a) ? a : [a] }, ...(more.allies || [])] },
