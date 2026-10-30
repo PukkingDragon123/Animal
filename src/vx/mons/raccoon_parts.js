@@ -6,7 +6,7 @@
 import * as THREE from '../../../vendor/three.module.js';
 import { defineFx } from '../fx.js';
 import { poly, ramp, shift, mix, h2 } from './kit.js';
-import { eyeRig } from './eyes.js';
+import { eyeRig, chunky } from './eyes.js';
 import { blackGold } from '../model.js';
 
 export { shift, mix, h2, poly, ramp };
@@ -281,7 +281,7 @@ export function maskEyes(o, light = '#e2dad0', glow = false) {
 const BOLT = ['..##', '.##.', '####', '.##.', '##..'];
 export function tailP(F, s0 = 0, o = {}) {
   const per = o.per || 13, dk = o.dark || 7, tipAt = o.tipAt ?? 1e9;
-  return (p, w, h, face, cube) => {
+  return chunky((p, w, h, face, cube) => {
     const L = Math.round(cube.s[2] * 3);
     const map = (x, y) => (face === 'east' ? [x, y] : face === 'west' ? [L - 1 - x, y] : face === 'up' ? [h - 1 - y, x] : face === 'down' ? [y, x] : face === 'south' ? [0, x] : [L - 1, x]);
     const across = face === 'east' || face === 'west' ? h : w;
@@ -309,7 +309,7 @@ export function tailP(F, s0 = 0, o = {}) {
         }));
       }
     }
-  };
+  }, 1);
 }
 
 // ---------------------------------------------------------------- paws

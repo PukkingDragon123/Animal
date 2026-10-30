@@ -9,6 +9,7 @@
 //   · bones keep a rest pose; animations add rotations/offsets every frame.
 // Facing: the model looks toward +z (south, toward the default camera).
 import * as THREE from '../../vendor/three.module.js';
+import { ANIMAL_EYES, animalEye, eyeIds } from './mons/animal_eyes.js';
 import { Pen, shift, mix, newSurf } from '../px/paint.js';
 
 export const U = 1 / 16;               // world size of one model unit
@@ -86,10 +87,15 @@ export const PAINT = {
 
 // ---------------------------------------------------------------- building
 // def: { name, ppu, bones: [{ name, parent, pivot, rot, cubes: [{ o, s, inflate, tex, faces, plane, glow, rot, pivot, mirror, hide }] }] }
+// texels per model unit = def.ppu × TEX_RES: procedural painters paint finer; hand-drawn pixel maps keep
+// their size through chunky() (eyes.js), which scales by the Pen's res
+export const TEX_RES = 2;
 const cache = new Map();
 export function compile(def) {
   if (cache.has(def)) return cache.get(def);
-  const ppu = def.ppu || 4;
+  const res = def.res ?? TEX_RES, ppu = (def.ppu || 4) * res;
+  // animal-accurate eyes (mons/animal_eyes.js) replace the painters of the cubes in the `eyes` face slot
+  const AE = ANIMAL_EYES[def.name], eyeSt = AE ? eyeIds(def) : null, eyeTex = new Map();
   // 1) box-UV islands for every cube, shelf-packed
   const items = [];
   for (const b of def.bones) for (const c of b.cubes || []) {
@@ -114,8 +120,9 @@ export function compile(def) {
     it.rects = faceRects;
     for (const [face, r] of Object.entries(faceRects)) {
       if (r[2] <= 0 || r[3] <= 0) continue;
-      const fn = (c.faces && (c.faces[face] || (face === 'plane' && c.faces.south))) || tex;
-      const s = newSurf(r[2], r[3]), p = new Pen(s, seed++);
+      let fn = (c.faces && (c.faces[face] || (face === 'plane' && c.faces.south))) || tex;
+      if (eyeSt && c.id && eyeSt.has(c.id) && c.plane) { const st = eyeSt.get(c.id); if (!eyeTex.has(st)) eyeTex.set(st, animalEye(AE[0], st, AE[1])); fn = eyeTex.get(st); }
+      const s = newSurf(r[2], r[3]), p = new Pen(s, seed++); p.res = res;
       if (typeof fn === 'function') fn(p, r[2], r[3], face, c);
       else if (typeof fn === 'string') PAINT.fill(fn)(p, r[2], r[3], face, c);
       for (let j = 0; j < r[3]; j++) for (let i = 0; i < r[2]; i++) atlas.data[(r[1] + j) * W + r[0] + i] = s.data[j * r[2] + i];

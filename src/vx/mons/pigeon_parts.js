@@ -488,7 +488,7 @@ const BUD = ['.rr.', 'rRrr', '.rr.', '..g.'];
 export function roseBandanaP(o = {}) {
   const K = o.cols || ['#5a5268', '#3a3446', '#28232f', '#1c1822', '#121016'], R = o.bud || C.rose;
   const put = (p, x, y) => BUD.forEach((row, j) => [...row].forEach((ch, i) => { if (ch === 'r') p.px(x + i, y + j, j === 0 && i === 1 ? R[1] : R[2]); else if (ch === 'R') p.px(x + i, y + j, R[4]); else if (ch === 'g') p.px(x + i, y + j, C.leaf[2]); }));
-  return (p, w, h, face) => {
+  return chunky((p, w, h, face) => {
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
       const t = h > 1 ? y / (h - 1) : 0.5;
       let k = face === 'up' ? 1 : face === 'down' ? 4 : t < 0.3 ? 1 : t < 0.8 ? 2 : 3;
@@ -499,7 +499,7 @@ export function roseBandanaP(o = {}) {
     if (face === 'up' || face === 'down') return;
     if (h >= 3) for (let x = 0; x < w; x++) p.px(x, h - 1, R[3]);
     if (h >= 4) for (let x = 1 + (o.phase || 0); x + 3 < w; x += 6) put(p, x, 0);
-  };
+  }, 1);
 }
 
 // ---------------------------------------------------------------- the six-shooter

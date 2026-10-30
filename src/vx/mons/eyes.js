@@ -144,9 +144,10 @@ function lid(p, w, h, o, y0, y1) {
   stroke(p, w, h, [[xa, f(xa)], [xb, f(xb)]], o.line || INK, t);
 }
 // Cobblemon faces are low-res: paint on a coarse grid (chunk texels per pixel)
-export function chunky(fn, k = 2) {
-  if (k <= 1) return fn;
+export function chunky(fn, k0 = 2) {
   return (p, w, h, ...a) => {
+    const k = Math.max(1, Math.round(k0 * (p.res || 1)));
+    if (k <= 1) return fn(p, w, h, ...a);
     const W = Math.max(1, Math.round(w / k)), H = Math.max(1, Math.round(h / k)), ox = Math.floor((w - W * k) / 2), oy = Math.floor((h - H * k) / 2);
     const q = { px(x, y, c) { if (x < 0 || y < 0 || x >= W || y >= H) return q; for (let i = 0; i < k; i++) for (let j = 0; j < k; j++) p.px(ox + x * k + i, oy + y * k + j, c); return q; } };
     fn(q, W, H, ...a);
