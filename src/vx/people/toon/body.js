@@ -168,10 +168,10 @@ function paint(spec, D, L) {
   const em = (u, y) => {
     const x = ((u - 0.25) * TAU * (D.tw.chest + D.td.chest) * 0.5) / emR, yy = (y - emY) / emR; if (Math.abs(x) > 1.3 || Math.abs(yy) > 1.3) return false;
     let d;
-    if (T.emblem === 'flame') { const w = 0.62 * Math.sqrt(Math.max(0, 1 - Math.pow((yy + 0.25) / 1.05, 2))) * (1 - Math.max(0, yy) * 0.55); d = Math.abs(x) - w; if (yy > 0.4) d = Math.max(d, Math.abs(x - (yy - 0.4) * 0.5) - 0.25 * (1.3 - yy)); }
-    else if (T.emblem === 'heart') { const a = x * 1.1, b = yy * 1.1 + 0.25; d = Math.pow(a * a + b * b - 0.6, 3) - a * a * b * b * b; return d < 0 && d > -0.08; }
-    else return inStar(x, yy, 1) && !inStar(x, yy, 0.62);
-    return d < 0 && d > -0.32;
+    if (T.emblem === 'flame') { const yv = (yy + 1) / 2.2, w = 0.75 * Math.sin(Math.PI * Math.min(1, yv)) * (1 - yv * 0.45); d = yv < 0 || yv > 1 ? 1 : Math.abs(x + Math.sin(yv * 5) * 0.12 * yv) - w; }
+    else if (T.emblem === 'heart') { const a = x * 1.1, b = yy * 1.1 + 0.25; d = Math.pow(a * a + b * b - 0.6, 3) - a * a * b * b * b; return d < 0; }
+    else return inStar(x, yy, 1);
+    return d < 0;
   };
   // ---- torso: u around (0 left side, .25 front, .5 right, .75 back), t: crotch → torsoTop
   const [tx, ty, tw, th] = REG.torso, y0 = D.crotch, y1 = L.torsoTop;
