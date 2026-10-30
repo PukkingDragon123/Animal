@@ -315,5 +315,6 @@ export class Battle3D {
     this.app.stage.scene.remove(this.grp);
     w.setCam(this.prevCam);
     this.active = false; this.st = null; this.units = new Map();
+    if (this.app.world && this.app.world.locAudio) this.app.world.locAudio();   // back to the place's own music
   }
 }

@@ -218,10 +218,11 @@ export class PixelUI {
   }
   closeDialog(v) { const D = this.dialog; this.dialog = null; this.keys = {}; D.resolve(v); }
   // ------------------------------------------------------------------ toasts
-  toast(str, o = {}) { this.toasts.push({ str, t: 0, dur: o.dur || 2.2, color: o.color || T.amber, icon: o.icon }); }
+  toast(str, o = {}) { if (this.toasts.some((t) => t.str === str)) return; this.toasts.push({ str, t: 0, dur: o.dur || 2.2, color: o.color || T.amber, icon: o.icon }); }
   drawToasts() {
-    let y = 8;
+    let y = 8, n = 0;
     for (const t of this.toasts) {
+      if (n++ >= 3) break;            // at most three at a time; the rest wait their turn
       t.t += 1 / 60;
       const a = Math.min(1, t.t * 6, (t.dur - t.t) * 4);
       if (a <= 0) continue;

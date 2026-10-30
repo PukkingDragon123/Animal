@@ -16,6 +16,7 @@
 //           sfx (+ambience) ──────┤      (music & sfx each own a convolution reverb)
 //           voice ────────────────┘
 import { kitFor, TrackPlayer, TRACKS, STINGERS, stingerLength, curve, rand, rr, mtof, fxRiser, fxBoom, fxShimmer } from './music.js';
+import { SampleBank, BGM, BEDS } from './samples.js';
 
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const DEFAULT_VOL = { master: 0.9, music: 0.6, sfx: 0.9, voice: 0.8, ambience: 0.8 };
@@ -109,10 +110,13 @@ export class AudioEngine {
     this.musicRevIn = reverb(2.4, 0.45, this.musicBus, 0.55);
     this.musicRevDuck = g(1); this.musicRevDuck.connect(this.musicRevIn);
     this.sfxRevIn = reverb(1.3, 0.7, this.sfxBus, 0.5);
+    // recorded music / ambience beds / sampled sfx (assets/audio)
+    if (this.opts.samples !== false) this.samples = new SampleBank(this);
     // apply anything requested before unlock
     const p = this._pending;
     if (p.music !== undefined) { const id = p.music; p.music = undefined; this.music(id, { fade: p.fade }); }
     if (p.amb !== undefined) { const id = p.amb; p.amb = undefined; this.ambience(id); }
+    if (p.bed !== undefined) { const id = p.bed; p.bed = undefined; this.bed(id); }
   }
 
   // ---- mix -----------------------------------------------------------------
@@ -193,7 +197,15 @@ export class AudioEngine {
   get tracks() { return Object.keys(TRACKS); }
   get stingerIds() { return Object.keys(STINGERS); }
   music(id, { fade = 1.2, intensity, restart = false } = {}) {
-    if (id != null && !TRACKS[id]) return false;
+    if (id != null && !TRACKS[id] && !BGM[id]) return false;
+    if (BGM[id]) {
+      // a recorded track: the procedural one fades out
+      if (!this.ctx) { this._pending.music = id; this._pending.fade = fade; return true; }
+      if (this.track) { this.track.fadeOut(this.ctx.currentTime, fade); this.fading.push(this.track); this.track = null; }
+      this.trackId = id; if (this.samples) this.samples.bgm(id);
+      return true;
+    }
+    if (this.samples) this.samples.bgm(null);
     if (typeof intensity === 'number') this.intensity = clamp(intensity, 0, 1);
     if (!this.ctx) { this._pending.music = id; this._pending.fade = fade; return true; }
     if (id === this.trackId && (this.track || id == null) && !restart) return true;
@@ -221,7 +233,7 @@ export class AudioEngine {
     return len;
   }
   stopAll(fade = 0.4) {
-    this.music(null, { fade }); this.ambience(null, { fade });
+    this.music(null, { fade }); this.ambience(null, { fade }); this.bed(null);
     if (this.ctx) for (const s of this.stingers) s.fadeOut(this.ctx.currentTime, 0.2);
   }
 
@@ -229,7 +241,10 @@ export class AudioEngine {
   get sfxNames() { return Object.keys(SFX); }
   sfx(name, { vol = 1, pitch = 1, pan = 0 } = {}) {
     if (!this.ctx) return false;
-    const fn = SFX[name]; if (!fn) return false;
+    const sm = this.samples ? this.samples.play(name, { vol, pitch, pan }) : false;
+    if (sm === true) return true;
+    const fn = SFX[name]; if (!fn) return !!sm;
+    if (sm === 'layer') vol *= 0.6;
     const ctx = this.ctx, now = ctx.currentTime, t = now + 0.004;
     const last = this._sfxLast.get(name);
     if (last != null && t - last < 0.028) return false; // same sound same frame → once
@@ -275,6 +290,10 @@ export class AudioEngine {
     for (const c of String(text)) { this.voice(p, c, t); t += /[.,!?;:…]/.test(c) ? step * 4 : step; }
     return t - t0 + 0.15;
   }
+
+  // ---- recorded ambience beds (birds, street, cicadas) and jingles -----------------
+  bed(id) { if (id != null && !BEDS[id]) return false; if (!this.ctx) { this._pending.bed = id; return true; } if (this.samples) this.samples.bed(id); return true; }
+  jingle(id) { if (this.samples) this.samples.jingle(id); }
 
   // ---- ambience ------------------------------------------------------------------
   get ambienceIds() { return Object.keys(AMB); }

@@ -3,6 +3,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { ok, section, done } from './_h.js';
+import { BGM } from '../src/audio/samples.js';
 import { SPECIES } from '../src/data/species.js';
 import { renderFrame, CLIPS } from '../src/px/pixmon.js';
 import { SFX_NAMES, TRACK_IDS, STINGER_IDS, AMBIENCES } from '../src/audio/audio.js';
@@ -40,7 +41,7 @@ for (const [, src] of allSrc) {
   for (const m of src.matchAll(/music: '([a-z_0-9]+)'/g)) used.music.add(m[1]);
 }
 for (const id of used.sfx) ok(`sfx ${id}`, SFX_NAMES.includes(id));
-for (const id of used.music) ok(`music ${id}`, TRACK_IDS.includes(id));
+for (const id of used.music) ok(`music ${id}`, TRACK_IDS.includes(id) || !!BGM[id]);   // procedural track or recorded BGM
 for (const id of used.stinger) ok(`stinger ${id}`, STINGER_IDS.includes(id));
 for (const [, src] of allSrc) for (const m of src.matchAll(/ambience: '([a-z_0-9]+)'/g)) ok(`ambience ${m[1]}`, AMBIENCES.includes(m[1]));
 

@@ -51,11 +51,35 @@ export class Actor {
       else { p.x += (dx / d) * stepL; p.z += (dz / d) * stepL; this.targetYaw = Math.atan2(dx, dz); }
       p.y = this.w.ground(p.x, p.z, p.y);
     }
+    // footsteps for the player (surface per location)
+    if (this.path && this.kind === 'person' && this.w.player === this) {
+      this.stepD = (this.stepD || 0) + this.pathSpeed * dt;
+      const stride = this.pathSpeed > 2 ? 0.55 : 0.4;
+      if (this.stepD > stride) { this.stepD = 0; const au = this.w.app && this.w.app.audio; if (au && au.sfx) au.sfx(STEP[this.w.id] || 'step_concrete', { vol: 0.8, pitch: 0.95 + Math.random() * 0.1 }); }
+    }
     let dy = this.targetYaw - this.yaw; while (dy > Math.PI) dy -= Math.PI * 2; while (dy < -Math.PI) dy += Math.PI * 2;
     this.yaw += dy * (1 - Math.exp(-dt * 9)); this.g.rotation.y = this.yaw;
     this.anim.update(dt, { fx: ctx.fx, look: this.look ? (this.look.g ? this.look.headPos(_v) : this.look) : ctx.look });
   }
 }
+
+const STEP = { apartment: 'step_wood', dojo: 'step_wood', pier39: 'step_wood', tram: 'step_wood', alamo: 'step_grass', lab: 'step_carpet' };
+// ambient chatter: little speech bubbles over the locals while you roam
+const CHATTER = {
+  any: ['Did you catch the League replay last night?', 'My Pidgun stole my fries AGAIN.', 'Chili sauce sold out?! Again?!', 'Fog\'s rolling in early today.', 'Is that a Chilichick? So cute!',
+    'I\'m training for the League. For real this time.', 'Team Metallica tagged the wall again…', 'Have you tried the gear shop?', 'Boba first, battles later.', 'Who\'s that rookie with the angry chick?',
+    'My Tokon only listens to vinyl.', 'Rent is SO high in this city.', 'Lunch break! Finally.', 'Hehe, nice partner!'],
+  chinatown: ['Fresh dumplings! Hot hot hot!', 'Mr. Wong is still mad about that hot sauce.', 'Lanterns go up tonight!'],
+  pier39: ['The sea lions are loud today.', 'Barkorious was here last night!', 'Clam chowder in a bread bowl. Peak.'],
+  dojo: ['Breathe in… strike!', 'Master Lau never misses tea time.', 'Again! From the top!'],
+  tram: ['Hold on tight!', 'Next stop: Pier 39!', 'Ding ding!'],
+  arena: ['Who\'s up next?', 'That combo was nasty!', 'The street league is heating up!'],
+  alamo: ['Best view of the Painted Ladies.', 'Perfect picnic weather.', 'My Tokon loves this hill.'],
+};
+const LOC_AUDIO = {
+  chinatown: { music: 'senbazuru', bed: 'street' }, alamo: { music: 'lemon', bed: 'birds' }, apartment: { music: 'lofi' }, dojo: { music: 'senbazuru', bed: 'birds' },
+  tram: { music: 'city', bed: 'street' }, arena: { music: 'party', bed: 'street' }, pier39: { music: 'vibes', bed: 'birds' }, lab: { music: 'lofi2' },
+};
 
 // ---------------------------------------------------------------- the world
 export class VxWorld {
@@ -81,6 +105,7 @@ export class VxWorld {
     if (slots && slots.length) { const P = await import('../posters.js'); slots.forEach((sl, i) => P.posterDecal(st, { ...sl, poster: P.posterFor(sl, i, id) })); }
     this.extra = st.scene.children.filter((c) => !before.has(c));
     this.sc = sc; this.loc = L; this.id = id; this.mood = mood;
+    this.locAudio();
     this.shots = Object.assign({}, Object.fromEntries((sc.shots || []).map((s) => [s.name, s])), L.shots || {});
     const v = (o.shot && this.shots[o.shot]) || L.view || sc.view;
     this.setCam(v);
@@ -171,6 +196,13 @@ export class VxWorld {
     return a;
   }
   actor(id) { return this.actors.get(id); }
+  // each place has its own recorded music and ambience bed (night swaps the bed for cicadas)
+  locAudio() {
+    const au = this.app && this.app.audio, A = LOC_AUDIO[this.id] || {}, L = this.loc || {};
+    if (!au || !au.music) return;
+    au.music(L.music || A.music || 'lofi', { fade: 1.5 });
+    if (au.bed) au.bed(this.mood === 'night' ? 'cicadas' : L.bed || A.bed || null);
+  }
   // ambient life: pigeons strutting and pecking, passers-by walking the sidewalks.
   // life: [{ kind: 'mon', species: ['pidgun', 'pidrose'], n, area: [x0, z0, x1, z1] } | { kind: 'person', n, lanes: [[[x, z], …], …] }]
   async spawnLife(list = []) {
@@ -215,6 +247,7 @@ export class VxWorld {
     if (!this.ready) return;
     this.st.time += dt;
     const look = this.st.cam.position;
+    this.thinkChatter(dt);
     for (const a of [...this.actors.values()]) { if (a.life) { if (a.life.walker && !a.path && !a.started) { a.started = true; a.walkTo(a.life.lane.slice(1)); } else this.thinkLife(a, dt); } a.update(dt, { fx: this.fx, look }); }
     this.fx.update(dt);
     this.thinkFollow(dt);
@@ -229,11 +262,40 @@ export class VxWorld {
     const dr = this.drift * Math.sin(this.st.time * 0.21) * 0.6;            // a slow, breathing camera
     this.st.look([c.target.x, c.target.y, c.target.z], c.dist, c.yaw + dr, c.pitch + Math.sin(this.st.time * 0.17) * 0.3 * this.drift);
   }
+  thinkChatter(dt) {
+    const B = this.bubbles || (this.bubbles = []);
+    for (let i = B.length - 1; i >= 0; i--) {
+      const b = B[i], n0 = Math.floor(b.n); b.t += dt; b.n = Math.min(b.text.length, b.n + dt * 28);
+      const au = this.app && this.app.audio;
+      for (let k = n0; k < Math.floor(b.n); k++) if (au && au.voice && k % 2 === 0) au.voice(b.voice, b.text[k]);
+      if (b.t > b.dur || !this.actors.has(b.a.id)) B.splice(i, 1);
+    }
+    if (this.app.story.busy || this.app.story.title || !this.free) return;
+    this.chatT = (this.chatT ?? 3) - dt;
+    if (this.chatT > 0 || B.length >= 2) return;
+    this.chatT = 5 + Math.random() * 7;
+    const cands = [...this.actors.values()].filter((a) => a.kind === 'person' && a !== this.player && !B.some((b) => b.a === a) && this.project(a.headPos()).vis);
+    if (!cands.length) return;
+    const a = cands[Math.floor(Math.random() * cands.length)], pool = [...(CHATTER[this.id] || []), ...(CHATTER[this.id] || []), ...CHATTER.any];
+    const text = pool[Math.floor(Math.random() * pool.length)];
+    B.push({ a, text, t: 0, n: 0, dur: 2.2 + text.length * 0.06, voice: ['friend', 'kid', 'elder', 'rival', 'punk'][a.id.length % 5] });
+    if (a.anim && a.anim.face) a.anim.face(Math.random() < 0.6 ? 'smile' : 'happy', 2);
+    if (a.anim && a.anim.clips && a.anim.clips.talk && !a.path) a.play('talk', { restart: true });
+  }
   // world position → UI pixel coordinates
   project(p) { const v = _v.set(...(Array.isArray(p) ? p : [p.x, p.y, p.z])).project(this.st.cam); return { x: ((v.x + 1) / 2) * this.app.vw, y: ((1 - v.y) / 2) * this.app.vh, vis: v.z < 1 && Math.abs(v.x) < 1.1 && Math.abs(v.y) < 1.1 }; }
   // hotspot markers you can tap (only when no dialogue / cutscene holds the screen)
   drawUI(ui) {
-    if (!this.ready || this.app.story.busy || this.app.story.title || ui.dialog || this.app.phone.open) return;
+    if (!this.ready || this.app.story.title || ui.dialog || this.app.phone.open) return;
+    for (const b of this.bubbles || []) {
+      const s = this.project(b.a.headPos()); if (!s.vis) continue;
+      const str = b.text.slice(0, Math.max(1, Math.floor(b.n))), w = Math.min(160, ui.tw(b.text) + 10), x = Math.round(s.x - w / 2), y = Math.round(s.y - 26 - Math.min(1, b.t * 6) * 2);
+      const fade = b.t > b.dur - 0.3 ? 0.4 : 1;
+      if (fade > 0.5) ui.panel(x, y, w, 14, { shadow: true });
+      ui.text(str, x + 5, y + 3, T.text);
+      ui.px(Math.round(s.x), y + 14, T.text); ui.px(Math.round(s.x) - 1, y + 14, T.text); ui.px(Math.round(s.x), y + 15, T.text);
+    }
+    if (this.app.story.busy) return;
     for (const h of this.hotspots) {
       if (h.when && !h.when(this.app)) continue;
       const s = this.project(h.at); if (!s.vis) continue;

@@ -50,6 +50,7 @@ export class Story {
     const cc = await w.addMon('t-cc', 'chilichick', w.loc.spots.start || [v.target[0], v.target[2] + 2, 0], { clip: 'sleep' });
     void cc;
     this.title = { t: 0, hasSave: S.hasSave() };
+    if (app.audio.music) app.audio.music('menu', { fade: 0.5 });
     const T_ = this.title, artP = import('./keyart.js').then((m) => m.showKeyArt(app)).then((a) => { T_.art = a; return a; }).catch((e) => { console.warn('key art', e); return null; });
     await app.fade(0, 900);
     const pick = await new Promise((r) => { this.title.pick = r; });
