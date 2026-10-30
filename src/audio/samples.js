@@ -2,7 +2,8 @@
 // looping background music per location, ambience beds (birds, street, cicadas), and sampled sound
 // effects that replace or layer over the synthesised ones. Everything is fetched lazily after the
 // first user gesture and goes through the engine's buses, so volumes, ducking and the limiter apply.
-const BASE = new URL('../../assets/audio/', import.meta.url).href;
+// a bundled build sets globalThis.TOKON_AUDIO_BASE (its files sit beside the page)
+const BASE = globalThis.TOKON_AUDIO_BASE || new URL('../../assets/audio/', import.meta.url).href;
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 
 // background music: id → file (Kevin MacLeod CC BY 4.0 / CC0 lo-fi)

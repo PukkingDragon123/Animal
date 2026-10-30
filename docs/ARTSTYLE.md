@@ -2,16 +2,17 @@
 
 The look is low-poly anime with detailed painted textures, in the spirit of late PS2/PSP anime games.
 
-## People: `src/vx/people/anime.js`
-- **Body:** tall, stylized figures made of faceted lofted tubes (`tube()`) and hair locks (`lock()`), a few hundred triangles each. Proportions are anime: long legs, chunky sneakers, oversized hoodies.
-- **Textures:** hand-painted with Canvas2D and smooth-filtered: soft baked shading, folds, seams, ribbing and prints.
-- **Face:** a front-projected layer that repaints itself per expression:
-  - eyes: open, closed, happy, angry, sad, wide, half, smug
-  - gaze darts: c, l, r, u, d, ul, ur
-  - brows, nine mouths, beards, glasses, freckles and a soft blush
-- **Rig:** the person.js rig plus shins and forearms. The shared acting clips live in `person.js`: idle (with glances), talk, walk, run, wave, point, cheer, think, shock, angry, laugh, sad, phone, throw, sit, sitPhone, sitSad, nod, shrug, facepalm, proud, shy, jump.
-- **Recipes:** `src/vx/people/cast.js`. Trainers wear their partner Tokonmon's colours.
-- **Viewer:** `tools/lineup.html?people=hero,yumi&anime=1`. `?people=box` in the game brings back the old box people.
+## People: `src/vx/people/human.js` + `src/vx/people/gg/`
+- **Base:** the low-poly humans from Gacha Garage, ported in. One skinned mesh, one painted atlas (2× density), procedural walk with planted feet, look-at, gestures, and painted expressions with blinks and talking mouths.
+- **Toon look** (`face.style >= 0.5`, everyone in the cast):
+  - Ink-drawn anime faces in the PSP / low-poly-anime look: round irises with an ink ring, a pupil and a catchlight. Bold upper lash lines that hook out at the corner, with spiky lashes above and scratchy lashes below. A `:3` / `w` mouth and a tiny nose tick, with no realistic relief.
+  - Blockier prisms (chamfers × 0.45), chunky sneakers, flat toon hair with a few painted strands, and a part self-lit material for the painted-texture feel.
+- **Anime-girl build:** `anime: 0..1` gives a bigger head, long legs, a slim frame, small hands, side locks and big eyes.
+- **Springs (non-sexual jiggle):** twin tails, ribbon bows and streamers, the ahoge and skirt flutter, all driven by root acceleration, step bounce and head turns.
+- **Deco:** `face.deco` adds stickers (heart, star), rhinestones, plasters, blush hatching, face paint, scars, moles, glitter and painted tears. Other decoration: `hair.ribbon` / `hair.clip` / `hair.ahoge` / `hair.ears: 'cat' | 'fox'`.
+- **Cast:** `src/vx/people/humancast.js`. Trainers wear their partner's colours. Passers-by come from the Gacha Garage street cast, pushed toward the toon look.
+- **Clips:** the Animator's clip names (idle, walk, talk, wave, cheer, sit, shock, …) map onto gestures, expressions and pose overrides in `human.js`.
+- **Viewer:** `tools/lineup.html?human=hero,yumi,mika`. `?people=folk` or `?people=box` in the game brings back the older people.
 
 ## Tokonmon: `src/vx/mons/*.js`
 - Cobblemon-style box models with painted textures; see `docs/MODELS.md`.
