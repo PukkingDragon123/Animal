@@ -132,7 +132,7 @@ export class CityBuilder {
       if (a && me) { a.face(me); me.face(a); if (a.anim && a.anim.face) a.anim.face('smile', 3); a.play('talk', { restart: true }); }
       if (typeof n.lines === 'function') await n.lines(app, n);
       else { const L = Array.isArray(n.lines[0]) ? n.lines[(n.said = ((n.said ?? -1) + 1) % n.lines.length)] : n.lines; await app.say(n.name, ...L); }
-      if (a) a.play('idle');
+      if (a) a.play(n.clip || 'idle');   // seated / posed NPCs go back to their pose
     } });
     return n;
   }

@@ -358,6 +358,11 @@ function dojo(C, ctx) {
       // tatami training floor
       C.quad(g, tatami(), [184.6, 0.035, 46.2], [199.4, 0.035, 46.2], [199.4, 0.035, 38.4], [184.6, 0.035, 38.4], { u0: 0, v0: 0 });
       C.box(g, TX.solid('#2a2a24'), 184.5, 0.0, 38.3, 199.5, 0.03, 46.3);
+      // the school's emblem in the middle of the mats: three gold claw marks on a red disc
+      const claw = ptex('ct_claw', 3, 3, (g2, W, H, r, P) => { P.fill('#b8b070'); const c = W / 2 - 0.5; for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const d = Math.hypot(x - c, y - c); if (d < 47) P.px(x, y, d > 44 ? '#d8a83a' : d > 42 ? '#7a1a18' : '#a82a24'); } for (let k = -1; k <= 1; k++) for (let t = 0; t < 46; t++) { const x = c + k * 12 + (t - 23) * 0.35 + Math.sin(t / 46 * Math.PI) * 4, y = c - 23 + t; for (let w2 = -2; w2 <= 2; w2++) if (Math.abs(w2) <= 2 - Math.abs(t - 23) / 12) P.px(x + w2, y, '#f0c850'); } });
+      discDecal(C, g, claw, 192, 0.04, 42.3, 1.45, { uvR: 0.49 });
+      for (const [lx, lz] of [[186.5, 39.5], [197.5, 39.5], [186.5, 45.0], [197.5, 45.0]]) C.props.push({ kind: 'lantern', x: lx, y: 1.75, z: lz, yaw: 0, s: 0.8 });
+      for (const cx of [190.4, 192, 193.6]) C.box(g, TX.solid('#8a1a1a'), cx - 0.35, 0.03, 37.1, cx + 0.35, 0.12, 37.8, { top: TX.solid('#a82a24') });
       // the shrine: altar, candles, burner, plaque, scrolls
       C.furniture(B, 0, 189.4, 35.25, 194.6, 36.2, 1.0, lacquer('#8a1a1a'), { top: TX.planks('#4a2a1a'), s: ptex('ct_altar', 5.2, 1.0, (g2, W, H, r, P) => { P.fill('#8a1a1a'); P.rect(2, 2, W - 4, H - 4, '#a82a24'); for (let x2 = 6; x2 < W - 6; x2 += 12) { P.rect(x2, 6, 8, H - 12, '#d8a83a'); P.rect(x2 + 2, 8, 4, H - 16, '#8a1a1a'); } P.rect(0, H - 3, W, 3, '#3a1a10'); }) });
       for (const cx of [190.0, 194.0]) C.props.push({ kind: 'ct_altarCandle', x: cx, y: 1.0, z: 35.7, yaw: 0 });

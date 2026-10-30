@@ -383,7 +383,7 @@ export const timberWall = (plaster = '#ece4d4', wood = '#4a3020') => ptex('ct_ti
 });
 /** tatami mats: two 0.9 × 1.8 m mats side by side with black cloth borders */
 export const tatami = () => ptex('ct_tatami', 1.8, 1.8, (g, W, H, r, P) => {
-  const straw = '#b8b070', edge = '#2a2a24';
+  const straw = '#aaa466', edge = '#2a2a24';
   P.fill(straw);
   for (let y = 0; y < H; y += 2) P.hline(0, y, W, dark(straw, 0.08));
   P.speck(80, light(straw, 0.12), r);
