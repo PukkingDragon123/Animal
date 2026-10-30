@@ -52,6 +52,7 @@ export const ANIMAL_EYES = {
   mopzart: ['canine'], bubblion: ['fish', { iris: '#c8a8ff', dark: '#7a50d8' }], weirdfin: ['fish', { iris: '#3ad0e0', dark: '#2456c8', rim: '#7a80d0' }],
   beatlet: ['compound'], pepperhorn: ['compound'], abbeyhorn: ['compound', { facet: '#6a6a7a' }], foopod: ['compound', { sheen: '#4a2a3a', facet: '#7a4a5a' }], everpunch: ['mantis'],
   snoozaque: ['primate', { sleepy: true }], piledrilla: ['primate', { sleepy: true }], fluorescape: ['primate', { sleepy: true, iris: '#b06aff', dark: '#5a2aa8', sclera: '#3a2a5a' }],
+  rainblin: ['reptile', { iris: '#c8e83a', dark: '#5a8a10', fleck: '#eeffb0', glowy: true }], roygbot: ['dot', { bead: '#0a2a3a', sheen: '#4ae8ff', glowy: true }],
   lemmo: ['dot'], creepetal: ['dot', { sheen: '#6a5aa8' }], plastree: ['dot', { sheen: '#3a6a3a' }], grenaday: ['dot', { sheen: '#4a6a2a' }], armagreddon: ['dot', { bead: '#2a0a0a', sheen: '#ff4a2a', glowy: true }],
 };
 

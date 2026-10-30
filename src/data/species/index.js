@@ -8,4 +8,6 @@ import { SPECIES as SF_REDBONE } from './sf_redbone.js';
 import { SPECIES as SF_GREENDAY } from './sf_greenday.js';
 import { SPECIES as SF_ARCTIC } from './sf_arctic.js';
 import { SPECIES as SF_KISS } from './sf_kiss.js';
-export const EXTRA_SPECIES = [SF_LINES, SF_WILD, SF_LEGENDS, SF_DOOM, SF_REDBONE, SF_GREENDAY, SF_ARCTIC, SF_KISS];
+import { SPECIES as SF_TAKANAKA } from './sf_takanaka.js';
+import { SPECIES as SF_GOBLINS } from './sf_goblins.js';
+export const EXTRA_SPECIES = [SF_LINES, SF_WILD, SF_LEGENDS, SF_DOOM, SF_REDBONE, SF_GREENDAY, SF_ARCTIC, SF_KISS, SF_TAKANAKA, SF_GOBLINS];

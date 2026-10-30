@@ -149,7 +149,8 @@ export function chunky(fn, k0 = 2) {
     const k = Math.max(1, Math.round(k0 * (p.res || 1)));
     if (k <= 1) return fn(p, w, h, ...a);
     const W = Math.max(1, Math.round(w / k)), H = Math.max(1, Math.round(h / k)), ox = Math.floor((w - W * k) / 2), oy = Math.floor((h - H * k) / 2);
-    const q = { px(x, y, c) { if (x < 0 || y < 0 || x >= W || y >= H) return q; for (let i = 0; i < k; i++) for (let j = 0; j < k; j++) p.px(ox + x * k + i, oy + y * k + j, c); return q; } };
+    const q = { px(x, y, c) { if (x < 0 || y < 0 || x >= W || y >= H) return q; for (let i = 0; i < k; i++) for (let j = 0; j < k; j++) p.px(ox + x * k + i, oy + y * k + j, c); return q; },
+      rect(x, y, w, h, c) { for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) q.px(x + i, y + j, c); return q; }, hl(x0, x1, y, c) { for (let x = x0; x <= x1; x++) q.px(x, y, c); return q; }, vl(x, y0, y1, c) { for (let y = y0; y <= y1; y++) q.px(x, y, c); return q; }, res: 1 };
     fn(q, W, H, ...a);
   };
 }

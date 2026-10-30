@@ -164,7 +164,7 @@ for (const c of [GK.leather, GK.leatherHi, GK.leatherLo, GK.rope, GK.ropeLo, '#e
 for (const c of [GK.ink, GK.hair, GK.hairHi, GK.tusk, GK.tuskLo, '#2a1a1e', '#ffffff', '#fffaf0', '#5a1424', '#ff7a90']) GOB_TABLE.push([c, 'keep']);
 const gobFam = families(GOB_TABLE);
 const famMap = (fam) => formMap(({ h, l }, glow, hex) => {
-  if (glow) return 'keep';
+  if (glow) return undefined;                       // fire (the mech's boosters) burns blue, as in every form
   const f = fam(hex);
   return f === 'cloth' ? fromHsl(h, 0.45, 0.05 + l * 0.18) : f === 'black' ? fromHsl(250, 0.14, 0.05 + l * 0.14) : f;
 });

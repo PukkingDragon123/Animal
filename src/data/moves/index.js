@@ -7,4 +7,6 @@ import { MOVES as SF_REDBONE } from './sf_redbone.js';
 import { MOVES as SF_GREENDAY } from './sf_greenday.js';
 import { MOVES as SF_ARCTIC } from './sf_arctic.js';
 import { MOVES as SF_KISS } from './sf_kiss.js';
-export const EXTRA_MOVES = [SF_LINES, SF_WILD, SF_DOOM, SF_REDBONE, SF_GREENDAY, SF_ARCTIC, SF_KISS];
+import { MOVES as SF_TAKANAKA } from './sf_takanaka.js';
+import { MOVES as SF_GOBLINS } from './sf_goblins.js';
+export const EXTRA_MOVES = [SF_LINES, SF_WILD, SF_DOOM, SF_REDBONE, SF_GREENDAY, SF_ARCTIC, SF_KISS, SF_TAKANAKA, SF_GOBLINS];
