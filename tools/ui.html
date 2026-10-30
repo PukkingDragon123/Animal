@@ -1,0 +1,192 @@
+<!doctype html><html><head><meta charset="utf-8"><title>ui</title>
+<style>
+html,body{margin:0;background:#07050c;color:#cfc6ec;font:12px monospace;overflow:hidden}
+#cv{display:block;image-rendering:pixelated;image-rendering:crisp-edges;cursor:pointer}
+#nav{position:fixed;right:6px;bottom:4px;opacity:.55}#nav a{color:#ffcf5a;margin-left:6px}
+#err{position:fixed;left:0;top:0;color:#f66;white-space:pre;background:#000c}
+</style></head><body><canvas id="cv"></canvas><div id="nav"></div><div id="err"></div>
+<script type="module">
+// UI kit gallery: ?screen=gallery|icons|hud|dialog|name|cards|menu  &w=480&h=270&zoom=3&frames=90
+window.onerror = (m, s, l) => { document.getElementById('err').textContent += m + ' @' + l + '\n'; };
+import { PixelUI, T } from '../src/px/game/ui.js';
+import { BIG, SMALL } from '../src/px/game/uikit/icons.js';
+import { Surf } from '../src/px/surface.js';
+import { bayer, mix } from '../src/px/color.js';
+import * as S from '../src/game/state.js';
+import { createElemon } from '../src/game/elemon.js';
+import { SPECIES } from '../src/data/species.js';
+import { Hud } from '../src/vx/game/hud.js';
+
+const q = new URLSearchParams(location.search);
+const screen = q.get('screen') || 'gallery';
+const W = +(q.get('w') || 480), H = +(q.get('h') || 270), Z = +(q.get('zoom') || 3);
+const cv = document.getElementById('cv'); cv.width = W; cv.height = H; cv.style.width = W * Z + 'px'; cv.style.height = H * Z + 'px';
+const ctx = cv.getContext('2d');
+document.getElementById('nav').innerHTML = ['gallery', 'icons', 'hud', 'dialog', 'name', 'cards', 'menu'].map((s) => `<a href="?screen=${s}&w=${W}&h=${H}&zoom=${Z}">${s}</a>`).join('');
+const ui = new PixelUI(W, H);
+
+// ---------------------------------------------------------------- a fake "world" behind the UI (night street)
+const bg = new Surf(W, H);
+(function paintWorld() {
+  bg.vgrad(0, 0, W, H * 0.62, ['#1a1440', '#3a2a6a', '#8a4a7a', '#e88a6a'], true);
+  for (let i = 0; i < 40; i++) bg.px((i * 137) % W, (i * 71) % Math.floor(H * 0.4), '#ffffff');
+  let x = 0, k = 0;
+  while (x < W) { const bw = 26 + ((k * 37) % 30), bh = 50 + ((k * 53) % 70); bg.rect(x, H * 0.62 - bh, bw, bh, k % 2 ? '#2a2048' : '#241a3e'); for (let j = H * 0.62 - bh + 6; j < H * 0.62 - 6; j += 9) for (let i = x + 4; i < x + bw - 4; i += 7) if (((i * 7 + j * 3) % 5) > 1) bg.rect(i, j, 3, 4, ((i + j) % 3) ? '#ffcf7a' : '#5a4a8a'); x += bw + 2; k++; }
+  bg.vgrad(0, Math.floor(H * 0.62), W, Math.ceil(H * 0.38), ['#4a3a5a', '#3a2c48', '#241a30'], true);
+  for (let j = Math.floor(H * 0.62); j < H; j += 6) for (let i = (j % 12); i < W; i += 12) bg.rect(i, j, 6, 1, '#55466a');
+  for (let i = 30; i < W; i += 90) { bg.rect(i, H * 0.62 - 40, 2, 60, '#2a2238'); bg.ellipse(i + 1, H * 0.62 - 42, 4, 3, '#ffe9a0'); for (let r = 0; r < 18; r++) for (let a = 0; a < 360; a += 20) { const X = Math.round(i + 1 + Math.cos(a) * r), Y = Math.round(H * 0.62 - 42 + Math.sin(a) * r * 0.6); if (bayer(X, Y) < 0.25 * (1 - r / 18)) bg.px(X, Y, '#ffd890'); } }
+})();
+
+// ---------------------------------------------------------------- sample data
+const party = [
+  { name: 'Kindoru', hp: 54, maxHp: 60, color: '#ff6a2b', level: 7 },
+  { name: 'Takopo', hp: 18, maxHp: 58, color: '#2fa8ff', level: 6 },
+  { name: 'Mochika', hp: 9, maxHp: 52, color: '#5fd35a', level: 5 },
+  { name: 'Pidgun', hp: 0, maxHp: 40, color: '#d39a5c', level: 4 },
+];
+function drawSampleMap(ui, x, y, w, h) {
+  const s = ui.s;
+  for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) {
+    const X = x + i, Y = y + j, gx = (i + 3) % 16, gy = (j + 5) % 14;
+    let c = '#3a5a3a';
+    if (gx < 3 || gy < 3) c = '#8a8094'; else if ((Math.floor((i + 3) / 16) + Math.floor((j + 5) / 14)) % 3 === 0) c = '#5a4a6e';
+    if ((i - j * 0.6 - 10) > 26 && (i - j * 0.6 - 10) < 34) c = '#3a6aa8';
+    s.px(X, Y, bayer(X, Y) < 0.15 ? mix(c, '#000000', 0.2) : c);
+  }
+  for (const [px, py, c] of [[12, 10, '#ffcf5a'], [w - 14, h - 12, '#ff7ab8'], [w - 20, 12, '#ffcf5a']]) { s.rect(x + px, y + py, 2, 2, c); }
+  const ax = x + (w >> 1), ay = y + (h >> 1);
+  for (let t = -2; t <= 3; t++) s.px(ax, ay - t, t > 1 ? '#ffffff' : '#e8473a');
+  s.px(ax - 1, ay - 1, '#e8473a'); s.px(ax + 1, ay - 1, '#e8473a');
+}
+const portrait = (ui, x, y, size) => {
+  // a little placeholder face for the portrait slot
+  const s = ui.s, cx = x + (size >> 1), cy = y + Math.round(size * 0.55), r = Math.round(size * 0.3);
+  s.ellipse(cx, cy + r + 6, r * 1.5, r * 0.9, '#3a8ae0');
+  s.ellipse(cx, cy, r, r, '#ffd9bc');
+  s.ellipse(cx, cy - r * 0.45, r * 1.08, r * 0.7, '#47387a');
+  s.rect(cx - 6, cy, 3, 4, '#1c1230'); s.rect(cx + 3, cy, 3, 4, '#1c1230'); s.px(cx - 6, cy, '#ffffff'); s.px(cx + 3, cy, '#ffffff');
+  s.rect(cx - 1, cy + 6, 3, 1, '#8a3a4a');
+};
+
+// ---------------------------------------------------------------- fake app for the HUD
+function fakeApp() {
+  const st = S.newGame({ name: 'Ren' });
+  const ids = Object.keys(SPECIES);
+  for (const [sp, lv, hp] of [[ids[0], 7, 0.9], [ids[2], 6, 0.3], [ids[4], 5, 0.15], [ids[6], 4, 0]]) { const m = createElemon(sp, { level: lv }); m.hp = hp; st.party.push(m); }
+  st.money = 12480; st.time = { day: 3, hour: 19.6 }; st.bag = { takoyaki: 3, ramune: 2, matcha: 1, revive_onigiri: 1, ramen: 4 };
+  const app = { ui, state: st, t: 0, toast: (s, o) => ui.toast(s, o), save() { ui.toast('Game saved', { icon: 'save', color: T.green }); }, phone: { toggle() { ui.toast('(phone map)', { icon: 'map', color: T.cyan }); } },
+    world: { loc: { name: 'Chinatown' }, zoneName: 'Grant Avenue', drawMinimap: (ui, x, y, w, h) => drawSampleMap(ui, x, y, w, h) },
+    audio: { sfx() {}, setVolumes() {} }, story: {}, keysDown: {} };
+  return app;
+}
+
+// ---------------------------------------------------------------- screens
+let hud = null, app = null;
+function hoverAt(x, y, down = false) { ui.ptr.x = x; ui.ptr.y = y; ui.ptr.down = down; }
+function gallery() {
+  const s = ui.s;
+  // panels
+  ui.panel(6, 6, 118, 70, { dots: true });
+  ui.banner(12, 12, 'PANELS', { icon: 'star', color: T.cyan });
+  ui.text('Ornate frames with', 14, 32, T.text, { shadow: T.ink });
+  ui.text('brass caps + bevels', 14, 42, T.dim, { shadow: T.ink });
+  ui.panel(14, 54, 50, 15, {}); ui.text('small', 20, 58, T.text);
+  ui.panel(68, 54, 50, 15, { alpha: 0.8, fill: T.glass }); ui.text('glass', 74, 58, T.text);
+  ui.panel(130, 6, 96, 70, { ornate: true, gem: T.pink });
+  ui.text('ORNATE', 178, 14, null, { align: 'center', bold: true, grad: [T.amberL, T.amber, T.coral], outline: T.ink });
+  for (let i = 0; i < 5; i++) ui.bigIcon(['heart', 'star', 'coin', 'bag', 'party'][i], 138 + i * 17, 30);
+  ui.text('Bold text', 140, 50, T.cyan, { bold: true, shadow: T.ink });
+  ui.text('MINI LABELS 0123', 140, 62, T.dim, { mini: true });
+  // buttons in all states
+  ui.panel(232, 6, 118, 116, {});
+  ui.text('BUTTONS', 240, 12, T.amber, { mini: true });
+  ui.button(240, 20, 102, 18, 'Normal', { icon: 'play', color: T.amber });
+  hoverAt(250, 50); ui.button(240, 42, 102, 18, 'Hover', { icon: 'star', color: T.cyan }); hoverAt(-1, -1);
+  hoverAt(250, 72, true); ui.button(240, 64, 102, 18, 'Pressed', { icon: 'check', color: T.green }); hoverAt(-1, -1);
+  ui.button(240, 86, 50, 16, 'Active', { active: true, color: T.pink });
+  ui.button(294, 86, 48, 16, 'Off', { disabled: true });
+  ui.button(240, 105, 30, 12, 'mini', { mini: true, color: T.amber }); ui.iconButton(274, 103, 18, 'menu', { color: T.cyan }); ui.iconButton(296, 103, 18, 'gear', { color: T.amber }); ui.iconButton(318, 103, 18, 'save', { color: T.green, badge: 2 });
+  // bars
+  ui.panel(356, 6, 118, 70, {});
+  ui.text('BARS', 364, 12, T.amber, { mini: true });
+  ui.bar(364, 21, 100, 5, 0.82, { seg: 5, id: 'g1' });
+  ui.bar(364, 31, 100, 5, frameN < 40 ? 0.9 : 0.38, { seg: 5, id: 'g2' });
+  ui.bar(364, 41, 100, 5, 0.16, { seg: 5, id: 'g3' });
+  ui.bar(364, 51, 64, 3, 0.7, { color: T.cyan, id: 'g4' }); ui.bar(432, 51, 32, 3, 0.4, { color: T.amber, id: 'g5' });
+  ui.bar(364, 59, 100, 2, 0.55, { color: T.pink, id: 'g6' });
+  ui.text('HP  ENERGY  ULT', 364, 66, T.dim, { mini: true });
+  // keycaps + prompt + joystick
+  ui.panel(356, 80, 118, 42, {});
+  let kx = 362; for (const k of ['E', 'Esc', 'Tab', '↑', '←', '↓', '→']) kx += ui.keycap(kx, 86, k) + 2;
+  ui.keycap(362, 103, 'Space'); ui.keycap(396, 103, 'Enter', { pressed: true }); ui.bigIcon('dpad', 432, 102); ui.bigIcon('hand', 448, 102);
+  // icon sheet (small + big)
+  ui.panel(6, 80, 222, 96, {});
+  const names = Object.keys(BIG);
+  names.forEach((n, i) => ui.bigIcon(n, 12 + (i % 15) * 14, 86 + Math.floor(i / 15) * 15));
+  const sm = Object.keys(SMALL);
+  sm.forEach((n, i) => ui.icon(n, 12 + (i % 24) * 9, 148 + Math.floor(i / 24) * 9, [T.text, T.amber, T.cyan, T.pink, T.green][i % 5]));
+  // banner + toasts
+  ui.banner(234, 128, 'QUEST LOG', { icon: 'book', color: T.amber });
+  // prompt over the "world"
+  ui.prompt(300, 176, 'E', 'Examine TV', { icon: 'tv' });
+  ui.prompt(410, 176, 'E', 'Talk', { icon: 'talk', color: T.cyan });
+  // joystick
+  ui.joystick(30, 222, 22, 0.55, -0.45, true);
+  ui.joystick(80, 230, 16, 0, 0, false);
+  // hud bits
+  ui.hudClock(108, 182, { day: 3, time: 7.5, weather: 'clear' });
+  ui.hudClock(108, 212, { day: 4, time: 22.2, weather: 'storm' });
+  ui.hudMoney(108, 244, frameN < 30 ? 1200 : 1500);
+  ui.hudLocation(198, 186, 'Chinatown', 'San Francisco');
+  ui.partyBar(198, 216, party.slice(0, 3), { maxW: 230 });
+  ui.minimap(404, 186, 70, 64, drawSampleMap, { label: 'Grant Ave' });
+  ui.objective(198, 250, 'Find Grandma at the bakery', { maxW: 200 });
+}
+function iconsSheet() {
+  ui.panel(4, 4, W - 8, H - 8, { dots: false });
+  const names = Object.keys(BIG);
+  names.forEach((n, i) => { const x = 10 + (i % 12) * 38, y = 10 + Math.floor(i / 12) * 26; ui.bigIcon(n, x + 12, y); ui.text(n, x + 18, y + 14, T.dim, { mini: true, align: 'center' }); });
+  const sm = Object.keys(SMALL), y0 = 10 + Math.ceil(names.length / 12) * 26 + 4;
+  sm.forEach((n, i) => { const x = 10 + (i % 20) * 23, y = y0 + Math.floor(i / 20) * 18; ui.icon(n, x + 6, y, T.amber); ui.text(n.slice(0, 5), x + 9, y + 9, T.textD, { mini: true, align: 'center' }); });
+}
+let frameN = 0;
+async function setup() {
+  if (screen === 'name') ui.nameEntry({ title: "What's your name?", value: 'Ren', max: 10 }).then((v) => ui.toast('Hello, ' + v + '!', { icon: 'heart' }));
+  if (screen === 'cards') ui.pickCards({ title: 'Are you a boy or a girl?', cards: [{ label: 'Boy', sub: 'He / him', color: '#3a7ae0', art: 'boy' }, { label: 'Girl', sub: 'She / her', color: '#e05a8a', art: 'girl' }] }).then((i) => ui.toast('Picked ' + i, { icon: 'check' }));
+  if (screen === 'cards3') ui.pickCards({ title: 'Choose your partner', cards: [{ label: 'Kindoru', sub: 'Pyro dragon', color: '#ff6a2b', icon: 'flame' }, { label: 'Takopo', sub: 'Hydro octopus', color: '#2fa8ff', icon: 'drop' }, { label: 'Mochika', sub: 'Bio fawn', color: '#5fd35a', icon: 'leaf' }] });
+  if (screen === 'hud' || screen === 'menu' || screen === 'dialog') { app = fakeApp(); hud = new Hud(app); }
+  if (screen === 'menu') hud.openMenu(q.get('tab') || 'party');
+  if (screen === 'dialog') ui.say('Mika', "Ren! You're finally up. Grandma says the cable car is running again — want to ride it down to the bay with me?", { portrait, choices: ['Sure, let\'s go!', 'Maybe later', 'Who are you again?'] });
+  if (screen === 'gallery') { ui.toast('Saved the game', { icon: 'check', color: T.green, dur: 99 }); ui.toast('Kindoru grew to Lv 8!', { icon: 'star', color: T.amber, dur: 99 }); }
+}
+function frame(dt) {
+  frameN++;
+  ui.begin(dt);
+  if (screen === 'gallery') gallery();
+  else if (screen === 'icons') iconsSheet();
+  else if (hud) { app.t += dt; hud.draw(ui, dt); }
+  ui.end();
+}
+function present() {
+  const img = ctx.createImageData(W, H), d32 = new Uint32Array(img.data.buffer), u = ui.s.data, b = bg.data;
+  for (let i = 0; i < d32.length; i++) { const v = u[i], a = v >>> 24; if (a === 255) { d32[i] = v; continue; } const w = b[i]; if (!a) { d32[i] = w; continue; } const k = a / 255; const r = (w & 255) * (1 - k) + (v & 255) * k, g = ((w >>> 8) & 255) * (1 - k) + ((v >>> 8) & 255) * k, bb = ((w >>> 16) & 255) * (1 - k) + ((v >>> 16) & 255) * k; d32[i] = (255 << 24 | bb << 16 | g << 8 | r) >>> 0; }
+  ctx.putImageData(img, 0, 0);
+}
+// input (same mapping as the game)
+const p = ui.ptr;
+const pos = (e) => { const r = cv.getBoundingClientRect(); p.x = Math.floor(((e.clientX - r.left) / r.width) * W); p.y = Math.floor(((e.clientY - r.top) / r.height) * H); };
+cv.addEventListener('pointerdown', (e) => { pos(e); p.down = true; p.pressed = true; });
+cv.addEventListener('pointermove', pos);
+cv.addEventListener('pointerup', (e) => { pos(e); p.down = false; p.released = true; });
+addEventListener('keydown', (e) => { const k = e.key.length === 1 ? e.key.toLowerCase() : e.key; if (!e.repeat) ui.keys[k] = 'pressed'; });
+
+await setup();
+const N = +(q.get('frames') || 100);
+for (let i = 0; i < N; i++) frame(1 / 60);
+if (screen === 'dialog' && q.get('choices') === '0') {}
+present();
+document.title = 'ready';
+let last = performance.now();
+function loop(now) { const dt = Math.min(0.05, (now - last) / 1000); last = now; frame(dt); present(); requestAnimationFrame(loop); }
+if (!q.has('still')) requestAnimationFrame(loop);
+</script></body></html>

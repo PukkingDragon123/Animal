@@ -1,70 +1,141 @@
 // Pixel UI, drawn at the game's native low resolution every frame (immediate
-// mode): bevelled panels, slanted banner headers, segmented bars, pixel icons,
-// buttons with press states, a typewriter dialogue box with choices, toasts.
-// Styled after classic pixel UI kits: deep indigo panels, cyan/amber accents.
+// mode). Deep indigo / plum night panels with ink outlines, lit top bevels,
+// shaded bottom bevels, brass corner caps and dithered gradients; warm amber /
+// coral accents and cyan highlights. Primitives (panel, button, bar, banner,
+// icons, toasts), the dialogue box with portrait + choices, roaming-HUD widgets
+// (prompt bubble, keycaps, thumbstick, clock, money, location, party, minimap)
+// and full-screen modal screens (name entry, card picker). Widget bodies live
+// in ./uikit/; this class keeps the state and the public API.
 import { Surf, P } from '../surface.js';
 import { text as drawText, textWidth } from '../font.js';
-import { mix, shift } from '../color.js';
+import { rgb, bayer } from '../color.js';
+import { T, sh, mx, hash, clamp01, easeOut, easeOutBack } from './uikit/theme.js';
+import { drawSmall, drawBig, ICON_NAMES } from './uikit/icons.js';
+import { frame, dropShadow, gradFill, tri, gem, sparkle, ball } from './uikit/frame.js';
+import { drawDialog } from './uikit/dialog.js';
+import * as W from './uikit/widgets.js';
+import { nameEntryScreen, pickCardsScreen } from './uikit/screens.js';
 
-export const T = {
-  ink: '#120c1c', panel: '#2b2442', panel2: '#221c36', edge: '#4e4672', edgeL: '#6e64a0', hi: '#8f86c4',
-  text: '#f2ecff', dim: '#a59cc8', cyan: '#5fd8e8', cyan2: '#2c8aa8', amber: '#ffcf5a', amber2: '#d08a2a', red: '#ff5a64', green: '#7ce07a', pink: '#ff7ab8',
-  paper: '#f4ead8', paperInk: '#3a2a3a',
-};
+export { T, ICON_NAMES };
 
-// 7×7 pixel icons (rows of bits, MSB left)
-const ICONS = {
-  heart: [0b0110110, 0b1111111, 0b1111111, 0b1111111, 0b0111110, 0b0011100, 0b0001000],
-  bolt: [0b0000110, 0b0001100, 0b0011000, 0b0111110, 0b0001100, 0b0011000, 0b0110000],
-  star: [0b0001000, 0b0001000, 0b1111111, 0b0111110, 0b0011100, 0b0110110, 0b1000001],
-  phone: [0b0111110, 0b0100010, 0b0100010, 0b0100010, 0b0100010, 0b0111110, 0b0001000],
-  bag: [0b0011100, 0b0100010, 0b1111111, 0b1000001, 0b1011101, 0b1000001, 0b1111111],
-  team: [0b0110110, 0b0110110, 0b0000000, 0b1111111, 0b1111111, 0b1111111, 0b0000000],
-  map: [0b1110111, 0b1010101, 0b1110111, 0b1010101, 0b1110111, 0b1010101, 0b1110111],
-  gear: [0b0101010, 0b1111111, 0b0110110, 0b1100011, 0b0110110, 0b1111111, 0b0101010],
-  disc: [0b0011100, 0b0111110, 0b1110111, 0b1101011, 0b1110111, 0b0111110, 0b0011100],
-  fist: [0b0000000, 0b0111110, 0b1111111, 0b1111111, 0b1111111, 0b0111110, 0b0011100],
-  shield: [0b1111111, 0b1111111, 0b1111111, 0b0111110, 0b0111110, 0b0011100, 0b0001000],
-  swap: [0b0010000, 0b0111111, 0b0010000, 0b0000000, 0b0000100, 0b1111110, 0b0000100],
-  dodge: [0b0001100, 0b0011110, 0b0101101, 0b0001100, 0b0010010, 0b0100001, 0b1000000],
-  link: [0b0110110, 0b1001001, 0b1001001, 0b0110110, 0b0001000, 0b0011100, 0b0001000],   // two hearts joined: the soul-stone bond
-  talk: [0b1111111, 0b1000001, 0b1010101, 0b1000001, 0b1111111, 0b0110000, 0b0100000],
-  door: [0b0111110, 0b0100010, 0b0100010, 0b0100110, 0b0100010, 0b0100010, 0b0111110],
-  eye: [0b0000000, 0b0111110, 0b1100011, 0b1001001, 0b1100011, 0b0111110, 0b0000000],
-  bowl: [0b0000000, 0b0101010, 0b0000000, 0b1111111, 0b0111110, 0b0011100, 0b0111110],
-  smile: [0b0111110, 0b1000001, 0b1010101, 0b1000001, 0b1011101, 0b1000001, 0b0111110],
-  flame: [0b0001000, 0b0011000, 0b0011100, 0b0111110, 0b1101111, 0b1101011, 0b0111110],
-  drop: [0b0001000, 0b0011100, 0b0011100, 0b0111110, 0b1111011, 0b1111111, 0b0111110],
-  leaf: [0b0000111, 0b0011111, 0b0111111, 0b0111110, 0b1111100, 0b1011000, 0b1000000],
-  play: [0b1000000, 0b1110000, 0b1111100, 0b1111111, 0b1111100, 0b1110000, 0b1000000],
-  check: [0b0000001, 0b0000011, 0b1000110, 0b1101100, 0b0111000, 0b0010000, 0b0000000],
-  cross: [0b1000001, 0b0100010, 0b0010100, 0b0001000, 0b0010100, 0b0100010, 0b1000001],
-  coin: [0b0011100, 0b0111110, 0b1101011, 0b1100011, 0b1101011, 0b0111110, 0b0011100],
-  up: [0b0001000, 0b0011100, 0b0111110, 0b1111111, 0b0011100, 0b0011100, 0b0011100],
-};
+const SENTINEL = 0x01020301;
 
 export class PixelUI {
-  constructor(w, h) { this.resize(w, h); this.ptr = { x: -1, y: -1, down: false, pressed: false, released: false, id: null }; this.t = 0; this.dialog = null; this.toasts = []; this.keys = {}; this.modalLock = 0; }
-  resize(w, h) { this.w = w; this.h = h; this.s = new Surf(w, h); }
+  constructor(w, h) {
+    this.resize(w, h);
+    this.ptr = { x: -1, y: -1, down: false, pressed: false, released: false, id: null };
+    this.t = 0; this.dt = 1 / 60; this.frameN = 0;
+    this.dialog = null; this.toasts = []; this.keys = {}; this.modalLock = 0;
+    this.modals = []; this._typed = []; this.typed = []; this._bars = new Map(); this._anim = new Map();
+  }
+  resize(w, h) { this.w = w; this.h = h; this.s = new Surf(w, h); this._clipS = null; }
   // ------------------------------------------------------------------ frame
-  begin(dt) { this.t += dt; this.s.clear(); this.hot = null; this.frameButtons = 0; }
+  begin(dt) {
+    this.dt = dt || 0; this.t += this.dt; this.frameN++;
+    this.s.clear(); this.hot = null; this.frameButtons = 0;
+    // an open modal screen owns this frame's input: hide it from everything drawn before end()
+    if (this.modals.length) {
+      const p = this.ptr;
+      this._min = { released: p.released, pressed: p.pressed, keys: this.keys, typed: this._typed };
+      p.released = false; p.pressed = false; this.keys = {}; this._typed = [];
+    } else this._min = null;
+    if (this.frameN % 90 === 0) { for (const [k, b] of this._bars) if (b.seen < this.frameN - 3) this._bars.delete(k); for (const [k, a] of this._anim) if (a.seen < this.frameN - 3) this._anim.delete(k); }
+  }
   end() {
-    if (this.dialog) this.drawDialog();
+    const p = this.ptr;
+    const input = this._min || { released: p.released, pressed: p.pressed, keys: this.keys, typed: this._typed };
+    this._min = null; this._typed = [];
+    const give = (on) => { p.released = on && input.released; p.pressed = on && input.pressed; this.keys = on ? input.keys : {}; this.typed = on ? input.typed : []; };
+    if (this.modals.length) {
+      const top = this.modal;
+      for (const m of this.modals.slice()) {
+        const live = m === top && !this.dialog;
+        give(live);
+        this._inModal = true; m.t = (m.t || 0) + this.dt;
+        try { m.draw(this, this.dt, live); } finally { this._inModal = false; }
+      }
+    }
+    if (this.dialog) { give(true); drawDialog(this); }
     this.drawToasts();
-    this.ptr.pressed = false; this.ptr.released = false;
-    this.keys = {};                       // key presses latch for exactly one frame
+    p.pressed = false; p.released = false;
+    this.keys = {}; this.typed = [];             // key presses latch for exactly one frame
     this.s.touch();
   }
   key(k) { return this.keys[k] === 'pressed'; }
+  // ------------------------------------------------------------------ modal screens (block all other input while open)
+  get modal() { return this.modals[this.modals.length - 1] || null; }
+  openModal(m) {
+    m.t = 0; this.modals.push(m);
+    if (m.capture) this._captureOn();
+    return m;
+  }
+  closeModal(m, v) {
+    if (m === undefined || m === null || typeof m !== 'object' || !this.modals.includes(m)) { v = m && typeof m === 'object' ? v : m; m = this.modal; }
+    if (!m) return;
+    this.modals = this.modals.filter((x) => x !== m);
+    if (!this.modals.some((x) => x.capture)) this._captureOff();
+    this.keys = {}; this.ptr.released = false; this._typed = [];
+    if (m.onClose) m.onClose(v);
+    if (m.resolve) m.resolve(v);
+  }
+  // while a capturing modal is open, physical keys go to it (with their real case) and not to the game
+  _captureOn() {
+    if (this._cap || typeof window === 'undefined' || !window.addEventListener) return;
+    this._cap = (e) => {
+      const top = this.modal;
+      if (!top || !top.capture || this.dialog) return;
+      const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+      if (!e.repeat) this.keys[k] = 'pressed';
+      this._typed.push(e.key);
+      if (e.ctrlKey || e.metaKey) return;
+      e.stopPropagation();
+      if (['Tab', ' ', 'Backspace', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter', "'", '/'].includes(e.key)) e.preventDefault();
+    };
+    window.addEventListener('keydown', this._cap, true);
+  }
+  _captureOff() { if (this._cap && typeof window !== 'undefined') window.removeEventListener('keydown', this._cap, true); this._cap = null; }
+  // per-widget animation memory (keyed; pruned when a widget stops being drawn)
+  anim(key, init) { let a = this._anim.get(key); if (!a) { a = Object.assign({ t: 0 }, init); this._anim.set(key, a); } a.seen = this.frameN; return a; }
   // ------------------------------------------------------------------ primitives
   px(x, y, c) { this.s.px(x, y, c); }
   rect(x, y, w, h, c) { this.s.rect(x, y, w, h, c); }
-  fade(a, c = '#000000') { if (a <= 0) return; for (let y = 0; y < this.h; y++) for (let x = 0; x < this.w; x++) { const i = y * this.w + x; this.s.blend(x, y, c, a); } }
-  text(str, x, y, c = T.text, o = {}) {
-    if (o.outline === true) o = Object.assign({}, o, { outline: T.ink });
-    return drawText(this.s, str, x, y, c, Object.assign({ jpSize: 10 }, o));
+  fade(a, c = '#000000') {
+    if (a <= 0) return;
+    const [r, g, b] = rgb(c), d = this.s.data, A = Math.round(Math.min(1, a) * 255);
+    for (let i = 0; i < d.length; i++) {
+      const v = d[i], da = v >>> 24;
+      if (!da) { d[i] = ((A << 24) | (b << 16) | (g << 8) | r) >>> 0; continue; }
+      const dr = v & 255, dg = (v >>> 8) & 255, db = (v >>> 16) & 255;
+      d[i] = ((Math.max(da, A) << 24) | ((db + (b - db) * a) << 16) | ((dg + (g - dg) * a) << 8) | (dr + (r - dr) * a)) >>> 0;
+    }
   }
-  tw(str, o = {}) { return textWidth(str, Object.assign({ jpSize: 10 }, o)); }
+  // text: o = { mini, scale, spacing, shadow, outline (true → ink), align, bold, grad: [top, bottom] }
+  text(str, x, y, c = T.text, o = {}) {
+    if (o.outline === true || o.shadow === true) o = Object.assign({}, o, o.outline === true ? { outline: T.ink } : {}, o.shadow === true ? { shadow: T.ink } : {});
+    const opts = Object.assign({ jpSize: 10 }, o);
+    if (o.grad) return this._gradText(str, x, y, opts);
+    if (!o.bold) return drawText(this.s, str, x, y, c, opts);
+    const off = o.align === 'center' ? 0 : o.align === 'right' ? -1 : 0;
+    const xa = x + off;
+    drawText(this.s, str, xa + 1, y, o.outline || c, opts);
+    drawText(this.s, str, xa, y, c, opts);
+    drawText(this.s, str, xa + 1, y, c, Object.assign({}, opts, { outline: null, shadow: null }));
+    return textWidth(str, opts) + 1;
+  }
+  _gradText(str, x, y, opts) {
+    const g = opts.grad, sc = opts.scale || 1, w = textWidth(str, opts) + (opts.bold ? 1 : 0);
+    const x0 = Math.round(opts.align === 'center' ? x - Math.floor(w / 2) : opts.align === 'right' ? x - w : x);
+    const o2 = Object.assign({}, opts, { grad: null });
+    this.text(str, x, y, SENTINEL, o2);
+    const rows = 8 * sc, cols = g.map((c) => P(c)), d = this.s.data, n = cols.length - 1;
+    for (let j = 0; j < rows; j++) {
+      const Y = Math.round(y) + j; if (Y < 0 || Y >= this.h) continue;
+      const t = (j / Math.max(1, 7 * sc - 1)) * n, k = Math.min(n - 1, Math.floor(t)), f = Math.min(1, t - k);
+      for (let X = Math.max(0, x0 - 1); X < Math.min(this.w, x0 + w + 2); X++) { const i = Y * this.w + X; if (d[i] === SENTINEL) d[i] = bayer(X, Y) < f ? cols[k + 1] : cols[k]; }
+    }
+    return w;
+  }
+  tw(str, o = {}) { return textWidth(str, Object.assign({ jpSize: 10 }, o)) + (o.bold ? 1 : 0); }
   wrap(str, maxW, o = {}) {
     const out = [];
     for (const para of String(str).split('\n')) {
@@ -77,161 +148,224 @@ export class PixelUI {
     }
     return out;
   }
-  icon(name, x, y, c = T.text, shadow = T.ink) {
-    const g = ICONS[name]; if (!g) return;
-    for (const [ox, oy, col] of shadow ? [[1, 1, shadow], [0, 0, c]] : [[0, 0, c]]) for (let r = 0; r < 7; r++) for (let k = 0; k < 7; k++) if (g[r] & (1 << (6 - k))) this.s.px(x + k + ox, y + r + oy, col);
+  // 7×7 icon (auto-bevelled, drop shadow). o.big → the detailed 12×12 version (c optional: natural colours)
+  icon(name, x, y, c = T.text, shadow = T.ink, o) {
+    if (o && (o.big || o.size >= 10)) return drawBig(this.s, name, x, y, o.tint ? c : null, o);
+    drawSmall(this.s, name, x, y, c, shadow);
   }
+  // detailed full-colour 12×12 icon; c: tint (null → the icon's own colours); o: { scale, outline, shadow, dim }
+  bigIcon(name, x, y, c = null, o = {}) { drawBig(this.s, name, x, y, c, o); }
   // rounded pixel rect fill (corner radius 1–3 px, cut like hand-made pixel art)
   rrect(x, y, w, h, c, r = 2) {
     for (let j = 0; j < h; j++) {
       const k = j < r ? r - j : j >= h - r ? j - (h - r - 1) : 0;
-      const cut = k >= 3 ? 3 : k === 2 ? 1 : k === 1 ? (r >= 2 ? 1 : 0) : 0;
       const ins = r >= 3 ? [0, 1, 1, 3][k] || 0 : r === 2 ? [0, 1, 2][k] || 0 : [0, 1][k] || 0;
       if (w - ins * 2 > 0) this.s.hline(x + ins, x + w - 1 - ins, y + j, c);
     }
   }
-  // panel: drop shadow, dark ink outline, light inner rim, two-tone fill, corner rivets
-  panel(x, y, w, h, o = {}) {
-    const fill = o.fill || T.panel, line = o.line || T.ink, edge = o.edge || T.edge, edgeL = o.edgeL || T.edgeL;
-    if (o.shadow !== false) this.rrect(x + 1, y + 2, w, h, '#0a0612', 3);
-    this.rrect(x, y, w, h, line, 3);
-    this.rrect(x + 1, y + 1, w - 2, h - 2, edge, 2);
-    this.rrect(x + 2, y + 2, w - 4, h - 4, fill, 1);
-    // lit top band + inner rim lines
-    this.s.hline(x + 3, x + w - 4, y + 2, mix(fill, edgeL, 0.55));
-    this.s.hline(x + 3, x + w - 4, y + 1, edgeL);
-    this.s.vline(x + 1, y + 3, y + h - 4, mix(edge, edgeL, 0.5));
-    this.s.hline(x + 3, x + w - 4, y + h - 3, shift(fill, -0.6));
-    if (h > 16) for (let j = y + 3; j < y + Math.min(h - 3, 8); j++) this.s.hline(x + 3, x + w - 4, j, mix(fill, edgeL, 0.12 * (8 - (j - y)) / 5));
-    if (o.dots) for (let j = y + 6; j < y + h - 5; j += 4) for (let i = x + 5 + ((j >> 2) % 2) * 2; i < x + w - 5; i += 4) this.s.px(i, j, mix(fill, edge, 0.32));
-    if (w > 30 && h > 20 && o.rivets !== false) for (const [rx, ry] of [[x + 4, y + 4], [x + w - 5, y + 4], [x + 4, y + h - 5], [x + w - 5, y + h - 5]]) { this.s.px(rx, ry, edgeL); this.s.px(rx + 1, ry + 1, shift(fill, -0.9)); }
-  }
-  // slanted header banner with a diamond badge (like pixel UI kit section headers)
+  // panel: soft drop shadow, ink outline, 2px lit/shaded bevel, inner ink line, dithered gradient fill,
+  // brass corner caps. o: fill, fill2, line, edge, edgeL, shadow, alpha (glass), dots, rivets, ornate, gem, accent, thin
+  panel(x, y, w, h, o = {}) { frame(this, x, y, w, h, o); }
+  // ornate slanted header ribbon with a diamond badge and trailing chevrons; returns the ribbon width
   banner(x, y, str, o = {}) {
-    const c = o.color || T.cyan, c2 = shift(c, -1.2), w = this.tw(str) + 26, h = 13;
-    for (let j = 0; j < h; j++) this.s.hline(x + 8, x + w - Math.max(0, j - 2), y + j, j < 2 ? shift(c, 0.8) : c);
-    for (let j = 0; j < h; j++) this.s.px(x + w - Math.max(0, j - 2) + 1, y + j, c2);
+    x = Math.round(x); y = Math.round(y);
+    const s = this.s, c = o.color || T.cyan, w = this.tw(str) + 26, h = 13, K = T.ink;
+    const L2 = mx(c, '#ffffff', 0.55), L = sh(c, 0.6), D = sh(c, -0.55), D2 = sh(c, -1.2);
+    const right = (j) => x + w - Math.max(0, j - 2);
+    for (let j = -1; j <= h; j++) s.hline(x + 8, right(Math.max(0, Math.min(h - 1, j))) + 1, y + j, K);
+    for (let j = 0; j < h; j++) {
+      const r = right(j);
+      if (j === 0) s.hline(x + 8, r, y, L2);
+      else if (j === 1) s.hline(x + 8, r, y + 1, L);
+      else if (j >= h - 2) s.hline(x + 8, r, y + j, j === h - 1 ? D2 : D);
+      else for (let i = x + 8; i <= r; i++) s.px(i, y + j, j > h / 2 && bayer(i, y + j) < (j - h / 2) / (h / 2) * 0.7 ? D : c);
+      s.px(r, y + j, j < 2 ? L : D2);
+    }
     // diamond badge
     const cx = x + 7, cy = y + 6;
-    for (let j = -8; j <= 8; j++) { const hw = 8 - Math.abs(j); this.s.hline(cx - hw, cx + hw, cy + j, Math.abs(j) > 6 || hw < 2 ? T.ink : j < 0 ? shift(c, 1) : c); }
-    for (let j = -6; j <= 6; j++) { const hw = 6 - Math.abs(j); this.s.hline(cx - hw, cx + hw, cy + j, T.panel); }
+    for (let j = -8; j <= 8; j++) { const hw = 8 - Math.abs(j); s.hline(cx - hw, cx + hw, cy + j, K); }
+    for (let j = -7; j <= 7; j++) { const hw = 7 - Math.abs(j); s.hline(cx - hw, cx + hw, cy + j, j < 0 ? L : j > 2 ? D : c); }
+    for (let j = -5; j <= 5; j++) { const hw = 5 - Math.abs(j); s.hline(cx - hw, cx + hw, cy + j, K); }
+    for (let j = -4; j <= 4; j++) { const hw = 4 - Math.abs(j); s.hline(cx - hw, cx + hw, cy + j, j < 0 ? '#2e2648' : '#221c36'); }
+    s.px(cx - 6, cy - 1, '#ffffff'); s.px(cx - 5, cy - 2, L2);
     if (o.icon) this.icon(o.icon, cx - 3, cy - 3, c, null);
-    this.text(str, x + 18, y + 3, T.ink);
-    if (o.chev !== false) for (let k = 0; k < 3; k++) { const bx = x + w + 6 + k * 5; for (let j = 0; j < h; j++) { const off = Math.abs(j - 6) >> 1; this.s.px(bx - off, y + j, k === 0 ? c : c2); this.s.px(bx - off + 1, y + j, k === 0 ? c : c2); } }
+    this.text(str, x + 18, y + 3, K, { shadow: mx(c, '#ffffff', 0.4) });
+    if (o.chev !== false) for (let k = 0; k < 3; k++) {
+      const bx = x + w + 6 + k * 5, col = [c, D, D2][k];
+      for (let j = 0; j < h; j++) { const off = Math.abs(j - 6) >> 1; s.px(bx - off - 1, y + j, K); s.px(bx - off, y + j, col); s.px(bx - off + 1, y + j, col); s.px(bx - off + 2, y + j, K); }
+    }
     return w;
   }
-  // segmented bar (HP, energy): value 0..1; rounded track with an inset shadow, glossy fill
+  // segmented bar (HP, energy): v 0..1. Ink-outlined inset track, 3-tone glossy fill with segment
+  // notches, a travelling shine, a damage trail that lingers then drains, low-value blink.
+  // o: color, back, seg, ghost, id (trail key), shine (false = off), trail (false = off)
   bar(x, y, w, h, v, o = {}) {
-    v = Math.max(0, Math.min(1, v));
-    const r = h >= 4 ? 2 : 1;
+    x = Math.round(x); y = Math.round(y); w = Math.max(1, Math.round(w)); h = Math.max(1, Math.round(h));
+    v = clamp01(+v || 0);
+    const s = this.s, r = h >= 4 ? 2 : 1;
+    const key = o.id ?? x + ',' + y + ',' + w + ',' + h;
+    let B = this._bars.get(key);
+    if (!B) { B = { v, trail: v, hold: 0, flash: 0 }; this._bars.set(key, B); }
+    B.seen = this.frameN;
+    if (v < B.v - 1e-4) { B.trail = Math.max(B.trail, B.v); B.hold = 0.5; }
+    else if (v > B.v + 1e-4) { B.flash = 0.35; }
+    if (v > B.trail) B.trail = v;
+    B.v = v;
+    if (B.hold > 0) B.hold -= this.dt; else B.trail = Math.max(v, B.trail - this.dt * 0.8);
+    if (B.flash > 0) B.flash -= this.dt;
     this.rrect(x - 1, y - 1, w + 2, h + 2, T.ink, r);
-    this.rrect(x, y, w, h, o.back || '#1a1428', r - 1);
-    this.s.hline(x + 1, x + w - 2, y, '#0e0a18');
-    const col = o.color || (v > 0.5 ? T.green : v > 0.22 ? T.amber : T.red);
-    const seg = o.seg || 0, fw = Math.round(w * v);
-    if (o.ghost != null && o.ghost > v) { const gw = Math.round(w * Math.min(1, o.ghost)); for (let i = fw; i < gw; i++) this.s.vline(x + i, y, y + h - 1, '#e8e0f0'); }
-    for (let i = 0; i < fw; i++) {
-      const edgeCut = h >= 4 && (i === 0 || i === w - 1);
-      const y0 = y + (edgeCut ? 1 : 0), y1 = y + h - 1 - (edgeCut ? 1 : 0);
-      this.s.vline(x + i, y0, y1, col);
-      if (h > 2) { this.s.px(x + i, y0, shift(col, 1.1)); this.s.px(x + i, y1, shift(col, -0.9)); }
-      if (h > 4) this.s.px(x + i, y0 + 1, mix(col, '#ffffff', 0.25));
-      if (seg && i % seg === seg - 1) this.s.vline(x + i, y0, y1, shift(col, -1.3));
+    const back = o.back || '#1a1428';
+    s.rect(x, y, w, h, back);
+    if (h > 2) s.hline(x, x + w - 1, y, sh(back, -0.7));
+    if (h >= 4) s.hline(x + 1, x + w - 2, y + h - 1, mx(back, T.edge, 0.55));
+    let col = o.color || (v > 0.5 ? T.green : v > 0.22 ? T.amber : T.red);
+    if (!o.color && v <= 0.22 && v > 0 && ((this.t * 4) | 0) % 2) col = mx(col, '#ffffff', 0.3);
+    if (B.flash > 0) col = mx(col, '#ffffff', B.flash * 1.4);
+    const seg = o.seg || 0;
+    let fw = Math.round(w * v); if (v > 0 && fw < 1) fw = 1;
+    if (seg) for (let i = seg - 1; i < w - 1; i += seg) if (i >= fw) s.vline(x + i, y + 1, y + h - 1, mx(back, T.edge, 0.35));
+    if (o.ghost != null && o.ghost > v) { const gw = Math.round(w * Math.min(1, o.ghost)); for (let i = fw; i < gw; i++) s.vline(x + i, y, y + h - 1, '#e8e0f0'); }
+    if (o.trail !== false && B.trail > v + 0.002) {
+      const tw = Math.round(w * B.trail), tc = B.hold > 0 ? '#fff4e8' : T.coralL, td = sh(T.coral, -0.2);
+      for (let i = fw; i < tw; i++) for (let j = 0; j < h; j++) s.px(x + i, y + j, j === h - 1 && h > 2 ? td : tc);
     }
+    const L2 = mx(col, '#ffffff', 0.55), L = sh(col, 0.75), D = sh(col, -0.8), N = sh(col, -1.3), G = mx(col, '#ffffff', 0.4);
+    const shineOn = o.shine !== false && h >= 3 && fw > 5, ph = shineOn ? ((this.t * 0.55 + hash(x, y)) % 1.4) / 1.4 : -1, sx = Math.round(ph * (w + 24)) - 12;
+    for (let i = 0; i < fw; i++) {
+      const cut = h >= 4 && (i === 0 || i === w - 1);
+      const y0 = y + (cut ? 1 : 0), y1 = y + h - 1 - (cut ? 1 : 0);
+      for (let Y = y0; Y <= y1; Y++) {
+        const j = Y - y;
+        let c2 = h === 1 ? col : j === 0 ? L : h >= 4 && j === 1 ? G : j === h - 1 && h >= 3 ? D : col;
+        if (seg && i % seg === seg - 1 && i < fw - 1) c2 = j === 0 ? col : N;
+        if (shineOn && i - sx >= -(j) && i - sx < 3 - j && j < h - 1) c2 = L2;
+        s.px(x + i, Y, c2);
+      }
+    }
+    if (fw > 1 && fw < w && h >= 3) s.vline(x + fw - 1, y + 1, y + h - 2, L2);
   }
   // ------------------------------------------------------------------ input
   inside(x, y, w, h) { return this.ptr.x >= x && this.ptr.y >= y && this.ptr.x < x + w && this.ptr.y < y + h; }
-  // returns true on click; draws the button: a chunky pixel key with a 3D lip that presses down
+  blocked(o = {}) { return (this.dialog && !o.modal) || (this.modals.length && !this._inModal && !o.modal); }
+  // returns true on click; draws the button: a chunky pixel key with a 3D lip that presses down.
+  // o: color, fill, active, disabled, icon, sub, subColor, key, hotkey, textColor, mini, modal
   button(x, y, w, h, label, o = {}) {
-    const over = this.inside(x, y, w, h) && !o.disabled && !(this.dialog && !o.modal), down = over && this.ptr.down;
+    x = Math.round(x); y = Math.round(y); w = Math.round(w); h = Math.round(h);
+    const over = this.inside(x, y, w, h) && !o.disabled && !this.blocked(o), down = over && this.ptr.down;
     if (over) this.hot = label;
-    const accent = o.disabled ? '#5a5478' : (o.color || T.cyan);
-    const base = o.disabled ? '#2a2638' : (o.fill || (o.active ? mix(T.panel, accent, 0.28) : T.panel));
-    const face = over && !down ? shift(base, 0.45) : base, lip = 3, dy = down ? lip - 1 : 0;
-    // shadow + lip (the key's side), then the face
-    this.rrect(x + 1, y + lip + 1, w, h - lip, '#0a0612', 3);
+    const s = this.s, dis = !!o.disabled;
+    const accent = dis ? '#5a5478' : (o.color || T.cyan);
+    const base = dis ? '#2a2638' : (o.fill || (o.active ? mx(T.panel, accent, 0.26) : T.panel));
+    const lip = h >= 13 ? 3 : 2, dy = down ? lip - 1 : 0, fh = h - lip, fy = y + dy;
+    const face = dis ? base : down ? sh(base, -0.3) : over ? sh(base, 0.55) : base;
+    dropShadow(s, x, y, w, h, 3, 1, 1, 0.45);
+    // the key's side (lip)
     this.rrect(x, y + lip, w, h - lip, T.ink, 3);
-    this.rrect(x + 1, y + lip, w - 2, h - lip - 1, mix(shift(accent, -1.6), base, 0.45), 2);
-    const fy = y + dy, fh = h - lip;
+    const side = dis ? '#221e30' : mx(sh(accent, -1.5), base, 0.35);
+    this.rrect(x + 1, y + lip, w - 2, h - lip - 1, side, 2);
+    s.hline(x + 3, x + w - 4, y + h - 2, sh(side, -0.7));
+    // face
     this.rrect(x, fy, w, fh, T.ink, 3);
-    this.rrect(x + 1, fy + 1, w - 2, fh - 2, over || o.active ? accent : mix(T.edge, accent, 0.25), 2);
-    this.rrect(x + 2, fy + 2, w - 4, fh - 4, face, 1);
-    // two-tone face: lighter upper half + shine line + specular dot
-    for (let j = fy + 2; j < fy + 2 + Math.floor((fh - 4) / 2); j++) this.s.hline(x + 3, x + w - 4, j, mix(face, '#ffffff', 0.07));
-    this.s.hline(x + 3, x + w - 5, fy + 2, mix(face, '#ffffff', 0.28));
-    this.s.px(x + 3, fy + 3, mix(face, '#ffffff', 0.5));
+    const rim = dis ? '#3a3650' : over || o.active ? accent : mx(T.edge, accent, 0.3);
+    this.rrect(x + 1, fy + 1, w - 2, fh - 2, rim, 2);
+    if (fh >= 6) { s.hline(x + 3, x + w - 4, fy + 1, mx(rim, '#ffffff', dis ? 0.1 : 0.4)); s.hline(x + 3, x + w - 4, fy + fh - 2, sh(rim, -0.6)); }
+    if (fh > 4) {
+      gradFill(s, x + 2, fy + 2, w - 4, fh - 4, [mx(face, '#ffffff', 0.12), face, sh(face, -0.32)], 1);
+      s.hline(x + 3, x + w - 4, fy + 2, mx(face, '#ffffff', dis ? 0.06 : 0.26));
+      if (!dis) s.px(x + 3, fy + 3, mx(face, '#ffffff', 0.5));
+    }
+    // a glint sweeps across hovered / active keys
+    if (!dis && !down && (over || o.active) && fh > 6) {
+      const per = over ? 1.5 : 3.2, ph = ((this.t + hash(x, y) * per) % per) / per, gx = x + Math.round(ph * (w + fh + 12)) - 6;
+      const gc = mx(face, '#ffffff', 0.4);
+      for (let j = fy + 2; j < fy + fh - 2; j++) for (let k = 0; k < 2; k++) { const xx = gx - (j - fy) + k; if (xx > x + 2 && xx < x + w - 3) s.px(xx, j, gc); }
+    }
+    if (dis && fh > 5) for (let j = fy + 3; j < fy + fh - 2; j++) for (let i = x + 3; i < x + w - 3; i++) if ((i + j) % 4 === 0) s.px(i, j, '#24202f');
     // accent stripe on the left edge
-    if (!o.disabled && w > 24) { this.s.vline(x + 2, fy + 3, fy + fh - 4, accent); this.s.vline(x + 3, fy + 4, fy + fh - 5, mix(accent, face, 0.5)); }
-    let tx = x + Math.round(w / 2), ty = fy + Math.round((fh - 7) / 2);
-    const lc = o.disabled ? '#6a6488' : o.textColor || T.text;
+    if (!dis && w > 24 && fh > 7) { s.vline(x + 2, fy + 3, fy + fh - 4, accent); s.vline(x + 3, fy + 4, fy + fh - 5, mx(accent, face, 0.5)); }
+    const mini = !!o.mini, gh = mini ? 5 : 7;
+    let tx = x + Math.round(w / 2), ty = fy + Math.round((fh - gh) / 2);
+    const lc = dis ? T.textD : o.textColor || T.text;
     if (o.icon) {
-      const lw = label ? this.tw(label) + 10 : 7;
+      const lw = label ? this.tw(label, { mini }) + 10 : 7;
       const ix = tx - Math.round(lw / 2) + (w > 24 ? 1 : 0);
-      this.icon(o.icon, ix, ty, o.disabled ? '#6a6488' : accent);
-      if (label) this.text(label, ix + 10, ty, lc, { shadow: T.ink });
-    } else if (label) this.text(label, tx, ty, lc, { align: 'center', shadow: T.ink });
+      this.icon(o.icon, ix, fy + Math.round((fh - 7) / 2), dis ? T.textD : accent);
+      if (label) this.text(label, ix + 10, ty, lc, { shadow: T.ink, mini });
+    } else if (label) this.text(label, tx, ty, lc, { align: 'center', shadow: T.ink, mini });
     if (o.sub) this.text(o.sub, x + w - 4, fy + fh - 8, o.subColor || T.dim, { align: 'right', mini: true });
     if (o.key) this.text(o.key, x + 5, fy + 3, T.dim, { mini: true });
-    const clicked = (over && this.ptr.released) || (o.hotkey && this.key(o.hotkey) && !o.disabled);
+    const clicked = (over && this.ptr.released) || (o.hotkey && this.key(o.hotkey) && !o.disabled && !this.blocked(o));
     if (clicked) this.ptr.released = false;
     return clicked;
   }
+  // run fn with drawing clipped to a rect (fn gets the real coordinates). r: corner radius of the clip
+  clip(x, y, w, h, fn, r = 0) {
+    x = Math.round(x); y = Math.round(y);
+    const real = this.s;
+    if (!this._clipS || this._clipS.w !== real.w || this._clipS.h !== real.h) this._clipS = new Surf(real.w, real.h);
+    const tmp = this._clipS; tmp.data.fill(0);
+    this.s = tmp;
+    try { fn(); } finally { this.s = real; }
+    for (let j = 0; j < h; j++) {
+      const Y = y + j; if (Y < 0 || Y >= real.h) continue;
+      const k = j < r ? r - j : j >= h - r ? j - (h - r - 1) : 0;
+      const ins = r >= 3 ? [0, 1, 1, 3][k] || 0 : r === 2 ? [0, 1, 2][k] || 0 : r === 1 ? [0, 1][k] || 0 : 0;
+      for (let X = Math.max(0, x + ins); X < Math.min(real.w, x + w - ins); X++) { const v = tmp.data[Y * real.w + X]; if (v >>> 24) real.data[Y * real.w + X] = v; }
+    }
+  }
   // ------------------------------------------------------------------ dialogue
-  // say(name, text, o) → Promise that resolves when the player advances; o.choices → resolves to an index
+  // say(name, text, o) → Promise that resolves when the player advances; o.choices → resolves to an index.
+  // o: portrait (canvas | ImageData | Surf | (ui, x, y, size) => void), nameColor/color, speed, choices
   say(name, str, o = {}) {
     return new Promise((resolve) => { this.dialog = { name, str: String(str), shown: 0, t: 0, resolve, o, choices: o.choices || null, pick: 0, done: false }; });
   }
   choose(prompt, choices, o = {}) { return this.say(o.name || '', prompt, Object.assign({}, o, { choices })); }
-  drawDialog() {
-    const D = this.dialog, W = this.w, H = this.h;
-    const bw = Math.min(W - 16, 440), bh = 62, bx = Math.round((W - bw) / 2), by = H - bh - 8;
-    const lines = this.wrap(D.str, bw - 24);
-    const total = D.str.length;
-    D.t += 1 / 60; D.shown = Math.min(total, D.shown + (D.o.speed || 1.6));
-    this.panel(bx, by, bw, bh, { dots: false });
-    if (D.name) { const nw = this.tw(D.name) + 14; this.panel(bx + 8, by - 11, nw, 14, { fill: D.o.nameColor || T.cyan2, edge: T.cyan, edgeL: '#9ff0ff' }); this.text(D.name, bx + 15, by - 7, T.text, { shadow: T.ink }); }
-    // voice babble: one blip per newly revealed character (the audio engine paces and filters them)
-    if (this.voice && D.name) { const shownNow = Math.floor(D.shown); for (let i = D.voiced || 0; i < shownNow; i += 2) this.voice(D.name, D.str[i]); D.voiced = shownNow; }
-    let left = Math.floor(D.shown);
-    for (let i = 0; i < lines.length && i < 5; i++) {
-      const part = lines[i].slice(0, Math.max(0, left)); left -= lines[i].length + 1;
-      this.text(part, bx + 12, by + 10 + i * 11, T.text, { shadow: T.ink });
-    }
-    const finished = D.shown >= total;
-    const adv = this.ptr.released || this.key('Enter') || this.key(' ') || this.key('z');
-    if (D.choices && finished) {
-      const cw = Math.min(200, Math.max(...D.choices.map((c) => this.tw(c))) + 30), ch = 15, cx = bx + bw - cw - 6, cy0 = by - 6 - D.choices.length * (ch + 2);
-      if (this.key('ArrowUp') || this.key('w')) D.pick = (D.pick + D.choices.length - 1) % D.choices.length;
-      if (this.key('ArrowDown') || this.key('s')) D.pick = (D.pick + 1) % D.choices.length;
-      for (let i = 0; i < D.choices.length; i++) {
-        const y = cy0 + i * (ch + 2);
-        if (this.inside(cx, y, cw, ch)) D.pick = i;
-        if (this.button(cx, y, cw, ch, D.choices[i], { modal: true, active: D.pick === i, color: T.amber })) { this.closeDialog(i); return; }
-        if (D.pick === i) this.icon('play', cx - 9, y + 4, T.amber);
-      }
-      if (this.key('Enter') || this.key(' ') || this.key('z')) { this.closeDialog(D.pick); return; }
-      this.ptr.released = false;
-      return;
-    }
-    if (finished && ((this.t * 2) | 0) % 2) this.icon('play', bx + bw - 14, by + bh - 12, T.amber);
-    if (adv) { this.ptr.released = false; if (!finished) D.shown = total; else this.closeDialog(null); }
-  }
-  closeDialog(v) { const D = this.dialog; this.dialog = null; this.keys = {}; D.resolve(v); }
+  drawDialog() { if (this.dialog) drawDialog(this); }
+  closeDialog(v) { const D = this.dialog; if (!D) return; this.dialog = null; this.keys = {}; D.resolve(v); }
   // ------------------------------------------------------------------ toasts
-  toast(str, o = {}) { if (this.toasts.some((t) => t.str === str)) return; this.toasts.push({ str, t: 0, dur: o.dur || 2.2, color: o.color || T.amber, icon: o.icon }); }
+  toast(str, o = {}, ms) {
+    if (typeof o === 'string') o = { color: o === 'gold' ? T.amber : o === 'good' ? T.green : o === 'bad' ? T.red : undefined };
+    if (ms && !o.dur) o = Object.assign({}, o, { dur: ms / 1000 });
+    if (this.toasts.some((t) => t.str === str)) return;
+    this.toasts.push({ str, t: 0, dur: o.dur || 2.2, color: o.color || T.amber, icon: o.icon });
+  }
   drawToasts() {
-    let y = 8, n = 0;
+    const s = this.s;
+    let y = 5, n = 0;
     for (const t of this.toasts) {
       if (n++ >= 3) break;            // at most three at a time; the rest wait their turn
-      t.t += 1 / 60;
-      const a = Math.min(1, t.t * 6, (t.dur - t.t) * 4);
-      if (a <= 0) continue;
-      const w = this.tw(t.str) + (t.icon ? 26 : 16), x = Math.round(this.w / 2 - w / 2 + (1 - a) * 0);
-      this.panel(x, y - Math.round((1 - a) * 8), w, 15, { edge: t.color, edgeL: shift(t.color, 0.8) });
-      if (t.icon) this.icon(t.icon, x + 6, y + 4 - Math.round((1 - a) * 8), t.color);
-      this.text(t.str, x + (t.icon ? 17 : 8), y + 4 - Math.round((1 - a) * 8), T.text, { shadow: T.ink });
-      y += 18;
+      t.t += this.dt || 1 / 60;
+      const kin = easeOutBack(t.t * 3.2), kout = clamp01((t.dur - t.t) * 4);
+      if (kout <= 0) continue;
+      const hasI = !!t.icon, w = this.tw(t.str) + (hasI ? 30 : 18), h = 17;
+      const x = Math.round(this.w / 2 - w / 2), yy = y + Math.round((1 - kin) * -20 - (1 - easeOut(kout)) * 20);
+      frame(this, x, yy, w, h, { edge: mx(T.edge, t.color, 0.5), edgeL: mx(T.edgeL, t.color, 0.65), fill: '#2a2342', rivets: false });
+      if (hasI) { ball(s, x + 8, yy + 8, 7, t.color); drawSmall(s, t.icon, x + 5, yy + 5, '#ffffff', sh(t.color, -1.6)); }
+      this.text(t.str, x + (hasI ? 19 : 9), yy + 5, T.text, { shadow: T.ink });
+      const left = clamp01(1 - t.t / t.dur), lw = Math.round((w - (hasI ? 22 : 8)) * left);
+      if (lw > 0) s.hline(x + (hasI ? 18 : 4), x + (hasI ? 18 : 4) + lw - 1, yy + h - 3, mx(t.color, '#2a2342', 0.35));
+      if (t.t < 0.6) sparkle(s, x + w - 5, yy + 3, t.color, 1 - t.t / 0.6);
+      y += h + 3;
     }
     this.toasts = this.toasts.filter((t) => t.t < t.dur);
   }
+  // ------------------------------------------------------------------ widgets (see uikit/widgets.js)
+  keycap(x, y, label, o) { return W.keycap(this, x, y, label, o); }
+  prompt(x, y, keyLabel, str, o) { return W.prompt(this, x, y, keyLabel, str, o); }
+  joystick(cx, cy, r, dx, dy, active, o) { return W.joystick(this, cx, cy, r, dx, dy, active, o); }
+  hudClock(x, y, info, o) { return W.hudClock(this, x, y, info, o); }
+  hudMoney(x, y, amount, o) { return W.hudMoney(this, x, y, amount, o); }
+  hudLocation(x, y, name, sub, o) { return W.hudLocation(this, x, y, name, sub, o); }
+  partyBar(x, y, party, o) { return W.partyBar(this, x, y, party, o); }
+  minimap(x, y, w, h, draw, o) { return W.minimap(this, x, y, w, h, draw, o); }
+  objective(x, y, str, o) { return W.objective(this, x, y, str, o); }
+  iconButton(x, y, size, icon, o) { return W.iconButton(this, x, y, size, icon, o); }
+  cursor(x, y, dir = 'right', c = T.amber) { tri(this.s, Math.round(x), Math.round(y), dir, 3, c); }
+  gem(x, y, c = T.cyan, r = 3) { gem(this.s, Math.round(x), Math.round(y), c, r); }
+  sparkle(x, y, c = T.amberL, k = 1) { sparkle(this.s, x, y, c, k); }
+  // ------------------------------------------------------------------ full-screen modal screens (see uikit/screens.js)
+  // nameEntry({ title, value, max, sub, portrait }) → Promise<string>
+  nameEntry(o = {}) { return new Promise((resolve) => this.openModal(nameEntryScreen(this, o, resolve))); }
+  // pickCards({ title, sub, cards: [{ label, sub, color, icon, art: 'boy'|'girl', draw(ui, x, y, w, h) }], pick }) → Promise<index>
+  pickCards(o = {}) { return new Promise((resolve) => this.openModal(pickCardsScreen(this, o, resolve))); }
 }
