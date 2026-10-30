@@ -42,6 +42,15 @@ export function over(o, c, t) {
  * hair: { col, hi } — base colour and sheen colour.
  */
 export function hairPx(o, hair, u, v, k = 1, sheen = 0) {
+  if (hair.toon) {
+    // toon hair: flat colour in broad locks, a few darker painted strands, a soft sheen band
+    const s = Math.floor(u / 3), ha = h2(s, 7, 3), hb = h2(s >> 1, 9, 4);
+    let t = 0.9 + ha * 0.1 - (hb > 0.8 && h2(s, Math.floor(v / 9), 5) > 0.35 ? 0.2 : 0);
+    const c = hair.col, kt = t * k;
+    o[0] = c[0] * kt; o[1] = c[1] * kt; o[2] = c[2] * kt; o[3] = 255;
+    if (sheen > 0) over(o, hair.hi, Math.min(0.7, sheen * 0.9));
+    return o;
+  }
   const s = Math.floor(u);
   const ha = h2(s, 7, 3), hb = h2(s >> 1, 9, 4);
   const strand = ha * 0.55 + hb * 0.45; // per-strand tone

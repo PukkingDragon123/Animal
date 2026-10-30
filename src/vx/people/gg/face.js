@@ -24,7 +24,7 @@ export function exprParams(name, out = {}) {
 }
 
 const LIGHT = (() => { const l = [0.12, 0.6, 0.79]; const n = Math.hypot(...l); return l.map((v) => v / n); })();
-const INK = [26, 18, 18];
+const INK = [22, 16, 18];
 
 export class FacePainter {
   /** block: { x, y, w, h, x0, y1, dens } (atlas px), pix: the atlas Pix */
@@ -49,7 +49,7 @@ export class FacePainter {
     L.ir = L.ew * (kid ? 0.5 : 0.44) * (1 + 0.3 * sty);
     // toon faces (style >= 0.5): flat painted anime faces, PSP-era low-poly style: big simple eyes, a tiny mouth, no nose relief
     this.toon = sty >= 0.5;
-    if (this.toon) { L.ew = L.hw * (kid ? 0.27 : f ? 0.25 : 0.24) * (F.eyeW || 1); L.eh = L.ew * (f || kid ? 1.3 : 1.12) * (F.eyeH || 1); L.eyeX = L.hw * 0.43; L.eyeY += 1.0 * s; L.mouthW = s * (kid ? 4.2 : 4.6); }
+    if (this.toon) { L.ew = L.hw * (kid ? 0.27 : f ? 0.25 : 0.24) * (F.eyeW || 1); L.eh = L.ew * (f || kid ? 1.1 : 0.95) * (F.eyeH || 1); L.eyeX = L.hw * 0.43; L.eyeY += 1.0 * s; L.mouthW = s * (kid ? 4.2 : 4.6); }
     L.browIn = L.hw * 0.15; L.browOut = L.hw * 0.66;
     L.browTh = s * (F.browW || 1) * (kid ? 1.35 : f ? 1.7 : 2.4);
     L.browArch = s * (F.browArch ?? (f || kid ? 1.6 : 0.9));
@@ -268,54 +268,54 @@ export class FacePainter {
     return [B.x + x0 - 1, B.y + y0 - 1, x1 - x0 + 2, y1 - y0 + 2];
   }
 
+  // ink-drawn eyes: round grey-ish irises, bold scratchy lash lines with spikes above and below
   toonEye(o, x, y, side, E) {
     const L = this.L, s = this.s, P = this.P, F = this.spec.face, mk = F.makeup || {};
     const ecx = L.cx + side * L.eyeX, ecy = L.eyeY, ew = L.ew, eh = L.eh;
     const t = ((x - ecx) * side) / ew; // -1 inner corner … +1 outer corner
-    if (t < -1.3 || t > 1.6 || Math.abs(y - ecy) > eh * 1.6 + 3 * s) return;
-    const tc = Math.max(-1, Math.min(1, t)), arc = Math.sqrt(Math.max(0, 1 - tc * tc));
-    const LASH = mk.lashCol || [44, 32, 38], fem = P.f || P.kid;
-    const happyShut = (E.cheek || 0) >= 0.95 && (E.upper ?? 1) < 1;  // ^ ^
+    if (t < -1.4 || t > 1.7 || Math.abs(y - ecy) > eh * 1.7 + 4 * s) return;
+    const tc = Math.max(-1, Math.min(1, t)), arc = Math.sqrt(Math.max(0, 1 - tc * tc)), fem = P.f || P.kid;
+    const happyShut = (E.cheek || 0) >= 0.95 && (E.upper ?? 1) < 1;
     const open = happyShut ? 0 : Math.max(0, (E.upper ?? 1) * (1 - (E.blink || 0)));
-    const lw = (1.3 + 1.1 * sstep(-0.4, 0.9, t)) * s * (fem ? 1.15 : 1);
+    const ink = (d, w, a = 1) => { if (d < w) over(o, INK, a); };
     if (open < 0.18) {
-      // closed: a ∩ arc when beaming, a soft ∪ lid line otherwise
-      const yc = happyShut ? ecy - eh * 0.28 * arc + 0.2 * eh : ecy + eh * 0.12 * arc;
-      if (t > -1 && t < 1.05 && Math.abs(y - yc) < 0.65 * s + 0.35) over(o, LASH, 0.95);
-      if (fem && !happyShut && t > 0.8 && t < 1.25 && Math.abs(y - (yc - (t - 0.8) * 2 * s)) < 0.5 * s) over(o, LASH, 0.9);
+      const yc = happyShut ? ecy - eh * 0.3 * arc + 0.25 * eh : ecy + eh * 0.15 * arc;
+      if (t > -1.05 && t < 1.1) ink(Math.abs(y - yc), 0.8 * s + 0.3);
+      if (!happyShut) for (const k of [0.2, 0.55, 0.9]) { const px = ecx + side * k * ew, py = ecy + eh * 0.15 * Math.sqrt(1 - k * k); ink(segD(x, y, px, py, px + side * 0.6 * s, py + 1.4 * s), 0.35 * s + 0.2); }
       return;
     }
-    // lids: the top lid slants with the mood (angry: inner corner down; sad: outer corner down)
     const inn = E.inner || 0;
-    const slant = (inn < 0 ? -inn * 0.55 * s * (1 - tc) * 0.5 : 0) + (inn > 0 ? inn * 0.4 * s * (1 + tc) * 0.5 : 0);
-    const top = ecy - eh * 0.56 * Math.pow(arc, 0.45) * Math.min(1.35, open) + eh * 0.04 * tc + slant;
-    const bot = Math.max(top + 0.5, ecy + eh * 0.46 * Math.pow(arc, 0.7) * (1 - (E.lower || 0) * 0.45));
+    const slant = (inn < 0 ? -inn * 0.6 * s * (1 - tc) * 0.5 : 0) + (inn > 0 ? inn * 0.45 * s * (1 + tc) * 0.5 : 0);
+    const top = ecy - eh * 0.55 * Math.pow(arc, 0.5) * Math.min(1.35, open) + eh * 0.06 * tc + slant;
+    const bot = Math.max(top + 0.5, ecy + eh * 0.5 * Math.pow(arc, 0.65) * (1 - (E.lower || 0) * 0.45));
     if (t > -1 && t < 1 && y > top && y < bot) {
-      o[0] = 250; o[1] = 248; o[2] = 246;
-      // iris: a tall oval, dark under the lid and glowing at the bottom; pupil; two catchlights
-      const sur = (E.upper ?? 1) > 1.2 ? 0.72 : 1;
-      const ix = ecx + (E.lookX || 0) * 0.9 * s, iy = ecy + eh * 0.08 + (E.lookY || 0) * 0.7 * s;
-      const rx = ew * 0.56 * sur, ry = eh * 0.6 * sur, u = (x - ix) / rx, v = (y - iy) / ry, dd = Math.sqrt(u * u + v * v);
-      if (dd < 1.08) {
-        const ic = this.iris, g = clamp01((v + 1) / 2), lift = 0.42 + 0.95 * Math.pow(g, 1.3), rim = sstep(0.72, 1.0, dd), a = sstep(1.08, 0.95, dd);
-        over(o, [ic[0] * lift * (1 - rim * 0.55), ic[1] * lift * (1 - rim * 0.55), ic[2] * lift * (1 - rim * 0.5)], a);
-        if (g > 0.6 && dd > 0.35 && dd < 0.85) over(o, mixc(ic, [255, 252, 236], 0.6), 0.5 * (g - 0.6) / 0.4);
-        const pd = Math.hypot(u / 0.42, v / 0.5);
-        if (pd < 1.1) over(o, [ic[0] * 0.14, ic[1] * 0.12, ic[2] * 0.16], sstep(1.1, 0.9, pd));
-        const h1 = Math.hypot((x - (ix - rx * 0.38)) / (rx * 0.3), (y - (iy - ry * 0.4)) / (ry * 0.24));
-        if (h1 < 1.15) over(o, [255, 255, 255], sstep(1.15, 0.8, h1));
-        const h2d = Math.hypot((x - (ix + rx * 0.36)) / (rx * 0.14 + 0.3), (y - (iy + ry * 0.42)) / (ry * 0.1 + 0.3));
-        if (h2d < 1.15) over(o, [255, 255, 255], 0.85 * sstep(1.15, 0.7, h2d));
+      o[0] = 252; o[1] = 250; o[2] = 248;
+      const sur = (E.upper ?? 1) > 1.2 ? 0.7 : 1;
+      const ix = ecx + (E.lookX || 0) * 0.9 * s, iy = ecy + eh * 0.04 + (E.lookY || 0) * 0.7 * s;
+      const rx = ew * 0.5 * sur, ry = eh * 0.56 * sur, u = (x - ix) / rx, v = (y - iy) / ry, dd = Math.sqrt(u * u + v * v);
+      if (dd < 1.06) {
+        const ic = this.iris, lo = v > 0.15 ? 1.18 : 0.92;
+        o[0] = ic[0] * lo; o[1] = ic[1] * lo; o[2] = ic[2] * lo;
+        if (dd > 0.8) { o[0] = INK[0]; o[1] = INK[1]; o[2] = INK[2]; }                       // inked iris ring
+        if (Math.hypot(u, v * 0.95) < 0.36) { o[0] = 24; o[1] = 20; o[2] = 24; }            // pupil
+        if (Math.hypot(u - 0.32, v + 0.34) < 0.2) { o[0] = 255; o[1] = 255; o[2] = 255; }   // catchlight
       }
-      if (y - top < 0.9 * s + 0.5) { o[0] *= 0.8; o[1] *= 0.78; o[2] *= 0.84; } // lash shadow on the eyeball
+      if (y - top < 0.8 * s) { o[0] *= 0.82; o[1] *= 0.8; o[2] *= 0.84; }
     }
-    // upper lash line: bold, thicker toward the outer corner, flicking out past it
-    if (t > -1.02 && t < 1.06 && y <= top + 0.4 && y > top - lw) over(o, LASH, t < -0.8 ? 0.7 : 0.97);
-    const flick = fem ? 0.35 : 0.15;
-    if (t >= 0.9 && t < 1 + flick) { const yw = top - lw * 0.4 - (t - 0.9) * (fem ? 2.2 : 0.8) * s; if (Math.abs(y - yw) < lw * 0.42 * (1 - (t - 0.9) / (flick + 0.1))) over(o, LASH, 0.95); }
-    if (fem && t > 0.45 && t < 0.95 && y < top - lw + 0.3 && y > top - lw - 1.0 * s && Math.abs(((t - 0.45) * 7) % 1 - 0.5) < 0.18) over(o, LASH, 0.8);
-    // lower lid: a short soft stroke at the outer half
-    if (t > 0.1 && t < 0.98 && y > bot - 0.2 && y < bot + 0.55 * s + 0.3) over(o, [120, 72, 76], 0.55 * sstep(0.1, 0.6, t));
+    // bold upper lash line, heavier at the outer end, hooking out past the corner
+    const lw = (1.2 + 1.3 * sstep(-0.3, 1, t)) * s * (fem ? 1.1 : 0.9);
+    if (t > -1.05 && t < 1.08 && y <= top + 0.5 && y > top - lw) over(o, INK, 1);
+    if (t >= 0.85 && t < 1.45) { const yw = top - lw * 0.3 + (t - 0.85) * (fem ? 0.6 : 1.4) * s; ink(Math.abs(y - yw), lw * 0.45 * (1.45 - t) / 0.6); }
+    // lash spikes above (outer half) and below (scratchy lower lashes)
+    if (fem || mk.lash) for (const k of [0.25, 0.55, 0.85]) {
+      const px = ecx + side * k * ew, py = ecy - eh * 0.55 * Math.pow(Math.sqrt(1 - k * k), 0.5) + eh * 0.06 * k - lw * 0.8;
+      ink(segD(x, y, px, py, px + side * 1.2 * s, py - 1.3 * s), 0.38 * s + 0.2);
+    }
+    if (t > -0.7 && t < 1.02) ink(Math.abs(y - bot - 0.3 * s), 0.42 * s + 0.25, 0.95);
+    for (const k of (fem ? [-0.45, -0.05, 0.35, 0.7, 0.98] : [0.4, 0.85])) {
+      const px = ecx + side * k * ew, py = ecy + eh * 0.5 * Math.pow(Math.sqrt(Math.max(0, 1 - k * k)), 0.65) + 0.3 * s;
+      ink(segD(x, y, px, py, px + side * 0.35 * s * k, py + (fem ? 1.8 : 1.1) * s), 0.32 * s + 0.2, 0.9);
+    }
     if (mk.shadow && t > -0.8 && t < 1.1 && y < top - lw && y > top - lw - 2.4 * s) over(o, mk.shadow, 0.35 * (1 - (top - lw - y) / (2.4 * s)));
   }
 
@@ -327,38 +327,33 @@ export class FacePainter {
     const inn = E.inner || 0, br = (E.brow || 0) * s;
     const yc = L.browY - 1.5 * s - br - Math.sin(t * Math.PI) * 1.2 * s - inn * (1 - t) * 1.1 * s + (E.furrow || 0) * (1 - t) * 0.8 * s;
     const th = (0.55 + 0.45 * Math.sin(t * Math.PI * 0.9 + 0.2)) * 0.95 * s * (this.P.f ? 0.85 : 1.25) * (this.spec.face.browW || 1);
-    if (Math.abs(y - yc) < th) over(o, this.brow, 0.9 * sstep(0, 0.12, t) * sstep(1, 0.85, t));
+    if (Math.abs(y - yc) < th * 0.7) over(o, mixc(this.brow, INK, 0.5), 0.95 * sstep(0, 0.12, t) * sstep(1, 0.85, t));
   }
 
   toonNose(o, x, y) {
-    const L = this.L, s = this.s, ny = L.noseY - 0.8 * s, nx = L.cx + 0.5 * s;
-    if (Math.abs(y - ny) > 2 * s || Math.abs(x - nx) > 2 * s) return;
-    if (segDist(x, y, nx - 0.3 * s, ny - 1.1 * s, nx + 0.5 * s, ny + 0.3 * s) < 0.45 * s) over(o, mixc(this.skin, [120, 60, 60], 0.45), 0.55);
+    const L = this.L, s = this.s, ny = L.noseY - 0.6 * s, nx = L.cx + 0.3 * s;
+    if (Math.abs(y - ny) > 2.5 * s || Math.abs(x - nx) > 2.5 * s) return;
+    if (segDist(x, y, nx - 0.2 * s, ny - 1.6 * s, nx + 0.4 * s, ny) < 0.32 * s + 0.15) over(o, INK, 0.75);
   }
 
   toonMouth(o, x, y, E) {
-    const L = this.L, s = this.s, mw = L.mouthW * (E.mouthW || 1) * (1 + (E.corner || 0) * 0.08);
+    const L = this.L, s = this.s, mw = L.mouthW * 0.75 * (E.mouthW || 1);
     const u = (x - L.cx) / mw;
-    if (Math.abs(u) > 1.3 || y < L.mouthY - 5 * s || y > L.mouthY + 7 * s) return;
-    const uc = Math.max(-1, Math.min(1, u)), cr = (E.corner || 0) * 0.55 * s;
-    const yLine = L.mouthY - cr * uc * uc + (E.sneer ? 0.3 * s * uc : 0);
-    const open = (E.open || 0) * s * 0.75;
+    if (Math.abs(u) > 1.4 || y < L.mouthY - 5 * s || y > L.mouthY + 7 * s) return;
+    const open = (E.open || 0) * s * 0.8, cr = E.corner || 0, w = 0.36 * s + 0.2;
     if (open > 0.7 * s) {
-      // open: a soft rounded shape, dark red inside, tongue at the bottom, teeth under the top edge
-      const rnd = E.round || 0, half = 1 - rnd * 0.45, uu = u / half;
-      const top = yLine - open * 0.18 - (rnd ? 0 : cr * 0.2), bt = yLine + open * Math.pow(Math.max(0, 1 - uu * uu), 0.55 + rnd * 0.2);
-      if (Math.abs(uu) < 1 && y > top - 0.5 && y < bt + 0.5) {
-        const a = sstep(top - 0.5, top + 0.4, y) * sstep(bt + 0.5, bt - 0.4, y);
-        let c = [132, 44, 56];
-        if (E.teeth && y < top + 1.0 * s && Math.abs(uu) < 0.85) c = [252, 248, 244];
-        else if (y > bt - open * 0.38) c = [226, 112, 120];
-        over(o, c, a);
-        if (y < top + 0.55) over(o, [90, 40, 44], 0.7 * a);
+      // a small inked D: dark inside, a pink tongue, teeth under the top edge
+      const rnd = E.round || 0, uu = u / (1 - rnd * 0.4), top = L.mouthY - open * 0.15, bt = L.mouthY + open * Math.pow(Math.max(0, 1 - uu * uu), 0.5 + rnd * 0.2);
+      if (Math.abs(uu) <= 1.05 && y > top - w && y < bt + w) {
+        const edge = Math.abs(y - top) < w || Math.abs(y - bt) < w || Math.abs(uu) > 0.92;
+        over(o, edge ? INK : E.teeth && y < top + 1.0 * s ? [252, 250, 246] : y > bt - open * 0.4 ? [228, 118, 126] : [96, 34, 44], 1);
       }
       return;
     }
-    // closed: a short soft line, a little lighter at the ends
-    if (Math.abs(u) < 1 && Math.abs(y - yLine) < 0.48 * s + 0.2) over(o, [126, 62, 66], 0.85 * (1 - 0.6 * Math.abs(u) ** 3));
+    // closed: the cat-mouth 'w' when smiling, a short wavy line otherwise, a pout when sad
+    const yl = cr > 0.4 ? L.mouthY - 0.9 * s * Math.abs(Math.sin(u * Math.PI)) * Math.min(1.4, cr) + 0.3 * s
+      : L.mouthY + 0.35 * s * Math.sin(u * Math.PI * 1.5) - cr * 0.6 * s * (1 - u * u);
+    if (Math.abs(u) < 1 && Math.abs(y - yl) < w) over(o, INK, 0.95);
   }
 
   gutter() {

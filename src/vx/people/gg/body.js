@@ -127,5 +127,8 @@ export function buildPlan(spec) {
   const P = proportions(spec);
   const J = joints(P);
   const segs = [...bodySegments(spec, P), ...hairSegments(spec, P, J), ...accSegments(spec, P, J)];
+  // toon people are blockier: harder corners on every prism, chunky sneakers
+  if ((spec.face?.style || 0) >= 0.5) spec.hair.toon = 1;
+  if ((spec.face?.style || 0) >= 0.5) for (const sg of segs) { sg.ch *= 0.45; if (sg.mat === 'shoe') { const k = sg.part === 'toe' ? 1.25 : 1.18; sg.b = [sg.b[0], sg.b[1], sg.b[2] * k, sg.b[3] * 1.06]; sg.t = [sg.t[0], sg.t[1], sg.t[2] * k, sg.t[3] * 1.06]; if (sg.part === 'toe') sg.y1 *= 1.35; } }
   return { P, J, segs };
 }

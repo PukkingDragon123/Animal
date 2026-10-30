@@ -46,7 +46,7 @@ export function hairSegments(spec, P, J) {
       sides(0.01 * hu, P.earTop - 0.02 * hu, P.hairY, P.zf - 0.2 * hu);
       back(0.012 * hu, P.napeY, P.hairY);
       const k = cs(P, P.crown), hz = k[3] * 0.98;
-      add('crest', 'head', 'hair', P.crown - 0.12 * hu, P.crown + 0.3 * hu * vol, [0, k[1] + 0.02 * hu, 0.07 * hu, hz], [0, k[1] - 0.04 * hu, 0.03 * hu, hz * 0.7], { ch: 0.35, caps: 'top', cut: 'messy' });
+      add('crest', 'head', 'hair', P.crown - 0.12 * hu, P.crown + 0.3 * hu * vol, [0, k[1] + 0.02 * hu, 0.035 * hu, hz], [0, k[1] - 0.04 * hu, 0.012 * hu, hz * 0.7], { ch: 0.35, caps: 'top', cut: 'messy' });
     } else if (st === 'short' || st === 'sidepart') {
       cap(0.05 * hu * vol, P.hairY - 0.015 * hu, { dz: 0.005 * hu });
       sides(0.032 * hu, P.earTop - 0.03 * hu, P.hairY, P.zf - 0.2 * hu);
@@ -123,6 +123,19 @@ export function hairSegments(spec, P, J) {
       if (st === 'twintails' || st === 'pigtails') for (const sx of [1, -1]) bow(sx > 0 ? 'tailL' : 'tailR', sx * (P.hw + 0.06 * hu), P.earTop + 0.1 * hu, P.hcz - 0.3 * hu, true, H0.ribbon);
       else if (st === 'ponytail') bow('tailL', 0, P.eyeY + 0.14 * hu, P.hcz - P.hd - 0.1 * hu, false, H0.ribbon);
       else bow('head', P.hw * 0.75, P.hairY + 0.06 * hu, P.hcz + 0.02 * hu, true, H0.ribbon);
+    }
+    // anime side locks: flat chunky locks framing the face, down past the chin
+    if (spec.anime && ['long', 'bob', 'twintails', 'pigtails', 'ponytail'].includes(st)) {
+      const yb = st === 'bob' ? P.chin - 0.05 * hu : P.chin - 0.4 * hu;
+      for (const sx of [1, -1]) {
+        const x = sx * P.hw * 0.95, z = P.zf - 0.14 * hu;
+        add('tail', 'head', 'hair', yb, P.earTop + 0.06 * hu, [x, z - 0.01 * hu, 0.03 * hu, 0.035 * hu], [x - sx * 0.01 * hu, z - 0.03 * hu, 0.07 * hu, 0.06 * hu], { ch: 0.3, caps: 'bot' });
+      }
+    }
+    // animal ears in the hair colour (cat / fox)
+    if (H0.ears) for (const sx of [1, -1]) {
+      const x = sx * P.hw * 0.58, y0 = P.crown - 0.1 * hu, z = P.hcz - 0.04 * hu, tall = H0.ears === 'fox' ? 0.36 : 0.28;
+      add('tail', 'head', 'hair', y0, P.crown + tall * hu, [x, z, 0.15 * hu, 0.07 * hu], [x + sx * 0.04 * hu, z - 0.01 * hu, 0.012 * hu, 0.01 * hu], { ch: 0.2, caps: 'top', rot: { p: [x, y0, z], e: [0, 0, -sx * 0.28] } });
     }
     if (H0.ahoge && st !== 'bald' && st !== 'buzz' && st !== 'mohawk') {
       // a springy strand sticking up from the crown, curling forward

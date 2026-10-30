@@ -22,7 +22,7 @@ export const CAST = {
   },
   mika: {   // cool kid, pink + charcoal
     preset: 'gyaru', seed: 2, sex: 'f', age: 'teen', H: 1.6, build: 0.92, anime: 1, bust: 0.5,
-    skin: 0xf0c8a8, hair: { style: 'bob', col: 0x1e1a22, volume: 1.1, clip: 0xe84a6a },
+    skin: 0xf6e2d4, hair: { style: 'long', col: 0xe8d8a8, volume: 1.1, clip: 0xe84a6a, ears: 'cat' },
     face: { style: 1, iris: 0x8a3a6a, tilt: 1.2, blush: 0.3, makeup: { liner: 0.9, lash: 1, lower: true, shadow: [232, 120, 150], blush: [240, 140, 160] }, lipstick: 0xe0707e, deco: [{ kind: 'gems', at: 'eyeR', col: 0xff8ab0 }, { kind: 'mole', at: 'eyeL' }] },
     top: { kind: 'jacket', col: 0xd8d0c4, shirt: 0xe84a6a }, bottom: { kind: 'skirt', cut: 'mini', col: 0x2e2e3a },
     legs: 'tights', tights: 0x2a2a32, shoes: { kind: 'boots', col: 0x2a2224 }, acc: [{ kind: 'shoulderbag', col: 0xe84a6a, side: 1 }], hat: null, glasses: null, walk: { style: 'dainty' },
