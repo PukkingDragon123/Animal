@@ -88,6 +88,7 @@ function hut(C, o) {
   // the front: hatch / windows, sign, awning
   const sd = o.front || 'e', W2 = sd === 'e' ? d : w, cx = sd === 'e' ? x + w : x + w / 2, cz = sd === 'e' ? z + d / 2 : z + d;
   if (o.win) C.decal(gk, o.win, cx, y0 + 0.9, cz, sd, Math.min(W2 - 0.6, o.winW || W2 - 0.8), o.winH || 1.4, { off: 0.03 });
+  if (o.glow) C.props.push({ kind: 'ct_glowPane', x: cx + (sd === 'e' ? 0.06 : 0), y: y0 + 0.95, z: cz + (sd === 's' ? 0.06 : 0), yaw: sd === 'e' ? Math.PI / 2 : 0, s: 0.75 });
   if (o.counter) { const ct = TX.planks('#8a6a46'); if (sd === 'e') C.box(gk, ct, x + w, y0 + 0.95, z + 0.3, x + w + 0.45, y0 + 1.05, z + d - 0.3); else C.box(gk, ct, x + 0.3, y0 + 0.95, z + d, x + w - 0.3, y0 + 1.05, z + d + 0.45); }
   if (o.door) C.decal(gk, o.door, sd === 'e' ? x + w : x + w * 0.2, y0, sd === 'e' ? z + d * 0.2 : z + d, sd, 1.0, 2.1, { off: 0.03 });
   if (o.sign) { const sw = o.signW || W2 - 0.4; C.decal(gk, o.sign, cx, y0 + h - 0.05 - 0.75, cz, sd, sw, 0.72, { off: 0.06 }); }
@@ -168,6 +169,7 @@ function ferryTerminal(C, ctx) {
   const sg = wharfSign('FERRY TERMINAL', '#2e5a50', '#f0e0b0', 6.4, 0.62, { rope: '#c8a050' });
   C.decal(fg, sg, (fx0 + fx1) / 2, 3.44, fz1 + 1.5, 's', 6.4, 0.62, { off: 0.02 });
   C.decal(fg, ptex('wf_since', 3.2, 0.5, (g, W, H, r, P) => { P.fill('#e6dcc6'); crisp(P, 'BAY FERRIES · SINCE 1898', W / 2, H / 2 + 1, 8, '#5a5040'); }), (fx0 + fx1) / 2, 7.2, fz1, 's', 3.2, 0.5, { off: 0.03 });
+  if (ctx.night) { const n = 7, step = w / n; for (let i = 0; i < n; i++) C.props.push({ kind: 'ct_glowPane', x: fx0 + step * (i + 0.5), y: 4.95, z: fz1 + 0.05, yaw: 0, s: 1.25 }); }
   // the clock tower
   const tx0 = 107.6, tx1 = 112.4, tz0 = 2.6, tz1 = 7.4, H = 8;
   C.box(rg, wall, tx0, H, tz0, tx1, 18.6, tz1);
@@ -251,12 +253,12 @@ function pier(C, ctx) {
   bunting(C, [161, 6.6, 9.7], [156.2, 5.3, 12.5], 6, 0.3); bunting(C, [161, 6.6, 9.7], [165.8, 5.3, 12.5], 6, 0.3);
   bunting(C, [161, 6.6, 9.7], [171.6, 3.2, 1.3], 10, 0.5); bunting(C, [161, 6.6, 9.7], [156.0, 4.0, 4.0], 6, 0.3); bunting(C, [161, 6.6, 9.7], [171.6, 3.2, 11.8], 7, 0.4);
   // west row: the seafood stand and the arcade (fronts face east onto the boardwalk)
-  hut(C, { x: 150.5, z: 7.2, w: 5.2, d: 4.2, y0: PY, h: 3.0, name: 'salty gull', wall: TX.siding('#c84a3a'), roofCol: '#2a6a7a', front: 'e', counter: true, awning: ['#2a6a7a', '#f4f0e8'],
+  hut(C, { x: 150.5, z: 7.2, w: 5.2, d: 4.2, y0: PY, h: 3.0, name: 'salty gull', wall: TX.siding('#c84a3a'), roofCol: '#2a6a7a', front: 'e', glow: ctx.night, counter: true, awning: ['#2a6a7a', '#f4f0e8'],
     win: ptex('wf_fishwin', 3.2, 1.0, (g, W, H, r, P) => { P.fill('#2a2a30'); P.rect(2, 2, W - 4, H - 4, '#e0f0f8'); for (let x = 4; x < W - 8; x += 9) { P.rect(x, 12, 7, 4, ['#8aa0b8', '#e87a5a', '#c8ccd4'][Math.floor(r() * 3)]); P.px(x + 7, 11, '#8aa0b8'); P.px(x + 7, 16, '#8aa0b8'); P.px(x + 1, 13, '#1a1a1a'); } for (let x = 6; x < W - 8; x += 14) { P.rect(x, 22, 8, 4, '#d8482a'); P.px(x - 1, 21, '#d8482a'); P.px(x + 8, 21, '#d8482a'); } }), winW: 3.2, winH: 1.0,
     sign: wharfSign('SALTY GULL SEAFOOD', '#f4f0e8', '#2a4a6a', 4.0, 0.72, { rope: '#2a4a6a' }), signW: 3.8 });
   C.decal('wf_pier', fishMenu(), 151.6, PY + 0.1, 11.42, 's', 1.5, 1.1, { off: 0.01 });
   C.props.push({ kind: 'wf_crate', x: 156.4, y: PY, z: 10.6, yaw: 0 });
-  hut(C, { x: 150.5, z: 1.6, w: 5.2, d: 4.0, y0: PY, h: 3.4, name: 'arcade', wall: TX.siding('#5a3a8a'), roofCol: '#c8a040', front: 'e', win: arcadeWin(ctx.night), winW: 3.0, winH: 1.6,
+  hut(C, { x: 150.5, z: 1.6, w: 5.2, d: 4.0, y0: PY, h: 3.4, name: 'arcade', wall: TX.siding('#5a3a8a'), roofCol: '#c8a040', front: 'e', glow: ctx.night, win: arcadeWin(ctx.night), winW: 3.0, winH: 1.6,
     sign: wharfSign('TIDE POOL ARCADE', '#1a1426', '#ffe04a', 4.0, 0.72, { rope: '#5ae0ff' }), signW: 4.0 });
   // a sea-lion viewing deck between them
   C.decal('wf_pier', wharfSign('SEA LION VIEWING', '#2a6a7a', '#f8f0d8', 3.0, 0.5, { size: 8 }), 150.35, PY + 0.4, 6.4, 'e', 2.0, 0.34, { off: 0.08 });
