@@ -22,6 +22,21 @@ export const TK = {
   ink: '#1a0e10', cloth: '#f8f8f4', clothLo: '#c8ccd6', navy: '#1e2a5a', navyLo: '#101838',
 };
 const side = (f) => f !== 'up' && f !== 'down';
+// Textures paint at TEX_RES× (model.js). Painters that draw fixed texel maps (flowers, pickups, glints, stamps)
+// run through crisp(): they paint on the old grid and every texel is blown up res× (px and rect; the grid is
+// rounded up, so no unpainted strip is left at the edges). Nested crisp painters paint directly.
+export function crisp(fn) {
+  return (p, w, h, ...a) => {
+    const k = Math.max(1, Math.round(p.res || 1));
+    if (k <= 1) return fn(p, w, h, ...a);
+    const W = Math.ceil(w / k), H = Math.ceil(h / k);
+    const q = { res: 1,
+      px(x, y, c) { x = Math.floor(x); y = Math.floor(y); if (x < 0 || y < 0 || x >= W || y >= H) return q; for (let i = 0; i < k; i++) for (let j = 0; j < k; j++) p.px(x * k + i, y * k + j, c); return q; },
+      rect(x, y, rw, rh, c) { for (let j = 0; j < rh; j++) for (let i = 0; i < rw; i++) q.px(x + i, y + j, c); return q; },
+    };
+    fn(q, W, H, ...a);
+  };
+}
 // model-space position of a texel on a cube face (for patterns that run across several cubes)
 export function mpos(c, face, x, y, w, h) {
   const [ox, oy, oz] = c.o, [sx, sy, sz] = c.s, u = (x + 0.5) / w, v = (y + 0.5) / h;
@@ -81,7 +96,8 @@ export const tailP = (p, w, h, face) => { shade(TK.white, { top: TK.whiteHi, bot
 // hibiscus pinwheels and palm fronds on a ground colour, laid out on a jittered grid in model space so the
 // print runs on across neighbouring cubes (shirt, collar, sleeves)
 const FLOWER = ['.ff..', 'fFFfd', 'dFcFf', '.fFFd', '..dd.'];
-export function aloha(o = {}) {
+export function aloha(o = {}) { return crisp(aloha1(o)); }
+function aloha1(o = {}) {
   const base = o.base || TK.sea, hi = o.hi || shift(base, 0.16), lo = o.lo || shift(base, -0.26);
   const pal = { f: o.flower || TK.hib, F: o.flowerHi || TK.hibHi, d: o.flowerLo || TK.hibLo, c: o.center || TK.hibC };
   const leaf = o.leaf || TK.leaf, leafLo = o.leafLo || shift(leaf, -0.3), cell = o.cell || 3.4, ppu = o.ppu || 3;
@@ -135,24 +151,25 @@ export function burstP(ctr, o = {}) {
   };
 }
 // hardware on the guitar's face (a thin plate flush on the body)
-export const guitarFace = (p, w, h, face) => {
+export const guitarFace = crisp((p, w, h, face) => {
   if (face !== 'south' && face !== 'plane') { p.rect(0, 0, w, h, '#141014'); return; }
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, 0);
   const cx = Math.floor(w / 2);
   p.rect(cx - 3, 1, 7, 3, '#141014').rect(cx - 3, h - 6, 7, 3, '#141014');                  // pickups
   for (const dx of [-2, 0, 2]) { p.px(cx + dx, 2, '#d8d8e0'); p.px(cx + dx, h - 5, '#d8d8e0'); }
   p.rect(cx - 3, h - 2, 7, 1, '#e0e0e8');                                                 // bridge
-  for (const dx of [-2, -1, 1, 2]) for (let y = 0; y < h - 2; y++) if (p.s.data[y * w + cx + dx] >>> 24 === 0 && y % 3) p.px(cx + dx, y, '#f0ece0');
+  for (const dx of [-2, -1, 1, 2]) for (let y = 0; y < h - 2; y++) if (y % 3 && !(y >= 1 && y <= 3) && !(y >= h - 6 && y <= h - 4)) p.px(cx + dx, y, '#f0ece0');
   p.px(w - 2, h - 2, '#ffd23a').px(w - 3, h - 4, '#ffd23a');                              // knobs
-};
-export const neckP = (p, w, h, face) => {
+});
+export const neckP = crisp((p, w, h, face) => {
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, face === 'south' || face === 'north' ? (x % 4 === 0 ? '#e8e0c8' : '#5a3418') : '#3a2010');
   if (face === 'south') for (let x = 2; x < w; x += 8) p.px(x, Math.floor(h / 2), '#f4f0e8');   // inlays
-};
-export const headstockP = (p, w, h, face) => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, '#1c1418'); if (face === 'south' || face === 'north') for (let x = 1; x < w; x += 2) { p.px(x, 0, '#e8e8f0'); p.px(x, h - 1, '#e8e8f0'); } };
+});
+export const headstockP = crisp((p, w, h, face) => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, '#1c1418'); if (face === 'south' || face === 'north') for (let x = 1; x < w; x += 2) { p.px(x, 0, '#e8e8f0'); p.px(x, h - 1, '#e8e8f0'); } });
 // the surfboard guitar: a long board whose deck is the guitar's face — a sunset-orange body with a white
 // stringer stripe, three pickups, the strings running the full length and a chrome bridge
-export function boardP(o = {}) {
+export function boardP(o = {}) { return crisp(boardP1(o)); }
+function boardP1(o = {}) {
   const base = o.base || '#ff8a2a', hi = o.hi || '#ffc24a', lo = o.lo || '#d8481e', rail = o.rail || '#f8f2e4';
   return (p, w, h, face) => {
     if (face === 'down') { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, (x + y) % 6 === 0 ? '#3aa8c8' : '#2a8ab8'); return; }   // the blue underside
@@ -179,7 +196,7 @@ export const finP = shade('#1e6a98', { top: '#3a9ac8', bottom: '#0e3a5a', grain:
 // the ship's-wheel guitar: varnished teak rim, brass hub, a soundhole-rosette of rope
 export const teakP = (p, w, h, face) => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, face === 'up' ? '#c4803a' : face === 'down' ? '#4a2410' : ramp(['#d48a40', '#a85a24', '#6a3414'], y / Math.max(1, h - 1), x, y)); if (side(face)) for (let x = 0; x < w; x++) if ((x * 3) % 7 === 0) p.px(x, Math.floor(h / 2), '#5a2c10'); };
 export const brassP = gradient(['#fff4b0', '#f0c040', '#c08a1e', '#7a5010']);
-export const wheelFace = (p, w, h, face) => {
+export const wheelFace = crisp((p, w, h, face) => {
   teakP(p, w, h, face);
   if (face !== 'south') return;
   const cx = w / 2, cy = h / 2, R = Math.min(w, h) / 2;
@@ -188,11 +205,11 @@ export const wheelFace = (p, w, h, face) => {
   for (let k = 0; k < 12; k++) { const a = (k / 12) * Math.PI * 2; p.px(Math.round(cx + Math.cos(a) * R * 0.42 - 0.5), Math.round(cy - R * 0.1 + Math.sin(a) * R * 0.42 - 0.5), k % 2 ? '#c8a060' : '#7a5a2a'); }   // rope rosette
   p.rect(Math.round(cx - R * 0.35), Math.round(cy + R * 0.38), Math.round(R * 0.7), 2, '#3a1a08');                                    // bridge
   for (const dx of [-2, -1, 0, 1]) for (let y = 0; y < cy + R * 0.38; y++) if (y % 2) p.px(Math.round(cx + dx), y, '#f0ece0');
-};
+});
 
 // ---------------------------------------------------------------- the album: an original sunset sleeve + its vinyl
 // a retro sun cut by horizontal bands over a teal sea, a palm on the left, a gliding eagle in the sky
-export const sleeveP = (p, w, h, face) => {
+export const sleeveP = crisp((p, w, h, face) => {
   if (face !== 'south' && face !== 'north' && face !== 'plane') { p.rect(0, 0, w, h, face === 'up' ? '#f4ecd8' : '#d8ccb0'); return; }
   if (face === 'north') { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, y % 3 === 0 && x > 1 && x < w - 2 && y > 1 && y < h - 2 ? '#8a7a68' : '#f0e6cc'); return; }   // track list
   const hz = Math.round(h * 0.62);
@@ -207,13 +224,13 @@ export const sleeveP = (p, w, h, face) => {
   const ex = Math.round(w * 0.7), ey = Math.round(h * 0.18); p.px(ex, ey, '#1a0e18').px(ex - 1, ey - 1, '#1a0e18').px(ex - 2, ey - 1, '#1a0e18').px(ex + 1, ey - 1, '#1a0e18').px(ex + 2, ey - 1, '#1a0e18');
   for (let x = 0; x < w; x++) { p.px(x, 0, '#f4ecd8'); p.px(x, h - 1, '#c8bca0'); }
   for (let y = 0; y < h; y++) { p.px(0, y, '#f4ecd8'); p.px(w - 1, y, '#c8bca0'); }
-};
+});
 // the helm guitar's round top as a plane: clear outside the circle, so it sits flush on the octagonal body
 export const wheelTop = (p, w, h, face) => { wheelFace(p, w, h, 'south'); const cx = w / 2, cy = h / 2, R = Math.min(w, h) / 2; for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (Math.hypot(x + 0.5 - cx, y + 0.5 - cy) > R) p.px(x, y, 0); };
 // a visor with gold oak leaves along its edge (a captain's "scrambled eggs")
 export const visorGoldP = (p, w, h, face) => { visorP(p, w, h, face); if (face === 'up' || face === 'south') for (let x = 0; x < w; x++) { const y = face === 'up' ? h - 2 : 0; p.px(x, y, x % 3 === 0 ? GOLD[0] : GOLD[1]); if (face === 'up' && x % 3 === 1) p.px(x, y - 1, GOLD[2]); } };
 // a jacket sleeve with a navy cuff and gold rings
-export const cuffP = (p, w, h, face) => { clothP(p, w, h, face); if (face === 'up' || face === 'down') return; for (let y = h - 4; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, y === h - 3 ? GOLD[1] : TK.navy); };
+export const cuffP = crisp((p, w, h, face) => { clothP(p, w, h, face); if (face === 'up' || face === 'down') return; for (let y = h - 4; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, y === h - 3 ? GOLD[1] : TK.navy); });
 
 // the vinyl peeking out of the sleeve (a plane: transparent outside the disc, sits flush behind the sleeve)
 export const vinylP = (p, w, h) => {
@@ -235,33 +252,33 @@ export const goldDiscP = (p, w, h) => {
 
 // ---------------------------------------------------------------- shades, lei, cloth
 // tear-drop shades: gold rims, sunset lenses in flat bands, one square glint
-export const lensP = (p, w, h, face) => {
+export const lensP = crisp((p, w, h, face) => {
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
     const edge = y === 0 || x === 0 || x === w - 1 || y === h - 1;
     p.px(x, y, face !== 'south' || edge ? GOLD[2] : ramp(['#ff8a3a', '#e8306a', '#7a2a8a', '#2a1a4a'], y / (h - 1), x, y));
   }
   if (face === 'south') { p.px(1, h - 1, 0).px(0, h - 1, 0).px(0, h - 2, 0); p.px(2, 2, '#ffffff').px(3, 2, '#ffffff'); }  // the tear-drop's cut corner
-};
+});
 export const frameP = gradient([GOLD[0], GOLD[1], GOLD[2]]);
 // hibiscus lei: big flowers strung edge to edge
-export const leiP = (p, w, h, face) => {
+export const leiP = crisp((p, w, h, face) => {
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
     const k = Math.floor(x / 4) % 3, cx = (x % 4), col = k === 0 ? [TK.hibHi, TK.hib, TK.hibLo] : k === 1 ? ['#ffe890', '#ffc83a', '#e09a1a'] : ['#ffffff', '#ffd8e8', '#e8a0c0'];
     p.px(x, y, face === 'down' ? col[2] : cx === 3 ? col[2] : y === 0 ? col[0] : (cx === 1 && y === Math.floor(h / 2)) ? '#ffe04a' : col[1]);
   }
-};
+});
 export const clothP = (p, w, h, face) => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, face === 'up' ? '#ffffff' : face === 'down' ? TK.clothLo : ramp(['#ffffff', TK.cloth, '#e4e6ee', TK.clothLo], y / Math.max(1, h - 1), x, y)); if (side(face)) for (let x = 0; x < w; x++) if (x % 9 === 4) for (let y = 1; y < h - 1; y++) p.px(x, y, shift(ramp(['#ffffff', TK.cloth, '#e4e6ee', TK.clothLo], y / Math.max(1, h - 1), x, y), -0.05)); };
 export const visorP = (p, w, h, face) => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, face === 'up' ? '#3a3a4a' : face === 'down' ? '#0a0a10' : y === 0 ? '#4a4a5a' : '#141420'); if (face === 'up') for (let x = 1; x < w - 1; x += 3) p.px(x, 1, '#6a6a7e'); };
 export const braidP = (p, w, h, face) => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, (x + y) % 3 === 0 ? GOLD[0] : (x + y) % 3 === 1 ? GOLD[1] : GOLD[2]); };
 // an original cap badge: gold wings spread over a wave (no real insignia)
-export const badgeP = (p, w, h, face) => {
+export const badgeP = crisp((p, w, h, face) => {
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, face === 'south' ? 0 : GOLD[2]);
   if (face !== 'south') return;
   const cx = (w - 1) / 2;
   for (let x = 0; x < w; x++) { const d = Math.abs(x - cx), y = Math.round(h * 0.25 + d * 0.35); for (let yy = y; yy < Math.min(h * 0.6, y + 2); yy++) p.px(x, yy, d < 1 ? GOLD[0] : GOLD[1]); }
   for (let x = 1; x < w - 1; x++) p.px(x, Math.round(h * 0.72 + Math.sin(x * 1.2) * 0.8), '#3ad0e0');
   p.px(Math.round(cx), Math.round(h * 0.2), '#ffffff');
-};
+});
 
 // ---------------------------------------------------------------- particles
 const hibSpr = (p, w, h) => stamp(p, FLOWER, { f: TK.hib, F: TK.hibHi, d: TK.hibLo, c: TK.hibC }, 0, 0);

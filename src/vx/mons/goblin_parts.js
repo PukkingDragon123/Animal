@@ -5,8 +5,9 @@
 //   armour with panel lines, rainbow stripes, glass), the rainbow arc, eye and mouth maps, the little goblin-robot
 //   pilots of the mech, particle kinds and the drip-form maps.
 import { shade, gradient, ramp, shift, h2 } from './kit.js';
-import { B, region, ell, stamp, GOLD, fromHsl, hsl, formMap } from './story_parts.js';
+import { B, region, ell, stamp, GOLD, fromHsl, formMap } from './story_parts.js';
 import { defineFx } from '../fx.js';
+import { crisp } from './takanaka_parts.js';
 
 export const RAINBOW = ['red', 'orange', 'yellow', 'green', 'blue', 'indigo', 'violet'];
 // per colour: skin (mid, hi, lo), cloth (deep tone), metal tint (pilots), the band colour of the arc
@@ -42,15 +43,15 @@ export function skinP(c, o = {}) {
 // ragged cloth in the goblin's colour: patched, with a torn hem and stitches
 export function clothP(c, o = {}) {
   const g = GOB[c];
-  return (p, w, h, face) => {
+  return crisp((p, w, h, face) => {
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
       let col = face === 'up' ? g.clothHi : face === 'down' ? g.clothLo : ramp([g.clothHi, g.cloth, g.cloth, g.clothLo], y / Math.max(1, h - 1), x, y);
       if (side(face) && x % 6 === 3) col = shift(col, -0.1);
       p.px(x, y, col);
     }
-    if (o.patch && face === 'south') { const x0 = Math.floor(w * 0.62), y0 = Math.floor(h * 0.3); p.rect(x0, y0, 4, 4, GK.leather); for (let i = 0; i < 4; i++) { p.px(x0 - 1, y0 + i, i % 2 ? GK.ropeLo : 0 || GK.rope); } }
+    if (o.patch && face === 'south') { const x0 = Math.floor(w * 0.62), y0 = Math.floor(h * 0.3); p.rect(x0, y0, 4, 4, GK.leather); for (let i = 0; i < 4; i++) { p.px(x0 - 1, y0 + i, i % 2 ? GK.ropeLo : GK.rope); } }
     if (o.ragged && side(face)) for (let x = 0; x < w; x++) { const cut = (x * 5) % 7 < 2 ? 2 : (x * 3) % 5 === 0 ? 1 : 0; for (let k = 0; k < cut; k++) p.px(x, h - 1 - k, 0); p.px(x, h - 1 - cut, g.clothLo); }
-  };
+  });
 }
 export const leatherP = (p, w, h, face) => { shade(GK.leather, { top: GK.leatherHi, bottom: GK.leatherLo, grain: 0.06 })(p, w, h, face); if (side(face)) for (let x = 1; x < w; x += 3) p.px(x, Math.floor(h / 2), GK.leatherHi); };
 export const buckleP = gradient([GOLD[0], GOLD[1], GOLD[2]]);
@@ -78,41 +79,41 @@ export function arcP(o = {}) {
 // a diagonal ROYGBIV stripe band painted across a face
 export function stripes(base, o = {}) {
   const bands = RAINBOW.map((k) => GOB[k].band), wd = o.width || 2, y0 = o.y0 ?? 0.35;
-  return (p, w, h, face, c) => {
+  return crisp((p, w, h, face, c) => {
     base(p, w, h, face, c);
     if (!side(face)) return;
     const top = Math.round(h * y0);
     for (let i = 0; i < 7; i++) for (let k = 0; k < wd; k++) for (let x = 0; x < w; x++) { const y = top + i * wd + k + Math.round(x * (o.slope || 0)); if (y >= 0 && y < h) p.px(x, y, bands[i]); }
-  };
+  });
 }
 
 // ---------------------------------------------------------------- mech armour
 // white armour plates: panel lines, rivets, a soft top light
 export function armorP(o = {}) {
   const c = o.c || GK.armor, hi = o.hi || GK.armorHi, lo = o.lo || GK.armorLo, line = o.line || GK.armorDeep;
-  return (p, w, h, face) => {
+  return crisp((p, w, h, face) => {
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, face === 'up' ? hi : face === 'down' ? lo : ramp([hi, c, c, lo], y / Math.max(1, h - 1), x, y));
     if (!side(face) && face !== 'up') return;
     const gx = o.grid || 9;
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if ((x % gx === gx - 1 && y % 4 !== 2) || (y % gx === gx - 1)) p.px(x, y, line);
     for (let y = 2; y < h; y += gx) for (let x = 2; x < w; x += gx) p.px(x, y, GK.armorDeep);
     if (o.trim && side(face)) for (let x = 0; x < w; x++) { p.px(x, 0, GOLD[1]); p.px(x, h - 1, GOLD[2]); }
-  };
+  });
 }
 export const jointP = shade(GK.joint, { top: GK.jointHi, bottom: GK.jointLo, grain: 0.04 });
 export const pistonP = gradient(['#ffffff', '#c8ccd8', '#8a8ea0', '#5a5e70']);
 // glass: mostly clear (so the pilots behind show) with a few diagonal glints and a tinted rim
-export const glassP = (p, w, h) => {
+export const glassP = crisp((p, w, h) => {
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
     const rim = x === 0 || y === 0 || x === w - 1 || y === h - 1, glint = (x + y) % 11 === 0 && x < w * 0.5 || (x + y) % 11 === 1 && x < w * 0.35;
     p.px(x, y, rim ? '#5ab8e8' : glint ? '#e8f8ff' : 0);
   }
-};
+});
 // the cockpit bay behind the glass: dark with dials
-export const bayP = (p, w, h, face) => {
+export const bayP = crisp((p, w, h, face) => {
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, face === 'south' ? ((x + y) % 7 === 0 ? '#1e2434' : GK.screen) : GK.joint);
   if (face === 'south') for (let x = 2; x < w - 2; x += 5) { p.px(x, h - 3, '#3aff8a'); p.px(x + 1, h - 3, '#ff3a5a'); p.px(x + 2, h - 2, '#ffd23a'); }
-};
+});
 // the speaker-grille mouth
 export const grilleP = (p, w, h, face) => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, face !== 'south' ? GK.joint : y % 2 === 0 ? GK.jointLo : x % 2 ? GK.jointHi : GK.joint); };
 
@@ -145,25 +146,35 @@ export const GBFX = Object.fromEntries(RAINBOW.map((k) => [k, defineFx('gb-' + k
 export const ARCFX = defineFx('gb-arc', { w: 14, h: 7, paint: arcP({ inner: 0.45 }), life: [0.7, 1.1], size: [0.18, 0.3], speed: [0.3, 0.8], grav: -0.4, drag: 1.2, spread: 0.8, fade: true });
 
 // ---------------------------------------------------------------- the ultra-drip form
-const SKINS = new Set(), CLOTHS = new Map(), BANDS = new Set();
-for (const k of RAINBOW) { const g = GOB[k]; [g.skin, g.skinHi, g.skinLo, g.skinDeep].forEach((c) => SKINS.add(c)); [g.cloth, g.clothHi, g.clothLo].forEach((c) => CLOTHS.set(c, k)); BANDS.add(g.band); BANDS.add(shift(g.band, 0.25)); }
+// Painters shade and grain their colours, so the form classifies every colour by its NEAREST palette family
+// (skin, cloth, metal…) instead of exact matches, then maps the family.
+const rgb = (h) => { const n = parseInt(h.slice(1, 7), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
+function families(table) {
+  const pts = table.map(([h, f]) => [rgb(h), f]), cache = new Map();
+  return (hex) => {
+    if (cache.has(hex)) return cache.get(hex);
+    const c = rgb(hex); let best = 'keep', bd = Infinity;
+    for (const [q, f] of pts) { const d = (q[0] - c[0]) ** 2 + (q[1] - c[1]) ** 2 + (q[2] - c[2]) ** 2; if (d < bd) { bd = d; best = f; } }
+    cache.set(hex, best); return best;
+  };
+}
+const GOB_TABLE = [];
+for (const k of RAINBOW) { const g = GOB[k]; for (const c of [g.skin, g.skinHi, g.skinLo, g.skinDeep, g.band, shift(g.band, 0.25)]) GOB_TABLE.push([c, 'keep']); for (const c of [g.cloth, g.clothHi, g.clothLo]) GOB_TABLE.push([c, 'cloth']); }
+for (const c of [GK.leather, GK.leatherHi, GK.leatherLo, GK.rope, GK.ropeLo, '#e0b878', GK.tin, GK.tinHi, GK.tinLo, ...GOLD]) GOB_TABLE.push([c, 'gold']);
+for (const c of [GK.ink, GK.hair, GK.hairHi, GK.tusk, GK.tuskLo, '#2a1a1e', '#ffffff', '#fffaf0', '#5a1424', '#ff7a90']) GOB_TABLE.push([c, 'keep']);
+const gobFam = families(GOB_TABLE);
+const famMap = (fam) => formMap(({ h, l }, glow, hex) => {
+  if (glow) return 'keep';
+  const f = fam(hex);
+  return f === 'cloth' ? fromHsl(h, 0.45, 0.05 + l * 0.18) : f === 'black' ? fromHsl(250, 0.14, 0.05 + l * 0.14) : f;
+});
 // goblins: the skin keeps its rainbow colour (so the seven stay seven), cloth turns to a black lacquer tinted with
 // its hue, leather, rope and tin turn gold
-export const goblinForm = formMap(({ h, s, l }, glow, hex) => {
-  if (SKINS.has(hex) || BANDS.has(hex) || glow) return 'keep';
-  if (CLOTHS.has(hex)) return fromHsl(h, 0.45, 0.05 + l * 0.18);
-  if (s < 0.14) return l > 0.5 ? 'gold' : 'keep';
-  return 'gold';
-});
-// the mech: white armour turns black lacquer, panel lines and trims gold, the pilots and the rainbow stay
-export const mechForm = formMap(({ h, s, l }, glow, hex) => {
-  if (SKINS.has(hex) || BANDS.has(hex) || glow) return 'keep';
-  if (CLOTHS.has(hex)) return fromHsl(h, 0.45, 0.05 + l * 0.18);
-  if (hex === GK.armor || hex === GK.armorHi || hex === GK.armorLo) return fromHsl(250, 0.14, 0.06 + l * 0.12);
-  if (hex === GK.armorDeep || hex === GK.panel) return 'gold';
-  if (s < 0.14) return 'keep';
-  return undefined;
-});
+export const goblinForm = famMap(gobFam);
+// the mech: white armour turns black lacquer, panel lines, pistons and trims gold, joints, glass and pilots stay
+const MECH_TABLE = [...GOB_TABLE, [GK.armor, 'black'], [GK.armorHi, 'black'], [GK.armorLo, 'black'], [GK.armorDeep, 'gold'], [GK.panel, 'gold'], ['#c8ccd8', 'gold'], ['#8a8ea0', 'gold'],
+  [GK.joint, 'keep'], [GK.jointHi, 'keep'], [GK.jointLo, 'keep'], [GK.screen, 'keep'], ['#1e2434', 'keep'], [GK.glass, 'keep'], ['#5ab8e8', 'keep'], ['#e8f8ff', 'keep']];
+export const mechForm = famMap(families(MECH_TABLE));
 
 // ---------------------------------------------------------------- eyes and mouths (full-res, hand drawn)
 // Rainblin: a slanted, mischievous almond eye — sickly-yellow eyeball, a black slit pupil, a heavy lid flick
@@ -198,4 +209,4 @@ const MOUTHS = {
   grit: ['llllllllllll', 'lwlwlwlwlwll', 'llllllllllll', '............', '............'],
 };
 export const MOUTH_STATES = Object.keys(MOUTHS);
-export const mouthP = (state) => (p) => stamp(p, MOUTHS[state], MP, 0, 0);
+export const mouthP = (state) => crisp((p) => stamp(p, MOUTHS[state], MP, 0, 0));

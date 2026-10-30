@@ -9,11 +9,11 @@ import { E, seg, bump, wob, wave, hop } from '../anim.js';
 import { shade, ramp, shift } from './kit.js';
 import { eyeRig, eyesAt, glance, keepEyes } from './eyes.js';
 import { B, L, both, twin, acc, region, goldP, chainP, GOLD, strapP, plant, beat, env } from './story_parts.js';
-import { TK, HAIR_FORM, brownP, headP, faceP, lockP, beakP, hookP, cereP, jawP, footP, toeP, primP, tailP, aloha, teakP, brassP, wheelTop, neckP, headstockP, sleeveP, vinylP, lensP, frameP, clothP, visorGoldP, braidP, badgeP, cuffP, TKFX, eagleForm, EYE_CAPTAIN } from './takanaka_parts.js';
+import { TK, HAIR_FORM, crisp, brownP, headP, faceP, lockP, beakP, hookP, cereP, jawP, footP, toeP, primP, tailP, aloha, teakP, brassP, wheelTop, neckP, headstockP, sleeveP, vinylP, lensP, frameP, clothP, visorGoldP, braidP, badgeP, cuffP, TKFX, eagleForm, EYE_CAPTAIN } from './takanaka_parts.js';
 
 const print = aloha({ base: TK.sea, seed: 7 });
 // the jacket front: double-breasted, the lapels open on the aloha collar and chest feathers, gold buttons, navy belt
-const jacketFront = (p, w, h, face, c) => {
+const jacketFront = crisp((p, w, h, face, c) => {
   clothP(p, w, h, face, c);
   if (face !== 'south') return;
   const cx = w / 2, depth = h * 0.4, top = w * 0.24, inV = (x, y) => y < depth && Math.abs(x + 0.5 - cx) < top * (1 - y / depth);
@@ -26,10 +26,10 @@ const jacketFront = (p, w, h, face, c) => {
   for (let y = Math.ceil(depth) + 1; y < by - 2; y += 4) for (const dx of [-0.16, 0.16]) { const X = Math.round(cx + dx * w); p.rect(X - 1, y, 2, 2, GOLD[1]); p.px(X - 1, y, GOLD[0]); }
   for (let y = by; y < by + 3; y++) for (let x = 0; x < w; x++) p.px(x, y, y === by ? '#2e3a6a' : TK.navy);
   p.rect(Math.round(cx - 2), by, 4, 3, GOLD[1]); p.px(Math.round(cx - 1), by + 1, TK.navy);
-};
+});
 const trouserP = (p, w, h, face) => { clothP(p, w, h, face); if (face === 'east' || face === 'west') for (let y = 0; y < h; y++) p.px(Math.floor(w / 2), y, GOLD[2]); };
 const medalP = (p, w, h, face) => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, face !== 'south' ? GOLD[2] : y < h * 0.4 ? (x % 4 < 2 ? '#d8202a' : '#2a5ad8') : (x % 4 === 0 ? 0 : x % 4 === 3 ? GOLD[2] : GOLD[1])); };
-const anchorP = (p, w, h, face) => {          // a gold anchor plaque (flush on the chest)
+const anchorP = crisp((p, w, h, face) => {          // a gold anchor plaque (flush on the chest)
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, face === 'south' ? 0 : GOLD[2]);
   if (face !== 'south') return;
   const cx = Math.floor(w / 2);
@@ -37,7 +37,7 @@ const anchorP = (p, w, h, face) => {          // a gold anchor plaque (flush on 
   p.rect(cx - 3, 2, 6, 1, GOLD[1]); p.rect(cx - 1, 0, 2, 2, GOLD[0]);
   for (let x = -4; x <= 4; x++) { const y = h - 2 - Math.round(Math.sqrt(Math.max(0, 16 - x * x)) * 0.6); p.px(cx + x, y, GOLD[1]); p.px(cx + x, y + 1, GOLD[2]); }
   p.px(cx - 4, h - 4, GOLD[0]).px(cx + 4, h - 4, GOLD[0]);
-};
+});
 const capeP = (p, w, h, face) => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, face === 'up' ? '#2e3a6a' : ramp(['#2e3a6a', TK.navy, TK.navyLo], y / Math.max(1, h - 1), x, y)); if (face === 'north' || face === 'south') for (let y = 0; y < h; y++) { p.px(0, y, GOLD[1]); p.px(w - 1, y, GOLD[1]); } if (face !== 'up' && face !== 'down') for (let x = 0; x < w; x++) p.px(x, h - 1, GOLD[1]); };
 const spyP = (p, w, h, face) => { brassP(p, w, h, face); if (face !== 'up' && face !== 'down') for (let y = 0; y < h; y += 4) for (let x = 0; x < w; x++) p.px(x, y, '#5a3a0a'); };
 

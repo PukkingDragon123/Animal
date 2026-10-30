@@ -9,13 +9,13 @@ import { E, seg, bump, wob, wave, hop } from '../anim.js';
 import { shade, ramp, shift } from './kit.js';
 import { eyeRig, eyesAt, glance, keepEyes } from './eyes.js';
 import { B, L, both, twin, acc, goldP, chainP, GOLD, strapP, beat, env } from './story_parts.js';
-import { TK, HAIR_FORM, brownP, chestP, headP, faceP, lockP, beakP, hookP, cereP, jawP, footP, toeP, pantsP, wingP, primP, tailP, aloha, boardP, finP, headstockP, sleeveP, vinylP, goldDiscP, leiP, clothP, TKFX, eagleForm, EYE_SURFER } from './takanaka_parts.js';
+import { TK, HAIR_FORM, crisp, brownP, chestP, headP, faceP, lockP, beakP, hookP, cereP, jawP, footP, toeP, pantsP, wingP, primP, tailP, aloha, boardP, finP, headstockP, sleeveP, vinylP, goldDiscP, leiP, clothP, TKFX, eagleForm, EYE_SURFER } from './takanaka_parts.js';
 
 const shirt = aloha({ base: '#ff7a52', hi: '#ffa070', lo: '#c84a30', flower: '#ffffff', flowerHi: '#ffffff', flowerLo: '#ffd0c0', center: '#ffd23a', leaf: '#1fb0aa', seed: 11 });
 const shorts = aloha({ base: TK.sea, seed: 5, cell: 3.0 });
 const board = boardP();
 const HAIR = { ...TK.hair, tip: '#c8a070' }, HAIR_R = { ...HAIR, ragged: true };
-const shadesP = (p, w, h, face) => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, face !== 'south' ? '#14141c' : y === 0 ? '#2a2a38' : ramp(['#5adcd0', '#1f8aa8', '#16306a'], y / Math.max(1, h - 1), x, y)); if (face === 'south') { p.px(2, 1, '#ffffff').px(3, 1, '#ffffff').px(w - 4, 1, '#ffffff'); } };
+const shadesP = crisp((p, w, h, face) => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, face !== 'south' ? '#14141c' : y === 0 ? '#2a2a38' : ramp(['#5adcd0', '#1f8aa8', '#16306a'], y / Math.max(1, h - 1), x, y)); if (face === 'south') { p.px(2, 1, '#ffffff').px(3, 1, '#ffffff').px(w - 4, 1, '#ffffff'); } });
 const toothP = (p, w, h, face) => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, face === 'down' ? '#c8c0a8' : Math.abs(x + 0.5 - w / 2) > (w / 2) * (1 - y / h) + 0.3 ? 0 : y < 1 ? '#d8d0b8' : '#fffaf0'); };
 const cordP = (p, w, h) => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, (x + y) % 3 ? '#3a2a1a' : '#6a4a2a'); };
 const visorBandP = (p, w, h, face) => { clothP(p, w, h, face); if (face === 'south') for (let x = 0; x < w; x++) p.px(x, h - 1, TK.sea); };

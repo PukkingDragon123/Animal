@@ -8,7 +8,7 @@ import { E, seg, bump, wob, wave, bounce, hop } from '../anim.js';
 import { shade, ramp, shift } from './kit.js';
 import { eyeRig, eyesAt, eyesScale, glance, keepEyes } from './eyes.js';
 import { B, L, both, twin, acc, goldP, chainP, strapP, plant, beat, env } from './story_parts.js';
-import { TK, HAIR_FORM, brownP, chestP, headP, faceP, lockP, beakP, hookP, cereP, jawP, footP, toeP, pantsP, wingP, primP, tailP, aloha, shirtFront, burstP, guitarFace, neckP, headstockP, sleeveP, vinylP, lensP, frameP, leiP, clothP, visorP, braidP, TKFX, eagleForm, EYE_TALONAKA } from './takanaka_parts.js';
+import { TK, HAIR_FORM, crisp, brownP, chestP, headP, faceP, lockP, beakP, hookP, cereP, jawP, footP, toeP, pantsP, wingP, primP, tailP, aloha, shirtFront, burstP, guitarFace, neckP, headstockP, sleeveP, vinylP, lensP, frameP, leiP, clothP, visorP, braidP, TKFX, eagleForm, EYE_TALONAKA } from './takanaka_parts.js';
 
 const print = aloha({ base: TK.sea, seed: 3 });
 const front = shirtFront(print, { lo: TK.seaLo, depth: 0.6 });
@@ -18,10 +18,10 @@ const burst = burstP(GTR, { r: 3.2 });
 const surfP = (p, w, h, face) => {            // the surfboard pendant: white board, orange stripe
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, Math.abs(x - (w - 1) / 2) < 0.6 ? '#ff6a3a' : face === 'down' ? '#c8c0b0' : '#fffaf0');
 };
-const capeP = (p, w, h, face) => {            // a sunset cape: flat bands with palm silhouettes at the hem
+const capeP = crisp((p, w, h, face) => {            // a sunset cape: flat bands with palm silhouettes at the hem
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p.px(x, y, face === 'up' || face === 'down' ? '#3a2a7a' : ramp(['#ffb02a', '#ff6a3a', '#e8306a', '#8a2a8a', '#3a2a7a'], y / Math.max(1, h - 1), x, y));
   if (face === 'north' || face === 'south') for (const px0 of [0.2, 0.7]) { const x0 = Math.round(w * px0); for (let y = Math.round(h * 0.55); y < h; y++) p.px(x0 + Math.round((h - y) * 0.08), y, '#1a0e18'); for (const dx of [-3, -2, 2, 3]) p.px(x0 + dx + 1, Math.round(h * 0.55) + Math.abs(dx) - 1, '#1a0e18'); p.px(x0 + 1, Math.round(h * 0.55) - 1, '#1a0e18'); }
-};
+});
 
 // ---------------------------------------------------------------- the model
 const FOOT = [
