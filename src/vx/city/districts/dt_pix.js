@@ -76,8 +76,10 @@ export function signBoard(key, text, wM, hM, o = {}) {
     P.hline(2, 2, W - 4, light(bg, 0.25)); P.hline(2, H - 3, W - 4, dark(bg, 0.25));
     if (o.stripe) { P.rect(2, H - 6, W - 4, 2, o.stripe); P.rect(2, 4, W - 4, 1, o.stripe); }
     const lines = o.sub ? [text, o.sub] : [text];
-    const s1 = Math.min(o.s || 99, fitScale(text, W - 10, 5, Math.floor((H - 8) / (o.sub ? 11 : 8)))), s2 = o.sub ? fitScale(o.sub, W - 10, o.subFont || 3, Math.max(1, Math.floor(s1 * 0.75))) : 0;
-    const h1 = 7 * s1, h2 = o.sub ? (o.subFont === 5 ? 7 : 5) * s2 : 0, gap = o.sub ? Math.max(2, s1) : 0, top = Math.round((H - h1 - h2 - gap) / 2);
+    const sh = o.subFont === 5 ? 7 : 5, subS = (s) => (o.sub ? fitScale(o.sub, W - 10, o.subFont || 3, Math.max(1, Math.floor(s * 0.6))) : 0);
+    let s1 = Math.min(o.s || 8, 8);
+    while (s1 > 1 && (textW(text, 5, s1) > W - 12 || 7 * s1 + (o.sub ? sh * subS(s1) + Math.max(2, s1) : 0) > H - 6)) s1--;
+    const s2 = subS(s1), h1 = 7 * s1, h2 = o.sub ? sh * s2 : 0, gap = o.sub ? Math.max(2, s1) : 0, top = Math.round((H - h1 - h2 - gap) / 2);
     if (o.icon) o.icon(P, W, H);
     ptext(P, lines[0], W / 2 + (o.dx || 0), top, fg, { s: s1, mid: false, shadow: o.shadow === false ? null : dark(bg, 0.5) });
     if (o.sub) ptext(P, o.sub, W / 2 + (o.dx || 0), top + h1 + gap, o.subCol || fg, { s: s2, font: o.subFont || 3, mid: false });
@@ -105,5 +107,19 @@ export function critter(P, cx, cy, r, body, o = {}) {
   for (const sx of [-1, 1]) { P.rect(cx + sx * Math.round(r * 0.38) - e, cy - e, e * 2, e * 3, ink); P.px(cx + sx * Math.round(r * 0.38) - e + 1, cy - e + 1, '#ffffff'); }
   P.rect(cx - e, cy + Math.round(r * 0.45), e * 2, Math.max(1, e - 1), o.mouth || '#e85a6a');
   P.rect(cx - Math.round(r * 0.75), cy + Math.round(r * 0.2), e + 1, e, o.cheek || '#f49ab0'); P.rect(cx + Math.round(r * 0.75) - e, cy + Math.round(r * 0.2), e + 1, e, o.cheek || '#f49ab0');
+}
+/** the Tokon League emblem (original): a navy hexagon, a gold ring, a white four-point star and three coloured
+ *  dots for the three starter elements (fire red, water blue, bio pink) */
+export function emblem(P, cx, cy, r) {
+  const hex = (x, y, R) => { const ax = Math.abs(x), ay = Math.abs(y); return ay <= R * 0.866 && ax * 0.866 + ay * 0.5 <= R * 0.866; };
+  for (let y = -r; y <= r; y++) for (let x = -r; x <= r; x++) {
+    if (!hex(x, y, r)) continue;
+    const ring = !hex(x, y, r * 0.78), inner = !hex(x, y, r * 0.86);
+    P.px(cx + x, cy + y, inner ? '#1e2440' : ring ? '#f0c040' : '#2a3460');
+  }
+  const s = r * 0.56;
+  for (let y = -s; y <= s; y++) for (let x = -s; x <= s; x++) if (Math.abs(x) * Math.abs(y) <= s * s * 0.035 && Math.abs(x) + Math.abs(y) <= s) P.px(cx + x, cy + y, '#ffffff');
+  const d = Math.max(1, Math.round(r * 0.11));
+  [['#e8503a', -90], ['#3a8ad8', 30], ['#ff5a8a', 150]].forEach(([c, a]) => { const t = (a * Math.PI) / 180; disc(P, Math.round(cx + Math.cos(t) * r * 0.55), Math.round(cy + Math.sin(t) * r * 0.55), d, c); });
 }
 export { dark, light };

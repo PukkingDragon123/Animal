@@ -93,6 +93,22 @@ export function floorDecal(C, gk, tex, x, y, z, w, d, o = {}) {
   else C.quad(gk, tex, [x - hw, y, z + hd], [x + hw, y, z + hd], [x + hw, y, z - hd], [x - hw, y, z - hd], { fit: true });
 }
 
+/** a round picture lying flat (inlays, turntables): the texture's inscribed circle (uvR of its half-size) mapped onto a disc of radius r */
+export function discDecal(C, gk, tex, x, y, z, r, o = {}) {
+  const n = o.n || 40, k = o.uvR ?? 0.5, [tw, th] = tex.userData.size, c = [x, y, z], uc = [0.5 * tw, 0.5 * th];
+  for (let i = 0; i < n; i++) {
+    const a0 = (i / n) * Math.PI * 2, a1 = ((i + 1) / n) * Math.PI * 2;
+    const p0 = [x + Math.cos(a0) * r, y, z + Math.sin(a0) * r], p1 = [x + Math.cos(a1) * r, y, z + Math.sin(a1) * r];
+    tri3(C, gk, tex, c, p1, p0, uc, [(0.5 + Math.cos(a1) * k) * tw, (0.5 - Math.sin(a1) * k) * th], [(0.5 + Math.cos(a0) * k) * tw, (0.5 - Math.sin(a0) * k) * th], { up: true });
+  }
+}
+/** a diamond-shaped flat picture (the texture's inscribed diamond) with half-diagonal r */
+export function diamondDecal(C, gk, tex, x, y, z, r, k = 0.5) {
+  const [tw, th] = tex.userData.size, U = (u, v) => [u * tw, v * th];
+  const N = [x, y, z - r], E = [x + r, y, z], S = [x, y, z + r], W = [x - r, y, z], c = [x, y, z];
+  tri3(C, gk, tex, c, E, N, U(0.5, 0.5), U(0.5 + k, 0.5), U(0.5, 0.5 + k), { up: true }); tri3(C, gk, tex, c, S, E, U(0.5, 0.5), U(0.5, 0.5 - k), U(0.5 + k, 0.5), { up: true });
+  tri3(C, gk, tex, c, W, S, U(0.5, 0.5), U(0.5 - k, 0.5), U(0.5, 0.5 - k), { up: true }); tri3(C, gk, tex, c, N, W, U(0.5, 0.5), U(0.5, 0.5 + k), U(0.5 - k, 0.5), { up: true });
+}
 /**
  * A Chinese hip roof: glazed barrel tiles on a concave two-pitch profile, corners flaring up, a fascia of
  * round eave-tile ends, ridge + hip ridges in capCol and curled ridge-end ornaments.
@@ -143,8 +159,8 @@ export function hipRoof(C, gk, o) {
   for (let k = 0; k < 4; k++) {
     for (let r = 0; r + 1 < rings.length; r++) beam(C, gk, cap, V.add(corner(rings[r], k), [0, 0.08, 0]), V.add(corner(rings[r + 1], k), [0, 0.1, 0]), 0.2, 0.18);
     const c0 = corner(rings[0], k), cx = (X0 + X1) / 2, cz = (Z0 + Z1) / 2, ox = Math.sign(c0[0] - cx), oz = Math.sign(c0[2] - cz);
-    beam(C, gk, cap, V.add(c0, [0, 0.05, 0]), V.add(c0, [ox * 0.32, 0.5 + flare * 0.3, oz * 0.32]), 0.16, 0.16);
-    if (o.hookCol) beam(C, gk, TX.solid(o.hookCol), V.add(c0, [ox * 0.3, 0.45 + flare * 0.3, oz * 0.3]), V.add(c0, [ox * 0.42, 0.62 + flare * 0.3, oz * 0.42]), 0.12, 0.12);
+    if (o.hooks !== false) beam(C, gk, cap, V.add(c0, [0, 0.05, 0]), V.add(c0, [ox * 0.32, 0.5 + flare * 0.3, oz * 0.32]), 0.16, 0.16);
+    if (o.hookCol && o.hooks !== false) beam(C, gk, TX.solid(o.hookCol), V.add(c0, [ox * 0.3, 0.45 + flare * 0.3, oz * 0.3]), V.add(c0, [ox * 0.42, 0.62 + flare * 0.3, oz * 0.42]), 0.12, 0.12);
   }
   if (!o.skirt) {
     const R = rings[2], a = [R.c[0][0], R.y, R.c[0][1]], b = [R.c[2][0], R.y, R.c[2][1]];

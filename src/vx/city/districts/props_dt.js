@@ -24,7 +24,7 @@ add('dt_flood', { size: [32, 196, 24], r: 0.32, build(F) {
 // chain-link fence panel (2 m × 3 m): a diamond lattice you can see through, posts and rails
 add('dt_fence', { size: [32, 48, 4], r: [2.0, 0.22], build(F) {
   const post = F.c('#6a7080'), rail = F.c('#8a909a'), wire = F.c('#a8b0b8');
-  for (let y = 2; y < 46; y++) for (let x = 1; x < 31; x++) if ((x + y) % 4 === 0 || ((x - y) % 4 + 4) % 4 === 0) F.set(x, y, 2, wire);
+  for (let x = 4; x < 30; x += 5) F.box(x, 2, 2, x, 45, 2, wire); for (let y = 6; y < 45; y += 6) F.box(1, y, 2, 30, y, 2, wire);
   F.box(0, 0, 1, 1, 47, 2, post); F.box(30, 0, 1, 31, 47, 2, post); F.box(0, 46, 1, 31, 47, 2, rail); F.box(0, 1, 2, 31, 1, 2, rail); F.box(0, 24, 2, 31, 24, 2, rail);
 } });
 // low painted railing (2 m × 1.1 m) for the camera-facing sides of the court
@@ -64,7 +64,8 @@ add('dt_heal', { size: [48, 42, 22], r: [3.0, 1.35], build(F) {
 for (const [k, top, ring] of [['r', '#e8503a', '#ffb07a'], ['b', '#3a8ad8', '#8ae0ff'], ['p', '#ff5a8a', '#ffc0d8']]) add('dt_pedestal_' + k, { size: [12, 17, 12], r: 0, build(F) {
   const w = F.c('#eef2f4'), w2 = F.c('#b8c4cc'), g = F.c(ring, GLOW), t = F.c(top), t2 = F.c(top, GLOW), wh = F.c('#f8f8f4'), band = F.c('#2a2e38'), btn = F.c('#ffffff', GLOW), glass = F.c('#d8f4ff');
   disc(F, 6, 6, 0, 1, 5.4, w2); disc(F, 6, 6, 2, 4, 3.4, w); disc(F, 6, 6, 5, 5, 5, g);
-  ball(F, 6, 8.5, 6, 2.7, (x, y) => (y > 9 ? t : y === 9 ? band : wh)); F.set(6, 9, 8, btn); F.set(6, 11, 6, t2);
+  // an upright pill capsule: coloured cap, pearly lower half, a glowing gem on the seam
+  disc(F, 6, 6, 7, 12, 2.2, (x, y) => (y >= 10 ? t : wh)); disc(F, 6, 6, 13, 13, 1.4, t); disc(F, 6, 6, 6, 6, 1.4, wh); F.set(6, 10, 8, btn); F.set(6, 13, 6, t2);
   for (let y = 6; y < 16; y++) { const r = Math.sqrt(Math.max(0, 22 - (y - 6) ** 2 * 0.22)); for (let a = 0; a < 20; a++) { if ((a + y) % 3) continue; F.set(Math.round(6 + Math.cos(a * 0.314) * r), y, Math.round(6 + Math.sin(a * 0.314) * r), glass); } }
 } });
 add('dt_monitor', { size: [14, 12, 6], r: 0, build(F) { const k = F.c('#2a2e38'), s = F.c('#7ad8ff', GLOW), s2 = F.c('#d8f8ff', GLOW); F.box(5, 0, 1, 8, 1, 4, k); F.box(6, 2, 2, 7, 3, 3, k); F.box(0, 4, 2, 13, 11, 3, k); F.box(1, 5, 4, 12, 10, 4, s); F.box(2, 8, 4, 7, 8, 4, s2); F.box(2, 6, 4, 9, 6, 4, s2); } });

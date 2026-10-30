@@ -2,7 +2,7 @@
 // scoreboard, the cinema marquee, shop shelves and fridges, lab screens, bookshelves and signs.
 // All painted at 32 texels per metre with the bitmap fonts from dt_pix.js (crisp lettering).
 import { TX } from '../build.js';
-import { ptext, textW, fitScale, signBoard, bulbs, vgrad, disc, critter, dark, light } from './dt_pix.js';
+import { ptext, textW, fitScale, signBoard, bulbs, vgrad, disc, critter, emblem, dark, light } from './dt_pix.js';
 
 const pt = TX.ptex;
 const pick = (r, a) => a[Math.floor(r() * a.length)];
@@ -118,10 +118,9 @@ export const courtTex = () => pt('dt_court', COURT.w, COURT.d, (g, W, H, r, P) =
   const L = (x, y, w, h) => P.rect(x, y, w, h, line);
   L(px0, py0, pw, 5); L(px0, py0 + ph - 5, pw, 5); L(px0, py0, 5, ph); L(px0 + pw - 5, py0, 5, ph); L(px0 + pw / 2 - 2, py0, 5, ph);
   const cx = px0 + pw / 2, cy = py0 + ph / 2;
-  // centre circle: yellow ring, white line, the capsule emblem
+  // centre circle: white line, gold ring, the Tokon League emblem
   for (let y = -m(3.2); y <= m(3.2); y++) for (let x = -m(3.2); x <= m(3.2); x++) { const d = Math.hypot(x, y); if (d <= m(3.2) && d > m(3.2) - 5) P.px(cx + x, cy + y, line); else if (d <= m(2.9) && d > m(2.9) - 8) P.px(cx + x, cy + y, '#f0c040'); }
-  for (let y = -m(1.6); y <= m(1.6); y++) for (let x = -m(1.6); x <= m(1.6); x++) { const d = Math.hypot(x, y); if (d <= m(1.6)) P.px(cx + x, cy + y, d > m(1.6) - 4 ? '#1e1e28' : Math.abs(y) < 4 ? '#1e1e28' : y < 0 ? '#e8473a' : '#f4f0ea'); }
-  disc(P, cx, cy, 10, '#1e1e28'); disc(P, cx, cy, 6, '#f4f0ea');
+  emblem(P, cx, cy, m(2.0));
   // trainer boxes at 8 m apart (arenaA west, arenaB east), and the battle lanes
   for (const [dx, c] of [[-4, '#ff6a5a'], [4, '#5ac8ff']]) {
     const bx = cx + m(dx), bw = m(2.4), bh = m(3.6);
@@ -143,7 +142,7 @@ export const courtTex = () => pt('dt_court', COURT.w, COURT.d, (g, W, H, r, P) =
 
 // ---------------------------------------------------------------- graffiti (6 × 3 m panels)
 const SPRAY = [['#ff4a8a', '#ffb0d0', '#a81e5a'], ['#4ad8ff', '#c0f4ff', '#1e6aa8'], ['#ffe04a', '#fff4b0', '#c88a1a'], ['#5aff8a', '#d0ffd8', '#1e8a4a'], ['#b06aff', '#e0c8ff', '#5a2aa8'], ['#ff8a3a', '#ffd0a0', '#b8501e']];
-export const graffiti = (word, i = 0, bg = '#8a8478', wM = 6) => pt('dt_graf' + word + i + bg + wM, wM, 3, (g, W, H, r, P) => {
+export const graffiti = (word, i = 0, bg = '#8a8478', wM = 5.6) => pt('dt_graf' + word + i + bg + wM, wM, 3, (g, W, H, r, P) => {
   P.fill(bg); P.speck(500, dark(bg, 0.1), r); P.speck(400, light(bg, 0.08), r);
   for (let y = 0; y < H; y += 16) P.hline(0, y, W, dark(bg, 0.12));
   const [c1, c2, c3] = SPRAY[i % SPRAY.length], [d1] = SPRAY[(i + 2) % SPRAY.length];
@@ -159,7 +158,7 @@ export const graffiti = (word, i = 0, bg = '#8a8478', wM = 6) => pt('dt_graf' + 
   ptext(P, pick(r, ['ZAP', 'K8', 'RIFF', 'MOX', 'B-BOY']), W - 22, H - 10, pick(r, ['#ffffff', '#1e1a22', c2]), { font: 3, s: 2 });
 });
 /** a mural: a big grinning Tokonmon with a crown, sun rays and a banner */
-export const mural = (body = '#ffd84a', bg = '#5ac8d8', wM = 6) => pt('dt_mural' + body + bg + wM, wM, 3, (g, W, H, r, P) => {
+export const mural = (body = '#ffd84a', bg = '#5ac8d8', wM = 5.6) => pt('dt_mural' + body + bg + wM, wM, 3, (g, W, H, r, P) => {
   P.fill(bg); for (let a = 0; a < 24; a++) for (let t = 20; t < 140; t++) { if (a & 1) continue; const x = W / 2 + Math.cos(a * 0.2618) * t, y = H / 2 + Math.sin(a * 0.2618) * t; P.rect(x, y, 2, 2, light(bg, 0.25)); }
   critter(P, W / 2, H / 2 + 6, 30, body, { cheek: '#ff9ab0' });
   for (let k = 0; k < 5; k++) P.rect(W / 2 - 20 + k * 8, H / 2 - 40, 6, 10, '#f0c040'), P.px(W / 2 - 17 + k * 8, H / 2 - 42, '#ff4a5a');
@@ -179,7 +178,7 @@ export const scoreboardTex = () => pt('dt_score', 6.4, 2.6, (g, W, H, r, P) => {
   for (let i = 0; i < 3; i++) { disc(P, W / 2 - 16 + i * 16, 70, 4, i < 2 ? '#ff6a5a' : '#3a3a44'); }
 });
 /** bleacher riser paint: a stripe band with row letters */
-export const riserTex = (c = '#e8473a') => pt('dt_riser' + c, 4, 0.36, (g, W, H, r, P) => { P.fill(c); P.rect(0, 0, W, 2, light(c, 0.3)); P.rect(0, H - 2, W, 2, dark(c, 0.3)); for (let x = 8; x < W; x += 32) ptext(P, String.fromCharCode(65 + x / 32), x, H / 2, '#ffffff', { font: 3, s: 1 }); P.speck(20, dark(c, 0.2), r); }, { ppm: 32 });
+export const riserTex = (c = '#e8473a') => pt('dt_riser' + c, 4, 0.33, (g, W, H, r, P) => { P.fill(c); P.rect(0, 0, W, 2, light(c, 0.3)); P.rect(0, H - 2, W, 2, dark(c, 0.3)); for (let x = 8; x < W; x += 32) ptext(P, String.fromCharCode(65 + x / 32), x, H / 2, '#ffffff', { font: 3, s: 1 }); P.speck(20, dark(c, 0.2), r); }, { ppm: 32 });
 
 // ---------------------------------------------------------------- the cinema
 export const decoWall = () => pt('dt_deco', 2, 2.5, (g, W, H, r, P) => {
@@ -207,9 +206,9 @@ export const posterTex = (k) => pt('dt_poster' + k, 1, 1.5, (g, W, H, r, P) => {
 // ---------------------------------------------------------------- shops
 const GOODS = ['#e8473a', '#f0c040', '#5ab06a', '#3a8ad8', '#e890b0', '#f4f0ea', '#ff8a3a', '#a85ae8', '#5ad8c8', '#c8a070'];
 /** a gondola / wall shelf front, 2 × 1.8 m: four shelves of boxes, cans, bottles, snack bags and cup noodles */
-export const shelfTex = (seed = 0) => pt('dt_shelf' + seed, 2, 1.8, (g, W, H, r, P) => {
+export const shelfTex = (seed = 0, wM = 2, hM = 1.8) => pt('dt_shelf' + seed, wM, hM, (g, W, H, r, P) => {
   P.fill('#e8eaee'); P.rect(0, 0, 2, H, '#a8acb4'); P.rect(W - 2, 0, 2, H, '#a8acb4');
-  const rows = 4, rh = Math.floor((H - 4) / rows);
+  const rows = hM > 1.6 ? 4 : 3, rh = Math.floor((H - 4) / rows);
   for (let i = 0; i < rows; i++) {
     const yb = 2 + (i + 1) * rh; P.rect(2, yb - 2, W - 4, 3, '#b8bcc4'); P.rect(2, yb - 3, W - 4, 1, '#f8f8fa');
     let x = 3; const kind = Math.floor(r() * 5);
@@ -309,7 +308,7 @@ export const whiteboardTex = () => pt('dt_wboard', 2.2, 1.2, (g, W, H, r, P) => 
 export const rugTex = () => pt('dt_rug', 4, 3, (g, W, H, r, P) => {
   P.fill('#2a8a84'); P.rect(4, 4, W - 8, H - 8, '#3aa8a0'); P.rect(8, 8, W - 16, H - 16, '#2a8a84');
   for (let x = 4; x < W - 4; x += 6) { P.px(x, 2, '#f0c040'); P.px(x, H - 3, '#f0c040'); }
-  const cx = W / 2, cy = H / 2; for (let y = -22; y <= 22; y++) for (let x = -22; x <= 22; x++) { const d = Math.hypot(x, y); if (d <= 22) P.px(cx + x, cy + y, d > 19 ? '#1e1e28' : Math.abs(y) < 3 ? '#1e1e28' : y < 0 ? '#e8473a' : '#f4f0ea'); } disc(P, cx, cy, 6, '#1e1e28'); disc(P, cx, cy, 3, '#f4f0ea');
+  emblem(P, W / 2, H / 2, 26);
 });
 export const tramMapTex = () => pt('dt_trammap', 1.2, 1.7, (g, W, H, r, P) => {
   P.fill('#f4f0e8'); P.rect(0, 0, W, 10, '#c8303a'); ptext(P, 'TRAM', W / 2, 5, '#ffffff', { font: 3, s: 1 });
@@ -319,7 +318,7 @@ export const tramMapTex = () => pt('dt_trammap', 1.2, 1.7, (g, W, H, r, P) => {
 });
 // ---------------------------------------------------------------- signs
 export const signs = {
-  lab: () => signBoard('lab', 'TOKON LAB', 5.4, 1.0, { bg: '#f4f8f6', fg: '#1e6a64', frame: '#3ab8a0', sub: 'PROF. AOI  RESEARCH', subCol: '#3a8a84', shadow: false, icon: (P, W, H) => { for (const sx of [12, W - 26]) { for (let y = -10; y <= 10; y++) for (let x = -10; x <= 10; x++) { const d = Math.hypot(x, y); if (d <= 10) P.px(sx + 7 + x, H / 2 + y, d > 8.5 ? '#1e1e28' : Math.abs(y) < 2 ? '#1e1e28' : y < 0 ? '#e8473a' : '#ffffff'); } } } }),
+  lab: () => signBoard('lab', 'TOKON LAB', 5.4, 1.0, { bg: '#f4f8f6', fg: '#1e6a64', frame: '#3ab8a0', sub: 'PROF. AOI  RESEARCH', subCol: '#3a8a84', shadow: false, icon: (P, W, H) => { for (const sx of [19, W - 19]) emblem(P, sx, H / 2, 12); } }),
   mart: () => signBoard('mart', 'MOMO MART', 6, 0.9, { bg: '#ff8ab0', fg: '#ffffff', frame: '#5ab86a', sub: 'OPEN 24 HOURS', subCol: '#fff4c0', stripe: '#5ab86a' }),
   boba: () => signBoard('boba', 'BUBBLE MOON', 5, 0.8, { bg: '#b890e0', fg: '#ffffff', frame: '#7a4ab8', sub: 'BOBA  TEA  CAFE', subCol: '#fff4c0' }),
   games: () => signBoard('games', 'PIXEL PALACE', 8, 1.0, { bg: '#1e1e28', fg: '#5aff9a', frame: '#ff4a8a', sub: 'GAMES  CARDS  GEAR', subCol: '#ffe04a' }),

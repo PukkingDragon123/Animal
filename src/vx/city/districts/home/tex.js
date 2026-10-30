@@ -113,13 +113,15 @@ export const atticWin = (frame = '#f6f0e2', glassC = '#4a6a8a') => ptex('sr_atti
   P.dither(3, 3, W - 6, H - 6, '#9ac0e0', (x, y) => ((x + y) % 9 < 2 ? 0.8 : 0) * (g.getImageData(x, y, 1, 1).data[2] > 120 ? 1 : 0));
   P.vline(Math.floor(cx), 3, H - 6, frame); P.hline(3, Math.floor(H * 0.55), W - 6, frame); P.hline(1, H - 2, W - 2, dk(frame, 0.3));
 });
-export const doorFancy = (col = '#b04a64') => ptex('sr_door' + col, 1, 2.2, (g, W, H, r, P) => {
+export const doorFancy = (col = '#b04a64', wM = 1.25, glassy = false) => ptex('sr_door' + col + wM + glassy, wM, 2.2, (g, W, H, r, P) => {
   P.fill(col); P.vline(0, 0, H, dk(col, 0.4)); P.vline(W - 1, 0, H, dk(col, 0.4)); P.hline(0, 0, W, dk(col, 0.4));
-  // glazed top lite with a little fan
-  P.block(4, 4, W - 8, 20, lt(col, 0.05), { hk: 0.2, lk: 0.3 }); P.rect(6, 6, W - 12, 16, '#5a7a9a'); P.dither(6, 6, W - 12, 16, '#b8d8f0', (x, y) => ((x + y) % 9 < 2 ? 0.8 : 0.08));
-  for (let x = 6 + 4; x < W - 6; x += 5) P.vline(x, 6, 16, lt(col, 0.1));
-  for (const [y, h] of [[28, 16], [47, 20]]) { P.block(5, y, (W - 12) / 2, h, lt(col, 0.07), { hk: 0.16, lk: 0.3 }); P.block(W / 2 + 1, y, (W - 12) / 2, h, lt(col, 0.07), { hk: 0.16, lk: 0.3 }); }
-  P.rect(W - 8, 41, 3, 4, '#e8c060'); P.px(W - 8, 41, '#fff4c0'); P.rect(W / 2 - 3, 25, 6, 1, '#e8c060');
+  const m = 4, half = Math.floor((W - 2 * m - 2) / 2);
+  if (glassy) { P.rect(m, m, W - 2 * m, H - 22, '#5a7a9a'); P.dither(m, m, W - 2 * m, H - 22, '#b8d8f0', (x, y) => ((x + y) % 11 < 3 ? 0.8 : 0.08)); P.vline(Math.floor(W / 2), m, H - 22, col); P.block(m, H - 16, W - 2 * m, 12, lt(col, 0.07), { hk: 0.16, lk: 0.3 }); P.rect(W - 8, 38, 3, 4, '#e8c060'); return; }
+  // glazed top lite with muntins
+  P.block(m, m, W - 2 * m, 20, lt(col, 0.05), { hk: 0.2, lk: 0.3 }); P.rect(m + 2, m + 2, W - 2 * m - 4, 16, '#5a7a9a'); P.dither(m + 2, m + 2, W - 2 * m - 4, 16, '#b8d8f0', (x, y) => ((x + y) % 9 < 2 ? 0.8 : 0.08));
+  for (let x = m + 6; x < W - m - 2; x += 5) P.vline(x, m + 2, 16, lt(col, 0.1));
+  for (const [y, h] of [[28, 16], [47, 20]]) { P.block(m + 1, y, half, h, lt(col, 0.07), { hk: 0.16, lk: 0.3 }); P.block(W - m - 1 - half, y, half, h, lt(col, 0.07), { hk: 0.16, lk: 0.3 }); }
+  P.rect(W - 9, 41, 3, 4, '#e8c060'); P.px(W - 9, 41, '#fff4c0'); P.rect(W / 2 - 3, 25, 6, 1, '#e8c060');
 });
 export const houseNum = (n, bg = '#2a3a4a', fg = '#f4e0a0') => ptex('sr_num' + n + bg + fg, 0.6, 0.28, (g, W, H, r, P) => {
   P.fill(bg); P.rect(0, 0, W, 1, lt(bg, 0.3)); P.rect(0, H - 1, W, 1, dk(bg, 0.3)); px3(P, n, Math.round((W - px3w(n)) / 2), 2, fg, dk(bg, 0.4));
@@ -233,7 +235,7 @@ export const tvAtlas = () => glow(atlas(ptex('sr_tvA', (TVW * 9) / 32, TVH / 32,
     if (sh) { P.px(o + 10, 9, '#e8f4ff'); P.px(o + 17, 8, '#e8f4ff'); P.px(o + 13, 10, '#ffffff'); }
     P.rect(o, 16, TVW, 3, '#1a1a22'); px3(P, 'WILD', o + 1, 14, '#f8e8c8', '#1a1a22');
   });
-})), 9);
+}), 9));
 /** PC monitor: 0 = a desktop with windows, 1 = same with the cursor blink and a mail badge */
 export const pcAtlas = () => glow(atlas(ptex('sr_pcA', 40 / 32, 13 / 32, (g, W, H, r, P) => {
   for (let i = 0; i < 2; i++) {
@@ -245,7 +247,7 @@ export const pcAtlas = () => glow(atlas(ptex('sr_pcA', 40 / 32, 13 / 32, (g, W, 
     P.rect(o, 11, 20, 2, '#1e2a3a'); P.px(o + 1, 11, '#e8473a');
     if (i) { P.rect(o + 9, 6, 1, 3, '#1a1a22'); P.rect(o + 16, 0, 3, 3, '#e8473a'); P.px(o + 17, 1, '#ffffff'); }
   }
-})), 2);
+}), 2));
 /** bedroom TV: a little platformer on the console (two frames) */
 export const gameAtlas = () => glow(atlas(ptex('sr_gameA', 48 / 32, 15 / 32, (g, W, H, r, P) => {
   for (let i = 0; i < 2; i++) {
@@ -257,7 +259,7 @@ export const gameAtlas = () => glow(atlas(ptex('sr_gameA', 48 / 32, 15 / 32, (g,
     P.rect(o + (i ? 19 : 11), i ? 4 : 7, 1, 2, '#f8d84a');
     P.rect(o + 1, 1, 6, 1, '#1a1a22');
   }
-})), 2);
+}), 2));
 
 // ---------------------------------------------------------------- pictures: posters, photos, paintings (no people)
 const posterBase = (P, W, H, bg, edge = '#f4f0e8') => { P.fill(edge); P.rect(1, 1, W - 2, H - 2, bg); };

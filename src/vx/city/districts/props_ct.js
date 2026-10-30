@@ -126,9 +126,28 @@ const K = {
     for (let y = 74; y < 79; y++) disc(F, 7, 7, y, y, 6.5 - (y - 74) * 1.3, roof); disc(F, 7, 7, 79, 82, 0.8, gold);
     for (const [x, z] of [[1, 1], [13, 1], [1, 13], [13, 13]]) F.set(x, 75, z, gold);
   } },
+  ct_slide: { size: [72, 30, 22], r: [4.4, 1.3], build(F) {
+    const g = F.c('#3aa060'), g2 = F.c('#2a8048'), bel = F.c('#f0d060'), red = F.c('#e8322a'), wh = F.c('#f4f0ea'), bk = F.c('#1a1a1a'), sl = F.c('#e86a2a'), st = F.c('#a8a49c');
+    // a dragon arching out of the sand in three humps; a slide off the last one
+    for (let x = 6; x < 60; x++) { const t = (x - 6) / 54, y = Math.abs(Math.sin(t * Math.PI * 3)) * 16; for (let a = 0; a < 20; a++) { const q = a / 20 * 6.283, yy = Math.round(y + 3 + Math.sin(q) * 3), zz = Math.round(11 + Math.cos(q) * 3); F.set(x, yy, zz, Math.sin(q) < -0.5 ? bel : (x + a) % 5 ? g : g2); } if (x % 6 === 0) F.box(x, Math.round(y) + 6, 11, x, Math.round(y) + 8, 11, red); }
+    ell(F, 63, 12, 11, 6, 5, 4.5, g); F.box(66, 10, 7, 70, 12, 15, g2); F.box(67, 13, 7, 68, 14, 8, wh); F.box(67, 13, 14, 68, 14, 15, wh); F.set(68, 14, 7, bk); F.set(68, 14, 15, bk); F.box(69, 9, 9, 71, 10, 13, red);
+    for (let y = 16; y < 22; y++) { F.set(60 - (y - 16), y, 8, red); F.set(60 - (y - 16), y, 14, red); }
+    F.box(0, 0, 9, 5, 4, 13, g2); F.box(0, 3, 10, 2, 7, 12, red);
+    for (let x = 36; x < 52; x++) { const y = Math.round(16 - (x - 36) * 1.0); F.box(x, Math.max(0, y), 16, x, Math.max(0, y) + 1, 20, sl); F.set(x, Math.max(0, y) + 2, 16, sl); F.set(x, Math.max(0, y) + 2, 20, sl); }
+    F.box(0, 0, 0, 71, 0, 21, (x, y, z) => ((x + z) % 7 === 0 ? st : 0));
+  } },
   ct_ac: { size: [12, 9, 8], r: 0, build(F) { const b = F.c('#d8d8d0'), g = F.c('#8a8a88'), d = F.c('#5a5a58'); F.box(0, 0, 0, 11, 8, 7, b); F.box(1, 1, 8, 10, 7, 8, g); for (let y = 2; y < 7; y += 2) F.box(2, y, 8, 9, y, 8, d); disc(F, 6, 0, 0, 0, 0, b); } },
   ct_bucket: { size: [8, 8, 8], r: 0.2, build(F) { const b = F.c('#2a6aa8'), w = F.c('#5a9ad8'); disc(F, 4, 4, 0, 6, 3.4, b); disc(F, 4, 4, 6, 6, 2.6, w); } },
   // ---------------------------------------------------------------- Wharf
+  wf_lighthouse: { size: [34, 168, 34], r: 0, build(F) {
+    const w = F.c('#f4f2ec'), w2 = F.c('#dcd8d0'), red = F.c('#c83a2a'), dk = F.c('#2a2a30'), gl = F.c('#fff4b0', GLOW), st = F.c('#8a8680');
+    disc(F, 17, 17, 0, 8, 15, st);
+    for (let y = 9; y < 128; y++) disc(F, 17, 17, y, y, 9.5 - (y - 9) * 0.03, (x, yy, z) => (Math.floor(yy / 20) % 2 ? red : (x + z) % 5 ? w : w2));
+    for (let y = 30; y < 120; y += 22) F.box(16, y, 25, 18, y + 4, 26, dk);
+    disc(F, 17, 17, 128, 130, 12, dk); for (let y = 131; y < 146; y++) disc(F, 17, 17, y, y, 7.5, (x, yy, z) => ((x + z) % 4 === 0 ? dk : gl));
+    for (let y = 146; y < 160; y++) disc(F, 17, 17, y, y, 8.5 - (y - 146) * 0.6, red); disc(F, 17, 17, 160, 167, 1.2, dk);
+    for (let t = 0; t < 72; t++) { const q = t / 72 * 6.283; F.set(Math.round(17 + Math.cos(q) * 12), 131, Math.round(17 + Math.sin(q) * 12), dk); F.set(Math.round(17 + Math.cos(q) * 12), 134, Math.round(17 + Math.sin(q) * 12), dk); }
+  } },
   wf_telescope: { size: [10, 26, 12], r: 0.3, build(F) {
     const p = F.c('#2a5a8a'), p2 = F.c('#1e4a72'), s = F.c('#c8ccd4'), gl = F.c('#8ad0f0'), y = F.c('#f0c040');
     disc(F, 5, 6, 0, 1, 3.5, p2); disc(F, 5, 6, 2, 14, 1.4, p); F.box(3, 15, 4, 7, 16, 8, p2);

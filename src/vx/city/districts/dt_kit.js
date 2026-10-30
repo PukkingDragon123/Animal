@@ -45,5 +45,11 @@ export function awningS(C, gk, tex, x0, x1, zFace, y1 = 2.5, y0 = 2.05, dep = 1.
 export function awningE(C, gk, tex, z0, z1, xFace, y1 = 2.5, y0 = 2.05, dep = 1.1) {
   C.quad(gk, tex, [xFace + dep, y0, z1], [xFace + dep, y0, z0], [xFace, y1, z0], [xFace, y1, z1]);
 }
+/** furniture whose side textures start at the texture origin (pictures fit the face: shelves, counters, signs) */
+export function furn(C, B, k, x0, z0, x1, z1, h, tex, o = {}) {
+  const y0 = k * 3 + (o.y || 0);
+  C.box(o.gk || B.gk(k, 'in'), tex, x0, y0, z0, x1, y0 + h, z1, { top: o.top || tex, s: o.s, n: o.n, e: o.e, w: o.w, u0: 0, v0: 0 });
+  if (o.collide !== false) C.nav.block(x0 + 0.05, z0 + 0.05, x1 - 0.05, z1 - 0.05, k);
+}
 /** an L-system-free rand for layout decisions (deterministic per seed) */
 export const rng = (seed) => { let x = (seed >>> 0) || 1; return () => ((x = (x * 1664525 + 1013904223) >>> 0) / 4294967296); };

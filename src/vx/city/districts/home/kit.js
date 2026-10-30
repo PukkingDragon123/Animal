@@ -77,10 +77,19 @@ export function floor(C, gk, tex, x0, z0, x1, z1, y, fit = false) {
  * north|east side (a) and the south|west side (b). gaps: [{ at, w }] doorways (metres from the start).
  * Returns the upper part's group key, for posters and shelves that should lower with it.
  */
+/**
+ * The nav grid is 25 cm and walls block 10 cm either side of their line, so a doorway's clear opening depends on
+ * where its edges fall. This moves a gap of width w (≤ 1.3 m) onto the grid; a 1.25 m gap then always leaves a
+ * clear 1.0 m (four whole cells), comfortable for the 0.52 m walker steered with keys. All doorways here use 1.25.
+ */
+export function snapGap(c, w) { if (w > 1.3) return c; const n = Math.round((c - w / 2 + 0.11) / 0.25); return Math.round((n * 0.25 - 0.11 + w / 2) * 1000) / 1000; }
+/** the door `at` (0..1 along side sd of a building at x, z, w, d) whose gap is nav-friendly, for a wanted world centre c */
+export function doorAt(x, z, w, d, sd, c, gw = 1.25) { const s = snapGap(c, gw); return sd === 's' ? (s - x) / w : sd === 'n' ? (x + w - s) / w : sd === 'e' ? (z + d - s) / d : (s - z) / d; }
 export function partition(C, B, k, x0, z0, x1, z1, o = {}) {
-  const y0 = k * FH, xw = z0 === z1, gaps = (o.gaps || []).map((g) => ({ ...g, y1: y0 + (g.h || 2.2) }));
+  const y0 = k * FH, xw = z0 === z1;
   // C.wall puts its outer texture on the right-hand side of the run: walking east that is north, walking south that is east
   const [ax, az, bx, bz] = xw ? [Math.min(x0, x1), z0, Math.max(x0, x1), z0] : [x0, Math.min(z0, z1), x0, Math.max(z0, z1)];
+  const s0 = xw ? ax : az, gaps = (o.gaps || []).map((g) => ({ ...g, at: snapGap(s0 + g.at, g.w) - s0, y1: y0 + (g.h || 2.2) }));
   const ta = o.a || B.o.inner, tb = o.b || ta, cap = o.cap || S('#e8dcc8');
   C.wall(B.gk(k, 'in'), ax, az, bx, bz, y0, y0 + CUT, ta, { gaps, inner: tb, t: 0.12, L: k, cap });
   B.walls = B.walls || [];
@@ -116,6 +125,30 @@ export function windowOn(C, B, k, side, c, o = {}) {
   C.windowAt(gk, side, ax, az, bx, bz, at, k * FH + (o.y ?? (k === 0 ? 0.95 : 0.85)), { frame: o.frame || '#f6f0e2', curtain: o.curtain || '#e8a0a8', w: o.w, h: o.h, lit: o.lit }, B);
 }
 
+// ---------------------------------------------------------------- façade pieces
+/** a canted bay on the south face: back width wb at the wall (z = zf), front width wf, depth dep, between y0 and y1 */
+export function bay(C, gk, cx, zf, y0, y1, o) {
+  const wb = o.wb ?? 3.0, wf = o.wf ?? 1.9, dep = o.dep ?? 0.62;
+  const A = [cx - wb / 2, zf], Bq = [cx - wf / 2, zf + dep], Cq = [cx + wf / 2, zf + dep], D = [cx + wb / 2, zf];
+  const face = (p, q) => C.quad(gk, o.wall, [p[0], y0, p[1]], [q[0], y0, q[1]], [q[0], y1, q[1]], [p[0], y1, p[1]]);
+  face(A, Bq); face(Bq, Cq); face(Cq, D);
+  C.quad(gk, o.trim, [A[0], y1, A[1]], [Bq[0], y1, Bq[1]], [Cq[0], y1, Cq[1]], [D[0], y1, D[1]]);
+  C.quad(gk, o.trim, [A[0], y0, A[1]], [D[0], y0, D[1]], [Cq[0], y0, Cq[1]], [Bq[0], y0, Bq[1]]);
+  const win = (p, q, tex, inset, wy0, wy1) => {
+    const dx = q[0] - p[0], dz = q[1] - p[1], L = Math.hypot(dx, dz), ux = dx / L, uz = dz / L, nx = -uz * 0.025, nz = ux * 0.025;
+    const a = [p[0] + ux * inset + nx, p[1] + uz * inset + nz], b = [q[0] - ux * inset + nx, q[1] - uz * inset + nz];
+    C.quad(gk, tex, [a[0], wy0, a[1]], [b[0], wy0, b[1]], [b[0], wy1, b[1]], [a[0], wy1, a[1]], { fit: true });
+    C.quad(gk, o.trim, [a[0] - ux * 0.06 + nx, wy0 - 0.1, a[1] - uz * 0.06 + nz], [b[0] + ux * 0.06 + nx, wy0 - 0.1, b[1] + uz * 0.06 + nz], [b[0] + ux * 0.06 + nx, wy0, b[1] + uz * 0.06 + nz], [a[0] - ux * 0.06 + nx, wy0, a[1] - uz * 0.06 + nz]);
+  };
+  const wy0 = y0 + 0.55, wy1 = y1 - 0.25;
+  win(Bq, Cq, o.win, 0.2, wy0, wy1); win(A, Bq, o.side, 0.17, wy0, wy1); win(Cq, D, o.side, 0.17, wy0, wy1);
+  // a cap band on top
+  const e = 0.08;
+  C.quad(gk, o.trim, [A[0] - e, y1 + 0.12, A[1]], [Bq[0] - e, y1 + 0.12, Bq[1] + e], [Cq[0] + e, y1 + 0.12, Cq[1] + e], [D[0] + e, y1 + 0.12, D[1]]);
+  for (const [p, q] of [[A, Bq], [Bq, Cq], [Cq, D]]) C.quad(gk, o.trim, [p[0], y1, p[1]], [q[0], y1, q[1]], [q[0], y1 + 0.12, q[1]], [p[0], y1 + 0.12, p[1]]);
+}
+
+
 // ---------------------------------------------------------------- runtime: glow, animation, toggles, smart walls
 /** register a building's runtime hooks; call once per building after its interior is built */
 export function live(C, B, o = {}) {
@@ -127,16 +160,19 @@ export function live(C, B, o = {}) {
       ready = true;
       const root = B.groups[0].in.parent;
       for (const W of B.walls || []) { const g = root.getObjectByName(W.gk); if (g && B.groups[W.k].in) { B.groups[W.k].in.add(g); W.g = g; W.s = 1; } }
-      for (const tg of toggles) { const g = root.getObjectByName(tg.gk); if (g) { if (B.groups[tg.k] && B.groups[tg.k].in) B.groups[tg.k].in.add(g); tg.g = g; g.visible = !!tg.on; } }
+      for (const tg of toggles) { const g = root.getObjectByName(tg.gk); if (g) { if (B.groups[tg.k] && B.groups[tg.k].in) B.groups[tg.k].in.add(g); tg.g = g; if (tg.init) { try { tg.on = !!tg.init(globalThis.__app); } catch (e) { /* keep the default */ } } g.visible = !!tg.on; } }
       // glowing textures: screens, lamp shades, coolers
       const seen = new Set();
       const walk = (g) => { for (const m of g.children) { if (m.children && m.children.length) walk(m); const mt = m.material; if (!mt || !mt.map || !mt.map.userData.srGlow || seen.has(mt)) continue; seen.add(mt); mt.emissive && mt.emissive.set(0xffffff); mt.emissiveMap = mt.map; mt.emissiveIntensity = 0.9; mt.needsUpdate = true; } };
       walk(root);
     }
     for (const a of anims) { const fr = a.frame(t); if (fr !== a.cur) { a.cur = fr; a.tex.offset.x = fr / a.tex.userData.frames; } }
-    if (!B.walls || !B.walls.length) return;
     const app = globalThis.__app, cc = app && app.world && app.world.city, pl = app && app.world && app.world.player;
     const p = pl && pl.g.position, inside = cc && cc.inside === B.id ? cc.L : -1;
+    // engine workaround: walking in while the building was faded (you stood behind it) leaves it see-through,
+    // because the cutaway never restores opacity while you are inside — make it solid again once
+    if (inside >= 0 && !B.srSolid) { B.srSolid = true; opaque(B); } else if (inside < 0) B.srSolid = false;
+    if (!B.walls || !B.walls.length) return;
     for (const W of B.walls) {
       if (!W.g) continue;
       let cut = false;
@@ -147,9 +183,14 @@ export function live(C, B, o = {}) {
     }
   });
 }
+function opaque(B) {
+  const fix = (g) => { if (!g) return; for (const m of g.children) { const mt = m.material; if (!mt || !mt.transparent || mt.map && mt.map.userData && mt.map.userData.key === 'water') continue; mt.transparent = false; mt.opacity = 1; mt.depthWrite = true; mt.needsUpdate = true; m.castShadow = true; } };
+  for (const G of B.groups || []) { fix(G.front); fix(G.back); fix(G.in); }
+  fix(B.roofG);
+}
 /** a group that can be switched on/off at runtime (storey k of B) → { gk, set(on) } */
-export function toggle(B, k, name, on = false) {
-  const tg = { gk: `b${B.id}:f${k}:t:${name}`, k, on, set(v) { tg.on = v; if (tg.g) tg.g.visible = v; } };
+export function toggle(B, k, name, on = false, init) {
+  const tg = { gk: `b${B.id}:f${k}:t:${name}`, k, on, init, set(v) { tg.on = v; if (tg.g) tg.g.visible = v; } };
   (B.toggles = B.toggles || []).push(tg);
   return tg;
 }
@@ -170,7 +211,7 @@ export function sofa(R, o = {}) {
     R.box(fab2, x0, 0.4, 0.26, x1, 0.52, d - 0.02);                  // seat cushion
     R.box(fab2, x0, 0.42, 0.2, x1, 0.82, 0.34);                      // back cushion
   }
-  if (o.pillows !== false) { const pc = o.pillow || '#f2c84a', pt = T.cushion(pc, o.pat || 'dot'); R.box(T.fabric(pc), 0.24, 0.5, 0.3, 0.6, 0.82, 0.44, { f: pt }); if (n > 1) R.box(T.fabric(o.pillow2 || '#7ab0d8'), w - 0.6, 0.5, 0.3, w - 0.24, 0.82, 0.44, { f: T.cushion(o.pillow2 || '#7ab0d8', 'stripe') }); }
+  if (o.pillows !== false) { const pc = o.pillow || '#f2c84a'; R.box(T.fabric(pc), 0.24, 0.5, 0.3, 0.6, 0.82, 0.44); R.pic(T.cushion(pc, o.pat || 'dot'), 'f', 0.42, 0.44, 0.48, 0.34, 0.32, 0.003); if (n > 1) { const p2 = o.pillow2 || '#7ab0d8'; R.box(T.fabric(p2), w - 0.6, 0.5, 0.3, w - 0.24, 0.82, 0.44); R.pic(T.cushion(p2, 'stripe'), 'f', w - 0.42, 0.44, 0.48, 0.34, 0.32, 0.003); } }
   if (o.throw) R.box(T.knit(o.throw), w - 0.55, 0.52, 0.34, w - 0.2, 0.545, d + 0.02);
   R.block(0, 0, w, d);
 }
