@@ -19,7 +19,7 @@ for (const s of JSON.parse(stepsJson)) {
   if (s.press) await page.keyboard.press(s.press);
   if (s.eval) logs.push('eval: ' + JSON.stringify(await page.evaluate(s.eval)));
   if (s.wait) await page.waitForTimeout(s.wait);
-  if (s.shot !== undefined) { await page.waitForTimeout(300); await page.screenshot({ path: `${out}_${s.shot || n++}.png` }); }
+  if (s.shot !== undefined) { await page.waitForTimeout(300); await page.screenshot({ path: `${out}_${s.shot || n++}.png`, timeout: 120000 }); }
 }
 const st = await page.evaluate(() => { const a = window.__app, p = a.world.player && a.world.player.g.position; return { pos: p && [p.x.toFixed(2), p.y.toFixed(2), p.z.toFixed(2)], L: a.world.city && a.world.city.L, inside: a.world.city && a.world.city.inside, zone: a.world.zoneName }; });
 console.log(JSON.stringify(st)); console.log(logs.slice(0, 30).join('\n'));

@@ -1,0 +1,19 @@
+<!doctype html><html><head><meta charset="utf-8"><title>ref</title><style>html,body{margin:0;background:#a8c4e0;overflow:hidden}canvas{display:block}#err{position:fixed;top:0;left:0;color:#f00;font:12px monospace}</style></head><body><canvas id="c"></canvas><div id="err"></div>
+<!-- Toon people close-up in the reference framing: ?who=mika&clip=selfie&rot=-0.25&ty=1.15&cy=1.3&d=1.45&fov=46 -->
+<script type="module">
+window.onerror = (m, s, l) => { document.getElementById('err').textContent += m + ' @' + l + '\n'; };
+import * as THREE from '/vendor/three.module.js';
+import { castToon } from '/src/vx/people/toon/index.js';
+const q = new URLSearchParams(location.search), W = +(q.get('w') || 640), H = +(q.get('h') || 980);
+const r = new THREE.WebGLRenderer({ canvas: document.getElementById('c'), antialias: false }); r.setSize(W, H); r.outputColorSpace = THREE.SRGBColorSpace;
+const sc = new THREE.Scene(); sc.background = new THREE.Color(0xd8cdb0);
+sc.add(new THREE.HemisphereLight(0xfff4e0, 0xb8a888, 1.4)); const sun = new THREE.DirectionalLight(0xffffff, 1.6); sun.position.set(-2, 4, 3); sc.add(sun);
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(20, 20), new THREE.MeshLambertMaterial({ color: 0xe8d4a8 })); floor.rotation.x = -Math.PI / 2; sc.add(floor);
+const p = castToon(q.get('who') || 'mika'); sc.add(p.group); p.group.rotation.y = +(q.get('rot') || -0.35);
+const a = p.animator(); a.play(q.get('clip') || 'selfie');
+for (let i = 0; i < 90; i++) a.update(1 / 60, {});
+const cam = new THREE.PerspectiveCamera(+(q.get('fov') || 40), W / H, 0.05, 50);
+const ty = +(q.get('ty') || 1.12), d = +(q.get('d') || 1.25), cy = +(q.get('cy') || 1.0);
+cam.position.set(0.1, cy, d); cam.lookAt(0, ty, 0);
+r.render(sc, cam); document.title = 'ready';
+</script></body></html>

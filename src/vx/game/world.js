@@ -9,6 +9,7 @@ import { Animator, E } from '../anim.js';
 import { FX } from '../fx.js';
 import { cast, castAnime } from '../people/cast.js';
 import { castHuman } from '../people/human.js';
+import { castToon } from '../people/toon/index.js';
 import { person } from '../people/person.js';
 import { LOCATIONS } from './locations.js';
 import { T } from '../../px/game/ui.js';
@@ -208,8 +209,8 @@ export class VxWorld {
     return a;
   }
   addPerson(id, who, at, o = {}) {
-    const mode = this.app && this.app.params && this.app.params.get('people');   // default: realistic low-poly humans; 'folk' / 'box' bring back the older people
-    const m = mode === 'box' ? new Model(typeof who === 'string' ? cast(who) : person(who)) : mode === 'folk' ? castAnime(who) : castHuman(who), a = new Actor(this, id, m, 'person');
+    const mode = this.app && this.app.params && this.app.params.get('people');   // default: the hand-painted toon people; 'gg' / 'folk' / 'box' bring back the older ones
+    const m = mode === 'box' ? new Model(typeof who === 'string' ? cast(who) : person(who)) : mode === 'folk' ? castAnime(who) : mode === 'gg' ? castHuman(who) : castToon(who), a = new Actor(this, id, m, 'person');
     this.st.actors.add(m.group); this.actors.set(id, a);
     const [x, z, yaw, y] = typeof at === 'string' ? this.spot(at) : at; a.place(x, z, o.yaw ?? yaw ?? 0, o.y ?? y);
     if (o.clip) a.play(o.clip, { fade: 0 });
