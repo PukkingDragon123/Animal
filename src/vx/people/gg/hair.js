@@ -18,7 +18,8 @@ function enclose(P, c, m = 0.01 * P.hu, ch = 0.3) {
 
 export function hairSegments(spec, P, J) {
   const S = [], hu = P.hu, st = spec.hair.style, hat = spec.hat?.kind;
-  const add = (part, bone, mat, y0, y1, b, t, o) => { const x = seg(part, bone, mat, y0, y1, b, t, o); S.push(x); return x; };
+  // with the anime 3D head the hair itself is sculpted in anime3d.js: keep only hats and accessories here
+  const add = (part, bone, mat, y0, y1, b, t, o) => { const x = seg(part, bone, mat, y0, y1, b, t, o); if (!(spec.a3d && (mat === 'hair' || mat === 'head'))) S.push(x); return x; };
   const vol = spec.hair.volume || 1;
   // --- the hair
   const cap = (th, y0, o = {}) => add('hairCap', 'head', 'hair', y0, P.crown + th * 0.9, cs(P, y0, th, th, o.dz || 0), (() => { const c = cs(P, P.crown, th * 0.75, th * 0.8, (o.dz || 0) - th * 0.15); c[2] *= o.round ?? 0.9; c[3] *= o.round ?? 0.9; return enclose(P, c, 0.004 * hu, o.ch ?? 0.38); })(), { ch: o.ch ?? 0.38, caps: 'top' });

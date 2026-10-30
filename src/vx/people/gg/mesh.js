@@ -137,9 +137,11 @@ export function buildMesh(plan) {
   block.x = blockRect.x + PAD; block.y = blockRect.y + PAD;
   block.rect = blockRect;
   // geometry
-  const pos = [], nrm = [], uv = [], si = [], sw = [], idx = [];
+  const pos = [], nrm = [], uv = [], si = [], sw = [], idx = [], keys = [];
+  const segId = new Map();
   const emit = (f, mirror) => {
     const base = pos.length / 3;
+    if (!segId.has(f.seg)) segId.set(f.seg, segId.size);
     const bone = BONE_INDEX[mirror ? f.seg.bone.replace(/L$/, 'R') : f.seg.bone];
     for (const p of f.pts) {
       let U, Vv;
@@ -149,6 +151,7 @@ export function buildMesh(plan) {
       nrm.push(mirror ? -f.N[0] : f.N[0], f.N[1], f.N[2]);
       uv.push(U / ATLAS, 1 - Vv / ATLAS);
       si.push(bone, 0, 0, 0); sw.push(1, 0, 0, 0);
+      keys.push(f.kind === 'side' ? `${segId.get(f.seg)}${mirror ? 'm' : ''}|${Math.round(p[0] * 2000)}|${Math.round(p[1] * 2000)}|${Math.round(p[2] * 2000)}` : null);
     }
     for (let i = 0; i < f.tris.length; i += 3) {
       if (mirror) idx.push(base + f.tris[i], base + f.tris[i + 2], base + f.tris[i + 1]);
@@ -156,6 +159,12 @@ export function buildMesh(plan) {
     }
   };
   for (const f of faces) { emit(f, false); if (f.seg.mirror) emit(f, true); }
+  // smooth shading around each segment's sides (anime look); caps stay crisp
+  if (plan.smooth) {
+    const acc = new Map();
+    for (let i = 0; i < keys.length; i++) { const k = keys[i]; if (!k) continue; const a = acc.get(k) || [0, 0, 0]; a[0] += nrm[i * 3]; a[1] += nrm[i * 3 + 1]; a[2] += nrm[i * 3 + 2]; acc.set(k, a); }
+    for (let i = 0; i < keys.length; i++) { const k = keys[i]; if (!k) continue; const a = acc.get(k), l = Math.hypot(a[0], a[1], a[2]) || 1; nrm[i * 3] = a[0] / l; nrm[i * 3 + 1] = a[1] / l; nrm[i * 3 + 2] = a[2] / l; }
+  }
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
   g.setAttribute('normal', new THREE.Float32BufferAttribute(nrm, 3));

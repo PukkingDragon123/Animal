@@ -151,7 +151,7 @@ export function fromRecipe(r) {
 
 const cache = new Map();
 export function castSpec(who) {
-  if (typeof who === 'object') return who.H ? who : who.preset ? humanSpec(who.preset, who.seed || 1, who) : fromRecipe(who);
+  if (typeof who === 'object') { const s0 = who.H ? who : who.preset ? humanSpec(who.preset, who.seed || 1, who) : fromRecipe(who); s0.a3d = true; return s0; }
   if (cache.has(who)) return cache.get(who);
   let s;
   if (CAST[who]) { const c = CAST[who]; s = humanSpec(c.preset, c.seed || 7, { ...c, id: who }); }
@@ -161,6 +161,7 @@ export function castSpec(who) {
     s.face.style = 0.7;
     if (s.sex === 'f' && (s.age === 'teen' || s.age === 'adult')) { s.anime = s.age === 'teen' ? 1 : 0.6; s.bust = Math.min(s.bust ?? 1, 0.6); }
   }
+  s.a3d = true;
   cache.set(who, s);
   return s;
 }

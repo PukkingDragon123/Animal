@@ -9,6 +9,7 @@ import { Pix } from './pix.js';
 import { FacePainter, exprParams, EXPRESSIONS } from './face.js';
 import { paintAtlas, paintAtlasJob, paintAtlasFlat } from './paint.js';
 import { GESTURES, FIDGETS, gesturePose } from './gestures.js';
+import { AnimeHead } from '../anime3d.js';
 
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const lerp = (a, b, t) => a + (b - a) * t;
@@ -61,18 +62,20 @@ export class Human {
     this.face = new FacePainter(spec, this.P, m.block, this.pix);
     this.E = exprParams('neutral');
     this.tex = this.pix.texture();
-    if (opts.lazy === false) { paintAtlas(spec, this.P, m.faces, this.pix); this.face.paint(this.E); this.pix.flush(); }
+    const a3d = !!spec.a3d;   // 3D anime head: no painted face at all
+    if (opts.lazy === false) { paintAtlas(spec, this.P, m.faces, this.pix); if (!a3d) this.face.paint(this.E); this.pix.flush(); }
     else {
       // instant flat-coloured placeholder; the detailed atlas is painted over the next frames (time-sliced)
       paintAtlasFlat(spec, this.P, m.faces, this.pix);
-      this.face.paintFlat();
+      if (!a3d) this.face.paintFlat();
       this.pix.flush();
-      this.job = (function* (h) { yield* paintAtlasJob(spec, h.P, m.faces, h.pix); yield* h.face.bakeJob(); })(this);
+      this.job = (function* (h) { yield* paintAtlasJob(spec, h.P, m.faces, h.pix); if (!a3d) yield* h.face.bakeJob(); })(this);
       JOBS.add(this);
     }
-    this.mat = new THREE.MeshStandardMaterial({ map: this.tex, roughness: 0.85, metalness: 0, alphaTest: 0.5 });
+    // the anime head is cel-shaded by the stage; the body joins it (Lambert → toon) so they match
+    this.mat = a3d ? new THREE.MeshLambertMaterial({ map: this.tex, alphaTest: 0.5 }) : new THREE.MeshStandardMaterial({ map: this.tex, roughness: 0.85, metalness: 0, alphaTest: 0.5 });
     // toon people: part self-lit so the painted shading reads like a hand-painted PSP-era texture
-    if ((spec.face?.style || 0) >= 0.5) { this.mat.emissive = new THREE.Color(0xffffff); this.mat.emissiveMap = this.tex; this.mat.emissiveIntensity = 0.3; }
+    if (!a3d && (spec.face?.style || 0) >= 0.5) { this.mat.emissive = new THREE.Color(0xffffff); this.mat.emissiveMap = this.tex; this.mat.emissiveIntensity = 0.3; }
     // skeleton (rest pose = the modelled pose; all bones axis-aligned)
     this.bones = [];
     for (const [name, parent] of BONES) {
@@ -99,6 +102,7 @@ export class Human {
     this.boxPos = [0, 0.07 * spec.H, this.P.chestZ + 0.2];
     this.hasCam = spec.acc.some((a) => a.kind === 'camera');
     this.initAnim();
+    if (a3d) this.a3d = new AnimeHead(this);
   }
 
   // ------------------------------------------------------------------ public API
@@ -141,7 +145,7 @@ export class Human {
     if (!this.job.next().done) return false;
     this.job = null;
     JOBS.delete(this);
-    this.face.paint(this.E);
+    if (!this.a3d) this.face.paint(this.E);
     this.pix.flush();
     this.tex.needsUpdate = true;
     this.faceExprKey = null;
@@ -152,6 +156,7 @@ export class Human {
 
   dispose() {
     JOBS.delete(this); this.job = null;
+    if (this.a3d) this.a3d.dispose();
     this.root.removeFromParent();
     this.mesh.geometry.dispose(); this.tex.dispose(); this.mat.dispose();
     this.mesh.skeleton.dispose();
@@ -563,6 +568,7 @@ export class Human {
     E.blink = blink > 0.7 ? 1 : blink > 0.2 ? 0.55 : 0;
     E.lookX = Math.round(ex);
     E.lookY = Math.round(clamp(ey + (E.lookY || 0), -1, 2) * 2) / 2;
+    if (this.a3d) { this.a3d.update(E, dt); return; }
     // repaint only what changed
     const exprKey = this.exprPrev + '>' + this.expr + k;
     const eyeKey = E.blink * 100 + E.lookX * 10 + E.lookY;

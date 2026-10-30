@@ -21,7 +21,7 @@ export function proportions(s) {
   const H = s.H, f = s.sex === 'f';
   const a = s.age === 'kid' ? 0 : s.age === 'teen' ? 0.72 : 1; // adulthood
   const an = s.anime || 0; // anime-girl build: a bigger head, long legs, a slim frame, small hands and feet
-  const toonH = (s.face?.style || 0) >= 0.5 ? 0.3 : 0;
+  const toonH = s.a3d ? 0.45 : (s.face?.style || 0) >= 0.5 ? 0.3 : 0;
   const ht = (s.age === 'kid' ? 5.9 : s.age === 'teen' ? 6.85 : s.age === 'elder' ? 6.95 : f ? 7.05 : 7.25) - 0.8 * an - toonH;
   const hu = H / ht; // head height (crown to chin)
   const k = (kid, adult) => H * (kid + (adult - kid) * a);
@@ -93,14 +93,16 @@ export function bodySegments(s, P) {
   // trapezius wedge: slopes from the shoulders up to the neck
   add('traps', 'chest', 'body', P.shoulderY - 0.004 * h, P.neckBase + 0.006 * h, [0, -0.004 * h, P.chestTopX * 1.04, P.chestZ * 0.8], [0, -0.009 * h, hu * 0.3, P.chestZ * 0.55], { ch: 0.45, caps: 'top' });
   // --- neck + head (cranium / jaw / nose / ears)
-  add('neck', 'neck', 'skin', P.neckBase - 0.03 * h, P.chin + 0.16 * hu, [0, -0.012 * h, hu * (P.f ? 0.2 : 0.225), hu * 0.22], [0, -0.008 * h, hu * (P.f ? 0.19 : 0.215), hu * 0.21], { ch: 0.38, caps: 'none' });
+  const nk = s.a3d ? 0.6 : 1;   // anime: a slender neck under the small chin
+  add('neck', 'neck', 'skin', P.neckBase - 0.03 * h, P.chin + (s.a3d ? 0.3 : 0.16) * hu, [0, -0.012 * h, hu * (P.f ? 0.2 : 0.225) * nk, hu * 0.22 * nk], [0, -0.008 * h, hu * (P.f ? 0.19 : 0.215) * nk, hu * 0.21 * nk], { ch: 0.38, caps: 'none' });
   const sl = 0.06 * hu; // forehead slope
-  add('cranium', 'head', 'head', P.noseY, P.crown, [0, P.hcz, P.hw, P.hd], [0, P.hcz - sl * 0.6, P.hw * 0.9, P.hd - sl * 0.4], { ch: (s.face?.style || 0) >= 0.5 ? 0.4 : 0.3, block: 'face' });
+  const a3d = !!s.a3d;   // the anime 3D head (anime3d.js) replaces the cranium, jaw, nose and ears
+  if (!a3d) add('cranium', 'head', 'head', P.noseY, P.crown, [0, P.hcz, P.hw, P.hd], [0, P.hcz - sl * 0.6, P.hw * 0.9, P.hd - sl * 0.4], { ch: (s.face?.style || 0) >= 0.5 ? 0.4 : 0.3, block: 'face' });
   const toon = (s.face?.style || 0) >= 0.5, jawTop = P.hw * (P.f ? 0.92 : 0.95), chinW = hu * (P.kid ? 0.23 : P.f ? 0.165 : 0.2) * (1 - 0.28 * P.an) * (toon ? 0.8 : 1);
-  add('jaw', 'head', 'head', P.chin, P.noseY + 0.02 * hu, [0, P.zf - 0.02 * hu - 0.15 * hu, chinW, 0.15 * hu], [0, P.zf - 0.33 * hu, jawTop, 0.33 * hu], { ch: 0.36, caps: 'bot', block: 'face' });
+  if (!a3d) add('jaw', 'head', 'head', P.chin, P.noseY + 0.02 * hu, [0, P.zf - 0.02 * hu - 0.15 * hu, chinW, 0.15 * hu], [0, P.zf - 0.33 * hu, jawTop, 0.33 * hu], { ch: 0.36, caps: 'bot', block: 'face' });
   const nz = (P.kid ? 0.72 : P.f ? 0.84 : 1) * (1 - 0.4 * P.an) * (1 - 0.25 * (s.face?.style || 0));
-  if (!((s.face?.style || 0) >= 0.5)) add('nose', 'head', 'nose', P.noseY - 0.012 * hu, P.eyeY - 0.035 * hu, [0, P.zf + 0.042 * hu * nz, 0.062 * hu * nz, 0.046 * hu * nz], [0, P.zf + 0.004 * hu, 0.03 * hu, 0.02 * hu], { ch: 0.45, caps: 'bot', block: 'face' });
-  add('ear', 'head', 'ear', P.earBot, P.earTop, [P.hw + 0.012 * hu, P.hcz - 0.1 * hu, 0.04 * hu, 0.07 * hu], [P.hw + 0.02 * hu, P.hcz - 0.12 * hu, 0.045 * hu, 0.08 * hu], { ch: 0.4, mirror: true, dens: 1.3 });
+  if (!a3d && !((s.face?.style || 0) >= 0.5)) add('nose', 'head', 'nose', P.noseY - 0.012 * hu, P.eyeY - 0.035 * hu, [0, P.zf + 0.042 * hu * nz, 0.062 * hu * nz, 0.046 * hu * nz], [0, P.zf + 0.004 * hu, 0.03 * hu, 0.02 * hu], { ch: 0.45, caps: 'bot', block: 'face' });
+  if (!a3d) add('ear', 'head', 'ear', P.earBot, P.earTop, [P.hw + 0.012 * hu, P.hcz - 0.1 * hu, 0.04 * hu, 0.07 * hu], [P.hw + 0.02 * hu, P.hcz - 0.12 * hu, 0.045 * hu, 0.08 * hu], { ch: 0.4, mirror: true, dens: 1.3 });
   // --- arms (left; mirrored)
   const ax = P.shX, aw = P.armX;
   add('uarm', 'armL', 'body', P.elbowY - 0.01 * h, P.shoulderY - 0.012 * h, [ax, 0, aw * 0.76, aw * 0.8], [ax, -0.001 * h, aw * 0.98, aw * 1.04], { ch: 0.34, mirror: true, caps: 'bot' });
@@ -129,6 +131,7 @@ export function buildPlan(spec) {
   const segs = [...bodySegments(spec, P), ...hairSegments(spec, P, J), ...accSegments(spec, P, J)];
   // toon people are blockier: harder corners on every prism, chunky sneakers
   if ((spec.face?.style || 0) >= 0.5) spec.hair.toon = 1;
-  if ((spec.face?.style || 0) >= 0.5) for (const sg of segs) { sg.ch *= 0.45; if (sg.mat === 'shoe') { const k = sg.part === 'toe' ? 1.25 : 1.18; sg.b = [sg.b[0], sg.b[1], sg.b[2] * k, sg.b[3] * 1.06]; sg.t = [sg.t[0], sg.t[1], sg.t[2] * k, sg.t[3] * 1.06]; if (sg.part === 'toe') sg.y1 *= 1.35; } }
-  return { P, J, segs };
+  const smooth = !!spec.a3d;
+  if ((spec.face?.style || 0) >= 0.5) for (const sg of segs) { sg.ch *= spec.a3d ? 1 : 0.45; if (sg.mat === 'shoe') { const k = sg.part === 'toe' ? 1.25 : 1.18; sg.b = [sg.b[0], sg.b[1], sg.b[2] * k, sg.b[3] * 1.06]; sg.t = [sg.t[0], sg.t[1], sg.t[2] * k, sg.t[3] * 1.06]; if (sg.part === 'toe') sg.y1 *= 1.35; } }
+  return { P, J, segs, smooth };
 }
