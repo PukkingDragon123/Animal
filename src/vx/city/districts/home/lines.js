@@ -20,9 +20,9 @@ export const MOM = [
   ['You are always welcome to rest up here, you know. Your bed. Your snacks. Your mother, judging your snacks.'],
 ];
 export const MOM_STOVE = [
-  ['Mom: Hands off the stove, chef. That pot is older than your league licence and twice as temperamental.'],
-  ['Mom: That is a curry, not a science experiment. Stir it and you are on dish duty for a week.'],
-  ['Mom: The left burner only works if you believe in it. I believe in it. You are not ready.'],
+  ['Hands off the stove, chef. That pot is older than your league licence and twice as temperamental.'],
+  ['That is a curry, not a science experiment. Stir it and you are on dish duty for a week.'],
+  ['The left burner only works if you believe in it. I believe in it. You are not ready.'],
 ];
 
 export const TV = [   // [channel title, ...alternative line sets]
@@ -89,28 +89,28 @@ export const MIRROR = (name, kind) => [
 ];
 
 export const NEIGHBOR_GRAN = [
-  ['Mrs. Ochoa: Oh! It is you! Come in, come in — mind the yarn, it has opinions.', 'Mrs. Ochoa: I have lived on Sunset Row for fifty-one years. The houses change colour every decade. The fog never does.'],
-  ['Mrs. Ochoa: When I was your age I trained a Snoozaque. Champion of naps, three years running.', 'Mrs. Ochoa: We never won a single battle. But oh, we had the best afternoons.'],
-  ['Mrs. Ochoa: Your mother brings me soup every Thursday. Tell her the soup is perfect.', 'Mrs. Ochoa: ...And tell her she uses too much ginger. Lovingly. Use the word lovingly.'],
-  ['Mrs. Ochoa: Those Pidgun on your roof? Plotting. I have watched them. They have a leader. He has a limp and a vision.'],
+  ['Oh! It is you! Come in, come in — mind the yarn, it has opinions.', 'I have lived on Sunset Row for fifty-one years. The houses change colour every decade. The fog never does.'],
+  ['When I was your age I trained a Snoozaque. Champion of naps, three years running.', 'We never won a single battle. But oh, we had the best afternoons.'],
+  ['Your mother brings me soup every Thursday. Tell her the soup is perfect.', '...And tell her she uses too much ginger. Lovingly. Use the word lovingly.'],
+  ['Those Pidgun on your roof? Plotting. I have watched them. They have a leader. He has a limp and a vision.'],
 ];
 export const NEIGHBOR_KID = [
-  ['Milo: WHOA, a real tamer! In MY room! Do you want to see my Tokon chart? I have 9 out of 150! Some of them are drawings.'],
-  ['Milo: Did you know Pidgun can see ultraviolet? That is why they stare at you. They are reading your aura. Yours is orange. Probably.'],
-  ['Milo: When I am old enough I am going to catch a Trashcoon and name it Mister Lid.', 'Milo: Mom says "absolutely not". Mom also said that about the hamster. We have a hamster.'],
-  ['Milo: Can you battle me?? I am using Plush Gradcub. He has 999 HP. I made him.', 'Milo: ...Okay he has zero attack. He is a defence build. A HUGGING defence build.'],
+  ['WHOA, a real tamer! In MY room! Do you want to see my Tokon chart? I have 9 out of 150! Some of them are drawings.'],
+  ['Did you know Pidgun can see ultraviolet? That is why they stare at you. They are reading your aura. Yours is orange. Probably.'],
+  ['When I am old enough I am going to catch a Trashcoon and name it Mister Lid.', 'Mom says "absolutely not". Mom also said that about the hamster. We have a hamster.'],
+  ['Can you battle me?? I am using Plush Gradcub. He has 999 HP. I made him.', '...Okay he has zero attack. He is a defence build. A HUGGING defence build.'],
 ];
 export const SHOPKEEPER = [
-  ['Mr. Park: Welcome to the Corner Market! Open late, closed early, mostly in between.', 'Mr. Park: The delivery truck is stuck on the hill again, so the shelves are, er... decorative today.'],
-  ['Mr. Park: Ramune flavour of the week: "Mystery". I do not know what it is. The supplier does not know. It is selling extremely well.'],
-  ['Mr. Park: Your mom was in this morning. Bought ginger. A LOT of ginger. Tell Mrs. Ochoa I said nothing.'],
-  ['Mr. Park: That cat on the counter is not mine. She came with the shop. I think I came with her, actually.'],
+  ['Welcome to the Corner Market! Open late, closed early, mostly in between.', 'The delivery truck is stuck on the hill again, so the shelves are, er... decorative today.'],
+  ['Ramune flavour of the week: "Mystery". I do not know what it is. The supplier does not know. It is selling extremely well.'],
+  ['Your mom was in this morning. Bought ginger. A LOT of ginger. Tell Mrs. Ochoa I said nothing.'],
+  ['That cat on the counter is not mine. She came with the shop. I think I came with her, actually.'],
 ];
 export const GARDENER = [
-  ['Gardener: Morning! This plot is mine. Those sunflowers? Also mine. That zucchini the size of a sea lion? We do not talk about the zucchini.'],
-  ['Gardener: Bio-types love this garden. Last spring a Creepetal moved into the tomatoes. Best tomatoes we ever had. Slightly haunted.'],
+  ['Morning! This plot is mine. Those sunflowers? Also mine. That zucchini the size of a sea lion? We do not talk about the zucchini.'],
+  ['Bio-types love this garden. Last spring a Creepetal moved into the tomatoes. Best tomatoes we ever had. Slightly haunted.'],
 ];
 export const PARKGOER = [
-  ['Neighbour: Nice day for it, huh? Sun out, fog on its way. Classic Sunset Row.'],
-  ['Neighbour: I come here to read. I have been on the same page for a month. The view keeps interrupting.'],
+  ['Nice day for it, huh? Sun out, fog on its way. Classic Sunset Row.'],
+  ['I come here to read. I have been on the same page for a month. The view keeps interrupting.'],
 ];
