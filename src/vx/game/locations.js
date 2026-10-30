@@ -2,6 +2,12 @@
 // map, named spots for actors (x, z metres + facing), camera shots, battle arenas
 // and the hotspots you can tap. Hotspot acts are async functions of the app.
 export const LOCATIONS = {
+  // the walkable city (one seamless map; see src/vx/scenes/city.js)
+  city: {
+    name: 'San Francisco', scene: 'city', mood: 'day', map: [0.5, 0.5], blurb: 'The whole city on foot.',
+    follow: { dist: 36, pitch: 40, yaw: 45, h: 1.0 },
+    spots: {},
+  },
   chinatown: {
     name: 'Chinatown', scene: 'chinatown', mood: 'golden', map: [0.665, 0.25], blurb: 'Grant Avenue under the lanterns. Home.',
     // x runs along Grant Avenue; the shops face south across the road; Portsmouth Square lies south of it

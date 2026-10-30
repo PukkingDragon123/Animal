@@ -13,6 +13,8 @@ import { person } from '../people/person.js';
 import { LOCATIONS } from './locations.js';
 import { T } from '../../px/game/ui.js';
 import { NavGrid, pick } from './nav.js';
+import { Fine } from '../fine.js';
+import { CityControl } from '../city/control.js';
 
 const MON_DEFS = {};
 // a species' model; variants like 'barkorious_forced' fall back to their base model, unknown ones to Chilichick
@@ -94,10 +96,18 @@ export class VxWorld {
     if (mod.prepare) await mod.prepare();
     const mood = o.mood || L.mood || 'golden';
     const before = new Set(st.scene.children);
-    const sc = mod.build({ mood });
-    st.setWorld(sc.vox); st.setMood(mood); this.app.setPost(mood);
-    st.world.visible = !sc.hideVox;                 // low-poly scenes keep the voxels only for walking / navigation
-    this.nav = new NavGrid(sc.vox); this.free = false; this.player = null; this.partner = null;
+    const sc = mod.build({ mood, stage: st, app: this.app });
+    if (sc.city) {
+      // the walkable city: low-poly pixel-textured meshes + a collision / storey grid, steered directly
+      st.setWorld(new Fine(4, 4, 4)); st.setMood(mood); this.app.setPost(mood); st.world.visible = false;
+      st.scene.add(sc.city.root); this.nav = sc.city.nav; this.city = new CityControl(this, sc.city); this.drift = 0;
+      sc.spots = sc.spots || sc.city.spots; sc.lamps = sc.lamps || sc.city.lamps;
+    } else {
+      st.setWorld(sc.vox); st.setMood(mood); this.app.setPost(mood);
+      st.world.visible = !sc.hideVox;                 // low-poly scenes keep the voxels only for walking / navigation
+      this.nav = new NavGrid(sc.vox); this.city = null; this.drift = 1;
+    }
+    this.free = false; this.player = null; this.partner = null;
     for (const lp of sc.lamps || []) st.lamp(lp[0], lp[1], lp[2]);
     if (sc.setup) sc.setup(st);
     // 3D-render posters into the scene's poster slots
@@ -112,11 +122,13 @@ export class VxWorld {
     this.hotspots = (L.hotspots || []).map((h) => ({ ...h }));
     for (const h of this.hotspots) if (h.spotAt) { const p = this.spot(h.spotAt); h.at = [p[0], (p[3] ?? this.ground(p[0], p[1])) + 1.4, p[1]]; h.walk = [p[0], p[1]]; }
     this.ready = true;
+    if (sc.city) for (const n of sc.city.npcs) { const a = this.addPerson(n.id, n.who || n.id, [n.x, n.z, n.yaw || 0, (n.L || 0) * 3]); if (n.clip) a.play(n.clip, { fade: 0 }); a.npc = n; }
     if (o.life !== false) this.spawnLife(L.life || []).catch((e) => console.warn('life', e));
     return sc;
   }
   clear() {
     const st = this.st;
+    if (this.city) { this.city.dispose(); this.city = null; }
     for (const a of this.actors.values()) st.actors.remove(a.g);
     this.actors.clear();
     for (const o of this.extra) st.scene.remove(o);
@@ -124,6 +136,7 @@ export class VxWorld {
   }
   // ground height (metres) under x, z — the floor nearest nearY when given (interiors have several)
   ground(x, z, nearY) {
+    if (this.city) return this.nav.ground(x, z, nearY === undefined ? 0 : this.nav.levelAt(x, z, nearY));
     const v = this.st.vox; if (!v) return 0;
     if (nearY !== undefined && this.nav) {
       const g = this.nav, cx = Math.floor((x * v.vpm) / g.c), cz = Math.floor((z * v.vpm) / g.c), k = g.nearest(cx, cz, nearY * v.vpm, g.step * 2 + 1);
@@ -134,7 +147,7 @@ export class VxWorld {
   // named spots come from the location table, else from the scene module itself (interiors carry their own)
   spot(name) { const s = (this.loc && this.loc.spots && this.loc.spots[name]) || (this.sc && this.sc.spots && this.sc.spots[name]); return s || [this.cam.target.x, this.cam.target.z, 0]; }
   // ---- free roam: tap the ground to walk there; the camera follows; the partner tags along
-  setPlayer(a, partner = null) { this.player = a; this.partner = partner; return this; }
+  setPlayer(a, partner = null) { this.player = a; this.partner = partner; if (this.city && a) this.city.placed(); return this; }
   roam(on = true) { this.free = on; if (on && this.player) this.followCam(0.8); return this; }
   followCam(dur = 0) {
     const p = this.player.g.position, f = Object.assign({ dist: 13, pitch: 32, yaw: (this.loc.view || {}).yaw || 0, h: 1.0 }, this.loc.follow || {});
@@ -160,12 +173,19 @@ export class VxWorld {
     if (Math.hypot(P.x - (P.sx ?? P.x), P.y - (P.sy ?? P.y)) > 6) return;            // a swipe, not a tap
     const ndc = new THREE.Vector2((P.x / this.app.vw) * 2 - 1, 1 - (P.y / this.app.vh) * 2), ray = new THREE.Raycaster();
     ray.setFromCamera(ndc, this.st.cam);
-    const hit = pick(this.st.vox, ray.ray.origin, ray.ray.direction); if (!hit || hit.water) return;
+    let hit;
+    if (this.city) {   // tap the floor of the storey you stand on
+      const y = this.player.g.position.y, o = ray.ray.origin, d = ray.ray.direction; if (d.y > -0.01) return;
+      const t = (y - o.y) / d.y, x = o.x + d.x * t, z = o.z + d.z * t; if (!this.nav.ok(x, z, this.city.L)) return;
+      hit = { x, y, z };
+    } else hit = pick(this.st.vox, ray.ray.origin, ray.ray.direction);
+    if (!hit || hit.water) return;
     P.released = false;
     this.fx.emit('ring', new THREE.Vector3(hit.x, hit.y + 0.05, hit.z), { scale: 0.6 });
     this.player.path = null; this.goTo(hit.x, hit.z, hit.y);
   }
   thinkFollow(dt) {
+    if (this.city) return;                                                       // the city controller drives camera + partner
     if (this.free && this.player) {                                                // the camera trails the player
       const p = this.player.g.position, c = this.cam, k = 1 - Math.exp(-dt * 3.2), f = this.loc.follow || {};
       if (!this.tween) { c.target.x += (p.x - c.target.x) * k; c.target.y += (p.y + (f.h ?? 1.0) - c.target.y) * k; c.target.z += (p.z - c.target.z) * k; }
@@ -248,6 +268,7 @@ export class VxWorld {
     this.st.time += dt;
     const look = this.st.cam.position;
     this.thinkChatter(dt);
+    if (this.city) this.city.update(dt);
     for (const a of [...this.actors.values()]) { if (a.life) { if (a.life.walker && !a.path && !a.started) { a.started = true; a.walkTo(a.life.lane.slice(1)); } else this.thinkLife(a, dt); } a.update(dt, { fx: this.fx, look }); }
     this.fx.update(dt);
     this.thinkFollow(dt);
@@ -285,8 +306,10 @@ export class VxWorld {
   // world position → UI pixel coordinates
   project(p) { const v = _v.set(...(Array.isArray(p) ? p : [p.x, p.y, p.z])).project(this.st.cam); return { x: ((v.x + 1) / 2) * this.app.vw, y: ((1 - v.y) / 2) * this.app.vh, vis: v.z < 1 && Math.abs(v.x) < 1.1 && Math.abs(v.y) < 1.1 }; }
   // hotspot markers you can tap (only when no dialogue / cutscene holds the screen)
+  drawMinimap(ui, x, y, w, h) { if (this.city) this.city.drawMinimap(ui, x, y, w, h); }
   drawUI(ui) {
     if (!this.ready || this.app.story.title || ui.dialog || this.app.phone.open) return;
+    if (this.city) this.city.drawUI(ui);
     for (const b of this.bubbles || []) {
       const s = this.project(b.a.headPos()); if (!s.vis) continue;
       const str = b.text.slice(0, Math.max(1, Math.floor(b.n))), w = Math.min(160, ui.tw(b.text) + 10), x = Math.round(s.x - w / 2), y = Math.round(s.y - 26 - Math.min(1, b.t * 6) * 2);

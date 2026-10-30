@@ -1,0 +1,150 @@
+# The walkable city
+
+The city is one seamless 230 × 180 m map. You walk it with direct control, survival-game style:
+- **Moving:** WASD or the arrows, with Shift to run. On touch screens, use the thumbstick on the left half.
+- **Interacting:** E, Enter or Space, or tap the prompt.
+- **Zooming:** the mouse wheel.
+
+The camera is isometric and looks from the south-east (yaw 45°, pitch 40°).
+
+When you're inside a building, its roof vanishes, along with the storeys above you and the walls facing the camera. Buildings standing between the camera and you fade out.
+
+## Files
+- `src/vx/scenes/city.js`: the master plan. It holds the avenues, the district rectangles and the zones for the avenues, and it calls each district.
+- `src/vx/city/districts/*.js`: one module per district. Each exports `build(C, [x0, z0, x1, z1], ctx)` and builds only inside its rectangle.
+- `src/vx/city/build.js`: `CityBuilder`, the API below.
+- `src/vx/city/pixtex.js`: pixel-art textures. They're nearest-filtered at 32 texels per metre and every one knows its size in metres.
+- `src/vx/city/voxprops.js`: voxel-art street furniture at 16 voxels per metre, drawn as instanced meshes.
+- `src/vx/city/nav.js`: the 25 cm collision and height grid per storey. It also handles stairs, zones, `move()` with wall sliding, and A* `path()`.
+- `src/vx/city/control.js`: movement, the camera, the cutaway, doors, interaction prompts, the minimap and the partner following you.
+
+### Coordinates
+
+| Axis | Direction |
+|---|---|
+| x | east |
+| z | south |
+| y | up |
+
+All units are metres. North (−z) is the bay. Storeys are 3 m apart: level 0 is the street and ground floors, levels 1 and 2 are upper floors.
+
+## District map (`DISTRICTS` in scenes/city.js)
+
+| District | Rect [x0, z0, x1, z1] | Module |
+|---|---|---|
+| Wharf (promenade + pier; water z 0–12) | [0, 0, 230, 20] | wharf.js |
+| Alamo Hill Park | [0, 32, 104, 98] | park.js |
+| Chinatown | [116, 32, 230, 98] | chinatown.js |
+| Sunset Row (home) | [0, 110, 104, 180] | home.js |
+| Downtown / Market | [116, 110, 230, 180] | downtown.js |
+
+The avenues are built by city.js:
+
+| Avenue | Runs | Rect | Sidewalks |
+|---|---|---|---|
+| Bay Street | east–west | z 20–32 | 2 m at z 20–22 and z 30–32 |
+| Market Street | east–west | z 98–110 | — |
+| Van Ness | north–south | x 104–116 | — |
+
+The avenue sidewalks are raised 0.12 m. Junctions have zebra crossings, and lamps and trees line the avenues.
+
+## CityBuilder API (`C`)
+
+### Ground and surfaces
+Ground is walkable unless noted, and every surface is painted on the minimap.
+- `C.ground(x0, z0, x1, z1, tex, { y, walk })`: a ground patch at height `y`.
+- `C.street(x0, z0, x1, z1, { dir: 'x' | 'z', line })`: asphalt with a dashed centre line.
+- `C.crossing(...)`: a zebra crossing.
+- `C.sidewalk(x0, z0, x1, z1, { h = 0.12, tex })`: a raised kerb block.
+- `C.plinth(x0, z0, x1, z1, y, topTex, sideTex)`: raised or sunken ground, such as terraces, piers, stages or steps (`STEP` is 0.36 m).
+- `C.water(x0, z0, x1, z1, { y = -0.8 })`: blocked water.
+
+### Buildings
+`C.building({ ... })` builds a whole building. Its options:
+- **Footprint and size:**
+  - `x, z, w, d`: the footprint.
+  - `floors`: the number of storeys.
+  - `fh`: the storey height, used only by non-enterable buildings. Enterable ones are always 3 m.
+- **Surfaces:**
+  - `wall`: a texture.
+  - `trim`: a colour.
+  - `base`: a colour.
+  - `inner`: a texture.
+- **Roof:** `roof: { type: 'flat' | 'gable' | 'hip', tex, col, h, ridge: 'x' | 'z', eave, upturn, capCol, parapet, tank }`.
+- **Doors:**
+  - `door: { side: 's' | 'n' | 'e' | 'w', at: 0..1, w, col, tex, kind: 'panel' | 'glass', label, act, painted }`, or several in `doors: [...]`.
+  - A non-enterable building gets a painted door. If you give it `label` and `act`, it becomes an interactable (for example "Knock", or entering another map).
+- **Windows:** `windows: { every, w, h, lit, frame, curtain, skip: ['n', ...] }`.
+- **Façade:**
+  - `bay: true`: Victorian bay windows on the south side.
+  - `shop: { sign, bg, fg, awning: [colA, colB], side, frame, board }`: a shopfront with big windows, a sign board and an awning.
+- **Interior:**
+  - `enter: true` makes the interior walkable, with storeys at 0, 3 and 6 m. Exterior doors swing open as you approach.
+  - `interior(C, B)` builds the rooms. Call the interior helpers below inside it.
+  - `floorTex` / `floorTexs: [perStorey]`.
+  - `step`: the footstep sound inside, e.g. `'step_carpet'`.
+- `mm`: the minimap colour.
+
+`B` has `{ id, x, z, w, d, floors, gk(k, part) }`. The `gk` group keys are `front`, `back`, `in` and `roof`.
+
+### Interior helpers
+- `C.iwall(B, k, x0, z0, x1, z1, { gaps: [{ at, w }], tex, tex2, t, h })`: an inner wall on storey k, with doorways.
+- `C.stairs(B, k, x0, z0, x1, z1, dir)`: a flight from storey k to k + 1, climbing toward `dir` (`'n'` means you walk north to go up). It opens the stairwell in the floor above and adds rails.
+- `C.furniture(B, k, x0, z0, x1, z1, h, tex, { top, s, n, e, w, y, collide, gk })`: a blocking furniture box. Give its faces their own textures with `s` / `n` / `e` / `w` / `top`.
+- `C.box(gk, tex, x0, y0, z0, x1, y1, z1, { top, s, n, e, w, skip })`: free geometry for detailed furniture. Use `gk = B.gk(k, 'in')` for interiors, or `'ground'` / `'props'` outdoors.
+- `C.quad(gk, tex, a, b, c, d, { fit })` and `C.tri(gk, tex, a, b, c)`: raw geometry.
+- `C.decal(gk, tex, x, y, z, face, w, h, { off })`: a picture on a surface (poster, sign, painting, TV screen). `face` is `'s' | 'n' | 'e' | 'w'`; `fit` maps the whole texture.
+- `C.nav.block(x0, z0, x1, z1, L)` / `C.nav.open(...)`: hand-tune walkability.
+
+### Props
+- `C.prop(kind, x, z, { yaw, y, L, s, collide, light })`: voxel props. The kinds are:
+  - Plants: `tree`, `palm`, `bush`, `planter`
+  - Lights and signs: `lamp`, `lantern` (hangs), `sign`
+  - Street furniture: `bench`, `bin`, `hydrant`, `mailbox`, `bollard`, `bikeRack`, `cone`, `crate`, `parasol`
+  - Machines and vehicles: `vending`, `car`, `cart`
+
+  Add new kinds to `PROPS` in voxprops.js. Each kind needs `{ size: [X, Y, Z], r, build(F, rand) }` and is drawn with the Fine voxel API (`F.c('#hex', GLOW)`, `F.box`, `F.set`).
+- `C.lanterns(x0, z0, x1, z1, y, n)`: a sagging string of lanterns.
+
+### Gameplay hooks
+- `C.interact({ x, z, L, y, r, label, icon, act: async (app, it) => {}, when: (app) => bool, mm })`: shows "[E] label" when you're near it on the same storey. Some things `act` can use:
+  - `app.say(name, ...lines)`
+  - `app.choose(prompt, ['A', 'B'])` → index
+  - `app.toast(str, { icon })`
+  - `app.audio.sfx(name)` (names in `src/audio/samples.js` `SFX_SAMPLES`)
+  - `app.audio.music(id)`
+  - `app.state` (the save; `app.save()`)
+  - `app.world`, `app.story.*`
+- `C.npc({ id, who, x, z, yaw, L, name, lines, clip })`: a resident who talks on E.
+  - `who` is a cast name from `src/vx/people/humancast.js` or `'passerbyN'`.
+  - `lines` is either `[...strings]`, a list of alternatives `[[...], [...]]`, or `async (app, npc) => {}`.
+- `C.spot(name, x, z, yaw, L)`: named positions the story uses.
+- `C.zone(name, x0, z0, x1, z1, { label, sub, music, bed, step })`: the place name and music.
+  - Music ids: `lofi`, `lofi2`, `city`, `vibes`, `lemon`, `party`, `senbazuru`, `menu`
+  - Ambience beds: `street`, `birds`, `cicadas`
+  - Footstep sounds: `step_concrete`, `step_wood`, `step_carpet`, `step_grass`
+
+### Textures (`TX` from build.js)
+Every texture is pixel art.
+
+| Group | Textures |
+|---|---|
+| Walls | `brick(base, mortar)`, `plaster(c)`, `siding(c)`, `wallpaper(base, pat)`, `concrete(c)` |
+| Roofs | `roofTiles(c)`, `shingles(c)`, `metalRoof(c)` |
+| Ground | `asphalt()`, `pavers(c)`, `cobble(c)`, `grass(c)`, `dirt(c)` |
+| Floors | `planks(c, 'h' \| 'v')`, `tiles(a, b, size)`, `carpet(c, pat)` |
+| Water | `water(c)` |
+| Plain | `solid(c)`, `stripes(a, b, n)` |
+| Façade pieces | `windowTex(frame, curtain, lit)`, `shopWindowTex(frame, lit, seed)`, `doorTex(col, kind)`, `garageTex(c)`, `signTex(text, bg, fg, { w, h, fs })`, `awningTex(a, b)` |
+
+For a custom texture, use `TX.ptex(key, wMetres, hMetres, (g, W, H, rand, P) => { ... }, { ppm })`. `P` is a pixel painter with `fill`, `rect`, `px`, `hline`, `vline`, `dither`, `speck`, `block` and `text`. Use it for TV screens, posters, rugs and book spines; always paint in crisp pixel art.
+
+## Testing
+
+Run:
+
+```
+node tools/citywalk.mjs "loc=city&roam=1&at=X,Z[,LEVEL]" /tmp/out '[{"wait":1500},{"shot":"a"},{"keys":["w"],"ms":2000},{"shot":"b"},{"eval":"JS"}]'
+```
+
+It writes `/tmp/out_a.png` and so on. Headless rendering is slow (a few fps), so walking covers little ground. To check another spot, teleport with `{"eval":"(()=>{const w=__app.world;w.player.place(X,Z);w.city.placed();})()"}`.
