@@ -164,7 +164,7 @@ export class Human {
     if (sp.walk?.hunch) this.style.hunch += sp.walk.hunch * 0.15;
     this.t = Math.random() * 100;
     this.phase = 0.05;
-    this.spd = 0; this.walkW = 0; this.walkV = 0;
+    this.spd = 0; this.walkW = 0; this.walkV = 0; this.runK = 0;
     this.thighLen = P.hipY - P.kneeY; this.shinLen = P.kneeY - P.ankleY;
     this.hipOff = this.J.hips[1] - P.hipY; // hips bone above the hip joints
     this.hipsY = this.J.hips[1] - this.style.knee * P.H; this.hipsYV = 0;
@@ -258,12 +258,14 @@ export class Human {
     const W = this.walkW;
     const legLen = this.thighLen + this.shinLen;
     const inPlace = turnStep > 0.05 && speed < 0.2;
-    const stepLen = clamp(legLen * (0.3 + 0.42 * this.spd), 0.16, legLen * 1.15) * st.step * (inPlace ? 0.3 : 1);
+    // running (above ~2.6 m/s): a flight phase, longer strides, a forward lean, pumping arms
+    const runK = this.runK = smooth((this.spd - 2.6) / 1.6);
+    const stepLen = clamp(legLen * (0.3 + 0.42 * this.spd), 0.16, legLen * (1.15 + 0.45 * runK)) * st.step * (inPlace ? 0.3 : 1);
     if (this.spd > 0.01) this.phase = (this.phase + this.spd * dt / (2 * stepLen * (inPlace ? 3.3 : 1))) % 1;
     else if (W < 0.02) this.phase = 0.05; // ready to step off with the left foot
-    const SS = 0.6, half = SS * stepLen;
+    const SS = 0.6 - 0.24 * runK, half = SS * stepLen;
     const fl = P.footL, ah = P.ankleY, heel = 0.22 * fl, ball = 0.56 * fl;
-    const liftH = (0.04 + 0.03 * this.spd) * (H / 1.7) * (st.bounce > 1.5 ? 1.3 : 1) * (st.hunch > 0.15 ? 0.7 : 1);
+    const liftH = (0.04 + 0.03 * Math.min(this.spd, 2.6)) * (H / 1.7) * (st.bounce > 1.5 ? 1.3 : 1) * (st.hunch > 0.15 ? 0.7 : 1) * (1 + 1.6 * runK);
     // idle weight shift (pelvis moves over one leg; the feet stay planted thanks to the IK)
     this.shiftT -= dt;
     if (this.shiftT < 0) { this.shiftT = 3 + Math.random() * 6; this.shiftTarget = Math.random() < 0.25 ? 0 : (Math.random() < 0.5 ? -1 : 1) * (0.6 + Math.random() * 0.4); }
@@ -317,6 +319,7 @@ export class Human {
       hy = Math.min(hy, F.y + Math.sqrt(Math.max(0, Lmax * Lmax - dx * dx - dz * dz)) + this.hipOff);
     }
     if (st.bounce > 1.5) hy += W * 0.01 * H * Math.abs(Math.sin(this.phase * Math.PI * 2)) * (st.bounce - 1);
+    if (runK > 0) hy += runK * W * 0.03 * H * Math.max(0, Math.sin(this.phase * Math.PI * 4 - 0.6)) - runK * 0.025 * H;
     hy -= Math.abs(sh) * 0.006 * H;
     this.hipsYV += ((hy - this.hipsY) * 1200 - this.hipsYV * 60) * dt; this.hipsY += this.hipsYV * dt;
     if (Math.abs(this.hipsY - hy) > 0.04) { this.hipsY = hy; this.hipsYV = 0; }
@@ -355,7 +358,7 @@ export class Human {
     b.hips.position.set(R.hips.x + hipsX, this.hipsY + this.mood[2] * Math.abs(Math.sin(this.t * 9)) * 0.008 * H * (1 - D.w) + D.hips[1], R.hips.z - hunch * 0.02 * H + D.hips[2]);
     const hipsPitch = 0.03 * this.spd * W - hunch * 0.1 + D.rot[0];
     setQ(b.hips, hipsPitch, hipsYaw, hipsRoll);
-    const lean = st.lean * Math.min(1.5, this.spd) * W;
+    const lean = (st.lean * Math.min(1.5, this.spd) + 0.16 * runK) * W;
     const talkNod = this.talkAmt * Math.sin(this.t * 5.3) * 0.025;
     // big turns are shared with the chest
     const chestYawN = lookYaw * 0.08 + (lookYaw > 0.8 ? lookYaw - 0.8 : lookYaw < -0.8 ? lookYaw + 0.8 : 0) * 0.7;
@@ -376,12 +379,12 @@ export class Human {
     for (let s = 0; s < 2; s++) {
       const sd = s === 0 ? 1 : -1, side = s === 0 ? 'L' : 'R';
       const otherFwd = (this.feet[1 - s].z - this.feet[s].z) / Math.max(0.05, 2 * half);
-      let swing = st.swing * (0.26 + 0.24 * Math.min(1.6, this.spd)) * W;
+      let swing = st.swing * (0.26 + 0.24 * Math.min(1.6, this.spd)) * W * (1 + 0.5 * this.runK);
       const hold = side === 'L' ? this.holdL : null;
       if (hold === 'case') swing *= 0.5;
       const fw = otherFwd * swing;
       const abd = st.spread + (hold === 'case' ? 0.1 : 0) + breath * 0.008 + (P.belly ? P.belly * 2 : 0) - sh * sd * 0.03;
-      const elbow = 0.14 + hunch * 0.5 + Math.max(0, fw) * 0.85 + Math.max(0, -fw) * 0.1 + (hold === 'case' ? -0.1 : 0);
+      const elbow = 0.14 + hunch * 0.5 + Math.max(0, fw) * 0.85 + Math.max(0, -fw) * 0.1 + (hold === 'case' ? -0.1 : 0) + 1.1 * this.runK * W;
       setQ(b['arm' + side], -(fw + 0.03 + hunch * 0.3), sd * -0.1 * (1 - W * 0.5), sd * abd, 'ZXY');
       b['arm' + side].position.copy(R['arm' + side]); b['arm' + side].position.y += breath * 0.0015 * H;
       setQ(b['fore' + side], -Math.max(0.02, elbow), sd * 0.3, 0);

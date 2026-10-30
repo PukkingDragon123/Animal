@@ -5,8 +5,13 @@ export const LOCATIONS = {
   // the walkable city (one seamless map; see src/vx/scenes/city.js)
   city: {
     name: 'San Francisco', scene: 'city', mood: 'day', map: [0.5, 0.5], blurb: 'The whole city on foot.',
-    follow: { dist: 36, pitch: 40, yaw: 45, h: 1.0 },
+    follow: { dist: 30, pitch: 40, yaw: 45, h: 1.0 },
     spots: {},
+    // passers-by walking the avenue sidewalks; pigeons strutting in the park
+    life: [
+      { kind: 'person', n: 12, lanes: [[[3, 31], [101, 31]], [[119, 31], [227, 31]], [[3, 99.2], [101, 99.2]], [[119, 99.2], [227, 99.2]], [[3, 109], [101, 109]], [[119, 109], [227, 109]], [[105, 35], [105, 95]], [[115, 113], [115, 177]]] },
+      { kind: 'mon', species: ['pidgun', 'pidrose'], n: 4, area: [40, 60, 64, 76], fidget: 'fidget' },
+    ],
   },
   chinatown: {
     name: 'Chinatown', scene: 'chinatown', mood: 'golden', map: [0.665, 0.25], blurb: 'Grant Avenue under the lanterns. Home.',

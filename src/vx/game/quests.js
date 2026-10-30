@@ -78,6 +78,11 @@ export async function rideTram(app, dest) {
   const w = app.world;
   await app.fade(1, 420);
   let ride = false;
+  if (w.city) {   // in the walkable city the cable car is a quick ride across the one map
+    app.tramSign = { to: L.name, t: 0 }; app.audio.sfx && app.audio.sfx('notification');
+    await app.wait(1600); app.tramSign = null;
+    await app.travel(dest); return;
+  }
   if (LOCATIONS.tram) {
     try {
       await w.load('tram', { life: true });

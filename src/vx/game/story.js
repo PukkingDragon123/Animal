@@ -27,7 +27,6 @@ export class Story {
         const atP = app.params.get('at') && app.params.get('at').split(',').map(Number);
         if (app.params.get('roam') && atP) await this.startRoam([atP[0], atP[1], atP[3] || 0, atP[2] ? atP[2] * 3 : undefined]);
         else if (app.params.get('roam')) await this.startRoam((w.loc.spots && w.loc.spots.start) || (w.sc.spots && (w.sc.spots.start || w.sc.spots.entrance || w.sc.spots.door)) || [w.cam.target.x, w.cam.target.z + 2, 0]);
-        if (app.params.get('closet')) { const { Closet, pajamas } = await import('./closet.js'); const at = w.sc.spots && w.sc.spots.closet ? w.spot('closet') : (w.loc.spots && w.loc.spots.start) || [w.cam.target.x, w.cam.target.z + 2, 0]; if (w.sc.lights) w.sc.lights(true); const c = new Closet(app, pajamas(), at); c.rebuild(); if (w.shots.closet) await w.shot('closet', 0); else await w.closeOn(w.actor('hero'), { dist: 4.6, h: 0.9, dur: 0 }); app.fade(0, 300); app.state.look = await c.open(); }
         await app.fade(0, 500);
       });
       return;
@@ -47,9 +46,9 @@ export class Story {
   // ------------------------------------------------------------------ title
   async titleScreen() {
     const app = this.app, w = app.world;
-    await w.load(this.home(), { mood: 'night' });
-    const v = w.loc.view || w.sc.view; w.setCam({ ...v, dist: v.dist * 0.8, pitch: (v.pitch || 40) - 8 });
-    const cc = await w.addMon('t-cc', 'chilichick', w.loc.spots.start || [v.target[0], v.target[2] + 2, 0], { clip: 'sleep' });
+    await w.load('city', { mood: 'night', life: false });
+    w.setCam({ target: [150, 2, 70], dist: 95, yaw: 45, pitch: 32 }); w.drift = 1;
+    const cc = await w.addMon('t-cc', 'chilichick', [w.spot('square')[0], w.spot('square')[1], 0], { clip: 'sleep' });
     void cc;
     this.title = { t: 0, hasSave: S.hasSave() };
     if (app.audio.music) app.audio.music('menu', { fade: 0.5 });
@@ -76,12 +75,28 @@ export class Story {
     if (this.title) return this.drawTitle(ui, dt);
     const app = this.app;
     if (this.caption) { const c = this.caption; c.t += dt; const a = Math.min(1, c.t * 2, (c.dur - c.t) * 2); if (a > 0) { ui.text(c.text, 10, ui.h - 22, T.text, { outline: '#0c0814' }); if (c.sub) ui.text(c.sub, 10, ui.h - 12, T.amber, { mini: true, outline: '#0c0814' }); } if (c.t > c.dur) this.caption = null; }
+    if (!(app.battle && app.battle.active)) this.drawGoal(ui);
     if (this.busy || ui.dialog || (app.battle && app.battle.active)) return;
     const obj = this.objective || (app.quests && app.quests.objective());
     if (obj) { const w = Math.min(ui.w - 70, ui.tw(obj) + 22); ui.panel(4, 4, w, 15, {}); ui.icon('star', 8, 8, T.amber); ui.text(obj, 18, 8, T.text); }
     if (app.state.flags.phone && !app.phone.open && ui.button(ui.w - 26, 4, 22, 20, '', { icon: 'phone', color: T.cyan, hotkey: 'Tab' })) app.phone.toggle();
   }
   cap(text, sub, dur = 4) { this.caption = { text, sub, dur, t: 0 }; }
+  // the objective marker: a bouncing arrow over the goal, or an arrow at the screen edge pointing to it
+  drawGoal(ui) {
+    const g = this.goal, w = this.app.world; if (!g || !w.ready || ui.dialog) return;
+    const s = w.project([g.x, g.y, g.z]), cx = ui.w / 2, cy = ui.h / 2, bob = Math.round(Math.sin(this.app.t * 5) * 2);
+    const on = s.vis && s.x > 8 && s.x < ui.w - 8 && s.y > 24 && s.y < ui.h - 8;
+    if (on) {
+      const x = Math.round(s.x), y = Math.round(s.y) + bob;
+      for (let i = 0; i < 6; i++) { ui.rect(x - 5 + i, y - 10 + i, 11 - 2 * i, 1, '#2a1018'); ui.rect(x - 4 + i, y - 10 + i, 9 - 2 * i, 1, i < 2 ? '#fff0b0' : T.amber); }
+      if (g.label) ui.text(g.label, x, y - 20, T.amber, { align: 'center', outline: '#1a0e18', mini: true });
+    } else {
+      let dx = s.x - cx, dy = s.y - cy; if (!s.vis) { dx = -dx; dy = -dy; }
+      const a = Math.atan2(dy, dx), r = Math.min((ui.w / 2 - 14) / Math.abs(Math.cos(a) || 1e-6), (ui.h / 2 - 14) / Math.abs(Math.sin(a) || 1e-6)), x = Math.round(cx + Math.cos(a) * r), y = Math.round(cy + Math.sin(a) * r);
+      for (let t = -5; t <= 5; t++) for (let k = -Math.round(4 - Math.abs(t) * 0.7); k <= Math.round(4 - Math.abs(t) * 0.7); k++) { const px = Math.round(x + Math.cos(a) * t - Math.sin(a) * k * 0.6), py = Math.round(y + Math.sin(a) * t + Math.cos(a) * k * 0.6); ui.px(px, py, t > 2 ? '#fff0b0' : T.amber); }
+    }
+  }
   // ------------------------------------------------------------------ Day 1
   // the opening (Day 1) lives in day1.js
   async opening() { const { day1 } = await import('./day1.js'); await day1(this); }
@@ -160,8 +175,10 @@ export class Story {
     await w.shot(w.loc.view || w.sc.view, 2.2);
   }
   async resume() {
-    const app = this.app, id = (app.state.map && app.state.map.id) || this.home();
-    await app.fade(1, 300); await app.world.load(id); await app.fade(0, 600);
+    const app = this.app, M = app.state.map || {}, id = M.id === 'city' || !M.id ? 'city' : M.id;
+    await app.fade(1, 300); await app.world.load(id);
+    if (id === 'city') { const at = M.x !== undefined ? [M.x, M.z, 0, M.y] : app.world.spot('frontDoorOut'); await this.startRoam(at); }
+    await app.fade(0, 600);
     this.objective = app.state.flags.alamo_done ? 'Explore the city' : 'Open the map and go to Alamo Square';
   }
   // first visits

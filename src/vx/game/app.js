@@ -17,6 +17,8 @@ import { Story } from './story.js';
 import { LOCATIONS } from './locations.js';
 import { Quests, visit, drawTramSign } from './quests.js';
 
+// fast-travel targets on the city map (phone map / cable car)
+const CITY_SPOTS = { chinatown: 'square', alamo: 'park', pier39: 'pier', dojo: 'dojoDoor', arena: 'arena', apartment: 'frontDoorOut', home: 'frontDoorOut', lab: 'labDoor', city: 'frontDoorOut' };
 const NO_AUDIO = { sfx() {}, voice() {}, music() {}, stinger() {}, ambience() {}, unlock() {}, setVolumes() {}, setIntensity() {}, stopAll() {}, autoUnlock() {} };
 export const POST = {
   day: { focus: 0.5, band: 0.3, dof: 0.5, bloom: 0.42, threshold: 0.84, rays: 0.05, vig: 0.4, warm: 0.35, sat: 1.08, contrast: 1.06, night: 0 },
@@ -112,6 +114,16 @@ export class VxApp {
   toast(str, o) { this.ui.toast(str, o); }
   setPost(mood) { Object.assign(this.post.opts, POST[mood] || POST.day); }
   async travel(id, o = {}) {
+    // in the walkable city, places are spots on the one map: fast-travel there
+    if (this.world.city && CITY_SPOTS[id] && this.world.player) {
+      if (this._travelling) return; this._travelling = true; this.audio.sfx && this.audio.sfx('whoosh');
+      if (this.phone) this.phone.open = false;
+      await this.fade(1, 380);
+      const s = this.world.spot(CITY_SPOTS[id]), p = this.world.player, q = this.world.partner;
+      p.path = null; p.place(s[0], s[1], s[2] || 0, s[3]); this.world.city.placed(); if (q) q.place(s[0] + 1, s[1] + 1, 0, s[3]);
+      this.world.followCam(0); await this.fade(0, 450); this._travelling = false; visit(this, id); this.save();
+      return;
+    }
     if (!LOCATIONS[id] || this._travelling) return;
     this._travelling = true; this.audio.sfx && this.audio.sfx('whoosh');
     if (o.fade !== false) await this.fade(1, 420);
@@ -134,5 +146,9 @@ export class VxApp {
     return res;
   }
   newMon(species, level = 5) { return createElemon(species, { level, friendship: 70 }); }
-  save() { if (this.state.party.length) S.save(this.state); }
+  save() {
+    const w = this.world;
+    if (w && w.city && w.player) { const p = w.player.g.position; this.state.map = { id: 'city', x: +p.x.toFixed(2), z: +p.z.toFixed(2), y: +p.y.toFixed(2) }; }
+    if (this.state.party.length) S.save(this.state);
+  }
 }

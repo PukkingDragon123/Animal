@@ -60,7 +60,7 @@ export class Actor {
       if (this.stepD > stride) { this.stepD = 0; const au = this.w.app && this.w.app.audio; if (au && au.sfx) au.sfx(STEP[this.w.id] || 'step_concrete', { vol: 0.8, pitch: 0.95 + Math.random() * 0.1 }); }
     }
     let dy = this.targetYaw - this.yaw; while (dy > Math.PI) dy -= Math.PI * 2; while (dy < -Math.PI) dy += Math.PI * 2;
-    this.yaw += dy * (1 - Math.exp(-dt * 9)); this.g.rotation.y = this.yaw;
+    this.yaw += dy * (1 - Math.exp(-dt * (this.kind === 'person' && this.w.city && this.w.player === this ? 14 : 9))); this.g.rotation.y = this.yaw;
     this.anim.update(dt, { fx: ctx.fx, look: this.look ? (this.look.g ? this.look.headPos(_v) : this.look) : ctx.look });
   }
 }
@@ -297,7 +297,8 @@ export class VxWorld {
     this.chatT = 5 + Math.random() * 7;
     const cands = [...this.actors.values()].filter((a) => a.kind === 'person' && a !== this.player && !B.some((b) => b.a === a) && this.project(a.headPos()).vis);
     if (!cands.length) return;
-    const a = cands[Math.floor(Math.random() * cands.length)], pool = [...(CHATTER[this.id] || []), ...(CHATTER[this.id] || []), ...CHATTER.any];
+    const key = this.city ? Object.keys(CHATTER).find((k) => (this.zoneName || '').toLowerCase().includes(k === 'pier39' ? 'wharf' : k === 'alamo' ? 'park' : k)) : this.id;
+    const a = cands[Math.floor(Math.random() * cands.length)], pool = [...(CHATTER[key] || []), ...(CHATTER[key] || []), ...CHATTER.any];
     const text = pool[Math.floor(Math.random() * pool.length)];
     B.push({ a, text, t: 0, n: 0, dur: 2.2 + text.length * 0.06, voice: ['friend', 'kid', 'elder', 'rival', 'punk'][a.id.length % 5] });
     if (a.anim && a.anim.face) a.anim.face(Math.random() < 0.6 ? 'smile' : 'happy', 2);

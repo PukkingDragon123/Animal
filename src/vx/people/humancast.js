@@ -12,6 +12,14 @@ export const CAST = {
     bottom: { kind: 'jeans', col: 0x2e3a5e }, shoes: { kind: 'sneaker', col: 0xf2f0ea, col2: 0xe8603a }, socks: { col: [240, 240, 240] },
     acc: [{ kind: 'backpack', col: 0x2e6a8a }], hat: null, glasses: null, walk: { style: 'young' },
   },
+  heroine: {   // the player as a girl: partner colours (hot-sauce red / orange / flame yellow)
+    preset: 'schoolgirl', seed: 21, sex: 'f', age: 'teen', H: 1.58, build: 0.94, anime: 1, bust: 0.5,
+    skin: 0xf0c8a4, hair: { style: 'ponytail', col: 0x3a221c, volume: 1.15, ribbon: 0xffd040, ahoge: 1 },
+    face: { style: 1, iris: 0x8a4a1e, tilt: 0.5, blush: 0.4, makeup: { lash: 0.8 }, deco: [{ kind: 'bandaid', at: 'cheekR' }, { kind: 'hatch' }] },
+    top: { kind: 'jacket', col: 0xe8603a, shirt: 0xf4efe6, zip: true, stripe: 0xffd040 }, bottom: { kind: 'shorts', col: 0x2e3a5e },
+    legs: 'kneesocks', socks: { col: [244, 240, 234] }, shoes: { kind: 'sneaker', col: 0xf2f0ea, col2: 0xe8603a },
+    acc: [{ kind: 'backpack', col: 0x2e6a8a }], hat: null, glasses: null, walk: { style: 'young' },
+  },
   yumi: {   // partner Creepetal (periwinkle petals, blond fringe, green stem)
     preset: 'schoolgirl', seed: 4, sex: 'f', age: 'teen', H: 1.56, build: 0.94, anime: 1, bust: 0.5,
     skin: 0xf2cdb0, hair: { style: 'twintails', col: 0xe8d08a, volume: 1.15, ribbon: 0x8a8ad8, ahoge: 1, clip: 0x5aa86a },
