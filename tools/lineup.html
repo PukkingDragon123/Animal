@@ -13,9 +13,11 @@ import { FX } from '../src/vx/fx.js';
 import { HD2D } from '../src/px/hd2d.js';
 import { cast, castVox, RECIPES } from '../src/vx/people/cast.js';
 import { AnimePerson } from '../src/vx/people/anime.js';
+import { castHuman } from '../src/vx/people/human.js';
 const q = new URLSearchParams(location.search), num = (k, d) => (q.has(k) ? +q.get(k) : d);
 const W = num('w', 1600), H = num('h', 720);
 const defs = [];
+for (const n of (q.get('human') || '').split(',').filter(Boolean)) defs.push({ human: n });
 for (const n of (q.get('people') || '').split(',').filter(Boolean)) defs.push(q.get('anime') ? { anime: n } : q.get('vox') ? { vox: n } : cast(n));
 for (const n of (q.get('mons') || '').split(',').filter(Boolean)) defs.push((await import('../src/vx/mons/' + n + '.js')).def);
 const st = new VxStage({ fov: num('fov', 28), shadowSize: 2048 });
@@ -23,9 +25,9 @@ const fw = new Fine(160, 8, 96, 16), k = new Kit(fw);
 k.box(0, 0, 0, 159, 3, 95, 'sidewalk', 'patch', { sc: 6 });
 st.setSize(W, H); if (q.get('ink') !== '0') st.setStyle({ ink: true, toon: q.get('toon') !== '0', inkCrease: 0.03 }); st.setWorld(fw); st.setMood(q.get('mood') || 'golden');
 const gap = num('gap', 1.15), x0 = 5 - ((defs.length - 1) * gap) / 2, fx = new FX(st), ans = [];
-defs.forEach((d, i) => { const m = d.anime ? new AnimePerson({ name: d.anime, ...RECIPES[d.anime] }) : d.vox ? castVox(d.vox) : new Model(d); if (q.get('rot')) m.group.rotation.y = +q.get('rot') * Math.PI / 180; m.group.position.set(x0 + i * gap, 0.25, 3); st.scene.add(m.group); if (m.drip) m.drip(+(q.get('drip') || 1)); const a = new Animator(m); if (q.get('clip')) a.play(q.get('clip'), { fade: 0 }); ans.push(a); });
+defs.forEach((d, i) => { const m = d.human ? castHuman(d.human, { lazy: false }) : d.anime ? new AnimePerson({ name: d.anime, ...RECIPES[d.anime] }) : d.vox ? castVox(d.vox) : new Model(d); if (q.get('rot')) m.group.rotation.y = +q.get('rot') * Math.PI / 180; m.group.position.set(x0 + i * gap, 0.25, 3); st.scene.add(m.group); if (m.drip) m.drip(+(q.get('drip') || 1)); const a = m.animator ? m.animator() : new Animator(m); if (q.get('clip')) a.play(q.get('clip'), { fade: 0 }); ans.push(a); });
 st.look([5, 0.25 + num('ty', 0.7), 3], num('dist', 7), num('yaw', 0), num('pitch', 8));
-const DT = 1 / 60; for (let i = 0; i < Math.round(num('t', 1) / DT); i++) { for (const a of ans) a.update(DT, { fx }); fx.update(DT); st.time += DT; }
+const DT = 1 / 60; for (let i = 0; i < Math.round(num('t', 1) / DT); i++) { for (const a of ans) a.update(DT, { fx, look: q.get('look') ? st.cam.position : null }); fx.update(DT); st.time += DT; }
 const cv = document.getElementById('c'); cv.width = W; cv.height = H;
 const post = new HD2D(cv); Object.assign(post.opts, { focus: 0.5, band: 0.7, dof: 0.2, bloom: 0.4, threshold: 0.82, rays: 0, vig: 0.3, warm: 0.3, sat: 1.05, contrast: 1.05 });
 post.draw(st.render(), 0.5); document.title = 'ready';

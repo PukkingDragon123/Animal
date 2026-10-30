@@ -8,6 +8,7 @@ import { Model, dripForm } from '../model.js';
 import { Animator, E } from '../anim.js';
 import { FX } from '../fx.js';
 import { cast, castAnime } from '../people/cast.js';
+import { castHuman } from '../people/human.js';
 import { person } from '../people/person.js';
 import { LOCATIONS } from './locations.js';
 import { T } from '../../px/game/ui.js';
@@ -27,7 +28,7 @@ const _v = new THREE.Vector3();
 // ---------------------------------------------------------------- actors
 export class Actor {
   constructor(world, id, model, kind) {
-    this.w = world; this.id = id; this.m = model; this.kind = kind; this.anim = new Animator(model);
+    this.w = world; this.id = id; this.m = model; this.kind = kind; this.anim = model.animator ? model.animator() : new Animator(model);
     this.yaw = 0; this.targetYaw = 0; this.path = null; this.speed = kind === 'mon' ? 1.6 : 1.35; this.look = null;
     this.idleClip = 'idle'; this.walkClip = 'walk'; this.hidden = false;
   }
@@ -162,8 +163,8 @@ export class VxWorld {
     return a;
   }
   addPerson(id, who, at, o = {}) {
-    const box = this.app && this.app.params && this.app.params.get('people') === 'box';
-    const m = box ? new Model(typeof who === 'string' ? cast(who) : person(who)) : castAnime(who), a = new Actor(this, id, m, 'person');
+    const mode = this.app && this.app.params && this.app.params.get('people');   // default: realistic low-poly humans; 'folk' / 'box' bring back the older people
+    const m = mode === 'box' ? new Model(typeof who === 'string' ? cast(who) : person(who)) : mode === 'folk' ? castAnime(who) : castHuman(who), a = new Actor(this, id, m, 'person');
     this.st.actors.add(m.group); this.actors.set(id, a);
     const [x, z, yaw, y] = typeof at === 'string' ? this.spot(at) : at; a.place(x, z, o.yaw ?? yaw ?? 0, o.y ?? y);
     if (o.clip) a.play(o.clip, { fade: 0 });
