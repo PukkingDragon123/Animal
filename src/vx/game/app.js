@@ -4,6 +4,7 @@
 // low-resolution pixel UI on top (dialogue, phone, battle HUD). There is no free
 // walking: the game is told through camera shots and cutscenes; you travel with
 // the phone map and tap hotspots in each place.
+import * as THREE from '../../../vendor/three.module.js';
 import { HD2D } from '../../px/hd2d.js';
 import { VxStage } from '../stage.js';
 import { PixelUI, T } from '../../px/game/ui.js';
@@ -112,7 +113,46 @@ export class VxApp {
   // ------------------------------------------------------------------ services for the story
   fade(to, ms = 400) { this.fadeTo = to; return new Promise((r) => setTimeout(r, ms)); }
   wait(ms) { return new Promise((r) => setTimeout(r, ms)); }
-  say(name, ...lines) { if (this.auto) { this.log && this.log.push(name + ': ' + lines[0]); return this.wait(40 * this.auto); } return lines.reduce((p, l) => p.then(() => this.ui.say(name, l)), Promise.resolve()); }
+  say(name, ...lines) {
+    if (this.auto) { this.log && this.log.push(name + ': ' + lines[0]); return this.wait(40 * this.auto); }
+    const portrait = this.portraitFor(name);
+    return lines.reduce((p, l) => p.then(() => this.ui.say(name, l, portrait ? { portrait } : {})), Promise.resolve());
+  }
+  /** a small 3D render of the speaker's head and shoulders (never drawn art): the actor whose name / role matches */
+  portraitFor(name) {
+    const w = this.world; if (!name || !w || !w.ready || !w.actors) return null;
+    const me = this.state.player && this.state.player.name;
+    const ROLE = { Mom: 'mom', 'Coach Gonda': 'coach', Coach: 'coach', Yumi: 'yumi', 'Professor Aoi': 'prof', Spike: 'spike', Kaito: 'kaito', 'Mr. Lau': 'lau', 'Master Lau': 'lau', 'Chef Wong': 'chef' };
+    let a = name === me || name === 'You' ? w.actor('hero') : w.actor(ROLE[name]) || (ROLE[name] === 'prof' && w.actor('aoi'));
+    if (!a) for (const x of w.actors.values()) if (x.npc && x.npc.name === name) { a = x; break; }
+    if (!a || a.kind !== 'person') return null;
+    try { return this.renderPortrait(a); } catch (e) { return null; }
+  }
+  renderPortrait(a, S = 50) {
+    const st = this.stage, r = st.r, scene = st.scene;
+    if (!this._pt) { this._pt = { rt: new THREE.WebGLRenderTarget(S * 2, S * 2), cam: new THREE.PerspectiveCamera(18, 1, 0.05, 30) }; this._pt.rt.texture.colorSpace = THREE.SRGBColorSpace; }
+    const { rt, cam } = this._pt, head = a.headPos(new THREE.Vector3()); head.y -= 0.22;
+    const yaw = a.yaw, d = 1.7;
+    cam.position.set(head.x + Math.sin(yaw + 0.35) * d, head.y + 0.1, head.z + Math.cos(yaw + 0.35) * d); cam.lookAt(head.x, head.y - 0.06, head.z); cam.updateMatrixWorld();
+    // render only the speaker, on a transparent background
+    const vis = [], bg = scene.background, fog = scene.fog;
+    for (const c of scene.children) if (!c.isLight && c !== st.actors) { vis.push([c, c.visible]); c.visible = false; }
+    for (const c of st.actors.children) { vis.push([c, c.visible]); c.visible = c === a.g; }
+    scene.background = null; scene.fog = null;
+    const prevRT = r.getRenderTarget(), prevClear = r.getClearAlpha();
+    r.setRenderTarget(rt); r.setClearAlpha(0); r.clear(); r.render(scene, cam);
+    const buf = new Uint8Array(S * S * 16); r.readRenderTargetPixels(rt, 0, 0, S * 2, S * 2, buf);
+    r.setRenderTarget(prevRT); r.setClearAlpha(prevClear);
+    scene.background = bg; scene.fog = fog; for (const [c, v] of vis) c.visible = v;
+    // 2× supersampled → S×S, flipped (GL rows run bottom-up)
+    const img = new ImageData(S, S);
+    for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
+      let R = 0, G = 0, B = 0, A = 0;
+      for (let k = 0; k < 4; k++) { const sx = x * 2 + (k & 1), sy = (S * 2 - 1) - (y * 2 + (k >> 1)), i = (sy * S * 2 + sx) * 4; const al = buf[i + 3]; R += buf[i] * al; G += buf[i + 1] * al; B += buf[i + 2] * al; A += al; }
+      const o = (y * S + x) * 4; if (A > 0) { img.data[o] = R / A; img.data[o + 1] = G / A; img.data[o + 2] = B / A; } img.data[o + 3] = A / 4 > 100 ? 255 : 0;
+    }
+    return img;
+  }
   choose(prompt, opts, o) { if (this.auto) return this.wait(40).then(() => 0); return this.ui.choose(prompt, opts, o); }
   toast(str, o) { this.ui.toast(str, o); }
   setPost(mood) { Object.assign(this.post.opts, POST[mood] || POST.day); }
