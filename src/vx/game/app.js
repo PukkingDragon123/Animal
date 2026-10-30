@@ -16,6 +16,7 @@ import { SFPhone } from './phone.js';
 import { Story } from './story.js';
 import { LOCATIONS } from './locations.js';
 import { Quests, visit, drawTramSign } from './quests.js';
+import { Hud } from './hud.js';
 
 // fast-travel targets on the city map (phone map / cable car)
 const CITY_SPOTS = { chinatown: 'square', alamo: 'park', pier39: 'pier', dojo: 'dojoDoor', arena: 'arena', apartment: 'frontDoorOut', home: 'frontDoorOut', lab: 'labDoor', city: 'frontDoorOut' };
@@ -51,6 +52,7 @@ export class VxApp {
     this.phone = new SFPhone(this);
     this.story = new Story(this);
     this.quests = new Quests(this);
+    this.hud = new Hud(this);
     this.last = performance.now();
     this.loop = this.loop.bind(this); requestAnimationFrame(this.loop);
     window.__app = this;
@@ -95,6 +97,7 @@ export class VxApp {
       const ui = this.ui; ui.begin(dt);
       if (this.battle && this.battle.active) this.battle.drawUI(ui, dt);
       else this.world.drawUI(ui, dt);
+      if (this.roaming && !(this.battle && this.battle.active) && !this.story.title) this.hud.draw(ui, dt);
       if (this.story.drawUI) this.story.drawUI(ui, dt);
       for (const o of this.overlays) o(ui, dt);
       drawTramSign(this, ui, dt);
@@ -135,7 +138,7 @@ export class VxApp {
     }
     await this.fade(0, 500);
     this._travelling = false;
-    this.toast(LOCATIONS[id].name, { icon: 'map', color: T.cyan, dur: 2.4 });
+    if (this.hud && this.hud.showLocation) this.hud.showLocation(LOCATIONS[id].name, 'San Francisco'); else this.toast(LOCATIONS[id].name, { icon: 'map', color: T.cyan, dur: 2.4 });
     if (this.story.onArrive) await this.story.onArrive(id);
   }
   async startBattle(spec) {

@@ -331,7 +331,8 @@ export class PixelUI {
   }
   drawToasts() {
     const s = this.s;
-    let y = 5, n = 0;
+    // top-centre on landscape; on narrow (portrait) screens below the HUD's top-left column. ui.toastY overrides
+    let y = this.toastY ?? (this.w < 360 ? Math.round(this.h * 0.22) : 5), n = 0;
     for (const t of this.toasts) {
       if (n++ >= 3) break;            // at most three at a time; the rest wait their turn
       t.t += this.dt || 1 / 60;

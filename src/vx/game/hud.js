@@ -79,7 +79,7 @@ export class Hud {
     const dur = 2.8, W = ui.w, s = ui.s;
     if (c.t > dur) { this.card = null; return; }
     const kin = easeOut(c.t / 0.5), kout = clamp01((dur - c.t) / 0.4), k = Math.min(kin, kout);
-    const big = ui.tw(c.name) * 2 + 40 < W, tw = big ? ui.tw(c.name) * 2 : ui.tw(c.name, { bold: true }), cy = Math.round(ui.h * 0.3);
+    const big = ui.tw(c.name) * 2 + 40 < W, tw = big ? ui.tw(c.name) * 2 : ui.tw(c.name, { bold: true }), cy = Math.round(ui.h * (W < 360 ? 0.42 : 0.3));
     const half = Math.round((tw / 2 + 30) * k), cx = W >> 1;
     // gold rules growing from the centre with gems at their ends
     for (let i = -half; i <= half; i++) { const d = Math.abs(i) / Math.max(1, half); s.px(cx + i, cy - 4, mx(T.amberL, T.amber2, d)); s.px(cx + i, cy + (big ? 20 : 13), mx(T.amber, T.coral2, d)); }

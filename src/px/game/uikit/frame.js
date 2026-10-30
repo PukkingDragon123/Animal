@@ -174,24 +174,42 @@ export function discA(s, cx, cy, r, c, a) {
 }
 
 // ------------------------------------------------------------------ full-screen backdrop for modal screens
-export function backdrop(ui, t, o = {}) {
-  const s = ui.s, W = ui.w, H = ui.h;
-  const top = o.top || '#1d1438', mid = o.mid || '#140e28', bot = o.bot || '#0a0716';
-  gradFill(s, 0, 0, W, H, [top, mid, bot], 0, o.alpha ?? 1);
-  // drifting diagonal bands
-  const band = P(mx(mid, '#3a2a62', 0.35));
-  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const k = (x + y + Math.floor(t * 8)) % 48; if (k < 10 && bayer(x, y) < 0.32) s.data[y * W + x] = band; }
-  // twinkling stars
-  for (let i = 0; i < 46; i++) {
-    const sx = Math.floor(((i * 97.13) % 1) * 0 + ((i * 7919) % W)), sy = (i * 4513) % Math.max(1, Math.floor(H * 0.85));
-    const ph = Math.sin(t * (1.2 + (i % 5) * 0.4) + i);
-    if (ph > 0.6) sparkle(s, sx, sy, i % 3 ? T.cyanL : T.amberL, ph > 0.9 ? 0.5 : 0.1);
-    else if (ph > -0.2) s.px(sx, sy, mx(top, '#ffffff', 0.35));
-  }
-  // vignette: darken the edges with dither
-  const vg = P('#06040c');
+// static gradient + vignette are baked once per size/palette; bands and stars animate on top
+const bdCache = new Map();
+function bakeBackdrop(W, H, top, mid, bot) {
+  const key = W + 'x' + H + top + mid + bot;
+  let B = bdCache.get(key);
+  if (B) return B;
+  const tmp = { w: W, h: H, data: new Uint32Array(W * H) };
+  gradFill(tmp, 0, 0, W, H, [top, mid, bot], 0, 1);
+  const vig = [];
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
     const dx = (x - W / 2) / (W / 2), dy = (y - H / 2) / (H / 2), d = dx * dx * 0.7 + dy * dy;
-    if (d > 0.75 && bayer(x, y) < (d - 0.75) * 1.4) s.data[y * W + x] = vg;
+    if (d > 0.75 && bayer(x, y) < (d - 0.75) * 1.4) vig.push(y * W + x);
   }
+  B = { base: tmp.data, vig: Int32Array.from(vig), band: P(mx(mid, '#3a2a62', 0.35)), star: mx(top, '#ffffff', 0.35) };
+  if (bdCache.size > 6) bdCache.clear();
+  bdCache.set(key, B);
+  return B;
+}
+export function backdrop(ui, t, o = {}) {
+  const s = ui.s, W = ui.w, H = ui.h;
+  const B = bakeBackdrop(W, H, o.top || '#1d1438', o.mid || '#140e28', o.bot || '#0a0716');
+  s.data.set(B.base);
+  // drifting diagonal bands (only the 10-px stripes of every 48 are visited)
+  const off = Math.floor(t * 8), d = s.data, band = B.band;
+  for (let y = 0; y < H; y++) {
+    const x0 = ((-(y + off)) % 48 + 48) % 48;
+    for (let xs = x0 - 48; xs < W; xs += 48) for (let x = Math.max(0, xs); x < Math.min(W, xs + 10); x++) if (bayer(x, y) < 0.32) d[y * W + x] = band;
+  }
+  // twinkling stars
+  for (let i = 0; i < 46; i++) {
+    const sx = (i * 7919) % W, sy = (i * 4513) % Math.max(1, Math.floor(H * 0.85));
+    const ph = Math.sin(t * (1.2 + (i % 5) * 0.4) + i);
+    if (ph > 0.6) sparkle(s, sx, sy, i % 3 ? T.cyanL : T.amberL, ph > 0.9 ? 0.5 : 0.1);
+    else if (ph > -0.2) s.px(sx, sy, B.star);
+  }
+  const vg = P('#06040c'), V = B.vig;
+  for (let i = 0; i < V.length; i++) d[V[i]] = vg;
+  if (o.alpha != null && o.alpha < 1) { const A = Math.round(o.alpha * 255) << 24; for (let i = 0; i < d.length; i++) d[i] = ((d[i] & 0xffffff) | A) >>> 0; }
 }

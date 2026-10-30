@@ -66,8 +66,8 @@ export class Story {
       ui.text('SAN FRANCISCO', W >> 1, Math.round(H * 0.2) + 28, T.cyan, { align: 'center', outline: '#0c1420' });
     }
     const by = Math.round(H * (T_.art ? 0.46 : 0.62)), bw = 110;
-    if (ui.button((W >> 1) - bw / 2, by, bw, 18, 'NEW GAME', { color: T.amber, hotkey: 'Enter' })) T_.pick('new');
-    if (T_.hasSave && ui.button((W >> 1) - bw / 2, by + 22, bw, 18, 'CONTINUE', { color: T.cyan, hotkey: 'c' })) T_.pick('continue');
+    if (ui.button((W >> 1) - bw / 2, by, bw, 18, 'NEW GAME', { color: T.amber, hotkey: 'Enter' }) && T_.pick) T_.pick('new');
+    if (T_.hasSave && ui.button((W >> 1) - bw / 2, by + 22, bw, 18, 'CONTINUE', { color: T.cyan, hotkey: 'c' }) && T_.pick) T_.pick('continue');
     ui.text('an original homage to the music of everywhere', W >> 1, H - 12, T.dim, { align: 'center', mini: true });
   }
   // ------------------------------------------------------------------ UI layer for the story (title, captions, objective, phone button)
@@ -77,6 +77,7 @@ export class Story {
     if (this.caption) { const c = this.caption; c.t += dt; const a = Math.min(1, c.t * 2, (c.dur - c.t) * 2); if (a > 0) { ui.text(c.text, 10, ui.h - 22, T.text, { outline: '#0c0814' }); if (c.sub) ui.text(c.sub, 10, ui.h - 12, T.amber, { mini: true, outline: '#0c0814' }); } if (c.t > c.dur) this.caption = null; }
     if (!(app.battle && app.battle.active)) this.drawGoal(ui);
     if (this.busy || ui.dialog || (app.battle && app.battle.active)) return;
+    if (app.roaming && app.hud) return;   // the HUD shows the objective and opens the phone / menu
     const obj = this.objective || (app.quests && app.quests.objective());
     if (obj) { const w = Math.min(ui.w - 70, ui.tw(obj) + 22); ui.panel(4, 4, w, 15, {}); ui.icon('star', 8, 8, T.amber); ui.text(obj, 18, 8, T.text); }
     if (app.state.flags.phone && !app.phone.open && ui.button(ui.w - 26, 4, 22, 20, '', { icon: 'phone', color: T.cyan, hotkey: 'Tab' })) app.phone.toggle();

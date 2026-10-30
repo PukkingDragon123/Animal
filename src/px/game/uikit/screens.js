@@ -238,17 +238,22 @@ function dimRect(s, x, y, w, h, a) {
     d[k] = ((v & 0xff000000) | (b << 16) | (g << 8) | r) >>> 0;
   }
 }
+// per-size table of sunburst angles (in ray units), so cards don't call atan2 per pixel per frame
+const angCache = new Map();
+function angles(aw, ah) {
+  const key = aw * 10000 + ah;
+  let A = angCache.get(key);
+  if (!A) { A = new Float32Array(aw * ah); const cx = aw / 2, cy = ah * 0.58; for (let j = 0; j < ah; j++) for (let i = 0; i < aw; i++) A[j * aw + i] = (Math.atan2(j - cy, i - cx) / Math.PI) * 8; angCache.set(key, A); }
+  return A;
+}
 function drawCard(ui, x, y, w, h, card, sel, t, out) {
   const s = ui.s, col = card.color || T.cyan;
   frame(ui, x, y, w, h, { fill: sh(col, -1.7), fill2: sh(col, -2.3), edge: sel ? mx(col, '#ffffff', 0.15) : sh(col, -0.6), edgeL: mx(col, '#ffffff', sel ? 0.6 : 0.3), accent: sel ? T.gold : T.brass, ornate: sel, gem: T.amber, gem2: col });
   const ax = x + 6, ay = y + 6, aw = w - 12, ah = Math.round(h * 0.68);
   // art window: colour gradient with a slowly turning sunburst
   gradFill(s, ax, ay, aw, ah, [mx(col, '#ffffff', 0.35), col, sh(col, -1.1)], 0);
-  const ccx = ax + aw / 2, ccy = ay + ah * 0.58, rayC = P(mx(col, '#ffffff', 0.32));
-  for (let j = 0; j < ah; j++) for (let i = 0; i < aw; i++) {
-    const a = Math.atan2(j + ay - ccy, i + ax - ccx) + t * (sel ? 0.35 : 0.1);
-    if ((((a / Math.PI) * 8 + 16) | 0) % 2 === 0 && bayer(ax + i, ay + j) < 0.35) s.data[(ay + j) * s.w + ax + i] = rayC;
-  }
+  const rayC = P(mx(col, '#ffffff', 0.32)), A = angles(aw, ah), rot = (t * (sel ? 0.35 : 0.1) / Math.PI) * 8 + 16;
+  for (let j = 0; j < ah; j++) { const Y = ay + j; if (Y < 0 || Y >= s.h) continue; for (let i = 0; i < aw; i++) { const X = ax + i; if (X >= 0 && X < s.w && ((A[j * aw + i] + rot) | 0) % 2 === 0 && bayer(X, Y) < 0.35) s.data[Y * s.w + X] = rayC; } }
   ui.clip(ax, ay, aw, ah, () => {
     if (card.draw) card.draw(ui, ax, ay, aw, ah);
     else defaultArt(ui, ax, ay, aw, ah, card, t, sel);
@@ -281,19 +286,27 @@ function defaultArt(ui, x, y, w, h, card, t, sel) {
   if (sel) for (let i = 0; i < 3; i++) { const a = t * 1.4 + i * 2.1, k = (Math.sin(t * 3 + i) + 1) / 2; sparkle(s, Math.round(cx + Math.cos(a) * (R + 6)), Math.round(cy + Math.sin(a) * (R + 4)), i % 2 ? T.amberL : '#ffffff', k); }
 }
 // concentric badge: ink rim, brass ring, card-colour disc with a dithered radial glow and tick marks
+const medCache = new Map();
 function medallion(s, cx, cy, R, col, t, sel) {
-  const K = P(T.ink), B = P(T.brass), BL = P(mx(T.brass, '#ffffff', 0.45)), BD = P(T.brassD);
-  const inner = mx(col, '#ffffff', 0.3), core = mx(col, '#ffffff', 0.55), edge = sh(col, -0.6);
-  for (let j = -R - 2; j <= R + 2; j++) for (let i = -R - 2; i <= R + 2; i++) {
-    const d = Math.hypot(i, j), X = cx + i, Y = cy + j;
-    if (X < 0 || Y < 0 || X >= s.w || Y >= s.h || d > R + 2.5) continue;
-    let v;
-    if (d > R + 1.5) v = K;
-    else if (d > R - 0.5) v = j < -i * 0.3 ? BL : (j > R * 0.4 ? BD : B);
-    else if (d > R - 1.5) v = K;
-    else { const f = d / (R - 1.5); v = P(bayer(X, Y) < f * 1.2 - 0.15 ? (f > 0.8 ? edge : col) : (f < 0.35 ? core : inner)); }
-    s.data[Y * s.w + X] = v;
+  const key = R + col;
+  let M = medCache.get(key);
+  if (!M) {
+    const n = 2 * R + 5; M = new Surf(n, n);
+    const K = P(T.ink), B = P(T.brass), BL = P(mx(T.brass, '#ffffff', 0.45)), BD = P(T.brassD);
+    const inner = mx(col, '#ffffff', 0.3), core = mx(col, '#ffffff', 0.55), edge = sh(col, -0.6);
+    for (let j = -R - 2; j <= R + 2; j++) for (let i = -R - 2; i <= R + 2; i++) {
+      const d = Math.hypot(i, j), X = i + R + 2, Y = j + R + 2;
+      if (d > R + 2.5) continue;
+      let v;
+      if (d > R + 1.5) v = K;
+      else if (d > R - 0.5) v = j < -i * 0.3 ? BL : (j > R * 0.4 ? BD : B);
+      else if (d > R - 1.5) v = K;
+      else { const f = d / (R - 1.5); v = P(bayer(X, Y) < f * 1.2 - 0.15 ? (f > 0.8 ? edge : col) : (f < 0.35 ? core : inner)); }
+      M.data[Y * n + X] = v;
+    }
+    medCache.set(key, M);
   }
+  s.blit(M, cx - R - 2, cy - R - 2);
   for (let k = 0; k < 12; k++) { const a = k * Math.PI / 6 + (sel ? t * 0.2 : 0), X = Math.round(cx + Math.cos(a) * (R - 3)), Y = Math.round(cy + Math.sin(a) * (R - 3)); s.px(X, Y, mx(col, '#ffffff', 0.7)); }
 }
 // a big icon rendered as a smooth sticker: Scale2x-upscaled (×2 or ×4), then 1px ink, white rim and ink rings
