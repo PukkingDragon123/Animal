@@ -70,7 +70,7 @@ export class Hud {
     const world = app.world;
     ui.minimap(mmX, mmY, mmW, mmH, world && world.drawMinimap ? (u, x, yy, ww, hh) => world.drawMinimap(u, x, yy, ww, hh) : placeholderMap, { player: !(world && world.drawMinimap) });
     const party = this.party();
-    if (party.length) ui.partyBar(6, H - 34 + off, party, { maxW: mmX - 12 });
+    if (party.length) ui.partyBar(6, H - 34 + off, party, { maxW: mmX - 12, full: narrow ? 1 : 2 });
     // centred title card for a new area
     if (this.card) this.drawCard(ui, dt);
   }
@@ -79,7 +79,7 @@ export class Hud {
     const dur = 2.8, W = ui.w, s = ui.s;
     if (c.t > dur) { this.card = null; return; }
     const kin = easeOut(c.t / 0.5), kout = clamp01((dur - c.t) / 0.4), k = Math.min(kin, kout);
-    const big = ui.tw(c.name) * 2 + 40 < W, tw = big ? ui.tw(c.name) * 2 : ui.tw(c.name, { bold: true }), cy = Math.round(ui.h * 0.2);
+    const big = ui.tw(c.name) * 2 + 40 < W, tw = big ? ui.tw(c.name) * 2 : ui.tw(c.name, { bold: true }), cy = Math.round(ui.h * 0.3);
     const half = Math.round((tw / 2 + 30) * k), cx = W >> 1;
     // gold rules growing from the centre with gems at their ends
     for (let i = -half; i <= half; i++) { const d = Math.abs(i) / Math.max(1, half); s.px(cx + i, cy - 4, mx(T.amberL, T.amber2, d)); s.px(cx + i, cy + (big ? 20 : 13), mx(T.amber, T.coral2, d)); }
@@ -149,8 +149,8 @@ export class Hud {
       const st = this.app.state || {}, fy = ly + lh - 17;
       s.hline(lx + 8, lx + lw - 9, fy - 3, '#3a3058');
       ui.text((st.player && st.player.name) || 'You', lx + 10, fy + 1, T.text, { shadow: T.ink });
-      ui.bigIcon('coin', lx + lw - 20 - ui.tw(fmtNum(st.money || 0), { mini: true }), fy - 2, null, { shadow: false });
-      ui.text(fmtNum(st.money || 0), lx + lw - 9, fy + 2, T.amber, { mini: true, align: 'right' });
+      ui.bigIcon('coin', lx + lw - 23 - ui.tw(fmtNum(st.money || 0)), fy - 2, null, { shadow: false });
+      ui.text(fmtNum(st.money || 0), lx + lw - 9, fy + 1, T.amber, { align: 'right', shadow: T.ink });
     }
     // content panel
     if (!narrow || M.view) {

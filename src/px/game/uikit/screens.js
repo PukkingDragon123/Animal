@@ -1,5 +1,6 @@
 // Full-screen modal screens: name entry (on-screen pixel keyboard + physical
-// typing) and the big illustrated card picker (boy / girl, starters, …).
+// typing) and the big card picker (2–3 illustrated choices).
+// No human figures are ever drawn here: default card art is a symbol emblem.
 // Each returns a modal object for PixelUI.openModal: { capture, draw(ui, dt, live), resolve }.
 import { Surf, P } from '../../surface.js';
 import { hasGlyph } from '../../font.js';
@@ -98,7 +99,7 @@ export function nameEntryScreen(ui, o, resolve) {
     // ---- field
     const slot = 10, fw = max * slot + 44, fh = 26, fx = ((W - fw) >> 1) + Math.round(Math.sin(m.shake * 60) * m.shake * 8), fy = y0 + 6;
     frame(ui, fx, fy, fw, fh, { ornate: true, fill: '#251c3e', fill2: '#18122a', gem: T.cyan, gem2: T.amber });
-    ui.bigIcon(o.icon || 'boy', fx + 6, fy + 7, null, { shadow: false });
+    ui.bigIcon(o.icon || 'star', fx + 6, fy + 7, null, { shadow: false });
     const tx0 = fx + 22;
     if (m.replace && m.value) s.rect(tx0 - 2, fy + 7, m.value.length * slot + 1, 12, '#4a3470');
     for (let i = 0; i < max; i++) {
@@ -176,18 +177,20 @@ export function nameEntryScreen(ui, o, resolve) {
 }
 
 // ------------------------------------------------------------------ card picker
-// o: { title, sub, cards: [{ label, sub, color, icon, art: 'boy'|'girl', draw(ui, x, y, w, h) }], pick, confirm (button label) }
+// o: { title, sub, cards: [{ label, sub, color, icon, art ('boy' → star emblem, 'girl' → heart emblem), draw(ui, x, y, w, h) }], pick, confirm (button label) }
 export function pickCardsScreen(ui, o, resolve) {
   const cards = o.cards || [];
   const m = { capture: true, resolve, sel: Math.max(0, Math.min(cards.length - 1, o.pick || 0)), lift: cards.map(() => 0), lp: null, done: -1 };
   m.draw = (ui, dt, live) => {
     const W = ui.w, H = ui.h, s = ui.s, t = m.t, n = Math.max(1, cards.length);
     backdrop(ui, t, { top: '#21163e', mid: '#150f2a' });
-    const y0 = title(ui, o.title || 'Choose', 10, { sub: o.sub });
+    const tH = (ui.tw(o.title || 'Choose') * 2 + 24 < W ? 25 : 19) + (o.sub ? 12 : 5);
     const gap = W < 300 ? 6 : 12, bottom = H - 30;
-    let ch = Math.min(bottom - y0 - 14, 178), cw = Math.min(Math.floor((W - 20 - (n - 1) * gap) / n), Math.round(ch * 0.74));
+    let ch = Math.min(bottom - 10 - tH - 14, 178), cw = Math.min(Math.floor((W - 20 - (n - 1) * gap) / n), Math.round(ch * 0.74));
     ch = Math.min(ch, Math.round(cw * 1.5));
-    const total = n * cw + (n - 1) * gap, cx0 = (W - total) >> 1, cy = y0 + 8 + Math.max(0, ((bottom - y0 - 8 - ch) >> 1));
+    const top = Math.max(10, Math.round((bottom - (tH + 14 + ch)) / 2));
+    const y0 = title(ui, o.title || 'Choose', top, { sub: o.sub });
+    const total = n * cw + (n - 1) * gap, cx0 = (W - total) >> 1, cy = y0 + 14;
     // input
     if (live && m.done < 0) {
       const moved = !m.lp || m.lp[0] !== ui.ptr.x || m.lp[1] !== ui.ptr.y; m.lp = [ui.ptr.x, ui.ptr.y];
@@ -263,80 +266,67 @@ function drawCard(ui, x, y, w, h, card, sel, t, out) {
   if (out >= 0) { const k = clamp01(out / 0.45); blendRect(s, x, y, w, h, '#ffffff', Math.sin(k * Math.PI) * 0.7); }
 }
 
+// default card art: a medallion with a smooth, upscaled symbol emblem (never a human figure)
+const ART_ICON = { boy: 'star', girl: 'heart', male: 'star', female: 'heart' };
 function defaultArt(ui, x, y, w, h, card, t, sel) {
   const s = ui.s, col = card.color || T.cyan;
-  const kind = card.art || (/\bboy\b|\bmale\b|\bhe\b/i.test(card.label || '') ? 'boy' : /\bgirl\b|\bfemale\b|\bshe\b/i.test(card.label || '') ? 'girl' : null);
-  const bob = sel ? Math.round(Math.sin(t * 3) * 1) : 0;
-  // floor shadow
-  for (let j = -2; j <= 2; j++) { const hw = Math.round(Math.sqrt(Math.max(0, 1 - (j * j) / 6)) * w * 0.3); for (let i = -hw; i <= hw; i++) if (bayer(x + w / 2 + i, y + h - 6 + j) < 0.6) s.px(Math.round(x + w / 2 + i), y + h - 6 + j, sh(col, -1.6)); }
-  if (kind) { drawBust(ui, Math.round(x + w / 2), y + h + 1 + bob, kind, col, Math.min(1, Math.max(0.6, Math.min(w, h) / 70))); return; }
-  if (card.icon) {
-    const sc = Math.max(2, Math.min(4, Math.floor(Math.min(w, h) / 22)));
-    ball(s, Math.round(x + w / 2), Math.round(y + h / 2) + bob, Math.round(sc * 9), mx(col, '#ffffff', 0.25));
-    drawBig(s, card.icon, Math.round(x + w / 2 - 6 * sc), Math.round(y + h / 2 - 6 * sc) + bob, null, { scale: sc });
-    return;
-  }
-  const r = Math.round(Math.min(w, h) * 0.3);
-  ball(s, Math.round(x + w / 2), Math.round(y + h / 2) + bob, r, mx(col, '#ffffff', 0.2));
-  ui.text((card.label || '?')[0].toUpperCase(), Math.round(x + w / 2) + 1, Math.round(y + h / 2 - 10) + bob, '#ffffff', { align: 'center', scale: 3, outline: sh(col, -2) });
+  const icon = card.icon || ART_ICON[card.art] || null;
+  const bob = sel ? Math.round(Math.sin(t * 3) * 1.5) : 0, cx = Math.round(x + w / 2), cy = Math.round(y + h * 0.48) + bob;
+  const R = Math.max(14, Math.min(36, Math.floor(Math.min(w, h) * 0.32)));
+  // floor glow
+  for (let j = -2; j <= 2; j++) { const hw = Math.round(Math.sqrt(Math.max(0, 1 - (j * j) / 6)) * R * 0.9); for (let i = -hw; i <= hw; i++) if (bayer(cx + i, y + h - 8 + j) < 0.55) s.px(cx + i, y + h - 8 + j, sh(col, -1.5)); }
+  medallion(s, cx, cy, R, col, t, sel);
+  if (icon) drawEmblem(ui, icon, cx, cy, R >= 30 ? 4 : 2);
+  else ui.text((card.label || '?')[0].toUpperCase(), cx + 1, cy - 10, '#ffffff', { align: 'center', scale: 3, outline: sh(col, -2) });
+  if (sel) for (let i = 0; i < 3; i++) { const a = t * 1.4 + i * 2.1, k = (Math.sin(t * 3 + i) + 1) / 2; sparkle(s, Math.round(cx + Math.cos(a) * (R + 6)), Math.round(cy + Math.sin(a) * (R + 4)), i % 2 ? T.amberL : '#ffffff', k); }
 }
-
-// procedural chibi bust (original design): hair, face, eyes, clothes in the card colour. (cx, by) = bottom centre.
-const bustCache = new Map();
-export function drawBust(ui, cx, by, kind, color, k = 1) {
-  const key = kind + color;
-  let S = bustCache.get(key);
-  if (!S) { S = makeBust(kind, color); bustCache.set(key, S); }
-  ui.s.blit(S, cx - (S.w >> 1), by - S.h);
+// concentric badge: ink rim, brass ring, card-colour disc with a dithered radial glow and tick marks
+function medallion(s, cx, cy, R, col, t, sel) {
+  const K = P(T.ink), B = P(T.brass), BL = P(mx(T.brass, '#ffffff', 0.45)), BD = P(T.brassD);
+  const inner = mx(col, '#ffffff', 0.3), core = mx(col, '#ffffff', 0.55), edge = sh(col, -0.6);
+  for (let j = -R - 2; j <= R + 2; j++) for (let i = -R - 2; i <= R + 2; i++) {
+    const d = Math.hypot(i, j), X = cx + i, Y = cy + j;
+    if (X < 0 || Y < 0 || X >= s.w || Y >= s.h || d > R + 2.5) continue;
+    let v;
+    if (d > R + 1.5) v = K;
+    else if (d > R - 0.5) v = j < -i * 0.3 ? BL : (j > R * 0.4 ? BD : B);
+    else if (d > R - 1.5) v = K;
+    else { const f = d / (R - 1.5); v = P(bayer(X, Y) < f * 1.2 - 0.15 ? (f > 0.8 ? edge : col) : (f < 0.35 ? core : inner)); }
+    s.data[Y * s.w + X] = v;
+  }
+  for (let k = 0; k < 12; k++) { const a = k * Math.PI / 6 + (sel ? t * 0.2 : 0), X = Math.round(cx + Math.cos(a) * (R - 3)), Y = Math.round(cy + Math.sin(a) * (R - 3)); s.px(X, Y, mx(col, '#ffffff', 0.7)); }
 }
-function makeBust(kind, color) {
-  const S = new Surf(56, 60), girl = kind === 'girl';
-  const hair = girl ? '#b0487a' : '#47387a', hairL = sh(hair, 1), hairD = sh(hair, -0.9), hairH = mx(hair, '#ffffff', 0.55);
-  const skin = '#ffd9bc', skinD = '#efae8e', skinL = '#fff0e2';
-  const cloth = color, clothD = sh(color, -0.9), clothL = mx(color, '#ffffff', 0.35);
-  const cx = 28, hy = 27;
-  const ell = (x0, y0, rx, ry, c, f) => { for (let j = Math.floor(-ry); j <= ry; j++) for (let i = Math.floor(-rx); i <= rx; i++) if ((i * i) / (rx * rx) + (j * j) / (ry * ry) <= 1 && (!f || f(x0 + i, y0 + j))) S.px(x0 + i, y0 + j, c); };
-  // back hair
-  if (girl) { ell(cx, hy + 1, 17, 16, hair); for (let y = hy; y < 52; y++) { const sw = 4 + Math.round((y - hy) * 0.08); for (let i = 0; i < sw; i++) { S.px(cx - 17 + i + (y > 44 ? 1 : 0), y, i < 2 ? hairD : hair); S.px(cx + 17 - i - (y > 44 ? 1 : 0), y, i < 2 ? hairD : hair); } } }
-  else ell(cx, hy - 1, 15, 14, hair);
-  // body / shoulders
-  for (let y = 44; y < 60; y++) { const hw = Math.min(26, 9 + Math.round((y - 44) * 1.25)); for (let i = -hw; i <= hw; i++) S.px(cx + i, y, y === 44 + 0 ? clothL : i > hw - 4 ? clothD : i < -hw + 3 ? clothL : cloth); }
-  // collar
-  for (let y = 44; y < 50; y++) { const hw = 50 - y; for (let i = -hw; i <= hw; i++) if (Math.abs(i) < 6) S.px(cx + i, y, y < 46 ? '#f4eeff' : mx('#f4eeff', cloth, 0.2)); }
-  for (let y = 44; y < 52; y++) { const hw = Math.max(0, 5 - (y - 44)); for (let i = -hw; i <= hw; i++) S.px(cx + i, y, skinD); }
-  if (girl) { // ribbon
-    for (const [dx, dy, c] of [[-3, 0, '#ff5a7a'], [-2, -1, '#ff5a7a'], [-2, 1, '#ff5a7a'], [-1, 0, '#d03a5a'], [0, 0, '#ffd0e0'], [1, 0, '#d03a5a'], [2, -1, '#ff5a7a'], [2, 1, '#ff5a7a'], [3, 0, '#ff5a7a'], [-1, 2, '#d03a5a'], [1, 2, '#d03a5a']]) S.px(cx + dx, 49 + dy, c);
-  } else { S.vline(cx - 7, 50, 59, '#f4eeff'); S.vline(cx + 7, 50, 59, '#f4eeff'); S.px(cx - 7, 56, '#c8c0e0'); S.px(cx + 7, 56, '#c8c0e0'); }
-  // neck + head
-  S.rect(cx - 3, hy + 9, 7, 7, skinD);
-  ell(cx, hy, 12, 11.5, skin);
-  ell(cx + 3, hy + 3, 9, 8, skinD, (x, y) => (x - cx) + (y - hy) * 0.6 > 8);
-  ell(cx - 4, hy - 4, 5, 4, skinL);
-  S.px(cx - 12, hy + 1, skinD); S.px(cx - 13, hy + 1, skin); S.px(cx + 12, hy + 1, skinD); S.px(cx + 13, hy + 1, skinD);
-  // eyes (tall anime eyes with a highlight), blush, mouth
-  const iris = girl ? '#7a4ad8' : '#2c8aa8';
-  for (const ex of [cx - 6, cx + 4]) {
-    S.rect(ex, hy - 1, 3, 6, '#1c1230');
-    S.rect(ex, hy + 2, 3, 3, iris); S.px(ex + 1, hy + 4, mx(iris, '#ffffff', 0.4));
-    S.px(ex, hy, '#ffffff'); S.px(ex + 1, hy, '#ffffff'); S.px(ex, hy + 1, '#ffffff');
-    if (girl) { S.px(ex - 1, hy - 1, '#1c1230'); S.px(ex + 3, hy - 1, '#1c1230'); S.px(ex + (ex < cx ? -1 : 3), hy - 2, '#1c1230'); }
-  }
-  S.hline(cx - 8, cx - 6, hy + 6, '#ff9aaa'); S.hline(cx + 5, cx + 7, hy + 6, '#ff9aaa');
-  S.px(cx - 1, hy + 7, '#8a3a4a'); S.px(cx, hy + 8, '#8a3a4a'); S.px(cx + 1, hy + 7, '#8a3a4a');
-  // front hair: cap + bangs
-  ell(cx, hy - 6, 14, 8, hair, (x, y) => y <= hy - 4);
-  for (let x = cx - 12; x <= cx + 12; x++) {
-    const p = ((x - cx + 40) * 5) % 7, len = girl ? (x < cx - 2 ? 6 + (p % 3) : 3 + (p % 3)) : 3 + (p % 4);
-    for (let j = 0; j < len; j++) if (Math.abs(x - cx) < 12 - j * 0.2) S.px(x, hy - 5 + j, j === len - 1 ? hairD : hair);
-  }
-  if (girl) { for (let j = 0; j < 14; j++) { S.px(cx - 12, hy - 4 + j, hairD); S.px(cx - 13, hy - 3 + j, hair); S.px(cx + 12, hy - 4 + j, hairD); S.px(cx + 13, hy - 3 + j, hair); } }
-  else for (const [sx, sy, dx] of [[cx - 12, hy - 10, -1], [cx - 7, hy - 15, -1], [cx, hy - 17, 0], [cx + 7, hy - 15, 1], [cx + 12, hy - 10, 1]]) for (let j = 0; j < 5; j++) for (let i = -2 + Math.floor(j / 2); i <= 2 - Math.floor(j / 2); i++) S.px(sx + i + dx * (4 - j), sy - j + 4, j > 3 ? hairL : hair);
-  // anime hair shine arc
-  for (let i = -8; i <= 8; i++) { const yy = hy - 9 - Math.round(Math.sqrt(Math.max(0, 64 - i * i)) * 0.35); if ((i + 20) % 5 < 3) S.px(cx + i, yy, hairH); S.px(cx + i, yy + 1, hairL); }
-  // girl: hair clip (star) + a playful ahoge strand
-  if (girl) { for (const [dx, dy] of [[0, -1], [-1, 0], [0, 0], [1, 0], [0, 1]]) S.px(cx + 8 + dx, hy - 7 + dy, '#ffd75a'); S.px(cx + 8, hy - 7, '#ffffff'); }
-  for (let j = 0; j < 5; j++) S.px(cx + 1 + (j > 2 ? j - 2 : 0), hy - 14 - j, hair);
-  S.outline(T.ink);
+// a big icon rendered as a smooth sticker: Scale2x-upscaled (×2 or ×4), then 1px ink, white rim and ink rings
+const emblemCache = new Map();
+export function emblemSurf(name, scale = 4, tint = null) {
+  const key = name + scale + tint;
+  let S = emblemCache.get(key);
+  if (S) return S;
+  const base = new Surf(14, 14);
+  drawBig(base, name, 1, 1, tint, { outline: false, shadow: false });
+  let up = base; for (let k = 2; k <= scale; k *= 2) up = scale2x(up);
+  S = new Surf(up.w + 6, up.h + 6); S.blit(up, 3, 3);
+  S.outline(T.ink); S.outline('#ffffff'); S.outline(T.ink);
+  emblemCache.set(key, S);
   return S;
 }
-void easeOut; void easeOutBack;
+export function drawEmblem(ui, name, cx, cy, scale = 4, tint = null) {
+  const S = emblemSurf(name, scale, tint);
+  // drop shadow
+  for (let j = 0; j < S.h; j++) for (let i = 0; i < S.w; i++) if (S.data[j * S.w + i] >>> 24) { const X = cx - (S.w >> 1) + i + 1, Y = cy - (S.h >> 1) + j + 2; if (X >= 0 && Y >= 0 && X < ui.s.w && Y < ui.s.h && !(S.data[Math.min(S.h - 1, j + 2) * S.w + Math.min(S.w - 1, i + 1)] >>> 24)) ui.s.blend(X, Y, '#05030a', 0.45); }
+  ui.s.blit(S, cx - (S.w >> 1), cy - (S.h >> 1));
+}
+// Scale2x / EPX: doubles pixel art while keeping diagonals crisp
+function scale2x(A) {
+  const B = new Surf(A.w * 2, A.h * 2), w = A.w, h = A.h, d = A.data, o = B.data;
+  const at = (x, y) => d[Math.max(0, Math.min(h - 1, y)) * w + Math.max(0, Math.min(w - 1, x))];
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const P0 = d[y * w + x], a = at(x, y - 1), b = at(x + 1, y), c = at(x - 1, y), e = at(x, y + 1);
+    const i = y * 2 * B.w + x * 2;
+    o[i] = c === a && c !== e && a !== b ? a : P0;
+    o[i + 1] = a === b && a !== c && b !== e ? b : P0;
+    o[i + B.w] = e === c && e !== b && c !== a ? c : P0;
+    o[i + B.w + 1] = b === e && b !== a && e !== c ? e : P0;
+  }
+  return B;
+}

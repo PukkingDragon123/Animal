@@ -22,7 +22,7 @@ const screen = q.get('screen') || 'gallery';
 const W = +(q.get('w') || 480), H = +(q.get('h') || 270), Z = +(q.get('zoom') || 3);
 const cv = document.getElementById('cv'); cv.width = W; cv.height = H; cv.style.width = W * Z + 'px'; cv.style.height = H * Z + 'px';
 const ctx = cv.getContext('2d');
-document.getElementById('nav').innerHTML = ['gallery', 'icons', 'hud', 'dialog', 'name', 'cards', 'menu'].map((s) => `<a href="?screen=${s}&w=${W}&h=${H}&zoom=${Z}">${s}</a>`).join('');
+document.getElementById('nav').innerHTML = ['gallery', 'icons', 'hud', 'dialog', 'dialog2', 'name', 'cards', 'cards3', 'menu'].map((s) => `<a href="?screen=${s}&w=${W}&h=${H}&zoom=${Z}">${s}</a>`).join('');
 const ui = new PixelUI(W, H);
 
 // ---------------------------------------------------------------- a fake "world" behind the UI (night street)
@@ -58,15 +58,8 @@ function drawSampleMap(ui, x, y, w, h) {
   for (let t = -2; t <= 3; t++) s.px(ax, ay - t, t > 1 ? '#ffffff' : '#e8473a');
   s.px(ax - 1, ay - 1, '#e8473a'); s.px(ax + 1, ay - 1, '#e8473a');
 }
-const portrait = (ui, x, y, size) => {
-  // a little placeholder face for the portrait slot
-  const s = ui.s, cx = x + (size >> 1), cy = y + Math.round(size * 0.55), r = Math.round(size * 0.3);
-  s.ellipse(cx, cy + r + 6, r * 1.5, r * 0.9, '#3a8ae0');
-  s.ellipse(cx, cy, r, r, '#ffd9bc');
-  s.ellipse(cx, cy - r * 0.45, r * 1.08, r * 0.7, '#47387a');
-  s.rect(cx - 6, cy, 3, 4, '#1c1230'); s.rect(cx + 3, cy, 3, 4, '#1c1230'); s.px(cx - 6, cy, '#ffffff'); s.px(cx + 3, cy, '#ffffff');
-  s.rect(cx - 1, cy + 6, 3, 1, '#8a3a4a');
-};
+// stand-in for the portrait slot (the game passes a 3D render canvas): a Tokonmon-style creature emblem, no human art
+const portrait = (ui, x, y, size) => ui.emblem('party', x + (size >> 1), y + (size >> 1) + 1, size >= 64 ? 4 : 2);
 
 // ---------------------------------------------------------------- fake app for the HUD
 function fakeApp() {
@@ -138,7 +131,7 @@ function gallery() {
   ui.hudClock(108, 212, { day: 4, time: 22.2, weather: 'storm' });
   ui.hudMoney(108, 244, frameN < 30 ? 1200 : 1500);
   ui.hudLocation(198, 186, 'Chinatown', 'San Francisco');
-  ui.partyBar(198, 216, party.slice(0, 3), { maxW: 230 });
+  ui.partyBar(198, 216, party, { maxW: 200, full: 2 });
   ui.minimap(404, 186, 70, 64, drawSampleMap, { label: 'Grant Ave' });
   ui.objective(198, 250, 'Find Grandma at the bakery', { maxW: 200 });
 }
@@ -152,12 +145,13 @@ function iconsSheet() {
 let frameN = 0;
 async function setup() {
   if (screen === 'name') ui.nameEntry({ title: "What's your name?", value: 'Ren', max: 10 }).then((v) => ui.toast('Hello, ' + v + '!', { icon: 'heart' }));
-  if (screen === 'cards') ui.pickCards({ title: 'Are you a boy or a girl?', cards: [{ label: 'Boy', sub: 'He / him', color: '#3a7ae0', art: 'boy' }, { label: 'Girl', sub: 'She / her', color: '#e05a8a', art: 'girl' }] }).then((i) => ui.toast('Picked ' + i, { icon: 'check' }));
+  if (screen === 'cards') ui.pickCards({ title: 'Are you a boy or a girl?', cards: [{ label: 'Boy', sub: 'He / him', color: '#3a7ae0', icon: 'star' }, { label: 'Girl', sub: 'She / her', color: '#e05a8a', icon: 'heart' }] }).then((i) => ui.toast('Picked ' + i, { icon: 'check' }));
   if (screen === 'cards3') ui.pickCards({ title: 'Choose your partner', cards: [{ label: 'Kindoru', sub: 'Pyro dragon', color: '#ff6a2b', icon: 'flame' }, { label: 'Takopo', sub: 'Hydro octopus', color: '#2fa8ff', icon: 'drop' }, { label: 'Mochika', sub: 'Bio fawn', color: '#5fd35a', icon: 'leaf' }] });
-  if (screen === 'hud' || screen === 'menu' || screen === 'dialog') { app = fakeApp(); hud = new Hud(app); }
+  if (screen === 'hud' || screen === 'menu' || screen === 'dialog' || screen === 'dialog2') { app = fakeApp(); hud = new Hud(app); }
   if (screen === 'menu') hud.openMenu(q.get('tab') || 'party');
   if (screen === 'dialog') ui.say('Mika', "Ren! You're finally up. Grandma says the cable car is running again — want to ride it down to the bay with me?", { portrait, choices: ['Sure, let\'s go!', 'Maybe later', 'Who are you again?'] });
-  if (screen === 'gallery') { ui.toast('Saved the game', { icon: 'check', color: T.green, dur: 99 }); ui.toast('Kindoru grew to Lv 8!', { icon: 'star', color: T.amber, dur: 99 }); }
+  if (screen === 'dialog2') ui.say('Grandma', 'The tram bell rings twice at noon. When it does, follow it down the hill and you will find the bakery.', {});
+  if (screen === 'hud') { ui.toast('Saved the game', { icon: 'check', color: T.green, dur: 99 }); ui.toast('McCarapace grew to Lv 8!', { icon: 'star', color: T.amber, dur: 99 }); ui.toast('Got Takoyaki ×6', { dur: 99 }); hud.showLocation('Grant Avenue', 'Chinatown'); }
 }
 function frame(dt) {
   frameN++;
@@ -182,7 +176,9 @@ addEventListener('keydown', (e) => { const k = e.key.length === 1 ? e.key.toLowe
 
 await setup();
 const N = +(q.get('frames') || 100);
+const t0 = performance.now();
 for (let i = 0; i < N; i++) frame(1 / 60);
+console.log('ui frame ms', ((performance.now() - t0) / N).toFixed(3), screen);
 if (screen === 'dialog' && q.get('choices') === '0') {}
 present();
 document.title = 'ready';

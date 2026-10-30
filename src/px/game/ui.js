@@ -14,7 +14,7 @@ import { drawSmall, drawBig, ICON_NAMES } from './uikit/icons.js';
 import { frame, dropShadow, gradFill, tri, gem, sparkle, ball } from './uikit/frame.js';
 import { drawDialog } from './uikit/dialog.js';
 import * as W from './uikit/widgets.js';
-import { nameEntryScreen, pickCardsScreen } from './uikit/screens.js';
+import { nameEntryScreen, pickCardsScreen, drawEmblem } from './uikit/screens.js';
 
 export { T, ICON_NAMES };
 
@@ -315,7 +315,7 @@ export class PixelUI {
   }
   // ------------------------------------------------------------------ dialogue
   // say(name, text, o) → Promise that resolves when the player advances; o.choices → resolves to an index.
-  // o: portrait (canvas | ImageData | Surf | (ui, x, y, size) => void), nameColor/color, speed, choices
+  // o: portrait (canvas | ImageData | Surf | (ui, x, y, size) => void — e.g. a 3D render; none → no slot), nameColor/color, speed, choices
   say(name, str, o = {}) {
     return new Promise((resolve) => { this.dialog = { name, str: String(str), shown: 0, t: 0, resolve, o, choices: o.choices || null, pick: 0, done: false }; });
   }
@@ -363,9 +363,12 @@ export class PixelUI {
   cursor(x, y, dir = 'right', c = T.amber) { tri(this.s, Math.round(x), Math.round(y), dir, 3, c); }
   gem(x, y, c = T.cyan, r = 3) { gem(this.s, Math.round(x), Math.round(y), c, r); }
   sparkle(x, y, c = T.amberL, k = 1) { sparkle(this.s, x, y, c, k); }
+  // big smooth 'sticker' version of an icon (Scale2x ×2 or ×4, ink + white rims), centred on (cx, cy)
+  emblem(name, cx, cy, scale = 4, tint = null) { drawEmblem(this, name, Math.round(cx), Math.round(cy), scale, tint); }
   // ------------------------------------------------------------------ full-screen modal screens (see uikit/screens.js)
   // nameEntry({ title, value, max, sub, portrait }) → Promise<string>
   nameEntry(o = {}) { return new Promise((resolve) => this.openModal(nameEntryScreen(this, o, resolve))); }
-  // pickCards({ title, sub, cards: [{ label, sub, color, icon, art: 'boy'|'girl', draw(ui, x, y, w, h) }], pick }) → Promise<index>
+  // pickCards({ title, sub, cards: [{ label, sub, color, icon, art, draw(ui, x, y, w, h) }], pick, confirm }) → Promise<index>
+  // default art (no draw): a medallion with the card's icon as a big emblem (art 'boy' → star, 'girl' → heart), else its initial
   pickCards(o = {}) { return new Promise((resolve) => this.openModal(pickCardsScreen(this, o, resolve))); }
 }

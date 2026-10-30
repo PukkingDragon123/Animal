@@ -68,8 +68,6 @@ export const SMALL = {
   fog: b('0000000', '1111110', '0000000', '0111111', '0000000', '1111110', '0000000'),
   pin: b('0011100', '0111110', '0110110', '0111110', '0011100', '0001000', '0001000'),
   dpad: b('0011100', '0011100', '1111111', '1110111', '1111111', '0011100', '0011100'),
-  boy: b('0111110', '1111111', '1011101', '1000001', '1010101', '1000001', '0111110'),
-  girl: b('0111110', '1111111', '1100011', '1010101', '1000001', '1100011', '1011101'),
   back: b('0001000', '0011000', '0111111', '1111111', '0111111', '0011000', '0001000'),
   bell: b('0001000', '0011100', '0111110', '0111110', '0111110', '1111111', '0001000'),
 };
@@ -128,8 +126,6 @@ export const BIG = {
   pin: { c: '#ff6a5a', m: ['..bbb..', '.bbbbb.', 'bbbwbbb', 'bbwwwbb', 'bbbwbbb', '.bbbbb.', '..bbb..', '...b...'] },
   dpad: { c: '#d6cfee', m: ['...bbb...', '...bwb...', '...bbb...', 'bbbbbbbbb', 'bwbbBbbwb', 'bbbbbbbbb', '...bbb...', '...bwb...', '...bbb...'] },
   bell: { c: '#ffcf5a', m: ['....b....', '...bbb...', '..bwbbb..', '..bbbbb..', '.bbbbbbb.', '.bbbbbbb.', 'bbbbbbbbb', '....B....'] },
-  boy: { c: '#4a3a6a', m: ['..bbbbbb..', '.bbbbbbbbb', 'bbbbbbbbbb', 'bbssbbsbbb', 'bssssssssb', 'bsosssosb.', '.sossosss.', '.sspsspss.', '..ssssss..', '...ffff...'] },
-  girl: { c: '#c8506a', m: ['..bbbbbb..', '.bbbbbbbb.', 'bbbbbbbbbb', 'bbssbbssbb', 'bssssssssb', 'bsossossbb', 'bsossossbb', 'bspssspsbb', 'b.ssssss.b', '...ffff...'] },
 };
 BIG.down = { c: BIG.up.c, m: BIG.up.m.slice().reverse() };
 BIG.left = { c: BIG.up.c, m: transpose(BIG.up.m) };

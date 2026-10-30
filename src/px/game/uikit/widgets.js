@@ -224,12 +224,12 @@ export function iconButton(ui, x, y, size, icon, o = {}) {
 }
 
 // ------------------------------------------------------------------ party bar: mini cards with HP bars
-// party: [{ name, hp, maxHp, color, level, fainted? }]; o: { maxW, id }
+// party: [{ name, hp, maxHp, color, level, fainted? }]; o: { maxW, full (max full-size cards), cardW, id }
 export function partyBar(ui, x, y, party = [], o = {}) {
   x = Math.round(x); y = Math.round(y);
   const s = ui.s, n = party.length, cw = o.cardW || 72, ch = 28, gap = 3, cmp = 22, maxW = o.maxW || ui.w - x - 4;
   if (!n) return { w: 0, h: 0 };
-  let full = n; while (full > 0 && full * (cw + gap) + (n - full) * (cmp + gap) - gap > maxW) full--;
+  let full = Math.min(n, o.full ?? n); while (full > 0 && full * (cw + gap) + (n - full) * (cmp + gap) - gap > maxW) full--;
   let cx = x;
   for (let i = 0; i < n; i++) {
     const m = party[i], col = m.color || T.cyan, hpv = m.maxHp ? clamp01(m.hp / m.maxHp) : clamp01(m.hp ?? 1), dead = m.fainted || hpv <= 0;
