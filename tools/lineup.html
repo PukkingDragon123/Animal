@@ -12,7 +12,7 @@ import { Model } from '../src/vx/model.js';
 import { Animator } from '../src/vx/anim.js';
 import { FX } from '../src/vx/fx.js';
 import { HD2D } from '../src/px/hd2d.js';
-import { castChibi } from '../src/vx/people/chibi/index.js';
+import { castHuman } from '../src/vx/people/human.js';
 const q = new URLSearchParams(location.search), num = (k, d) => (q.has(k) ? +q.get(k) : d);
 const W = num('w', 1600), H = num('h', 720);
 const defs = [];
@@ -24,7 +24,7 @@ const fw = new Fine(160, 8, 96, 16), k = new Kit(fw);
 k.box(0, 0, 0, 159, 3, 95, 'sidewalk', 'patch', { sc: 6 });
 st.setSize(W, H); if (q.get('ink') !== '0') st.setStyle({ ink: true, toon: q.get('toon') !== '0', inkCrease: 0.03 }); st.setWorld(fw); st.setMood(q.get('mood') || 'golden');
 const gap = num('gap', 1.15), x0 = 5 - ((defs.length - 1) * gap) / 2, fx = new FX(st), ans = [];
-defs.forEach((d, i) => { const m = d.tp ? castChibi(d.tp) : new Model(d); if (q.get('rot')) m.group.rotation.y = +q.get('rot') * Math.PI / 180; m.group.position.set(x0 + i * gap, 0.25, 3); m.x0 = x0 + i * gap; st.scene.add(m.group); if (m.drip) m.drip(+(q.get('drip') || 1)); const a = m.animator ? m.animator() : new Animator(m); if (q.get('clip')) a.play(q.get('clip'), { fade: 0 }); ans.push(a); });
+defs.forEach((d, i) => { const m = d.tp ? castHuman(d.tp, { lazy: false }) : new Model(d); if (q.get('rot')) m.group.rotation.y = +q.get('rot') * Math.PI / 180; m.group.position.set(x0 + i * gap, 0.25, 3); m.x0 = x0 + i * gap; st.scene.add(m.group); if (m.drip) m.drip(+(q.get('drip') || 1)); const a = m.animator ? m.animator() : new Animator(m); if (q.get('clip')) a.play(q.get('clip'), { fade: 0 }); ans.push(a); });
 st.look([5, 0.25 + num('ty', 0.7), 3], num('dist', 7), num('yaw', 0), num('pitch', 8));
 const DT = 1 / 60; for (let i = 0; i < Math.round(num('t', 1) / DT); i++) { const mv = num('move', 0); if (mv) for (const a of ans) { const g = a.p ? a.p.group : null; if (g) { g.position.z += Math.cos(g.rotation.y) * mv * DT; g.position.x += Math.sin(g.rotation.y) * mv * DT; g.updateMatrixWorld(); } }
   for (const a of ans) a.update(DT, { fx, look: q.get('look') ? st.cam.position : null }); fx.update(DT); st.time += DT; }

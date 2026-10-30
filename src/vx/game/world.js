@@ -12,7 +12,7 @@ import { T } from '../../px/game/ui.js';
 import { NavGrid, pick } from './nav.js';
 import { Fine } from '../fine.js';
 import { CityControl } from '../city/control.js';
-import { castChibi } from '../people/chibi/index.js';
+import { castHuman } from '../people/human.js';
 
 const MON_DEFS = {};
 // a species' model; variants like 'barkorious_forced' fall back to their base model, unknown ones to Chilichick
@@ -206,7 +206,7 @@ export class VxWorld {
     return a;
   }
   addPerson(id, who, at, o = {}) {
-    const m = castChibi(who), a = new Actor(this, id, m, 'person');   // the blocky chibi people
+    const m = castHuman(who), a = new Actor(this, id, m, 'person');   // Gacha Garage's realistic low-poly people
     this.st.actors.add(m.group); this.actors.set(id, a);
     const [x, z, yaw, y] = typeof at === 'string' ? this.spot(at) : at; a.place(x, z, o.yaw ?? yaw ?? 0, o.y ?? y);
     if (o.clip) a.play(o.clip, { fade: 0 });
