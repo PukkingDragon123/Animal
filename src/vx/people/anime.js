@@ -9,6 +9,7 @@
 // shared acting clips drive it through the Animator.
 import * as THREE from '../../../vendor/three.module.js';
 import { acting } from './person.js';
+import { ANIMALS, buildFolk, buildTail, animalEyeImage, paintMuzzle, furTexture } from './folk.js';
 
 const U = 1 / 16, TAU = Math.PI * 2;
 const cl = (x, a = 0, b = 1) => (x < a ? a : x > b ? b : x);
@@ -41,13 +42,17 @@ function speckle(g, W, H, seed, n = 300, a = 0.05) { const r = rnd(seed); for (l
 function fold(g, x0, y0, x1, y1, cx, cy, w, c, a = 0.35) { g.strokeStyle = rgba(c, a); g.lineWidth = w; g.lineCap = 'round'; g.beginPath(); g.moveTo(x0, y0); g.quadraticCurveTo(cx, cy, x1, y1); g.stroke(); }
 
 // ---------------------------------------------------------------- geometry
+// chibi people are blocky: cross-sections become rounded squares (superellipse) while BOX is on
+let BOX = 0;
+const sq = (a) => (BOX ? 1 / Math.pow(Math.pow(Math.abs(Math.cos(a)), 40) + Math.pow(Math.abs(Math.sin(a)), 40), 1 / 40) : 1);
 // a tube through rings (horizontal ellipses unless axis 'z': then rings stand in the xy plane, a = 0 on top).
 // ring: { c: [x, y, z], rx, rz, v, f?(a) → radius multiplier }. uv.u wraps (0.5 = front / top, seam at the back / bottom).
 function tube(rings, n, o = {}) {
+  if (BOX) { const mx = rings.reduce((a, R) => a + R.rx, 0) / rings.length, mz = rings.reduce((a, R) => a + R.rz, 0) / rings.length; rings = rings.map((R) => ({ ...R, rx: mx, rz: mz, f: null })); n = Math.max(n, 16); }   // blocky: straight boxes
   const P = [], UV = [], I = [], W = n + 1;
   rings.forEach((R, j) => {
     for (let i = 0; i <= n; i++) {
-      const u = i / n, a = (u - 0.5) * TAU, k = R.f ? R.f(a) : 1, s = Math.sin(a) * R.rx * k, c = Math.cos(a) * R.rz * k;
+      const u = i / n, a = (u - 0.5) * TAU, k = (R.f ? R.f(a) : 1) * sq(a), s = Math.sin(a) * R.rx * k, c = Math.cos(a) * R.rz * k;
       if (o.axis === 'z') P.push(R.c[0] + s, R.c[1] + c, R.c[2]); else P.push(R.c[0] + s, R.c[1], R.c[2] + c);
       UV.push(u, R.v ?? j / (rings.length - 1));
     }
@@ -114,8 +119,19 @@ const BUILDS = {
   big:   { H: 1.84, w: 1.34, head: 1.03, leg: 0.45, belly: 0.07 },
   old:   { H: 1.64, w: 1.0, head: 1.0, leg: 0.465, stoop: 9 },
 };
+// chibi: a big blocky head on a short, sturdy body (the default style; o.style 'tall' keeps the anime builds)
+const CHIBI = {
+  kid:   { H: 0.95, w: 1.0, head: 2.05, leg: 0.27, shoe: 1.35 },
+  teen:  { H: 1.12, w: 1.04, head: 1.94, leg: 0.3, shoe: 1.3 },
+  adult: { H: 1.2, w: 1.08, head: 1.86, leg: 0.31, shoe: 1.25 },
+  tall:  { H: 1.28, w: 1.06, head: 1.8, leg: 0.33, shoe: 1.25 },
+  big:   { H: 1.22, w: 1.42, head: 1.86, leg: 0.29, shoe: 1.3, belly: 0.08 },
+  old:   { H: 1.1, w: 1.08, head: 1.9, leg: 0.29, shoe: 1.2, stoop: 8 },
+};
 // the head at scale 1 (0.238 m chin → crown): [y above the chin, rx, rz, z offset]
-const HEAD = [[0, 0.012, 0.013, 0.056], [0.02, 0.046, 0.05, 0.038], [0.047, 0.077, 0.078, 0.017], [0.077, 0.092, 0.092, 0.006], [0.11, 0.099, 0.1, 0], [0.15, 0.102, 0.104, -0.004], [0.19, 0.095, 0.1, -0.008], [0.222, 0.068, 0.077, -0.01], [0.238, 0.018, 0.022, -0.01]];
+const HEAD_CHIBI = [[0, 0.1, 0.1, 0], [0.06, 0.1, 0.1, 0], [0.12, 0.1, 0.1, 0], [0.18, 0.1, 0.1, 0], [0.238, 0.1, 0.1, 0]];   // a cube
+let HEAD;
+const HEAD_ANIME = [[0, 0.012, 0.013, 0.056], [0.02, 0.046, 0.05, 0.038], [0.047, 0.077, 0.078, 0.017], [0.077, 0.092, 0.092, 0.006], [0.11, 0.099, 0.1, 0], [0.15, 0.102, 0.104, -0.004], [0.19, 0.095, 0.1, -0.008], [0.222, 0.068, 0.077, -0.01], [0.238, 0.018, 0.022, -0.01]];
 function headAt(y) {           // interpolated head section at height y (scale 1)
   if (y <= 0) return HEAD[0]; for (let i = 1; i < HEAD.length; i++) if (y <= HEAD[i][0]) { const a = HEAD[i - 1], b = HEAD[i], t = (y - a[0]) / (b[0] - a[0]); return [y, lerp(a[1], b[1], t), lerp(a[2], b[2], t), lerp(a[3], b[3], t)]; }
   return HEAD[HEAD.length - 1];
@@ -125,15 +141,17 @@ function headAt(y) {           // interpolated head section at height y (scale 1
 export class AnimePerson {
   constructor(o) {
     this.o = o;
-    const B = { ...BUILDS[o.build || 'teen'], ...(o.dims || {}) }, H = B.H, k = H / 1.7, w = B.w;
+    const chibi = o.style !== 'tall'; BOX = chibi ? 1 : 0; HEAD = chibi ? HEAD_CHIBI : HEAD_ANIME;
+    const B = { ...(chibi ? CHIBI : BUILDS)[o.build || 'teen'], ...(o.dims || {}) }, H = B.H, k = H / 1.7, w = B.w;
     const fem = o.fem ?? !!(o.eyes && o.eyes.lashes);
-    const skin = o.skin || '#f0c8a8', top = { kind: 'tee', color: '#3a6ab0', ...(o.top || {}) }, bot = { kind: 'jeans', color: '#34406a', ...(o.bottom || {}) };
+    const A = this.A = o.animal ? { kind: o.animal.kind || o.animal, ...ANIMALS[o.animal.kind || o.animal], ...(typeof o.animal === 'object' ? o.animal : {}) } : null;
+    const skin = A ? A.fur : o.skin || '#f0c8a8', top = { kind: 'tee', color: '#3a6ab0', ...(o.top || {}) }, bot = { kind: 'jeans', color: '#34406a', ...(o.bottom || {}) };
     const shoe = { kind: 'sneakers', color: '#f2f0ea', ...(o.shoes || {}) }, hair = { style: 'short', color: '#2a1c16', ...(o.hair || {}) }, acc = new Set(o.acc || []);
     const hs = 1.12 * B.head * Math.sqrt(k);                             // head scale (1 = 0.238 m chin → crown)
-    const crown = H, chin = H - 0.238 * hs, shTop = chin - 0.056 * k, armY = shTop - 0.032 * k, hipJ = B.leg * H;
+    const crown = H, chin = H - 0.238 * hs, shTop = chin - (chibi ? 0.03 : 0.056) * k, armY = shTop - 0.032 * k, hipJ = B.leg * H;
     const waist = lerp(hipJ, shTop, 0.36), chest = lerp(hipJ, shTop, 0.72), crotch = hipJ - 0.05 * k, knee = hipJ * 0.53, ankle = 0.095 * k;
     const fw = fem ? 0.9 : 1, hw = fem ? 1.07 : 1;
-    const D = { H, k, w, hs, crown, chin, shTop, armY, hipJ, waist, chest, crotch, knee, ankle, fem };
+    const D = { H, k, w, hs, crown, chin, shTop, armY, hipJ, waist, chest, crotch, knee, ankle, fem, shoe: B.shoe };
     this.dims = { yHip: hipJ, yNeck: chin - 0.03 * k, Hc: chin + 0.12 * hs, B };
     this.group = new THREE.Group(); this.bones = {}; this.rest = {}; this.order = []; this.pivots = {}; this.parts = {}; this.scale = 1; this.pivotsM = {};
     const bone = (name, parent, piv, rot) => {
@@ -161,13 +179,13 @@ export class AnimePerson {
         { c: [x + out * 0.4, lerp(knee, hipJ, 0.45), 0.004], rx: r(0.056), rz: r(0.06), v: vOf(lerp(knee, hipJ, 0.45)) },
         { c: [x, hipJ - 0.02, 0.0], rx: r(0.066) * hw, rz: r(0.07), v: vOf(hipJ - 0.02) },
         { c: [x * 0.8, hipJ + 0.03, 0], rx: r(0.06) * hw, rz: r(0.064), v: vOf(hipJ + 0.03) },
-      ], 7, { cap1: true });
+      ], 8, { cap1: true });
       attach('leg' + nm, mesh(thigh, mat(legTex)));
       const shin = tube([
         { c: [x + out, ankle - 0.01, 0.0], rx: r(0.028), rz: r(0.03), v: vOf(ankle - 0.01) },
         { c: [x + out, lerp(ankle, knee, 0.55), -0.006], rx: r(0.045), rz: r(0.052), v: vOf(lerp(ankle, knee, 0.55)) },
         { c: [x + out * 0.6, knee + 0.012, 0.004], rx: r(0.044), rz: r(0.048), v: vOf(knee + 0.012) },
-      ], 7, { cap0: true });
+      ], 8, { cap0: true });
       attach('shin' + nm, mesh(shin, mat(legTex)));
       attach('shin' + nm, this.shoe(shoe, x + out, ankle, D, s));
     }
@@ -225,7 +243,7 @@ export class AnimePerson {
         { c: [lerp(x0, ex, 0.5), lerp(armY, eY, 0.5), 0], rx: ar(0.042, lerp(armY, eY, 0.5)), rz: ar(0.042, lerp(armY, eY, 0.5)), v: vA(lerp(armY, eY, 0.5)) },
         { c: [x0, armY - 0.02, 0], rx: ar(0.05, armY), rz: ar(0.05, armY), v: vA(armY - 0.02) },
         { c: [x0 - s * 0.01, armY + 0.035, 0], rx: 0.035 * w, rz: 0.04 * w, v: vA(armY + 0.035) },
-      ], 7, { cap1: true });
+      ], 8, { cap1: true });
       attach('arm' + nm, mesh(upper, mat(aTex)));
       const cuffY = baggy > 1.2 ? wY - 0.045 * k : wY, foreR = [
         { c: [wx, cuffY, 0.004], rx: ar(baggy > 1.2 ? 0.043 : 0.026, wY), rz: ar(baggy > 1.2 ? 0.04 : 0.024, wY), v: vA(cuffY) },
@@ -245,15 +263,16 @@ export class AnimePerson {
     bone('head', 'torso', [0, chin - 0.03 * k, 0]);
     const HY = (t) => chin + t * hs, sc = (v) => v * hs;
     const headRings = HEAD.map(([y, rx, rz, z], i) => ({ c: [0, HY(y), sc(z)], rx: sc(rx) * (o.jawW && i < 3 ? o.jawW : 1), rz: sc(rz), v: y / 0.238 }));
-    attach('head', mesh(tube(headRings, 12, { cap1: true, cap0: true }), mat(this.headTexture(skin, hair, o, seed), { glow: 0.22 })));
+    attach('head', mesh(tube(headRings, chibi ? 16 : 12, { cap1: true, cap0: true }), mat(A ? furTexture(A, 128, 128, seed) : this.headTexture(skin, hair, o, seed), { glow: 0.22 })));
+    if (A) this.folk = buildFolk(A, (x, y, z) => [sc(x), HY(y), sc(z)], sc, attach);
     // the face layer: the front of the head, a hair's breadth out, with a planar (front-projected) uv
     const FX0 = -0.1, FX1 = 0.1, FY0 = -0.005, FY1 = 0.2;
     {
       const P = [], UV = [], I = [], cols = [];
-      for (let i = 0; i <= 12; i++) { const a = (i / 12 - 0.5) * TAU; if (Math.abs(a) <= TAU * 0.21) cols.push(a); }
+      const NS = chibi ? 16 : 12; for (let i = 0; i <= NS; i++) { const a = (i / NS - 0.5) * TAU; if (Math.abs(a) <= TAU * 0.21) cols.push(a); }
       const rows = HEAD.filter(([y]) => y <= 0.2);
       rows.push(headAt(0.2));
-      for (const [y, rx, rz, z] of rows) for (const a of cols) { const e = 0.0016; const px = Math.sin(a) * (rx + e), pz = Math.cos(a) * (rz + e) + z; P.push(sc(px), HY(y), sc(pz)); UV.push((px - FX0) / (FX1 - FX0), (y - FY0) / (FY1 - FY0)); }
+      for (const [y, rx, rz, z] of rows) for (const a of cols) { const e = 0.0016; const q = sq(a), px = Math.sin(a) * (rx + e) * q, pz = Math.cos(a) * (rz + e) * q + z; P.push(sc(px), HY(y), sc(pz)); UV.push((px - FX0) / (FX1 - FX0), (y - FY0) / (FY1 - FY0)); }
       const Wc = cols.length;
       for (let j = 0; j < rows.length - 1; j++) for (let i = 0; i < Wc - 1; i++) { const a = j * Wc + i, b = a + 1, c = a + Wc, d = c + 1; I.push(a, b, d, a, d, c); }
       const geo = finish(P, UV, I, null);
@@ -270,9 +289,11 @@ export class AnimePerson {
       for (let i = 0; i < 5; i++) { const t = i / 4 - 0.5, x = t * 0.1, z = headAt(0.02)[2] + 0.03 - Math.abs(t) * 0.05; bg.push(lock(F(x, 0.03, z), F(x * 0.7, -0.05 - (1 - Math.abs(t)) * 0.03, z + 0.01), F(x, -0.02, z + 0.02), sc(0.028), sc(0.012), { out: [0, 0, 1], segs: 3 })); }
       attach('head', mesh(mergeGeo(bg), mat(paintTex(16, 32, (g, W, Hh) => { g.fillStyle = vgrad(g, Hh, [[0, shade(bc, 0.2)], [1, lite(bc, 0.1)]]); g.fillRect(0, 0, W, Hh); g.fillStyle = rgba(shade(bc, 0.35), 0.6); for (const x of [4, 9, 13]) g.fillRect(x, 0, 1, Hh); }))));
     }
-    this.hairBuild(hair, D, attach, seed, acc);
+    // animal folk wear their fur: only punk tufts (mohawk, spikes) stay, in the hair colour
+    this.hairBuild(A ? { ...hair, style: hair.style === 'mohawk' ? 'mohawk' : hair.style === 'spiky' ? 'tuft' : 'bald' } : hair, D, attach, seed, acc);
     this.headgear(o, acc, D, attach);
-    this.def = { name: o.name, anim: acting({ ...o, sitDrop: (hipJ - 0.5 * k + 0.02) / U, tall: k }) };
+    if (A && A.tail) attach('hips', buildTail(A, null, [0, hipJ - 0.02 * k, -0.095 * w], Math.max(0.75, k * 1.15), lock, mesh, mat, paintTex));
+    this.def = { name: o.name, anim: acting({ ...o, sitDrop: (hipJ - 0.03) / U, tall: k }) };
   }
   dispose() {
     this.group.traverse((m) => { if (!m.isMesh) return; m.geometry.dispose(); const mt = m.material; if (mt.map) mt.map.dispose(); mt.dispose(); });
@@ -411,7 +432,7 @@ export class AnimePerson {
   }
   // a chunky shoe (sneaker / boot / dress shoe), lofted from heel to toe
   shoe(sh, x, ankle, D, s) {
-    const k = D.k, boot = sh.kind === 'boots', dress = sh.kind === 'dress', L = (dress ? 0.25 : 0.3) * k, z0 = -0.075 * k, w = (dress ? 0.045 : 0.058) * k, hh = (boot ? 0.14 : dress ? 0.065 : 0.1) * k;
+    const k = D.k * (D.shoe || 1), boot = sh.kind === 'boots', dress = sh.kind === 'dress', L = (dress ? 0.25 : 0.3) * k, z0 = -0.075 * k, w = (dress ? 0.045 : 0.058) * k, hh = (boot ? 0.14 : dress ? 0.065 : 0.1) * k;
     const prof = boot ? [[0, 0.7, 1], [0.12, 0.95, 1.02], [0.38, 1, 1], [0.62, 0.62, 1.04], [0.86, 0.48, 0.98], [1, 0.3, 0.7]] : dress ? [[0, 0.6, 0.9], [0.2, 0.95, 1], [0.5, 1, 1], [0.75, 0.55, 1], [0.92, 0.42, 0.9], [1, 0.25, 0.55]] : [[0, 0.62, 0.92], [0.12, 0.96, 1.02], [0.4, 1, 1.04], [0.64, 0.66, 1.06], [0.86, 0.52, 1.0], [1, 0.32, 0.7]];
     const rings = prof.map(([t, hk, wk]) => ({ c: [x, hh * hk * 0.5 - 0.005, z0 + t * L], rx: w * wk, rz: hh * hk * 0.5 + 0.005, v: t, f: (a) => 1 + 0.12 * Math.max(0, -Math.cos(a)) }));
     const sc = sh.color, sole = sh.sole || (boot || dress ? '#241e1c' : '#f6f4ee');
@@ -468,7 +489,8 @@ export class AnimePerson {
   }
   // ================================================================ hair
   hairBuild(hair, D, attach, seed, acc) {
-    const st = hair.style; if (st === 'bald') return;
+    let st = hair.style; if (st === 'bald') return;
+    const tuft = st === 'tuft'; if (tuft) st = 'spiky';
     const { chin, hs, k } = D, HY = (t) => chin + t * hs, S = (v) => v * hs, c = hair.color, r = rnd(seed + 11);
     const dk = hx(c).reduce((a, b) => a + b, 0) < 200, base = dk ? tone(c, 0.12) : c;
     const tex = paintTex(128, 128, (g, W, H) => {
@@ -488,12 +510,12 @@ export class AnimePerson {
     const thick = st === 'buzz' ? 0.003 : st === 'afro' ? 0.055 : st === 'slick' ? 0.012 : 0.02;
     const yFront = { short: 0.19, spiky: 0.185, long: 0.185, bob: 0.17, ponytail: 0.195, bun: 0.195, slick: 0.2, buzz: 0.2, afro: 0.18, mohawk: 1 }[st] ?? 0.19;
     const ySide = { long: 0.06, bob: 0.06, afro: 0.07 }[st] ?? 0.115, yBack = { long: 0.02, bob: 0.03, short: 0.05, spiky: 0.05 }[st] ?? 0.06;
-    if (st !== 'mohawk') {
+    if (st !== 'mohawk' && !tuft) {
       const shell = (u, v) => {
         const a = (u - 0.5) * TAU, ca = Math.cos(a), yb = ca > 0 ? lerp(ySide, yFront, Math.pow(ca, 1.5)) : lerp(ySide, yBack, Math.pow(-ca, 0.8));
         const y = lerp(yb, 0.238, Math.pow(v, 0.85)), [, rx, rz, z] = headAt(Math.min(0.237, y)), grow = 1.06 + thick / 0.09;
         const top = v > 0.999 ? 0 : 1;
-        return [S(Math.sin(a) * rx * grow * top), HY(y + (v > 0.97 ? thick * 0.6 : 0)), S(Math.cos(a) * rz * grow * top + z)];
+        const q = sq(a); return [S(Math.sin(a) * rx * grow * top * q), HY(y + (v > 0.97 ? thick * 0.6 : 0)), S(Math.cos(a) * rz * grow * top * q + z)];
       };
       const P = [], UV = [], I = [], nu = 16, nv = 7, Wn = nu + 1;
       for (let j = 0; j <= nv; j++) for (let i = 0; i <= nu; i++) { P.push(...shell(i / nu, j / nv)); UV.push(i / nu, j / nv); }
@@ -508,7 +530,7 @@ export class AnimePerson {
     const nape = (n, len, y0 = 0.1) => { for (let i = 0; i < n; i++) { const t = i / (n - 1) - 0.5, a = Math.PI + t * 1.8, x = Math.sin(a) * 0.085, z = Math.cos(a) * 0.09 - 0.01; L([x, y0 + 0.04, z * 0.9], [x * 1.15, y0 - len, z * 1.2], [x * 1.1, y0 - len * 0.3, z * 1.2], 0.03, 0.011, { out: [x, 0, z], segs: 3 }); } };
     if (st === 'short') { bangs(5, 0.075); sides(0.07); nape(4, 0.05); L([0.02, 0.235, 0.02], [0.05, 0.275, -0.03], [0.04, 0.27, 0.02], 0.025, 0.01, { out: [0, 1, 0] }); }
     if (st === 'spiky') {
-      bangs(5, 0.09, 0.07); sides(0.075); nape(5, 0.07);
+      if (!tuft) { bangs(5, 0.09, 0.07); sides(0.075); nape(5, 0.07); }
       for (let i = 0; i < 8; i++) { const a = (i / 8) * TAU + 0.4, x = Math.sin(a) * 0.06, z = Math.cos(a) * 0.065 - 0.02; L([x * 0.7, 0.22, z * 0.7], [x * 1.9, 0.3 - Math.max(0, Math.cos(a)) * 0.04, z * 1.9 - 0.03], [x * 1.4, 0.29, z * 1.3], 0.035, 0.012, { out: [x, 0.6, z], segs: 3 }); }
     }
     if (st === 'long') { bangs(6, 0.1, 0.075); sides(0.2, 0.17); for (let i = 0; i < 6; i++) { const t = i / 5 - 0.5, a = Math.PI + t * 2.2, x = Math.sin(a) * 0.09, z = Math.cos(a) * 0.095 - 0.01; L([x, 0.16, z], [x * 1.25, -0.2 - (i % 2) * 0.03, z * 1.25 - 0.02], [x * 1.3, 0.0, z * 1.4], 0.05, 0.014, { out: [x, 0, z], segs: 4 }); } }
@@ -565,8 +587,8 @@ export class AnimePerson {
     // blush (soft), freckles, stubble / beard, nose
     const blush = o.blushK * (eyesSt === 'happy' || st.mouth === 'laugh' ? 1.8 : 1) * (st.brows === 'sad' ? 1.3 : 1);
     for (const s of [-1, 1]) { const gr = g.createRadialGradient(s * 0.05, 0.075, 0.001, s * 0.05, 0.075, 0.024); gr.addColorStop(0, rgba('#ff7a8a', blush)); gr.addColorStop(1, rgba('#ff7a8a', 0)); g.fillStyle = gr; g.fillRect(s * 0.05 - 0.03, 0.045, 0.06, 0.06); }
-    if (o.freckles) { const r = rnd(7); g.fillStyle = rgba(shade(o.skin, 0.35), 0.7); for (let i = 0; i < 14; i++) { const s = i % 2 ? 1 : -1; g.beginPath(); g.arc(s * (0.035 + r() * 0.03), 0.07 + r() * 0.02, 0.0012, 0, TAU); g.fill(); } }
-    if (o.beard) {
+    if (o.freckles && !this.A) { const r = rnd(7); g.fillStyle = rgba(shade(o.skin, 0.35), 0.7); for (let i = 0; i < 14; i++) { const s = i % 2 ? 1 : -1; g.beginPath(); g.arc(s * (0.035 + r() * 0.03), 0.07 + r() * 0.02, 0.0012, 0, TAU); g.fill(); } }
+    if (o.beard && !this.A) {
       const bc = o.beardColor, r = rnd(5);
       if (o.beard === 'stubble') { g.fillStyle = rgba(bc, 0.07); g.beginPath(); g.moveTo(-0.08, 0.07); g.quadraticCurveTo(-0.06, -0.008, 0, -0.01); g.quadraticCurveTo(0.06, -0.008, 0.08, 0.07); g.lineTo(0.05, 0.06); g.quadraticCurveTo(0, 0.05, -0.05, 0.06); g.closePath(); g.fill(); for (let i = 0; i < 260; i++) { const x = (r() - 0.5) * 0.15, y = r() * 0.07 - 0.008; if (Math.abs(x) < 0.02 && y > 0.03 && y < 0.05) continue; if (y > 0.07 - Math.abs(x) * 0.25) continue; g.fillStyle = rgba(bc, 0.35); g.fillRect(x, y, 0.0012, 0.0012); } }
       else {
@@ -577,6 +599,23 @@ export class AnimePerson {
         for (const s of [-1, 1]) { g.beginPath(); g.moveTo(s * 0.002, 0.054); g.quadraticCurveTo(s * 0.016, 0.06, s * 0.026, 0.046); g.quadraticCurveTo(s * 0.014, 0.05, s * 0.002, 0.049); g.closePath(); g.fill(); }
         g.strokeStyle = rgba(lite(bc, 0.4), 0.6); g.lineWidth = 0.0009; for (let i = 0; i < 40; i++) { const x = (r() - 0.5) * 0.14, y = r() * 0.08 - 0.02; g.beginPath(); g.moveTo(x, y); g.lineTo(x + (r() - 0.5) * 0.004, y - 0.008); g.stroke(); }
       }
+    }
+    const A = this.A;
+    if (A) {
+      // animal folk: markings, pixel animal eyes (gaze nudges them), fur-tuft brows; the mouth is on the muzzle
+      if (!['bear', 'panda', 'rabbit', 'sheep', 'mouse'].includes(A.kind || '')) { g.fillStyle = A.fur2; g.beginPath(); g.moveTo(-0.1, 0.11); g.quadraticCurveTo(-0.05, 0.12, -0.025, 0.095); g.lineTo(0.025, 0.095); g.quadraticCurveTo(0.05, 0.12, 0.1, 0.11); g.lineTo(0.1, -0.01); g.lineTo(-0.1, -0.01); g.closePath(); g.fill(); }
+      if (A.patches || A.mask) { g.fillStyle = A.patches || A.mask; for (const s of [-1, 1]) { g.beginPath(); g.ellipse(s * 0.045, 0.13, 0.04, 0.034, s * 0.3, 0, TAU); g.fill(); } if (A.mask) g.fillRect(-0.03, 0.115, 0.06, 0.03); }
+      if (A.marks) { g.fillStyle = A.marks; for (const s of [-1, 1]) { g.beginPath(); g.moveTo(s * 0.02, 0.17); g.lineTo(s * 0.075, 0.185); g.lineTo(s * 0.03, 0.18); g.fill(); } g.beginPath(); g.ellipse(0, 0.2, 0.006, 0.014, 0, 0, TAU); g.fill(); }
+      if (A.stripes) { g.fillStyle = A.stripes; for (const s of [-1, 1]) for (let i = 0; i < 3; i++) { g.beginPath(); g.moveTo(s * 0.1, 0.1 + i * 0.03); g.lineTo(s * 0.07, 0.108 + i * 0.03); g.lineTo(s * 0.1, 0.116 + i * 0.03); g.fill(); } g.fillRect(-0.006, 0.19, 0.012, 0.03); }
+      const sx2 = W / (F.x1 - F.x0), sy2 = H / (F.y1 - F.y0), ew = 0.056, eh = 0.051;
+      g.save(); g.setTransform(1, 0, 0, 1, 0, 0); g.imageSmoothingEnabled = false;
+      for (const s of [-1, 1]) { const ex = s * 0.046 + gz[0] * 0.003 - ew / 2, ey = 0.13 + gz[1] * 0.003 + eh / 2; g.drawImage(animalEyeImage(A, eyesSt, s), (ex - F.x0) * sx2, H - (ey - F.y0) * sy2, ew * sx2, eh * sy2); }
+      g.restore();
+      for (const s of [-1, 1]) this.brow(g, s, st.brows, { ...o, brow: A.dark, thick: true }, eyesSt, 0.035);
+      if (this.folk && this.folk.muzzle) paintMuzzle(this.folk.muzzle, st.mouth); else this.mouth(g, st.mouth, o);
+      if (o.glasses) { g.save(); g.translate(0, 0.024); this.glasses(g, o); g.restore(); }
+      this.faceTex.needsUpdate = true;
+      return;
     }
     g.strokeStyle = rgba(shade(o.skin, 0.4), 0.85); g.lineWidth = 0.0016; g.lineCap = 'round'; g.beginPath(); g.moveTo(0.003, 0.082); g.lineTo(0.005, 0.071); g.lineTo(0.001, 0.069); g.stroke();
     // eyes, brows, mouth
@@ -630,8 +669,8 @@ export class AnimePerson {
     if (!narrow && state !== 'angry' && state !== 'half' && state !== 'smug') { g.strokeStyle = rgba(shade(o.skin, 0.38), 0.7); g.lineWidth = 0.0011; g.beginPath(); g.moveTo(-w * 0.2, top(-w * 0.2) + h * 0.13); g.quadraticCurveTo(w * 0.1, top(0) + h * 0.2, w * 0.42, top(w * 0.42) + h * 0.1); g.stroke(); }
     g.restore();
   }
-  brow(g, s, state, o, eyes) {
-    const bx = s * 0.045, by = 0.142 + (state === 'up' ? 0.009 : 0) + (eyes === 'wide' ? 0.006 : 0), w = 0.04;
+  brow(g, s, state, o, eyes, lift = 0) {
+    const bx = s * 0.045, by = 0.142 + lift + (state === 'up' ? 0.009 : 0) + (eyes === 'wide' ? 0.006 : 0), w = 0.04;
     const prof = { calm: [0, 0.004, 0], angry: [-0.009, 0.0, 0.006], sad: [0.007, 0.004, -0.004], up: [0.002, 0.007, 0.0] }[state] || [0, 0.004, 0];   // [inner, mid, outer] lift
     g.save(); g.translate(bx, by); g.scale(s, 1);
     g.fillStyle = o.brow; g.beginPath();

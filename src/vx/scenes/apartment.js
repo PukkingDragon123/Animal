@@ -36,7 +36,7 @@ export const shots = [
   { name: 'hub', target: [7.0, 3.45, 3.6], dist: 18.6, yaw: 0, pitch: 20 },           // the whole dollhouse
   { name: 'bedroomDark', target: [11.7, 5.55, 1.4], dist: 6.4, yaw: -10, pitch: 11 },  // the bed in the dark, neon on the quilt
   { name: 'bedroom', target: [8.4, 5.5, 2.2], dist: 10.5, yaw: 0, pitch: 14 },        // the bedroom, lights on
-  { name: 'closet', target: [3.48, 5.55, 1.2], dist: 7.0, yaw: 0, pitch: 6 },          // the open wardrobe (dress-up)
+  { name: 'closet', target: [3.48, 5.12, 1.2], dist: 5.4, yaw: 0, pitch: 6 },          // the open wardrobe (dress-up)
   { name: 'stairs', target: [1.4, 3.5, 3.4], dist: 10.5, yaw: 32, pitch: 10 },          // the stair between the floors
   { name: 'kitchen', target: [10.7, 2.3, 1.3], dist: 7.6, yaw: 6, pitch: 9 },          // stove, wok, rice cooker, fridge
   { name: 'table', target: [6.2, 1.9, 5.0], dist: 5.0, yaw: 14, pitch: 32 },          // lunch at the round table

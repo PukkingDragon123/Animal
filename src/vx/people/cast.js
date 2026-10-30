@@ -47,9 +47,13 @@ export function passerby(seed) {
     bottom: { kind: pick(['jeans', 'jeans', 'slacks', 'shorts', 'skirt', 'track']), color: pick(['#2e3a5e', '#34406a', '#2a2a30', '#5a5048', '#3a3238', '#6a5a4a']) },
     shoes: { kind: pick(['sneakers', 'boots', 'dress']), color: pick(['#f2f0ea', '#2a2a32', '#5a3a2a', '#c83a3a']) },
     acc: [r() < 0.3 ? 'glasses' : null, r() < 0.15 ? 'cap' : null, r() < 0.2 ? 'backpack' : null, r() < 0.15 ? 'headphones' : null, r() < 0.2 ? 'bag' : null].filter(Boolean),
-    capColor: pick(CLOTH), packColor: pick(CLOTH), bagColor: pick(CLOTH), mood: pick(['calm', 'happy', 'cool', 'tired']),
+    capColor: pick(CLOTH), packColor: pick(CLOTH), bagColor: pick(CLOTH), mood: pick(['calm', 'happy', 'cool', 'tired']), animal: pick(FOLK_POOL),
   };
 }
+// everyone is animal folk: the cast's species (a fantasy kin or two among them)
+const FOLK = { hero: 'fox', coach: 'bear', mika: 'cat', kaito: 'dragon', taro: 'mouse', riff: 'wolf', moshi: 'bull', aoi: 'kitsune', reporter: 'dog', grandma: 'sheep', chef: 'panda', yumi: 'rabbit', spike: 'wolf', lau: 'goat', driver: 'tiger', chess: 'raccoon' };
+const FOLK_POOL = ['fox', 'wolf', 'cat', 'tiger', 'bear', 'panda', 'rabbit', 'goat', 'dog', 'mouse', 'raccoon', 'bull', 'sheep', 'dragon', 'kitsune', 'qilin'];
+for (const [k, a] of Object.entries(FOLK)) if (R[k]) R[k].animal = a;
 const cache = {};
 export const CAST_NAMES = Object.keys(R);
 export const RECIPES = R;
