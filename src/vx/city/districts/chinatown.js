@@ -147,7 +147,7 @@ export function build(C, [x0, z0, x1, z1], ctx) {
     shops: [{ side: 'e', kind: 'bakery', en: 'FORTUNE COOKIES', cjk: '籤餅', bg: '#d8a83a', fg: '#8a1a1a', enCol: '#3a1a10', blade: '籤語餅', bladeBg: '#8a1a1a' }] }, ctx);
   house(C, { x: 117, z: 45.5, w: 11, d: 12.5, floors: 4, wall: TX.plaster('#e6cf8e'), name: 'tailor', balc: [1, 3], rail: '#2e6a4a',
     shops: [{ side: 'e', kind: 'gifts', en: 'GOLDEN NEEDLE TAILOR', cjk: '金針', bg: '#2a4a8a', fg: '#f0d060' }] }, ctx);
-  house(C, { x: 117, z: 64, w: 11, d: 11, floors: 3, wall: TX.plaster('#b4d4bc'), name: 'mahjong', balc: [2],
+  house(C, { x: 117, z: 64, w: 11, d: 11, floors: 2, wall: TX.plaster('#b4d4bc'), name: 'mahjong', roof: 'hip', rh: 2.6,
     shops: [{ side: 'e', kind: 'mahjong', en: 'LUCKY TILES', cjk: '麻雀', bg: '#2e6a4a', fg: '#f0d060', blade: '麻雀館', bladeBg: '#2e6a4a' }] }, ctx);
   house(C, { x: 117, z: 75, w: 11, d: 12, floors: 3, wall: TX.plaster('#dc9a82'), name: 'lantern works', balc: [1],
     shops: [{ side: 'e', kind: 'gifts', en: 'PAPER LANTERN WORKS', cjk: '紙燈', bg: '#b8282a' }] }, ctx);

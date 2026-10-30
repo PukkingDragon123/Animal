@@ -102,7 +102,7 @@ function hut(C, o) {
 function bunting(C, a, b, n = 10, sag = 0.4) {
   const cols = ['#e8322a', '#f0c040', '#2a8ad8', '#f4f0ea', '#2aa070'].map((c) => TX.solid(c)), pts = [];
   for (let i = 0; i <= n; i++) { const t = i / n; pts.push([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t - Math.sin(t * Math.PI) * sag, a[2] + (b[2] - a[2]) * t]); }
-  for (let i = 1; i < n; i += 2) C.props.push({ kind: 'wf_bulb', x: pts[i][0], y: pts[i][1] - 0.2, z: pts[i][2], yaw: 0 });
+  for (let i = 1; i < n; i++) C.props.push({ kind: 'wf_bulb', x: pts[i][0], y: pts[i][1] - 0.2, z: pts[i][2], yaw: 0 });
   for (let i = 0; i < n; i++) { const p = pts[i], q = pts[i + 1]; beam(C, 'props', TX.solid('#e8e4dc'), p, q, 0.02, 0.02, { caps: false }); const m = [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2 - 0.42, (p[2] + q[2]) / 2]; tri3(C, 'props', cols[i % cols.length], [p[0], p[1] - 0.02, p[2]], [q[0], q[1] - 0.02, q[2]], m, [0, 0], [1, 0], [0.5, 1]); }
 }
 
@@ -247,6 +247,7 @@ function pier(C, ctx) {
   const arch = wharfSign('BAYSIDE PIER', '#2a6a7a', '#f8f0d8', 8.0, 1.1, { fish: true, size: 16 });
   C.box(ag, wood, 156.0, 4.05, 12.42, 166.0, 5.25, 12.62); C.decal(ag, arch, 161, 4.1, 12.62, 's', 8.0, 1.1, { off: 0.01 }); C.decal(ag, arch, 161, 4.1, 12.42, 'n', 8.0, 1.1, { off: 0.01 });
   C.props.push({ kind: 'wf_gull', x: 156.2, y: 5.7, z: 12.5, yaw: 0.6 });
+  for (let x = 156.6; x < 165.6; x += 0.6) C.props.push({ kind: 'wf_bulb', x, y: 5.27, z: 12.52, yaw: 0 });
   // a flag mast in the middle of the pier with pennant strings to the arch and the corners
   C.box('wf_pier', TX.solid('#e8e4dc'), 160.9, PY, 9.6, 161.1, 7.2, 9.8); C.box('wf_pier', TX.solid('#c8a050'), 160.8, 7.2, 9.5, 161.2, 7.5, 9.9); C.nav.block(160.75, 9.45, 161.25, 9.95);
   quad4(C, 'wf_pier', TX.stripes('#2a6a7a', '#f4f0e8', 3), [161.1, 6.1, 9.7], [162.6, 6.1, 9.7], [162.6, 7.1, 9.7], [161.1, 7.1, 9.7], [0, 0], [1, 0], [1, 1], [0, 1]);

@@ -84,10 +84,10 @@ export const GAMES = [
 
 export const MIRROR = (name, kind) => [
   [`Looking sharp, ${name}. The hair is doing its own thing again, but it is doing it confidently.`],
-  [`You practise your League entrance pose. ...Maybe skip the finger guns.`],
-  [kind === 'girl' ? `Future Champion of the Bay, ${name}. Obviously. Look at that determination.` : kind === 'boy' ? `Future Champion of the Bay, ${name}. Obviously. Look at that determination.` : `Future Champion of the Bay, ${name}. Obviously. Look at that determination.`, 'There is toothpaste on your chin. Champions also have toothpaste on their chins.'],
+  ['You practise your League entrance pose. ...Maybe skip the finger guns.'],
+  [kind === 'girl' ? `Mom says you look just like she did at your age, ${name}. She means it as the highest possible compliment.` : kind === 'boy' ? `Mom says you look just like Dad did at your age, ${name}. You decide to take that as a compliment.` : `You look exactly like yourself, ${name}. Excellent. That was the plan.`],
+  ['There is toothpaste on your chin. Future Champions also get toothpaste on their chins. Probably.'],
 ];
-
 export const NEIGHBOR_GRAN = [
   ['Oh! It is you! Come in, come in — mind the yarn, it has opinions.', 'I have lived on Sunset Row for fifty-one years. The houses change colour every decade. The fog never does.'],
   ['When I was your age I trained a Snoozaque. Champion of naps, three years running.', 'We never won a single battle. But oh, we had the best afternoons.'],

@@ -184,6 +184,13 @@ function tokonLab(C, night) {
   C.spot('lab', 133.6, 125, -PI / 2); C.spot('labDoor', 137.4, 125, -PI / 2); C.spot('labStarters', 124.5, 127.5, PI); C.spot('labHeal', 131.5, 117.8, PI);
 }
 
+/** rooftop clutter in a building's roof group (so it vanishes with the roof): AC units and vent stacks */
+function rooftop(C, gk, y, units, vents) {
+  const metal = TX.metalRoof('#b0b8c0'), dk = TX.solid('#3a3e48');
+  for (const [x0, z0, x1, z1] of units) { C.box(gk, metal, x0, y, z0, x1, y + 0.9, z1, { top: TX.solid('#c8ccd4') }); C.box(gk, dk, (x0 + x1) / 2 - 0.35, y + 0.9, (z0 + z1) / 2 - 0.35, (x0 + x1) / 2 + 0.35, y + 0.96, (z0 + z1) / 2 + 0.35); }
+  for (const [x, z] of vents) { C.box(gk, TX.solid('#8a909a'), x - 0.15, y, z - 0.15, x + 0.15, y + 1.3, z + 0.15); C.box(gk, dk, x - 0.25, y + 1.3, z - 0.25, x + 0.25, y + 1.45, z + 0.25); }
+}
+
 // ==================================================================== AOI PLAZA (x 136–146)
 function aoiPlaza(C) {
   C.ground(138.5, 118.5, 143.5, 123.5, TX.cobble('#b8aa98'), { y: 0.01 });
@@ -269,7 +276,8 @@ function momoMart(C, night) {
       C.interact({ x: 150.7, z: 129.0, label: 'Open a fridge', icon: 'fridge', act: async (app) => app.say('', 'A blast of cold air. Milk tea, melon soda, and something labelled "ENERGY (FOR TOKONMON ONLY)".') });
     },
   });
-  const f = B.gk(0, 'front');
+  const f = B.gk(0, 'front'), mroof = `b${B.id}:roof`;
+  rooftop(C, mroof, 3.05, [[148.4, 128.6, 150.8, 130.6], [152.4, 128.6, 154.2, 130.0]], [[156.8, 129.6]]);
   C.decal(f, D.storeWindow('mart', 3.8), 153, 0.4, 139, 's', 7.6, 1.9, { off: 0.03 });
   C.decal(f, D.storeWindow('mart', 1.6), 148.2, 0.4, 139, 's', 1.9, 1.9, { off: 0.03 });
   C.box(f, TX.solid('#3a8a4a'), 147.6, 2.42, 139.0, 158.4, 3.42, 139.14);
@@ -308,6 +316,7 @@ function bubbleMoon(C, night) {
     },
   });
   const f = B.gk(0, 'front');
+  rooftop(C, `b${B.id}:roof`, 3.05, [[161.2, 130.4, 163.2, 132.2]], [[166.4, 131.0]]);
   C.decal(f, D.storeWindow('boba', 2.6), 165.5, 0.45, 139, 's', 4.4, 1.85, { off: 0.03 });
   C.box(f, TX.solid('#7a4ab8'), 160.6, 2.42, 139.0, 167.4, 3.3, 139.14); C.decal(f, D.signs.boba(), 164, 2.46, 139.14, 's', 5, 0.8, { off: 0.01 });
   awningS(C, f, TX.awningTex('#b890e0', '#f8f0ff'), 163.2, 167.8, 139, 2.38, 2.0, 0.9);
@@ -378,9 +387,9 @@ function cinema(C, night) {
   const B = C.building({ name: 'Starlight Cinema', x: 180, z: 129.6, w: 20, d: 9.4, floors: 2, fh: 5, wall: D.decoWall(), trim: '#d8b060', base: '#2a8a84',
     roof: { type: 'flat', tex: TX.concrete('#8a8a86'), parapet: 1.2 }, windows: { skip: ['n', 's', 'e', 'w'] }, mm: '#d8b060',
     door: { side: 's', at: 0.5, w: 1.8, kind: 'glass', col: '#2a2e38', label: 'Buy a ticket', act: async (app) => {
-      const i = await app.choose('STARLIGHT — now showing', ['Galaxy Rangers', 'Kaiju Picnic', 'Love in 8-Bit', 'Not today']);
+      const i = await app.choose('STARLIGHT — now showing', ['Comet Cadets', 'Kaiju Picnic', 'Love in 8-Bit', 'Not today']);
       if (i < 0 || i === 3) return app.say('Ticket Booth', 'Popcorn\'s on us next time!');
-      await app.say('Ticket Booth', ['Galaxy Rangers — sold out, sorry! The Street Finals crowd booked every seat.', 'Kaiju Picnic: a giant Tokonmon, a tiny sandwich. Next show at 9.', 'Love in 8-Bit… there are two seats left. Bring a friend!'][i]);
+      await app.say('Ticket Booth', ['Comet Cadets — sold out, sorry! The Street Finals crowd booked every seat.', 'Kaiju Picnic: a giant Tokonmon, a tiny sandwich. Next show at 9.', 'Love in 8-Bit… there are two seats left. Bring a friend!'][i]);
     } } });
   const f = B.gk(0, 'front'), z = 139;
   for (const x of [186.6, 193.4]) C.decal(f, TX.doorTex('#2a2e38', 'glass'), x, 0, z, 's', 1.8, 2.3, { off: 0.03 });
@@ -388,7 +397,7 @@ function cinema(C, night) {
   [['galaxy', 181.6], ['kaiju', 183.4], ['love', 196.6], ['galaxy', 198.4]].forEach(([k, x]) => { C.box(f, TX.solid('#d8b060'), x - 0.6, 0.55, z, x + 0.6, 2.25, z + 0.08); C.decal(f, D.posterTex(k), x, 0.62, z + 0.08, 's', 1.0, 1.5, { off: 0.01 }); });
   // the marquee box over the doors, the blade sign at the corner
   C.box(f, TX.solid('#2a2e38'), 182, 2.75, z, 198, 4.45, z + 1.6, { top: TX.solid('#d8b060') });
-  C.decal(f, D.marqueeTex('NOW SHOWING', 'GALAXY RANGERS  KAIJU PICNIC  LOVE IN 8-BIT'), 190, 2.8, z + 1.6, 's', 14, 1.6, { off: 0.01 });
+  C.decal(f, D.marqueeTex('NOW SHOWING', 'COMET CADETS  KAIJU PICNIC  LOVE IN 8-BIT'), 190, 2.8, z + 1.6, 's', 14, 1.6, { off: 0.01 });
   C.box(f, TX.solid('#2a8a84'), 198.7, 4.4, z, 199.3, 11.6, z + 1.4);
   C.decal(f, D.bladeTex('STARLIGHT'), 199.3, 4.5, z + 0.7, 'e', 1.3, 7, { off: 0.01 });
   // ticket booth on the sidewalk
@@ -396,8 +405,8 @@ function cinema(C, night) {
   C.decal('props', TX.ptex('dt_booth', 1.2, 0.9, (g, W, H, r, P) => { P.fill('#2a2e38'); P.rect(2, 2, W - 4, H - 4, '#ffe8b0'); P.rect(0, H - 8, W, 8, '#c8303a'); P.rect(10, 6, 18, 2, '#d8b060'); }), 190, 1.0, 140.8, 's', 1.2, 0.9);
   C.box('props', TX.solid('#c8303a'), 189.0, 2.3, 139.4, 191.0, 2.5, 141.0); C.nav.block(189.2, 139.6, 190.8, 140.8);
   for (const x of [183.5, 196.5]) C.prop('bollard', x, 141.4);
-  C.npc({ id: 'dt_moviefan', who: 'passerby30', name: 'Movie Buff', x: 182.6, z: 140.6, yaw: PI, lines: [['Galaxy Rangers is sold out because of the Street Finals viewing party. Sold. Out.'], ['Kaiju Picnic is better anyway. Trust me. I\'ve seen it eleven times.']] });
-  C.interact({ x: 183.4, z: 140.1, label: 'Look at the posters', icon: 'eye', act: async (app) => app.say('', 'GALAXY RANGERS — "Space is big. Their capsules are bigger."', 'KAIJU PICNIC — "One giant appetite."', 'LOVE IN 8-BIT — "Two hearts. Zero polygons."') });
+  C.npc({ id: 'dt_moviefan', who: 'passerby30', name: 'Movie Buff', x: 182.6, z: 140.6, yaw: PI, lines: [['Comet Cadets is sold out because of the Street Finals viewing party. Sold. Out.'], ['Kaiju Picnic is better anyway. Trust me. I\'ve seen it eleven times.']] });
+  C.interact({ x: 183.4, z: 140.1, label: 'Look at the posters', icon: 'eye', act: async (app) => app.say('', 'COMET CADETS — "Space is big. Their capsules are bigger."', 'KAIJU PICNIC — "One giant appetite."', 'LOVE IN 8-BIT — "Two hearts. Zero polygons."') });
 }
 
 // ==================================================================== PIXEL PALACE (games) + RAMEN KAZE, Mission St north side

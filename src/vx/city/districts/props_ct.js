@@ -210,9 +210,9 @@ const K = {
   } },
   wf_carousel: { size: [76, 80, 76], r: 2.2, build(F, r) {
     const base = F.c('#e8d8c0'), base2 = F.c('#c8b498'), pole = F.c('#e0b040'), roofA = F.c('#e8322a'), roofB = F.c('#f4f0ea'), trim = F.c('#2a6aa8'), lamp = F.c('#fff0b0', GLOW), horses = ['#f4f0ea', '#3a2a22', '#e8b860', '#a8a8b0'].map((c) => F.c(c)), saddle = F.c('#c8282a');
-    disc(F, 38, 38, 0, 4, 34, (x, y) => (y === 4 ? base : base2)); disc(F, 38, 38, 5, 52, 3, trim);
+    const mirror = F.c('#fff4d0', GLOW); disc(F, 38, 38, 0, 4, 34, (x, y) => (y === 4 ? base : base2)); disc(F, 38, 38, 5, 52, 3.4, (x, y, z) => ((y % 6 < 3) && ((x + z) % 2) ? mirror : trim));
     for (let y = 46; y < 76; y++) { const rr = (76 - y) * 1.25; disc(F, 38, 38, y, y, rr, (x, yy, z) => ((Math.floor((Math.atan2(z - 38, x - 38) + 3.1416) / 6.283 * 16)) % 2 ? roofA : roofB)); }
-    for (let t = 0; t < 64; t++) { const q = t / 64 * 6.283; const x = Math.round(38 + Math.cos(q) * 36), z = Math.round(38 + Math.sin(q) * 36); F.box(x, 44, z, x, 46, z, trim); if (t % 4 === 0) F.set(x, 43, z, lamp); }
+    for (let t = 0; t < 64; t++) { const q = t / 64 * 6.283; const x = Math.round(38 + Math.cos(q) * 36), z = Math.round(38 + Math.sin(q) * 36); F.box(x, 44, z, x, 46, z, trim); if (t % 2 === 0) { F.set(x, 43, z, lamp); F.set(x, 47, z, lamp); } }
     disc(F, 38, 38, 76, 79, 2, pole);
     for (let i = 0; i < 8; i++) { const q = i / 8 * 6.283, x = Math.round(38 + Math.cos(q) * 26), z = Math.round(38 + Math.sin(q) * 26), c = horses[i % 4], hy = 16 + (i % 2) * 4; F.box(x, 5, z, x, 46, z, pole); const dx = Math.round(-Math.sin(q)), dz = Math.round(Math.cos(q)); for (let k = -4; k <= 4; k++) F.box(x + dx * k - 1, hy, z + dz * k - 1, x + dx * k + 1, hy + 4, z + dz * k + 1, c); F.box(x + dx * 5 - 1, hy + 3, z + dz * 5 - 1, x + dx * 6 + 1, hy + 9, z + dz * 6 + 1, c); F.box(x - 1, hy + 5, z - 1, x + 1, hy + 5, z + 1, saddle); for (const k of [-3, 3]) F.box(x + dx * k, hy - 6, z + dz * k, x + dx * k, hy - 1, z + dz * k, c); }
     void r;

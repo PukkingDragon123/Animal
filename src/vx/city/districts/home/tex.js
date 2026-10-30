@@ -41,7 +41,11 @@ export function px3(P, str, x, y, c, sh) {
 export const px3w = (str) => String(str).length * 4 - 1;
 
 // ---------------------------------------------------------------- materials (tiling, metres)
-export const wood = (c = '#a87a4a') => ptex('sr_wood' + c, 1, 1, (g, W, H, r, P) => {
+// wood tones snap to a small palette so the merged meshes stay few (each distinct texture is a draw call)
+const WOODS = ['#3a2620', '#5a3a24', '#6a4428', '#7a5236', '#8a5a36', '#a8784a', '#b88a5a', '#c89a62', '#c8a070', '#e8dcc8', '#f4ece0', '#e8473a'];
+const near = (c, pal) => { const [r, g, b] = PX.hx(c); let best = pal[0], bd = 1e9; for (const p of pal) { const [R, G, B] = PX.hx(p), d = (R - r) ** 2 * 0.3 + (G - g) ** 2 * 0.59 + (B - b) ** 2 * 0.11; if (d < bd) { bd = d; best = p; } } return best; };
+export const wood = (c0 = '#a87a4a') => woodTex(near(c0, WOODS));
+const woodTex = (c) => ptex('sr_wood' + c, 1, 1, (g, W, H, r, P) => {
   P.fill(c);
   for (let y = 0; y < H; y++) if (Math.sin(y * 0.83 + Math.sin(y * 0.21) * 2) > 0.55) P.hline(0, y, W, dk(c, 0.07));
   for (let i = 0; i < 28; i++) { const y = Math.floor(r() * H), x = Math.floor(r() * W), w = 3 + Math.floor(r() * 12); P.hline(x, y, w, r() < 0.55 ? dk(c, 0.15) : lt(c, 0.08)); }
@@ -343,8 +347,6 @@ export const painting = () => ptex('sr_paintg', 1.0, 0.6, (g, W, H, r, P) => {  
 export const calendar = (day = 1) => ptex('sr_cal' + (day % 31), 0.36, 0.5, (g, W, H, r, P) => {
   P.fill('#f8f4ec'); P.rect(0, 0, W, 6, '#e8705a'); P.rect(W / 2 - 1, 0, 2, 2, '#4a4a54');
   P.rect(1, 7, W - 2, 5, '#9cc4b4'); P.rect(4, 8, 3, 3, '#e8473a'); P.px(5, 7, '#f8c840');
-  for (let k = 0; k < 28; k++) { const x = 1 + (k % 7) * 1.5, y = 13 + Math.floor(k / 7) * 1; void x; void y; }
-  for (let row = 0; row < 4; row++) for (let col = 0; col < 7; col++) { const x = 1 + col + Math.floor(col / 1) * 0, y = 13 + row * 1; void x; void y; }
   for (let row = 0; row < 4; row++) for (let col = 0; col < 5; col++) P.rect(1 + col * 2, 13 + row, 1, 1, '#8a8a9a');
   const k = (day - 1) % 20, cx = 1 + (k % 5) * 2, cy = 13 + Math.floor(k / 5);
   P.px(cx, cy, '#e8473a'); P.px(cx - 1, cy, '#e8473a'); P.px(cx + 1, cy, '#e8473a'); P.px(cx, cy - 1, '#e8473a'); P.px(cx, cy + 1, '#e8473a');
@@ -363,7 +365,8 @@ export const corkboard = () => ptex('sr_cork', 0.9, 0.6, (g, W, H, r, P) => {
 });
 
 // ---------------------------------------------------------------- shelves & furniture fronts (fitted)
-export const books = (wM, hM, seed = 1, o = {}) => ptex('sr_books' + wM + hM + seed + (o.toys ? 't' : ''), wM, hM, (g, W, H, r, P) => {
+export const books = (wM, hM, seed0 = 1, o = {}) => { const seed = seed0 % 2; return booksTex(wM, hM, seed, o); };
+const booksTex = (wM, hM, seed, o) => ptex('sr_books' + wM + hM + seed + (o.toys ? 't' : ''), wM, hM, (g, W, H, r, P) => {
   P.fill(o.back || '#3a2a22');
   const pal = o.pal || ['#c8402a', '#2e5a8a', '#e8b040', '#3a7a4a', '#7a3a6a', '#e8e0c8', '#2a2a32', '#d87a3a', '#5aa0b0', '#a83a5a'];
   let x = 0;

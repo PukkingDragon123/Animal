@@ -15,7 +15,7 @@ export const PROPS = {
     const bark = F.c('#6a4a32'), bark2 = F.c('#7a5a3e'), L = ['#3a7a3a', '#4a8a42', '#5a9a4a', '#6aaa52', '#2e6a36'].map((c) => F.c(c));
     disc(F, 28, 28, 0, 44, 3.2, (x, y) => ((x + y) % 5 ? bark : bark2)); disc(F, 28, 28, 0, 2, 5, bark);
     for (const [bx, by, bz, br] of [[28, 50, 28, 9], [36, 60, 30, 8], [20, 62, 26, 8.5], [28, 72, 33, 9], [30, 80, 24, 7], [22, 52, 36, 6.5], [38, 52, 22, 6]]) {
-      F.box(28, 38, 28, bx, by, bz, bark); ball(F, bx, by, bz, br, (x, y) => L[Math.min(4, Math.floor((y - by + br) / (br * 0.5)) + (r() < 0.2 ? 1 : 0)) % 5]);
+      F.box(28, 38, 28, bx, by, bz, bark); ball(F, bx, by, bz, br, (x, y) => L[Math.min(4, Math.floor((y - by + br) / (br * 0.5)) + ((Math.floor(x / 5) + Math.floor(y / 4)) % 4 === 0 ? 1 : 0)) % 5]);   // colour in chunks so the mesher can merge faces
     }
   } },
   palm: { size: [64, 128, 64], r: 0.3, build(F, r) {

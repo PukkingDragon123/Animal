@@ -197,7 +197,7 @@ export const bladeTex = (word) => pt('dt_blade' + word, 1.3, 7, (g, W, H, r, P) 
   for (let i = 0; i < n; i++) ptext(P, word[i], W / 2, 8 + step * (i + 0.5), '#ffe8a0', { s: 3, shadow: '#5a1018' });
 });
 const POSTERS = {
-  galaxy: (P, W, H, r) => { P.fill('#141a3a'); for (let i = 0; i < 30; i++) P.px(r() * W, r() * H, '#ffffff'); disc(P, 24, 16, 8, '#e8a040'); P.rect(14, 15, 20, 2, '#f0c878'); P.rect(9, 22, 4, 14, '#e8e8f0'); P.rect(8, 34, 6, 3, '#e8473a'); P.rect(10, 37, 2, 4, '#ffd84a'); ptext(P, 'GALAXY', W / 2, H - 9, '#ffe04a', { font: 3, s: 1 }); ptext(P, 'RANGERS', W / 2, H - 3, '#ffffff', { font: 3, s: 1 }); },
+  galaxy: (P, W, H, r) => { P.fill('#141a3a'); for (let i = 0; i < 30; i++) P.px(r() * W, r() * H, '#ffffff'); disc(P, 24, 16, 8, '#e8a040'); P.rect(14, 15, 20, 2, '#f0c878'); P.rect(9, 22, 4, 14, '#e8e8f0'); P.rect(8, 34, 6, 3, '#e8473a'); P.rect(10, 37, 2, 4, '#ffd84a'); ptext(P, 'COMET', W / 2, H - 9, '#ffe04a', { font: 3, s: 1 }); ptext(P, 'CADETS', W / 2, H - 3, '#ffffff', { font: 3, s: 1 }); },
   kaiju: (P, W, H, r) => { vgrad(P, 0, 0, W, H, ['#ffb070', '#ff7a6a']); critter(P, 16, 18, 10, '#5ab84a'); for (let x = 0; x < W; x += 3) P.rect(x, H - 14 - (x * 7) % 6, 2, 14, '#3a2a4a'); ptext(P, 'KAIJU', W / 2, H - 9, '#ffffff', { font: 3, s: 1 }); ptext(P, 'PICNIC', W / 2, H - 3, '#ffe04a', { font: 3, s: 1 }); },
   love: (P, W, H, r) => { P.fill('#ff8ab0'); for (const [x, y, s] of [[10, 14, 3], [22, 20, 4]]) { P.rect(x - s, y, s, s, '#e8303a'); P.rect(x + 1, y, s, s, '#e8303a'); P.rect(x - s + 1, y + s - 1, s * 2 - 1, s, '#e8303a'); } ptext(P, 'LOVE IN', W / 2, H - 9, '#ffffff', { font: 3, s: 1 }); ptext(P, '8-BIT', W / 2, H - 3, '#5a1a3a', { font: 3, s: 1 }); },
 };

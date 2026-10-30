@@ -121,12 +121,30 @@ export class ToonPerson {
 // ---------------------------------------------------------------- the cast
 const cache = new Map();
 export function toonSpec(who) {
-  if (who && typeof who === 'object') return who.outfit ? who : TOON_CAST.hero;
+  if (who && typeof who === 'object') return who.outfit ? who : fromOld(who);
   if (cache.has(who)) return cache.get(who);
   // named cast members; passers-by from their number, or (named extras without one) from a hash of the name
   const str = String(who), num = +str.replace(/\D/g, ''), h = [...str].reduce((a, c) => (Math.imul(a, 31) + c.charCodeAt(0)) | 0, 7) >>> 0;
   const s = TOON_CAST[who] ? { ...TOON_CAST[who], id: who } : passerby(/^passerby\d+$/.test(str) && num ? num : 1000 + (h % 100000));
   cache.set(who, s);
   return s;
+}
+// specs in the older people's format ({ sex, age, hair: { style, col }, top: { kind, col, col2 }, bottom, shoes, hat, glasses, acc }) → toon specs
+const OLD_TOP = { tee: 'tee', shirt: 'shirt', polo: 'shirt', jacket: 'jacket', blazer: 'blazer', cardigan: 'cardigan', knit: 'knit', hoodie: 'hoodie', coat: 'coat', blouse: 'blouse', tank: 'tank' };
+const hexc = (c) => (c === undefined || c === null ? undefined : Array.isArray(c) ? '#' + c.map((v) => Math.round(v).toString(16).padStart(2, '0')).join('') : typeof c === 'number' ? '#' + c.toString(16).padStart(6, '0') : c);
+export function fromOld(o) {
+  const T = o.top || {}, B = o.bottom || {}, S = o.shoes || {}, base = passerby(o.seed || 1);
+  return {
+    ...base, id: o.id || base.id, sex: o.sex || base.sex, age: o.age || base.age, H: o.H || base.H, build: o.build || base.build, belly: o.belly || 0, skin: hexc(o.skin) || base.skin,
+    hair: o.hair ? { ...base.hair, ...o.hair, col: hexc(o.hair.col) || base.hair.col } : base.hair,
+    hat: o.hat ? { kind: o.hat.kind, col: hexc(o.hat.col), col2: hexc(o.hat.col2) } : null, glasses: o.glasses ? { kind: o.glasses.kind, col: hexc(o.glasses.col) } : null,
+    outfit: {
+      top: { kind: OLD_TOP[T.kind] || base.outfit.top.kind, color: hexc(T.col) || base.outfit.top.color, inner: hexc(T.shirt || T.col2), stripe: T.print === 'stripes' ? hexc(T.col2) : hexc(T.stripe) },
+      bottom: { kind: B.kind === 'slacks' ? 'slacks' : B.kind || base.outfit.bottom.kind, color: hexc(B.col) || base.outfit.bottom.color, cut: B.cut },
+      legs: o.legs === 'kneesocks' ? 'kneesocks' : B.kind === 'shorts' ? 'socks' : undefined, tights: hexc(o.tights),
+      shoes: { kind: S.kind === 'sneaker' ? 'sneakers' : S.kind || 'sneakers', color: hexc(S.col) || '#f2f0ea', accent: hexc(S.col2) },
+      acc: (o.acc || []).map((a) => ({ kind: a.kind, color: hexc(a.col), side: a.side })),
+    },
+  };
 }
 export function castToon(who, o = {}) { return new ToonPerson(toonSpec(who), { name: typeof who === 'string' ? who : who.id, ...o }); }
