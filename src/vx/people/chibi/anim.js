@@ -4,11 +4,11 @@
 //  - idle: breathing, weight shifts, a girl's contrapposto, glances around
 //  - gestures: arm targets solved with two-bone IK (hands go where the pose says: chin, hips, face, lap),
 //    plus spine / head offsets, hops and squash, blended in and out
-//  - face: expressions, blinks, glances, a talking mouth → AnimeHead.update
+//  - face: expressions, blinks, glances, a talking mouth → the person's pixel face
 //  - springs: twin tails / ponytail / long hair, the skirt (sways and flares), the ahoge
 // Axes: +x is the character's left, +y up, +z forward. A thigh / arm swings forward on −x.
 import * as THREE from '../../../../vendor/three.module.js';
-import { BONES } from './body.js';
+import { BONES } from './rig.js';
 
 const cl = (v, a = 0, b = 1) => (v < a ? a : v > b ? b : v);
 const lerp = (a, b, t) => a + (b - a) * t;

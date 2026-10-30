@@ -1,4 +1,4 @@
-// The toon cast: every named character as a spec (body + outfit + hair + face), trainers in their partner
+// The cast (blocky chibi people): every named character as a spec (body + outfit + hair + face), trainers in their partner
 // Tokonmon's colours, plus a seeded generator for the city's passers-by.
 //   spec: { sex: 'm' | 'f', age: 'kid' | 'teen' | 'adult' | 'elder', H, build, belly, skin,
 //     hair: { style, col, volume, ahoge, ribbon, clip, ears, part, grey },
@@ -13,11 +13,11 @@ export const TOON_CAST = {
     face: { iris: '#6a3a1e', deco: [{ kind: 'bandaid', at: 'cheekR' }] },
     outfit: { top: { kind: 'jacket', color: '#e8603a', inner: '#f4efe6', stripe: '#ffd040' }, bottom: { kind: 'jeans', color: '#2e3a5e' }, legs: 'socks', shoes: { kind: 'sneakers', color: '#f2f0ea', accent: '#e8603a' }, acc: [{ kind: 'backpack', color: '#2e6a8a', charm: '#ffd040' }] },
   },
-  heroine: {   // the player as a girl: frayed white crop tee with the partner's flame, baggy grey cargo pants
-    sex: 'f', age: 'teen', H: 1.58, skin: '#f4dcc6',
-    hair: { style: 'ponytail', col: '#3a221c', volume: 1.15, ribbon: '#e8603a', ahoge: 1 },
-    face: { iris: '#8a4a1e', blush: 0.4, deco: [{ kind: 'bandaid', at: 'cheekR' }] },
-    outfit: { top: { kind: 'crop', color: '#f2efe8', hem: 'low', emblem: 'flame', emblemColor: '#e8603a', stripe: null }, bottom: { kind: 'cargo', color: '#8a8a86' }, shoes: { kind: 'sneakers', color: '#f2f0ea', accent: '#e8603a' }, acc: [{ kind: 'backpack', color: '#2e6a8a', charm: '#ffd040' }] },
+  heroine: {   // the player as a girl, in the partner's colours (hot-sauce red / orange / flame yellow)
+    sex: 'f', age: 'teen', H: 1.58, skin: '#f4d6bc',
+    hair: { style: 'ponytail', col: '#4a2a20', volume: 1.1, ribbon: '#ffd040', ahoge: 1 },
+    face: { iris: '#a0522a', blush: 0.4, deco: [{ kind: 'bandaid', at: 'cheekR' }] },
+    outfit: { top: { kind: 'jacket', color: '#e8603a', inner: '#f4efe6', stripe: '#ffd040' }, bottom: { kind: 'shorts', color: '#2e3a5e' }, legs: 'kneesocks', socks: '#f4f0ea', shoes: { kind: 'sneakers', color: '#f2f0ea', accent: '#e8603a' }, acc: [{ kind: 'backpack', color: '#2e6a8a', charm: '#ffd040' }] },
   },
   yumi: {   // partner Creepetal (periwinkle petals, blond fringe, green stem)
     sex: 'f', age: 'teen', H: 1.56, skin: '#f2cdb0',

@@ -3,7 +3,7 @@
 </head><body><canvas id="c"></canvas><div id="err"></div>
 <script type="module">
 // A lineup of people and/or Tokonmon side by side: ?people=hero,coach,mika&mons=chilichick&clip=idle&t=1&yaw=&pitch=&dist=
-// toon people: ?tp=hero,heroine,yumi (move=1.4 walks them forward at that speed while the clock runs)
+// people: ?people=hero,heroine,yumi (or tp=), move=1.4 walks them forward at that speed while the clock runs
 window.onerror = (m, s, l) => { document.getElementById('err').textContent += m + ' @' + l + '\n'; };
 import { VxStage } from '../src/vx/stage.js';
 import { Fine } from '../src/vx/fine.js';
@@ -12,23 +12,19 @@ import { Model } from '../src/vx/model.js';
 import { Animator } from '../src/vx/anim.js';
 import { FX } from '../src/vx/fx.js';
 import { HD2D } from '../src/px/hd2d.js';
-import { cast, castVox, RECIPES } from '../src/vx/people/cast.js';
-import { AnimePerson } from '../src/vx/people/anime.js';
-import { castHuman } from '../src/vx/people/human.js';
-import { castToon } from '../src/vx/people/toon/index.js';
+import { castChibi } from '../src/vx/people/chibi/index.js';
 const q = new URLSearchParams(location.search), num = (k, d) => (q.has(k) ? +q.get(k) : d);
 const W = num('w', 1600), H = num('h', 720);
 const defs = [];
-for (const n of (q.get('human') || '').split(',').filter(Boolean)) defs.push({ human: n });
 for (const n of (q.get('tp') || '').split(',').filter(Boolean)) defs.push({ tp: n });
-for (const n of (q.get('people') || '').split(',').filter(Boolean)) defs.push(q.get('anime') ? { anime: n } : q.get('vox') ? { vox: n } : cast(n));
+for (const n of (q.get('people') || '').split(',').filter(Boolean)) defs.push({ tp: n });
 for (const n of (q.get('mons') || '').split(',').filter(Boolean)) defs.push((await import('../src/vx/mons/' + n + '.js')).def);
 const st = new VxStage({ fov: num('fov', 28), shadowSize: 2048 });
 const fw = new Fine(160, 8, 96, 16), k = new Kit(fw);
 k.box(0, 0, 0, 159, 3, 95, 'sidewalk', 'patch', { sc: 6 });
 st.setSize(W, H); if (q.get('ink') !== '0') st.setStyle({ ink: true, toon: q.get('toon') !== '0', inkCrease: 0.03 }); st.setWorld(fw); st.setMood(q.get('mood') || 'golden');
 const gap = num('gap', 1.15), x0 = 5 - ((defs.length - 1) * gap) / 2, fx = new FX(st), ans = [];
-defs.forEach((d, i) => { const m = d.tp ? castToon(d.tp) : d.human ? castHuman(d.human, { lazy: false }) : d.anime ? new AnimePerson({ name: d.anime, ...RECIPES[d.anime] }) : d.vox ? castVox(d.vox) : new Model(d); if (q.get('rot')) m.group.rotation.y = +q.get('rot') * Math.PI / 180; m.group.position.set(x0 + i * gap, 0.25, 3); m.x0 = x0 + i * gap; st.scene.add(m.group); if (m.drip) m.drip(+(q.get('drip') || 1)); const a = m.animator ? m.animator() : new Animator(m); if (q.get('clip')) a.play(q.get('clip'), { fade: 0 }); ans.push(a); });
+defs.forEach((d, i) => { const m = d.tp ? castChibi(d.tp) : new Model(d); if (q.get('rot')) m.group.rotation.y = +q.get('rot') * Math.PI / 180; m.group.position.set(x0 + i * gap, 0.25, 3); m.x0 = x0 + i * gap; st.scene.add(m.group); if (m.drip) m.drip(+(q.get('drip') || 1)); const a = m.animator ? m.animator() : new Animator(m); if (q.get('clip')) a.play(q.get('clip'), { fade: 0 }); ans.push(a); });
 st.look([5, 0.25 + num('ty', 0.7), 3], num('dist', 7), num('yaw', 0), num('pitch', 8));
 const DT = 1 / 60; for (let i = 0; i < Math.round(num('t', 1) / DT); i++) { const mv = num('move', 0); if (mv) for (const a of ans) { const g = a.p ? a.p.group : null; if (g) { g.position.z += Math.cos(g.rotation.y) * mv * DT; g.position.x += Math.sin(g.rotation.y) * mv * DT; g.updateMatrixWorld(); } }
   for (const a of ans) a.update(DT, { fx, look: q.get('look') ? st.cam.position : null }); fx.update(DT); st.time += DT; }

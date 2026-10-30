@@ -7,15 +7,12 @@ import * as THREE from '../../../vendor/three.module.js';
 import { Model, dripForm } from '../model.js';
 import { Animator, E } from '../anim.js';
 import { FX } from '../fx.js';
-import { cast, castAnime } from '../people/cast.js';
-import { castHuman } from '../people/human.js';
-import { castToon } from '../people/toon/index.js';
-import { person } from '../people/person.js';
 import { LOCATIONS } from './locations.js';
 import { T } from '../../px/game/ui.js';
 import { NavGrid, pick } from './nav.js';
 import { Fine } from '../fine.js';
 import { CityControl } from '../city/control.js';
+import { castChibi } from '../people/chibi/index.js';
 
 const MON_DEFS = {};
 // a species' model; variants like 'barkorious_forced' fall back to their base model, unknown ones to Chilichick
@@ -209,8 +206,7 @@ export class VxWorld {
     return a;
   }
   addPerson(id, who, at, o = {}) {
-    const mode = this.app && this.app.params && this.app.params.get('people');   // default: the hand-painted toon people; 'gg' / 'folk' / 'box' bring back the older ones
-    const m = mode === 'box' ? new Model(typeof who === 'string' ? cast(who) : person(who)) : mode === 'folk' ? castAnime(who) : mode === 'gg' ? castHuman(who) : castToon(who), a = new Actor(this, id, m, 'person');
+    const m = castChibi(who), a = new Actor(this, id, m, 'person');   // the blocky chibi people
     this.st.actors.add(m.group); this.actors.set(id, a);
     const [x, z, yaw, y] = typeof at === 'string' ? this.spot(at) : at; a.place(x, z, o.yaw ?? yaw ?? 0, o.y ?? y);
     if (o.clip) a.play(o.clip, { fade: 0 });

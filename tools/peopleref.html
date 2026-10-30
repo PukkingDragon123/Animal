@@ -3,13 +3,13 @@
 <script type="module">
 window.onerror = (m, s, l) => { document.getElementById('err').textContent += m + ' @' + l + '\n'; };
 import * as THREE from '/vendor/three.module.js';
-import { castToon } from '/src/vx/people/toon/index.js';
+import { castChibi } from '/src/vx/people/chibi/index.js';
 const q = new URLSearchParams(location.search), W = +(q.get('w') || 640), H = +(q.get('h') || 980);
 const r = new THREE.WebGLRenderer({ canvas: document.getElementById('c'), antialias: false }); r.setSize(W, H); r.outputColorSpace = THREE.SRGBColorSpace;
 const sc = new THREE.Scene(); sc.background = new THREE.Color(0xd8cdb0);
 sc.add(new THREE.HemisphereLight(0xfff4e0, 0xb8a888, 1.4)); const sun = new THREE.DirectionalLight(0xffffff, 1.6); sun.position.set(-2, 4, 3); sc.add(sun);
 const floor = new THREE.Mesh(new THREE.PlaneGeometry(20, 20), new THREE.MeshLambertMaterial({ color: 0xe8d4a8 })); floor.rotation.x = -Math.PI / 2; sc.add(floor);
-const p = castToon(q.get('who') || 'mika'); sc.add(p.group); p.group.rotation.y = +(q.get('rot') || -0.35);
+const p = castChibi(q.get('who') || 'mika'); sc.add(p.group); p.group.rotation.y = +(q.get('rot') || -0.35);
 const a = p.animator(); a.play(q.get('clip') || 'selfie');
 for (let i = 0; i < 90; i++) a.update(1 / 60, {});
 const cam = new THREE.PerspectiveCamera(+(q.get('fov') || 40), W / H, 0.05, 50);
