@@ -164,12 +164,12 @@ export function build(C, [X0, Z0, X1, Z1], ctx) {
 
 // ==================================================================== PAINTED LADIES (x 0.5–10.5, z 51–96, facing east onto Steiner Walk)
 const LADIES = [
-  { wall: '#a8d8c4', trim: '#f8f4ec', acc: '#2a6a5a', roof: '#4a5a5a', fish: '#e8a0b8', fh: 3.0, rh: 3.0, n: 710 },
-  { wall: '#f4b8c8', trim: '#f8f4ec', acc: '#8a2a4a', roof: '#5a4a5a', fish: '#a8d8e8', fh: 3.1, rh: 3.3, n: 712 },
-  { wall: '#f4dc8c', trim: '#f8f4ec', acc: '#3a5a8a', roof: '#4a4a5a', fish: '#e8805a', fh: 2.95, rh: 2.8, n: 714 },
-  { wall: '#c8b4e4', trim: '#f8f4ec', acc: '#5a3a7a', roof: '#4a4a5a', fish: '#f4dc8c', fh: 3.1, rh: 3.2, n: 716 },
-  { wall: '#a8c8ec', trim: '#f8f4ec', acc: '#2a3a6a', roof: '#5a5a6a', fish: '#f4b8c8', fh: 3.0, rh: 3.0, n: 718 },
-  { wall: '#f8c4a0', trim: '#f8f4ec', acc: '#6a3a2a', roof: '#4a4a52', fish: '#a8d8c4', fh: 3.05, rh: 3.4, n: 720 },
+  { wall: '#8ee0c4', trim: '#fbf8f0', acc: '#1e7a64', roof: '#2e5a5a', fish: '#f490b0', fh: 3.0, rh: 3.0, n: 710 },
+  { wall: '#ffaac4', trim: '#fbf8f0', acc: '#a8264e', roof: '#5a2e44', fish: '#9ad8f0', fh: 3.1, rh: 3.3, n: 712 },
+  { wall: '#ffe07a', trim: '#fbf8f0', acc: '#2e5aa8', roof: '#3a4a6a', fish: '#f0784a', fh: 2.95, rh: 2.8, n: 714 },
+  { wall: '#c4a8f0', trim: '#fbf8f0', acc: '#5a2e8a', roof: '#4a3a5e', fish: '#ffe07a', fh: 3.1, rh: 3.2, n: 716 },
+  { wall: '#98c4f4', trim: '#fbf8f0', acc: '#1e3a7a', roof: '#2e3e5e', fish: '#ffaac4', fh: 3.0, rh: 3.0, n: 718 },
+  { wall: '#ffbc90', trim: '#fbf8f0', acc: '#8a3a22', roof: '#5a3a32', fish: '#8ee0c4', fh: 3.05, rh: 3.4, n: 720 },
 ];
 const KNOCK = [
   ['A voice calls: "If you\'re selling pastel paint, we\'re fully stocked!"'],
@@ -185,11 +185,15 @@ function paintedLadies(C, night) {
     const B = C.building({ name: 'Painted Lady ' + L.n, x, z, w, d, floors: 3, fh, wall: TX.siding(L.wall), trim: L.trim, base: '#7a6a60',
       roof: { type: 'gable', ridge: 'x', tex: TX.shingles(L.roof), h: L.rh, eave: 0.3 }, windows: { skip: ['n', 's', 'e', 'w'] }, mm: L.wall });
     const g = (k) => B.gk(k, 'front'), roof = `b${B.id}:roof`, trim = TX.solid(L.trim), acc = TX.solid(L.acc);
-    // a two-storey bay window on the south half of the façade
-    const bz0 = z + 1.0, bz1 = z + 3.8, bx = xe + 0.75;
+    // corner boards and accent bands at each floor line
+    for (const zz of [z + 0.02, z + d - 0.18]) C.box(g(0), trim, xe, 0.35, zz, xe + 0.08, H, zz + 0.16);
+    for (let k = 1; k < 3; k++) C.box(g(k), acc, xe, k * fh - 0.2, z, xe + 0.07, k * fh - 0.08, z + d);
+    // a two-storey bay window on the south half of the façade: accent corner posts, panels under the sills, a cornice cap
+    const bz0 = z + 1.0, bz1 = z + 3.8, bx = xe + 0.9;
     C.box(g(0), TX.siding(L.wall), xe, 0, bz0, bx, fh * 2 - 0.2, bz1, { top: trim });
-    C.box(g(1), trim, xe - 0.02, fh * 2 - 0.2, bz0 - 0.12, bx + 0.14, fh * 2 + 0.05, bz1 + 0.12);
-    C.box(g(0), acc, bx, 0, bz0, bx + 0.02, 0.8, bz1);
+    C.box(g(1), trim, xe - 0.02, fh * 2 - 0.2, bz0 - 0.14, bx + 0.16, fh * 2 + 0.08, bz1 + 0.14, { top: acc });
+    for (const zz of [bz0, bz1 - 0.12]) C.box(g(0), acc, bx - 0.02, 0, zz, bx + 0.04, fh * 2 - 0.2, zz + 0.12);
+    for (let k = 0; k < 2; k++) C.box(g(k), acc, bx, k * fh + 0.2, bz0 + 0.12, bx + 0.03, k * fh + 0.75, bz1 - 0.12);
     for (let k = 0; k < 2; k++) {
       const y = k * fh + 0.85;
       for (const zz of [bz0 + 0.75, bz1 - 0.75]) C.decal(g(k), K.ladyWindow(L.trim, L.acc, night && (i + k) % 2 === 0), bx, y, zz, 'e', 0.8, 1.8, { off: 0.02 });

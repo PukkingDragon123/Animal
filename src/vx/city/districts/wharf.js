@@ -101,6 +101,7 @@ function hut(C, o) {
 function bunting(C, a, b, n = 10, sag = 0.4) {
   const cols = ['#e8322a', '#f0c040', '#2a8ad8', '#f4f0ea', '#2aa070'].map((c) => TX.solid(c)), pts = [];
   for (let i = 0; i <= n; i++) { const t = i / n; pts.push([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t - Math.sin(t * Math.PI) * sag, a[2] + (b[2] - a[2]) * t]); }
+  for (let i = 1; i < n; i += 2) C.props.push({ kind: 'wf_bulb', x: pts[i][0], y: pts[i][1] - 0.2, z: pts[i][2], yaw: 0 });
   for (let i = 0; i < n; i++) { const p = pts[i], q = pts[i + 1]; beam(C, 'props', TX.solid('#e8e4dc'), p, q, 0.02, 0.02, { caps: false }); const m = [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2 - 0.42, (p[2] + q[2]) / 2]; tri3(C, 'props', cols[i % cols.length], [p[0], p[1] - 0.02, p[2]], [q[0], q[1] - 0.02, q[2]], m, [0, 0], [1, 0], [0.5, 1]); }
 }
 
@@ -250,13 +251,13 @@ function pier(C, ctx) {
   bunting(C, [161, 6.6, 9.7], [156.2, 5.3, 12.5], 6, 0.3); bunting(C, [161, 6.6, 9.7], [165.8, 5.3, 12.5], 6, 0.3);
   bunting(C, [161, 6.6, 9.7], [171.6, 3.2, 1.3], 10, 0.5); bunting(C, [161, 6.6, 9.7], [156.0, 4.0, 4.0], 6, 0.3); bunting(C, [161, 6.6, 9.7], [171.6, 3.2, 11.8], 7, 0.4);
   // west row: the seafood stand and the arcade (fronts face east onto the boardwalk)
-  hut(C, { x: 150.5, z: 7.2, w: 5.2, d: 4.2, y0: PY, h: 3.0, name: 'salty gull', wall: TX.siding('#c84a3a'), roofCol: '#5a5a62', front: 'e', counter: true, awning: ['#2a6a7a', '#f4f0e8'],
+  hut(C, { x: 150.5, z: 7.2, w: 5.2, d: 4.2, y0: PY, h: 3.0, name: 'salty gull', wall: TX.siding('#c84a3a'), roofCol: '#2a6a7a', front: 'e', counter: true, awning: ['#2a6a7a', '#f4f0e8'],
     win: ptex('wf_fishwin', 3.2, 1.0, (g, W, H, r, P) => { P.fill('#2a2a30'); P.rect(2, 2, W - 4, H - 4, '#e0f0f8'); for (let x = 4; x < W - 8; x += 9) { P.rect(x, 12, 7, 4, ['#8aa0b8', '#e87a5a', '#c8ccd4'][Math.floor(r() * 3)]); P.px(x + 7, 11, '#8aa0b8'); P.px(x + 7, 16, '#8aa0b8'); P.px(x + 1, 13, '#1a1a1a'); } for (let x = 6; x < W - 8; x += 14) { P.rect(x, 22, 8, 4, '#d8482a'); P.px(x - 1, 21, '#d8482a'); P.px(x + 8, 21, '#d8482a'); } }), winW: 3.2, winH: 1.0,
     sign: wharfSign('SALTY GULL SEAFOOD', '#f4f0e8', '#2a4a6a', 4.0, 0.72, { rope: '#2a4a6a' }), signW: 3.8 });
   C.decal('wf_pier', fishMenu(), 151.6, PY + 0.1, 11.42, 's', 1.5, 1.1, { off: 0.01 });
   C.props.push({ kind: 'wf_crate', x: 156.4, y: PY, z: 10.6, yaw: 0 });
-  hut(C, { x: 150.5, z: 1.6, w: 5.2, d: 4.0, y0: PY, h: 3.4, name: 'arcade', wall: TX.siding('#3a2a5a'), roofCol: '#2a2a3a', front: 'e', win: arcadeWin(ctx.night), winW: 3.0, winH: 1.6,
-    sign: wharfSign('TIDE POOL ARCADE', '#1a1426', '#ff7ac8', 4.0, 0.72, { rope: '#5ae0ff' }), signW: 4.0 });
+  hut(C, { x: 150.5, z: 1.6, w: 5.2, d: 4.0, y0: PY, h: 3.4, name: 'arcade', wall: TX.siding('#5a3a8a'), roofCol: '#c8a040', front: 'e', win: arcadeWin(ctx.night), winW: 3.0, winH: 1.6,
+    sign: wharfSign('TIDE POOL ARCADE', '#1a1426', '#ffe04a', 4.0, 0.72, { rope: '#5ae0ff' }), signW: 4.0 });
   // a sea-lion viewing deck between them
   C.decal('wf_pier', wharfSign('SEA LION VIEWING', '#2a6a7a', '#f8f0d8', 3.0, 0.5, { size: 8 }), 150.35, PY + 0.4, 6.4, 'e', 2.0, 0.34, { off: 0.08 });
   C.prop('wf_telescope', 151.4, 6.2, { yaw: -Math.PI / 2 });
@@ -410,6 +411,8 @@ function promenadeLife(C, ctx) {
   for (let x = 12; x < 229; x += 16) { if (skip(x, 92, 126) || skip(x, 150, 172) || skip(x, 4, 42) || skip(x, 55, 70) || skip(x, 184, 210)) continue; C.prop('palm', x, 19.0); }
   for (const x of [98, 122]) { C.prop('palm', x, 18.6); }
   for (const x of [100.5, 119.5]) C.prop('planter', x, 10.4);
+  // festoon lights between the lamp posts along the water
+  for (let x = 6; x + 12 < 229; x += 12) { if (skip(x, 86, 126) || skip(x, 142, 174)) continue; const a = [x, 4.3, 12.6], b2 = [x + 12, 4.3, 12.6], N = 8; for (let i = 0; i < N; i++) { const t0 = i / N, t1 = (i + 1) / N, y0 = 4.3 - Math.sin(t0 * Math.PI) * 0.7, y1 = 4.3 - Math.sin(t1 * Math.PI) * 0.7; beam(C, 'props', TX.solid('#3a3a40'), [x + 12 * t0, y0, 12.6], [x + 12 * t1, y1, 12.6], 0.025, 0.025, { caps: false }); if (i) C.props.push({ kind: 'wf_bulb', x: x + 12 * t0, y: y0 - 0.2, z: 12.6, yaw: 0 }); } void a; void b2; }
   // telescopes on the promenade
   const looks = ['Out past the boats: Gull Rock and its lighthouse. A ferry is chugging toward it, trailing gulls.', 'The pier, the carousel turning, and beyond it the sea lions arguing over their rafts.', 'The red bridge, far off, its towers wearing a scarf of fog.'];
   for (const x of [40.5, 130.5, 190.5]) { C.prop('wf_telescope', x, 12.55); C.interact({ x, z: 13.6, r: 1.2, label: 'Look through the telescope', icon: 'eye', act: async (app) => { sfx(app, 'coin'); await app.say('', looks[Math.floor(Math.random() * looks.length)]); } }); }
@@ -422,5 +425,4 @@ function promenadeLife(C, ctx) {
   C.nav.block(126.5, 18.5, 128.6, 18.8);
   C.interact({ x: 127.5, z: 17.6, label: 'Read the tide table', act: async (app) => app.say('', 'TIDE TABLE — High 6:12 am, low 12:30 pm, high 6:47 pm. Sunset 7:31.', 'Someone has added in marker: "Sea lions: ALWAYS."') });
   C.interact({ x: 18.0, z: 13.6, label: 'Rest on the bench', icon: 'heart', act: async (app) => { if (app.story && app.story.rest) return app.story.rest(); await app.say('', 'You sit and watch the boats bob. The gulls watch your pockets.'); } });
-  C.npc({ id: 'wfJogger', who: 'passerby333', x: 176.0, z: 15.6, yaw: Math.PI / 2, name: 'Jogger', clip: 'stretch', lines: [['Five miles along the water every morning. My Tokonmon does ten. Show-off.']] });
 }

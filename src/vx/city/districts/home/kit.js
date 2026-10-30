@@ -7,6 +7,7 @@
 //  - Runtime hooks (one updater per building): glowing textures get an emissive map, atlases animate, and
 //    "toggle" groups (a lamp that switches, a plant that perks up) are re-parented into their storey so the
 //    engine's cutaway hides them with the rest of that floor.
+import * as THREE from '../../../../../vendor/three.module.js';
 import { TX } from '../../build.js';
 import * as T from './tex.js';
 
@@ -381,3 +382,46 @@ export function plush(R, x, y, z, kind = 'bear', o = {}) {
 /** a short stack of books lying flat */
 export function bookStack(R, x, y, z, n = 3) { const cols = ['#c8402a', '#2e5a8a', '#e8b040', '#3a7a4a', '#7a3a6a']; for (let i = 0; i < n; i++) R.box(S(cols[(i * 3 + Math.round(x * 10)) % 5]), x - 0.12 + (i % 2) * 0.02, y + i * 0.045, z - 0.09, x + 0.12 + (i % 2) * 0.02, y + (i + 1) * 0.045 - 0.004, z + 0.09); }
 export function mug(R, x, y, z, c = '#f4f0e8') { R.box(S(c), x - 0.04, y, z - 0.04, x + 0.04, y + 0.1, z + 0.04); R.box(S(c), x + 0.04, y + 0.03, z - 0.01, x + 0.06, y + 0.07, z + 0.01); R.box(S('#5a3a22'), x - 0.03, y + 0.095, z - 0.03, x + 0.03, y + 0.1, z + 0.03); }
+
+// ---------------------------------------------------------------- draw-call diet: solid-colour boxes → one vertex-coloured mesh per group
+/**
+ * While the district builds, every box whose faces are all plain TX.solid colours (trim, sills, little props,
+ * plush toys...) goes into one vertex-coloured mesh per group instead of one mesh per colour. The meshes are
+ * attached to the matching groups on the first frame, so the cutaway, fades and toggles treat them like the rest.
+ * Returns finish(B): restores C.box and registers the attach step (B: any building of ours, to find the root).
+ */
+export function batchSolids(C) {
+  const orig = C.box, acc = new Map(), col = new THREE.Color();
+  const solid = (t) => { const m = t && t.userData && /^solid(#[0-9a-fA-F]{6})/.exec(t.userData.key || ''); return m ? m[1] : null; };
+  const A = (gk) => { let a = acc.get(gk); if (!a) { a = { P: [], N: [], C: [], I: [] }; acc.set(gk, a); } return a; };
+  const quad = (a, c, n, p0, p1, p2, p3) => { const b = a.P.length / 3; for (const p of [p0, p1, p2, p3]) { a.P.push(p[0], p[1], p[2]); a.N.push(n[0], n[1], n[2]); a.C.push(c.r, c.g, c.b); } a.I.push(b, b + 1, b + 2, b, b + 2, b + 3); };
+  C.box = function (gk, tex, x0, y0, z0, x1, y1, z1, o = {}) {
+    const base = solid(tex), f = { top: solid(o.top || tex), s: solid(o.s || tex), n: solid(o.n || tex), e: solid(o.e || tex), w: solid(o.w || tex) };
+    if (!base || Object.values(f).some((v) => !v) || o.u0 !== undefined || o.v0 !== undefined) return orig.call(this, gk, tex, x0, y0, z0, x1, y1, z1, o);
+    const a = A(gk), S = o.skip || {}, cc = (h) => col.set(h).clone();
+    if (!S.top) quad(a, cc(f.top), [0, 1, 0], [x0, y1, z1], [x1, y1, z1], [x1, y1, z0], [x0, y1, z0]);
+    if (o.bottom) quad(a, cc(f.top), [0, -1, 0], [x0, y0, z0], [x1, y0, z0], [x1, y0, z1], [x0, y0, z1]);
+    if (!S.s) quad(a, cc(f.s), [0, 0, 1], [x0, y0, z1], [x1, y0, z1], [x1, y1, z1], [x0, y1, z1]);
+    if (!S.n) quad(a, cc(f.n), [0, 0, -1], [x1, y0, z0], [x0, y0, z0], [x0, y1, z0], [x1, y1, z0]);
+    if (!S.e) quad(a, cc(f.e), [1, 0, 0], [x1, y0, z1], [x1, y0, z0], [x1, y1, z0], [x1, y1, z1]);
+    if (!S.w) quad(a, cc(f.w), [-1, 0, 0], [x0, y0, z0], [x0, y0, z1], [x0, y1, z1], [x0, y1, z0]);
+    return this;
+  };
+  return (B) => {
+    C.box = orig;
+    let done = false;
+    C.updaters.push(() => {
+      if (done || !B.groups || !B.groups[0] || !B.groups[0].in) return;
+      done = true;
+      const root = B.groups[0].in.parent, mat = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide });
+      for (const [gk, a] of acc) {
+        const g = new THREE.BufferGeometry();
+        g.setAttribute('position', new THREE.Float32BufferAttribute(a.P, 3)); g.setAttribute('normal', new THREE.Float32BufferAttribute(a.N, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(a.C, 3));
+        g.setIndex(a.I); g.computeBoundingSphere();
+        const m = new THREE.Mesh(g, gk === 'ground' ? mat : mat.clone()); m.castShadow = gk !== 'ground'; m.receiveShadow = true; m.name = gk + ':solids';
+        let grp = root.getObjectByName(gk); if (!grp) { grp = new THREE.Group(); grp.name = gk; root.add(grp); }
+        grp.add(m);
+      }
+    });
+  };
+}

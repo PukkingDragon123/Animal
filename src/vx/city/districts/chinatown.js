@@ -79,6 +79,7 @@ function shopfront(C, B, S, o, ctx) {
   for (const [s0, s1] of [[0.45, door - dw / 2 - 0.12], [door + dw / 2 + 0.12, L - 0.45]]) {
     if (s1 - s0 < 0.8) continue;
     sdecal(C, gk, B, sd, (s0 + s1) / 2, 0.45, shopWin(S.kind || 'misc', Math.round((s1 - s0) * 4) / 4, 1.8, night, frame), s1 - s0, 1.8, 0.035);
+    if (night) glowRow(C, B, sd, s0, s1, 0.47, 'ct_glowPane', 1.0);
     sbox(C, gk, B, sd, s0, s1, -0.02, 0.12, 0.38, 0.45, TX.solid('#d8d0c0'));
   }
   // sign board (above the eave, where the high camera can read it)
@@ -98,20 +99,27 @@ function shopfront(C, B, S, o, ctx) {
   }
   // upper floors on this side: lattice-topped windows, balconies, a blade sign
   for (let k = 1; k < B.floors; k++) {
-    const gkk = B.gk(k, FRONT(sd)), y0 = k * fh, n = Math.max(1, Math.floor((L - 0.6) / 2.2)), step = L / n;
+    const gkk = B.enter ? B.gk(k, FRONT(sd)) : gk, y0 = k * fh, n = Math.max(1, Math.floor((L - 0.6) / 2.2)), step = L / n;
     const balc = k >= 2 && (S.balc || o.balc || []).includes(k);
     for (let i = 0; i < n; i++) {
       const s = step * (i + 0.5), lit = night && ((B.id * 3 + i + k) % 3 !== 0);
       sdecal(C, gkk, B, sd, s, y0 + 0.7, ctWin(o.winFrame || '#2e6a4a', '#4a6a8a', lit, (i + k + B.id) % 4 === 0), 1.0, 1.5, 0.03);
+      if (lit) glowRow(C, B, sd, s - 0.5, s + 0.5, y0 + 0.78, 'ct_glowWin', 1.0, 0.85);
       sbox(C, gkk, B, sd, s - 0.6, s + 0.6, -0.02, 0.12, y0 + 0.62, y0 + 0.7, TX.solid('#e8e0d0'));
       if (!balc && (i + k + B.id) % 3 === 1) sbox(C, gkk, B, sd, s - 0.5, s + 0.5, 0.05, 0.3, y0 + 0.4, y0 + 0.62, TX.solid('#7a4a2a'), { top: TX.grass('#4a8a3a') });
     }
     if (balc) { const a = sidePt(B, sd, 0.35), b = sidePt(B, sd, L - 0.35); balcony(C, gkk, sd, a, b, y0 + 0.1, 0.85, { railCol: S.rail || o.rail || '#c8322a', railBg: '#4a3030' }); }
   }
   if (S.blade && B.floors > 1) {
-    const s = S.bladeAt ?? L - 0.55, p = sidePt(B, sd, s), gk1 = B.gk(1, FRONT(sd)), h = Math.min(2.6, (B.floors - 1) * fh - 0.6);
+    const s = S.bladeAt ?? L - 0.55, p = sidePt(B, sd, s), gk1 = B.enter ? B.gk(1, FRONT(sd)) : gk, h = Math.min(2.6, (B.floors - 1) * fh - 0.6);
     bladeSign(C, gk1, sd, p[0], p[1], fh + 0.3, signV(S.blade, S.bladeBg || S.bg || '#b8282a', S.bladeFg || '#f0d060', 0.7, h), 0.7, h);
   }
+}
+
+// night glow panels along a stretch of wall (instanced voxel props, unlit so they read in the dark)
+function glowRow(C, B, sd, s0, s1, y, kind, pw = 1.0, sc = 1) {
+  const [nx, nz] = outN(sd), n = Math.max(1, Math.round((s1 - s0) / pw)), yaw = { s: 0, e: Math.PI / 2, n: Math.PI, w: -Math.PI / 2 }[sd];
+  for (let i = 0; i < n; i++) { const p = sidePt(B, sd, s0 + ((s1 - s0) / n) * (i + 0.5)); C.props.push({ kind, x: p[0] + nx * 0.05, y, z: p[1] + nz * 0.05, yaw, s: sc }); }
 }
 
 // ---------------------------------------------------------------- the district
@@ -502,7 +510,6 @@ function square(C, ctx) {
   C.spot('chess', cx0 + 1.2, cz0, -Math.PI / 2);
   // the tai-chi corner: two elders moving slowly together
   C.npc({ id: 'ctTaichi1', who: 'passerby131', x: 172.4, z: 81.2, yaw: Math.PI / 2, clip: 'stretch', name: 'Auntie Lin', lines: [['Slowly, slowly. Like pushing clouds.', 'Your Tokonmon can join! The little ones love it.'], ['Forty years of tai chi. My knees are younger than yours.']] });
-  C.npc({ id: 'ctTaichi2', who: 'passerby57', x: 174.4, z: 83.0, yaw: Math.PI / 2, clip: 'stretch', name: 'Uncle Wai', lines: [['Breathe in... the city. Breathe out... the traffic.']] });
   // notice board at the west entrance
   C.box('ct_sq', TX.solid('#5a3a22'), 166.6, SQY, 74.6, 166.9, SQY + 2.0, 77.4); C.box('ct_sq', TX.solid('#3f8a5a'), 166.5, SQY + 2.0, 74.4, 167.1, SQY + 2.15, 77.6);
   C.decal('ct_sq', board('sqnotice', ['NOTICES', 'LOST: small fire', 'lizard, answers', 'to "Ember"', '', 'LION DANCE', 'SAT 7PM GRANT LN', '', 'ROOM FOR RENT', 'no Tokon > 3m'], 2.6, 1.6, { bg: '#e8dcc0', fg: '#3a2a22', frame: '#5a3a22', lh: 8, size: 8 }), 166.6, SQY + 0.4, 76, 'w', 2.6, 1.6, { off: 0.01 });
@@ -600,7 +607,6 @@ function streetLife(C, ctx) {
     if (app.story && app.story.gearShop) return app.story.gearShop();
     await app.say('Clerk', 'Welcome to Gateway Music & Gear! Picks, pedals, amps and kicks — gear makes your Tokonmon hit harder.');
   } });
-  C.npc({ id: 'ctGearClerk', who: 'passerby15', x: 139.0, z: 90.4, yaw: Math.PI / 2, name: 'Clerk', clip: 'phone', lines: [['New shipment of picks! Dragon-scale finish. Not real dragon. Probably.'], ['That amp in the window goes to eleven. Your neighbours will hate it.']] });
   C.spot('gearShop', 139.4, 93.0, -Math.PI / 2);
   // fortune-cookie stall on Jackson Lane, at the mouth of Ross Alley
   C.prop('ct_fortune', 124.0, 59.4);
@@ -621,7 +627,5 @@ function streetLife(C, ctx) {
   C.interact({ x: 129.5, z: 37.6, label: 'Peek into the cookie factory', icon: 'eye', act: async (app) => app.say('', 'Warm vanilla air. Two ladies fold hot cookie discs around paper fortunes faster than you can blink.') });
   // people around the gate and the lanes
   C.npc({ id: 'ctTourist', who: 'passerby310', x: 145.4, z: 97.7, yaw: Math.PI, clip: 'selfie', name: 'Tourist', lines: [['Is this the famous gate? It\'s so GREEN. Can you take one of me? No? Fine, selfie it is.']] });
-  C.npc({ id: 'ctKid', who: 'passerby88', x: 148.2, z: 66.5, yaw: -Math.PI / 2, name: 'Kid', lines: [['My uncle says if you whistle under the lanterns, the dragon wakes up.', 'I whistled ALL DAY. Nothing. Dragons are lazy.']] });
-  C.npc({ id: 'ctGrandma', who: 'passerby222', x: 159.5, z: 61.2, yaw: 0, name: 'Grandma Poon', lines: [['Young people walk so fast! Where is the fire? Is it your Tokonmon?', 'Ha! Joking, joking.']] });
   C.spot('chinatownStreet', (GL0 + GL1) / 2, 66.5, Math.PI);
 }

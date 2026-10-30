@@ -11,6 +11,7 @@
 import { TX } from '../build.js';
 import { buildHome } from './home/house.js';
 import { buildStreet } from './home/street.js';
+import * as K from './home/kit.js';
 
 export function build(C, [x0, z0, x1, z1], ctx = {}) {
   // lawn everywhere except under the asphalt (two quads at the same height would flicker)
@@ -18,6 +19,9 @@ export function build(C, [x0, z0, x1, z1], ctx = {}) {
   for (const [a, b, c, d] of [[x0, z0, 46, 128], [52, z0, x1, 128], [x0, 134, 46, 158], [52, 134, x1, 158], [x0, 164, x1, z1]]) C.ground(a, b, c, d, g);
   // the district zone first: houses and shops add their own zones on top
   C.zone('home', x0, z0, x1, z1, { label: 'Sunset Row', sub: 'San Francisco', music: 'lofi', bed: 'birds', step: 'step_concrete' });
-  buildStreet(C, [x0, z0, x1, z1], ctx);
-  return buildHome(C, ctx);
+  const finish = K.batchSolids(C);
+  let B;
+  try { buildStreet(C, [x0, z0, x1, z1], ctx); B = buildHome(C, ctx); }
+  finally { finish(B || C.buildings[C.buildings.length - 1]); }
+  return B;
 }

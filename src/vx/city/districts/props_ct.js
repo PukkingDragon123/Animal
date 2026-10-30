@@ -136,6 +136,10 @@ const K = {
     for (let x = 36; x < 52; x++) { const y = Math.round(16 - (x - 36) * 1.0); F.box(x, Math.max(0, y), 16, x, Math.max(0, y) + 1, 20, sl); F.set(x, Math.max(0, y) + 2, 16, sl); F.set(x, Math.max(0, y) + 2, 20, sl); }
     F.box(0, 0, 0, 71, 0, 21, (x, y, z) => ((x + z) % 7 === 0 ? st : 0));
   } },
+  // night-time window glow: flat panels of warm light laid over lit windows (fronts face +z)
+  ct_glowPane: { size: [16, 28, 1], r: 0, build(F) { const a = F.c('#ffd890', GLOW), b = F.c('#ffc070', GLOW), f = F.c('#3a2a20'); F.box(0, 0, 0, 15, 27, 0, (x, y) => (x === 0 || x === 15 || y === 0 || y === 27 ? f : x === 8 ? f : (x + y * 3) % 11 === 0 ? b : a)); } },
+  ct_glowWin: { size: [16, 24, 1], r: 0, build(F) { const a = F.c('#ffe0a0', GLOW), b = F.c('#ffc878', GLOW), f = F.c('#2e4a3a'); F.box(0, 0, 0, 15, 23, 0, (x, y) => (x === 0 || x === 15 || y === 0 || y === 23 || x === 8 || y === 12 ? f : y > 18 && (x % 3 === 0) ? f : y < 6 ? b : a)); } },
+  wf_bulb: { size: [3, 4, 3], r: 0, hang: true, build(F) { const g = F.c('#fff2b8', GLOW), k = F.c('#2a2a2a'); F.box(1, 3, 1, 1, 3, 1, k); F.box(0, 0, 0, 2, 2, 2, g); } },
   ct_ac: { size: [12, 9, 8], r: 0, build(F) { const b = F.c('#d8d8d0'), g = F.c('#8a8a88'), d = F.c('#5a5a58'); F.box(0, 0, 0, 11, 8, 7, b); F.box(1, 1, 8, 10, 7, 8, g); for (let y = 2; y < 7; y += 2) F.box(2, y, 8, 9, y, 8, d); disc(F, 6, 0, 0, 0, 0, b); } },
   ct_bucket: { size: [8, 8, 8], r: 0.2, build(F) { const b = F.c('#2a6aa8'), w = F.c('#5a9ad8'); disc(F, 4, 4, 0, 6, 3.4, b); disc(F, 4, 4, 6, 6, 2.6, w); } },
   // ---------------------------------------------------------------- Wharf
