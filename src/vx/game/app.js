@@ -1,12 +1,14 @@
 // Tokonmon: San Francisco — the voxel edition's app shell. The world is a fine-voxel
-// diorama rendered by three.js (VxStage: cel shading, ink outlines, soft shadows),
-// finished by the HD-2D post pass (tilt-shift focus, bloom, grade), with a crisp
+// diorama rendered by three.js (VxStage: sun + sky light, soft shadows, ambient occlusion,
+// haze, night light pools; see src/vx/render/), finished by the HD-2D post pass
+// (tilt-shift focus, bloom, grade), with a crisp
 // low-resolution pixel UI on top (dialogue, phone, battle HUD). There is no free
 // walking: the game is told through camera shots and cutscenes; you travel with
 // the phone map and tap hotspots in each place.
 import * as THREE from '../../../vendor/three.module.js';
 import { HD2D } from '../../px/hd2d.js';
 import { VxStage } from '../stage.js';
+import { POST, setupStage } from '../render/look.js';
 import { PixelUI, T } from '../../px/game/ui.js';
 import { loadFonts } from '../../px/font.js';
 import { loadSignFonts } from '../decals.js';
@@ -22,11 +24,7 @@ import { Hud } from './hud.js';
 // fast-travel targets on the city map (phone map / cable car)
 const CITY_SPOTS = { chinatown: 'square', alamo: 'park', pier39: 'pier', dojo: 'dojoDoor', arena: 'arena', apartment: 'frontDoorOut', home: 'frontDoorOut', lab: 'labDoor', city: 'frontDoorOut' };
 const NO_AUDIO = { sfx() {}, voice() {}, music() {}, stinger() {}, ambience() {}, unlock() {}, setVolumes() {}, setIntensity() {}, stopAll() {}, autoUnlock() {} };
-export const POST = {
-  day: { focus: 0.5, band: 0.3, dof: 0.5, bloom: 0.42, threshold: 0.84, rays: 0.05, vig: 0.4, warm: 0.35, sat: 1.08, contrast: 1.06, night: 0 },
-  golden: { focus: 0.5, band: 0.3, dof: 0.5, bloom: 0.5, threshold: 0.8, rays: 0.08, vig: 0.45, warm: 0.5, sat: 1.1, contrast: 1.06, night: 0 },
-  night: { focus: 0.5, band: 0.3, dof: 0.5, bloom: 0.95, threshold: 0.58, rays: 0, vig: 0.5, warm: 0.2, sat: 1.12, contrast: 1.08, night: 0.15 },
-};
+export { POST };
 
 export class VxApp {
   constructor() {
@@ -37,8 +35,9 @@ export class VxApp {
   }
   async boot() {
     this.view = document.getElementById('view'); this.uiCv = document.getElementById('ui');
-    this.stage = new VxStage({ fov: 30, shadowSize: +(this.params.get('shadow') || 4096) });
-    if (this.params.get('ink') !== '0') this.stage.setStyle({ ink: true, toon: this.params.get('toon') !== '0', inkCrease: 0.03 });
+    const touch = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;      // phones: a lighter shadow map
+    this.stage = new VxStage({ fov: 30, shadowSize: +(this.params.get('shadow') || (touch ? 2048 : 4096)) });
+    setupStage(this.stage, this.params);     // the realistic HD look (?look=toon: the old cel shading + ink)
     this.post = new HD2D(this.view);
     this.ui = new PixelUI(320, 180);
     const VOICES = { Coach: 'coach', 'Coach Gonda': 'coach', Kaito: 'rival', Mika: 'friend', Taro: 'kid', Riff: 'punk', Moshi: 'punk', Grandma: 'elder', 'Ms. Aoi': 'professor', '???': 'rival' };

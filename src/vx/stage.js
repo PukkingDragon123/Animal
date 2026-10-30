@@ -1,25 +1,36 @@
-// The voxel stage: three.js scene for a fine-voxel diorama seen from above —
-// a warm sun with soft shadows, sky/ground hemisphere fill, baked corner
-// occlusion, fog that melts the edges of the set, glowing windows, neon and lamps
-// at night. Box-model creatures and people stand in it.
-// The stage renders into its own canvas; the HD-2D post pass (bloom, tilt-shift,
-// grade) is applied on top by src/px/hd2d.js.
+// The voxel stage: the three.js scene for a voxel / low-poly diorama seen from above, lit like an HD-2D
+// set: a warm sun with soft shadows that follow the camera, sky/ground hemisphere fill with a warm bounce,
+// ambient occlusion in every crease and under everything that stands on the ground, aerial haze tinted
+// to the sky, glowing windows, neon and lamps at night that throw real pools of light (render/pools.js),
+// and filmic tone mapping. Box-model creatures and people stand in it.
+// The stage renders into its own canvas; the HD-2D post pass (bloom, tilt-shift, grade) is applied on
+// top by src/px/hd2d.js.
+// Styles (setStyle): { hd: true } is the realistic look (HDR target, AO, haze; render/composite.js);
+// { ink, toon } is the old cel look (banded shading, ink outlines), kept for comparison (?look=toon).
 import * as THREE from '../../vendor/three.module.js';
 import { OUTLINE } from './model.js';
+import { LightPools, Halos } from './render/pools.js';
+import { Composite } from './render/composite.js';
+
+// per mood: sun (colour, intensity, direction toward the sun), sky / ground fill, haze (colour and
+// [start m, density /m, max, falloff with height /m]), sky gradient, emissive levels (glow voxels,
+// lit textures), light-pool gain, ambient occlusion strength, exposure
 export const MOODS = {
-  day: { sun: 0xfff1d6, sunI: 1.6, sunDir: [-0.55, 1, 0.42], hemiSky: 0xc4dcff, hemiGround: 0x9a8a6a, hemiI: 0.85, fog: 0xc8d8e8, bg: 0x9cc4ec, sky: ['#5a8ad0', '#9cc4ec', '#dceaf4'], glow: 0.12, exposure: 1.0 },
-  golden: { sun: 0xffcf98, sunI: 1.75, sunDir: [-0.85, 0.7, 0.35], hemiSky: 0xc4c0ec, hemiGround: 0x8a6a4a, hemiI: 0.85, fog: 0xe8c8b0, bg: 0xe8b898, sky: ['#7a8ec8', '#d8b0b8', '#f6c49a'], glow: 0.3, exposure: 1.05 },
-  night: { sun: 0x8aa0ff, sunI: 0.32, sunDir: [0.4, 1, 0.5], hemiSky: 0x3a4a8a, hemiGround: 0x241c30, hemiI: 0.55, fog: 0x161a30, bg: 0x0c1020, sky: ['#060812', '#121a36', '#2a2a4a'], glow: 1.15, exposure: 1.1 },
+  day: { sun: 0xfff0d8, sunI: 3.3, sunDir: [-0.52, 1, 0.4], hemiSky: 0xb8d0f4, hemiGround: 0xa08a68, hemiI: 0.85, fog: 0xc4d4e8, hazeP: [34, 0.02, 0.35, 0.06], bg: 0x9cc4ec, sky: ['#5a8ad0', '#9cc4ec', '#dceaf4'], glow: 0.18, emissive: 0, pools: 0, ao: 0.85, exposure: 1.0 },
+  golden: { sun: 0xffc080, sunI: 3.3, sunDir: [-0.9, 0.62, 0.3], hemiSky: 0xb0b4e4, hemiGround: 0xb07a58, hemiI: 1.0, fog: 0xf0c8a8, hazeP: [32, 0.024, 0.42, 0.06], bg: 0xe8b898, sky: ['#7a8ec8', '#d8b0b8', '#f6c49a'], glow: 0.5, emissive: 0.25, pools: 0.05, halo: 0, ao: 0.85, exposure: 1.06 },
+  dusk: { sun: 0xff8a68, sunI: 1.3, sunDir: [-0.95, 0.3, 0.22], hemiSky: 0x7078c0, hemiGround: 0x5a4058, hemiI: 0.8, fog: 0x8a74a8, hazeP: [30, 0.026, 0.5, 0.06], bg: 0x5a5a9a, sky: ['#2a2a5a', '#7a5a8a', '#e88a6a'], glow: 1.8, emissive: 0.8, pools: 0.35, halo: 0.35, ao: 0.8, exposure: 1.15 },
+  night: { sun: 0x9ab0ff, sunI: 0.5, sunDir: [0.35, 1, 0.55], hemiSky: 0x40508c, hemiGround: 0x241e30, hemiI: 0.55, fog: 0x1c2244, hazeP: [30, 0.026, 0.5, 0.06], bg: 0x0c1020, sky: ['#060812', '#121a36', '#2a2a4a'], glow: 2.8, emissive: 1.0, pools: 0.45, halo: 0.5, ao: 0.75, exposure: 1.2 },
 };
 
+const _up = new THREE.Vector3(0, 1, 0), _v1 = new THREE.Vector3(), _v2 = new THREE.Vector3(), _v3 = new THREE.Vector3(), _v4 = new THREE.Vector3();
 export class VxStage {
   constructor(o = {}) {
     this.cv = o.canvas || document.createElement('canvas');
-    const r = this.r = new THREE.WebGLRenderer({ canvas: this.cv, antialias: true, preserveDrawingBuffer: true, powerPreference: 'high-performance' });
+    const r = this.r = new THREE.WebGLRenderer({ canvas: this.cv, antialias: o.antialias ?? false, preserveDrawingBuffer: true, powerPreference: 'high-performance' });
     r.setPixelRatio(1);
     r.shadowMap.enabled = true; r.shadowMap.type = THREE.PCFSoftShadowMap;
     r.outputColorSpace = THREE.SRGBColorSpace;
-    r.toneMapping = THREE.ACESFilmicToneMapping; r.toneMappingExposure = 1;
+    r.toneMapping = THREE.NeutralToneMapping; r.toneMappingExposure = 1;
     const S = this.scene = new THREE.Scene();
     this.mats = {
       solid: new THREE.MeshLambertMaterial({ vertexColors: true }),
@@ -33,13 +44,16 @@ export class VxStage {
     this.cam = new THREE.PerspectiveCamera(o.fov || 32, 16 / 9, 0.5, 2000);
     this.view = { target: new THREE.Vector3(0, 0, 0), dist: 60, yaw: 0, pitch: 52 };
     this.actors = new THREE.Group(); S.add(this.actors);
-    this.lamps = [];
+    this.lamps = [];                           // light-pool records (see lamp / addLights)
+    this.lamps.version = 0;
+    this.pools = new LightPools(r);
+    this.halos = new Halos(); S.add(this.halos.points);
+    this.glowMats = new Map();                 // material → { k, always }: emissive textures scaled by the mood
     this.hooks = []; this.time = 0;            // per-frame hooks (card billboards, wind, animation)
-    this.style = {};
+    this.style = {}; this.frameN = 0;
     this.setMood('day');
   }
   setSize(w, h) { this.w = w; this.h = h; this.r.setSize(w, h, false); this.cam.aspect = w / h; this.cam.updateProjectionMatrix(); }
-  // (ink and toon: see setStyle)
   // world: a Fine voxel volume → chunk meshes; the sun's shadow box covers it
   setWorld(vox) {
     if (this.world) { this.scene.remove(this.world); this.world.traverse((o) => o.geometry && o.geometry.dispose()); }
@@ -49,32 +63,48 @@ export class VxStage {
     for (const geo of g.water) { const m = new THREE.Mesh(geo, this.mats.water); m.receiveShadow = true; m.renderOrder = 2; W.add(m); }
     this.scene.add(W);
     this.vox = vox; this.size = [vox.X * vox.s, vox.Y * vox.s, vox.Z * vox.s];
+    this.shadowFollow = false;
     this.fitShadow();
     return this;
   }
   fitShadow() {
-    if (!this.size) return;
+    if (!this.size || this.shadowFollow) return;
     const [SX, , SZ] = this.size, cx = SX / 2, cz = SZ / 2, R = Math.hypot(SX, SZ) * 0.55 + 4, sc = this.sun.shadow.camera;
     sc.left = -R; sc.right = R; sc.top = R; sc.bottom = -R; sc.near = 1; sc.far = 600; sc.updateProjectionMatrix();
     const d = this.mood.sunDir, L = Math.hypot(...d);
     this.sun.position.set(cx + d[0] / L * 200, d[1] / L * 200, cz + d[2] / L * 200); this.sun.target.position.set(cx, 0, cz);
   }
+  /** a shadow box of radius R that follows the camera target (worlds too big for one shadow map: the city) */
+  followShadow(t, R = 34) {
+    this.shadowFollow = true;
+    const sun = this.sun, sc = sun.shadow.camera, d = this.mood.sunDir, L = Math.hypot(...d);
+    if (sc.right !== R) { sc.left = -R; sc.right = R; sc.top = R; sc.bottom = -R; sc.near = 1; sc.far = 400; sc.updateProjectionMatrix(); }
+    // snap the box to whole shadow texels in the light's own frame, so shadow edges don't crawl as you walk
+    const tx = (2 * R) / sun.shadow.mapSize.x, z = _v1.set(d[0] / L, d[1] / L, d[2] / L), x = _v2.crossVectors(_up, z).normalize(), y = _v3.crossVectors(z, x);
+    const p = _v4.set(t.x, 0, t.z), a = Math.round(p.dot(x) / tx) * tx, b = Math.round(p.dot(y) / tx) * tx, c = p.dot(z);
+    p.copy(x).multiplyScalar(a).addScaledVector(y, b).addScaledVector(z, c);
+    sun.target.position.copy(p); sun.position.copy(p).addScaledVector(z, 120); sun.target.updateMatrixWorld();
+  }
   setMood(name) {
     const m = this.mood = Object.assign({}, MOODS[name] || MOODS.day); this.moodName = name;
     this.sun.color.set(m.sun); this.sun.intensity = m.sunI;
     this.hemi.color.set(m.hemiSky); this.hemi.groundColor.set(m.hemiGround); this.hemi.intensity = m.hemiI;
-    this.scene.fog = new THREE.Fog(m.fog, 70, 220);
+    this.haze = new THREE.Color(m.fog);
+    this.scene.fog = this.style.hd ? null : new THREE.Fog(m.fog, 70, 220);
     this.scene.background = m.sky ? skyTexture(m.sky) : new THREE.Color(m.bg);
     this.mats.glow.color.setScalar(m.glow);
     this.r.toneMappingExposure = m.exposure;
-    for (const l of this.lamps) l.visible = name === 'night';
+    for (const [mat, g] of this.glowMats) mat.emissiveIntensity = g.k * (g.always ? 1 : m.emissive);
     this.fitShadow();
   }
-  // a warm point light (street lamps, windows) that only shows at night
+  /** a warm light (street lamp, window, neon) — a pool of light on the ground around it, shown by the mood */
   lamp(x, y, z, color = 0xffc070, power = 30, dist = 14) {
-    const l = new THREE.PointLight(color, power, dist, 1.6); l.position.set(x, y, z); l.visible = this.moodName === 'night';
-    this.scene.add(l); this.lamps.push(l); return l;
+    const l = LightPools.light(x, y, z, color, Math.min(2.4, power / 22), dist * 0.7, Math.max(1, y)); l.halo = 1.2;
+    this.lamps.push(l); this.lamps.version++; return l;
   }
+  addLights(list) { for (const l of list) this.lamps.push(l); this.lamps.version++; }
+  /** an emissive material whose glow follows the mood (always: shines by day too, like a screen) */
+  glowMat(mat, k = 1, always = false) { this.glowMats.set(mat, { k, always }); mat.emissiveIntensity = k * (always ? 1 : this.mood.emissive); }
   // camera: look at target from yaw/pitch (degrees) at a distance
   look(target, dist, yaw = 0, pitch = 52) { this.view.target.set(...target); Object.assign(this.view, { dist, yaw, pitch }); }
   updateCamera() {
@@ -82,10 +112,24 @@ export class VxStage {
     this.cam.position.set(v.target.x + Math.sin(yr) * Math.cos(pr) * v.dist, v.target.y + Math.sin(pr) * v.dist, v.target.z + Math.cos(yr) * Math.cos(pr) * v.dist);
     this.cam.lookAt(v.target);
   }
+  // every lit material receives the light pools: actors every frame, the whole scene now and then
+  patchLights() {
+    const n = this.scene.children.length;
+    if (n !== this.lastN || this.frameN % 30 === 0) { this.lastN = n; this.pools.patchTree(this.scene); } else this.pools.patchTree(this.actors);
+  }
   render() {
+    this.frameN++;
     this.updateCamera(); this.cam.updateMatrixWorld(); OUTLINE.uK.value = (2 * Math.tan((this.cam.fov * Math.PI) / 360)) / (this.h || 720);
     for (const f of this.hooks) f(this);
     if (this.style.toon) this.toonify(this.scene);
+    this.patchLights();
+    this.pools.update(this.lamps, this.view.target, (this.mood.pools || 0) * (this.style.pools ?? 1), Math.max(96, this.view.dist * 3.4));
+    this.halos.update(this.lamps, this.cam, this.h || 720, (this.mood.halo || 0) * (this.style.pools ?? 1));
+    if (this.style.hd) {
+      const m = this.mood, s = this.style;
+      this.comp.render(this.scene, this.cam, this.w, this.h, { ao: (m.ao ?? 0.85) * (s.ao ?? 1), aoRadius: s.aoRadius ?? 1.2, aoK: s.aoK, haze: this.haze, hazeP: [m.hazeP[0] + this.view.dist * 0.15 - 4.5, m.hazeP[1], m.hazeP[2] * (s.haze ?? 1), m.hazeP[3]], ink: s.inkA ?? 0, inkK: s.inkK, debug: s.debug });
+      return this.cv;
+    }
     if (!this.style.ink) { this.r.render(this.scene, this.cam); return this.cv; }
     // ink: render into a target with depth, then composite with outlines found in the depth buffer
     const W = this.w, H = this.h;
@@ -101,9 +145,10 @@ export class VxStage {
     this.r.setRenderTarget(null); this.r.render(this.inkScene, this.inkCam);
     return this.cv;
   }
-  // stylized look: { ink: outlines from depth, toon: banded cel shading }
+  // { hd: realistic HDR look (ao, aoRadius, haze, inkA, pools: multipliers) } or the old { ink: outlines, toon: banded cel shading }
   setStyle(o = {}) {
     this.style = Object.assign(this.style || {}, o);
+    if (o.hd) { if (!this.comp) this.comp = new Composite(this.r); this.style.ink = false; this.style.toon = false; this.scene.fog = null; this.r.toneMapping = THREE.NeutralToneMapping; }
     if (o.ink && !this.inkScene) {
       this.inkCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1); this.inkScene = new THREE.Scene();
       this.inkQuad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.ShaderMaterial({
@@ -134,6 +179,7 @@ export class VxStage {
       const g = new Uint8Array([90, 90, 90, 255, 168, 168, 168, 255, 230, 230, 230, 255, 255, 255, 255, 255]);
       this.toonRamp = new THREE.DataTexture(g, 4, 1, THREE.RGBAFormat); this.toonRamp.minFilter = this.toonRamp.magFilter = THREE.NearestFilter; this.toonRamp.needsUpdate = true;
       this.toonCache = new Map();
+      this.r.toneMapping = THREE.ACESFilmicToneMapping;
     }
     return this;
   }

@@ -90,11 +90,8 @@ export class CityControl {
       c.yaw += (this.yaw - c.yaw) * k; c.pitch += (this.pitch - c.pitch) * k; c.dist += (30 * this.zoom - c.dist) * k;
     }
     // the sun's shadow box follows the camera target (the city is too big for one shadow map)
-    const st = this.w.st, sun = st.sun, sc = sun.shadow.camera, Rr = 34 * Math.max(1, this.zoom), d = st.mood.sunDir, L = Math.hypot(...d), t = c.target;
-    if (sc.right !== Rr) { sc.left = -Rr; sc.right = Rr; sc.top = Rr; sc.bottom = -Rr; sc.near = 1; sc.far = 400; sc.updateProjectionMatrix(); }
-    const snap = 0.5;    // snap to texels-ish so shadows don't shimmer
-    const cx = Math.round(t.x / snap) * snap, cz = Math.round(t.z / snap) * snap;
-    sun.position.set(cx + (d[0] / L) * 120, (d[1] / L) * 120, cz + (d[2] / L) * 120); sun.target.position.set(cx, 0, cz); sun.target.updateMatrixWorld();
+    const st = this.w.st;
+    if (st.followShadow) st.followShadow(c.target, 34 * Math.max(1, this.zoom));
   }
   // ---------------------------------------------------------------- cutaway
   cutaway(dt, p) {
@@ -105,6 +102,8 @@ export class CityControl {
       if (B.id === inside) {
         if (B.roofG) B.roofG.visible = false;
         B.groups.forEach((G, k) => { const show = k <= L; vis(G.back, show); vis(G.in, show); vis(G.front, k < L); });
+        // walked in while it was faded (you stood behind it): make it solid again
+        if ((B.fade ?? 1) < 1) { if (B.roofG) alpha(B.roofG, 1); B.groups.forEach((G) => { alpha(G.front, 1); alpha(G.back, 1); alpha(G.in, 1); }); B.groups.forEach((G, k) => { vis(G.back, k <= L); vis(G.in, k <= L); vis(G.front, k < L); }); if (B.roofG) B.roofG.visible = false; }
         B.fade = 1; continue;
       }
       if (B.roofG) B.roofG.visible = true;
@@ -213,9 +212,10 @@ function alpha(g, a) {
   if (!g) return;
   g.visible = true;
   for (const m of g.children) {
+    if (m.userData.proxy) { m.castShadow = a > 0.6; continue; }      // the group's merged shadow caster
     const mt = m.material; if (!mt) continue;
     const tr = a < 0.98;
     if (mt.transparent !== tr) { mt.transparent = tr; mt.needsUpdate = true; }
-    mt.opacity = a; mt.depthWrite = !tr; m.castShadow = !tr || a > 0.6;
+    mt.opacity = a; mt.depthWrite = !tr; m.castShadow = (m.userData.cast ?? true) && (!tr || a > 0.6);
   }
 }

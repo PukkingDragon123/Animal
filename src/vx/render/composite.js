@@ -1,0 +1,139 @@
+// The stage's HD frame: the scene renders into a linear HDR target with a depth texture; then
+//  1. ambient occlusion (scalable ambient obscurance, 12 spiral taps) at half resolution from the depth,
+//     with normals rebuilt from the depth itself, so creases, corners, the feet of walls and everything
+//     standing on the ground (props, people, creatures) sit in soft contact shadow;
+//  2. a depth-aware blur (horizontal + vertical) that keeps the occlusion from bleeding across edges;
+//  3. the composite: occlusion, aerial haze (thicker with distance and near the ground, tinted to the
+//     sky), an optional whisper of silhouette line, then filmic tone mapping into the canvas.
+import * as THREE from '../../../vendor/three.module.js';
+
+const VS = 'varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }';
+const COMMON = `
+#include <packing>
+uniform sampler2D tDepth; uniform mat4 uProjInv;
+vec3 viewPos(vec2 uv) { float d = texture2D(tDepth, uv).x; vec4 v = uProjInv * vec4(uv * 2.0 - 1.0, d * 2.0 - 1.0, 1.0); return v.xyz / v.w; }
+`;
+const AO_FS = `#define SAMPLES 12
+varying vec2 vUv; uniform vec2 uTexel; uniform float uRadius; uniform float uProjY; uniform float uAspect; uniform float uBias; uniform float uPower; uniform float uStrength;
+${COMMON}
+float ign(vec2 p) { return fract(52.9829189 * fract(dot(p, vec2(0.06711056, 0.00583715)))); }
+void main() {
+  float d = texture2D(tDepth, vUv).x;
+  if (d >= 1.0) { gl_FragColor = vec4(1.0); return; }
+  vec3 P = viewPos(vUv);
+  vec3 pr = viewPos(vUv + vec2(uTexel.x, 0.0)), pl = viewPos(vUv - vec2(uTexel.x, 0.0)), pu = viewPos(vUv + vec2(0.0, uTexel.y)), pd = viewPos(vUv - vec2(0.0, uTexel.y));
+  vec3 dx = abs(pr.z - P.z) < abs(P.z - pl.z) ? pr - P : P - pl;
+  vec3 dy = abs(pu.z - P.z) < abs(P.z - pd.z) ? pu - P : P - pd;
+  vec3 N = normalize(cross(dx, dy));
+  float rs = uRadius * uProjY * 0.5 / -P.z;                  // the radius in uv (fraction of the height)
+  float a0 = ign(gl_FragCoord.xy) * 6.2831853, occ = 0.0, r2 = uRadius * uRadius;
+  for (int i = 0; i < SAMPLES; i++) {
+    float t = (float(i) + 0.5) / float(SAMPLES), a = a0 + float(i) * 2.3999632;
+    vec2 off = vec2(cos(a) * uAspect, sin(a)) * (rs * sqrt(t));
+    vec3 v = viewPos(vUv + off) - P;
+    float vv = dot(v, v), vn = dot(v, N);
+    occ += max(0.0, 1.0 - vv / r2) * max(0.0, vn * inversesqrt(vv + 1e-4) - uBias);
+  }
+  float ao = clamp(1.0 - occ / float(SAMPLES) * uStrength, 0.0, 1.0);
+  gl_FragColor = vec4(vec3(pow(ao, uPower)), 1.0);
+}`;
+const BLUR_FS = `varying vec2 vUv; uniform sampler2D tAO; uniform vec2 uDir; uniform vec2 uNF;
+${COMMON}
+float lz(vec2 uv) { float d = texture2D(tDepth, uv).x; return d >= 1.0 ? 1e5 : -perspectiveDepthToViewZ(d, uNF.x, uNF.y); }
+void main() {
+  float z = lz(vUv), s = 0.0, w = 0.0;
+  for (int i = -4; i <= 4; i++) {
+    vec2 uv = vUv + uDir * float(i);
+    float k = exp(-float(i * i) / 10.0) * max(0.0, 1.0 - abs(lz(uv) - z) / (z * 0.03));
+    s += texture2D(tAO, uv).r * k; w += k;
+  }
+  gl_FragColor = vec4(vec3(w > 0.0 ? s / w : 1.0), 1.0);
+}`;
+const FINAL_FS = `varying vec2 vUv; uniform sampler2D tColor; uniform sampler2D tAO; uniform float uAO; uniform vec2 uTexel; uniform vec2 uNF;
+uniform mat4 uCamWorld; uniform vec3 uHaze; uniform vec4 uHazeP; uniform float uHazeY;
+uniform vec3 uInk; uniform float uInkA; uniform float uInkK; uniform float uDebug;
+${COMMON}
+float lz(vec2 uv) { float d = texture2D(tDepth, uv).x; return d >= 1.0 ? 1e5 : -perspectiveDepthToViewZ(d, uNF.x, uNF.y); }
+void main() {
+  vec3 col = texture2D(tColor, vUv).rgb;
+  float d = texture2D(tDepth, vUv).x;
+  if (d < 1.0) {
+    vec3 vp = viewPos(vUv); float dist = length(vp);
+    // ambient occlusion
+    float ao = texture2D(tAO, vUv).r;
+    col *= mix(1.0, ao, uAO);
+    if (uDebug > 0.5) col = vec3(ao * 0.6);
+    // a whisper of silhouette line where a surface stands well in front of its neighbour
+    if (uInkA > 0.0) {
+      float c = -vp.z, l = lz(vUv - vec2(uTexel.x, 0.0)), r = lz(vUv + vec2(uTexel.x, 0.0)), u = lz(vUv + vec2(0.0, uTexel.y)), b = lz(vUv - vec2(0.0, uTexel.y));
+      float jump = max(max(l - c, r - c), max(u - c, b - c)) / c;
+      col = mix(col, col * uInk, smoothstep(uInkK, uInkK * 1.8, jump) * uInkA);
+    }
+    // aerial haze: grows with distance past the start, thicker near the ground
+    vec3 wp = (uCamWorld * vec4(vp, 1.0)).xyz;
+    float hz = 1.0 - exp(-max(dist - uHazeP.x, 0.0) * uHazeP.y);
+    float hh = exp(-max(wp.y - uHazeY, 0.0) * uHazeP.w);
+    col = mix(col, uHaze, clamp(hz * (0.45 + 0.55 * hh), 0.0, 1.0) * uHazeP.z);
+  }
+  gl_FragColor = vec4(col, 1.0);
+  #include <tonemapping_fragment>
+  #include <colorspace_fragment>
+}`;
+
+export class Composite {
+  constructor(renderer) {
+    this.r = renderer;
+    this.cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+    this.quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2)); this.quad.frustumCulled = false;
+    this.scene = new THREE.Scene(); this.scene.add(this.quad);
+    const sh = (fs, u) => new THREE.ShaderMaterial({ uniforms: u, vertexShader: VS, fragmentShader: fs, depthTest: false, depthWrite: false, toneMapped: false });
+    const projInv = { value: new THREE.Matrix4() };
+    this.u = { projInv };
+    this.mAO = sh(AO_FS, { tDepth: { value: null }, uProjInv: projInv, uTexel: { value: new THREE.Vector2() }, uRadius: { value: 0.9 }, uProjY: { value: 1 }, uAspect: { value: 1 }, uBias: { value: 0.06 }, uPower: { value: 1.0 }, uStrength: { value: 3.2 } });
+    this.mBlur = sh(BLUR_FS, { tDepth: { value: null }, uProjInv: projInv, tAO: { value: null }, uDir: { value: new THREE.Vector2() }, uNF: { value: new THREE.Vector2() } });
+    this.mFinal = sh(FINAL_FS, {
+      tColor: { value: null }, tDepth: { value: null }, tAO: { value: null }, uProjInv: projInv, uAO: { value: 0.85 }, uTexel: { value: new THREE.Vector2() }, uNF: { value: new THREE.Vector2() },
+      uCamWorld: { value: new THREE.Matrix4() }, uHaze: { value: new THREE.Color() }, uHazeP: { value: new THREE.Vector4(30, 0.02, 0.4, 0.12) }, uHazeY: { value: 0 },
+      uInk: { value: new THREE.Color(0.35, 0.3, 0.42) }, uInkA: { value: 0 }, uInkK: { value: 0.03 }, uDebug: { value: 0 },
+    });
+    this.mFinal.toneMapped = true;      // the canvas gets the renderer's filmic tone mapping + sRGB
+    this.white = new THREE.DataTexture(new Uint8Array([255, 255, 255, 255]), 1, 1); this.white.needsUpdate = true;
+  }
+  targets(W, H, aoScale) {
+    if (!this.rt || this.rt.width !== W || this.rt.height !== H) {
+      if (this.rt) { this.rt.dispose(); this.rt.depthTexture.dispose(); }
+      this.rt = new THREE.WebGLRenderTarget(W, H, { type: THREE.HalfFloatType, depthTexture: new THREE.DepthTexture(W, H, THREE.UnsignedIntType), minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter });
+    }
+    const aw = Math.max(1, Math.round(W * aoScale)), ah = Math.max(1, Math.round(H * aoScale));
+    if (!this.aoA || this.aoA.width !== aw || this.aoA.height !== ah) {
+      for (const t of [this.aoA, this.aoB]) if (t) t.dispose();
+      const o = { depthBuffer: false, minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter };
+      this.aoA = new THREE.WebGLRenderTarget(aw, ah, o); this.aoB = new THREE.WebGLRenderTarget(aw, ah, o);
+    }
+  }
+  pass(mat, target) { this.quad.material = mat; this.r.setRenderTarget(target); this.r.render(this.scene, this.cam); }
+  /** o: { ao (strength 0..1), aoRadius, haze: Color, hazeP: [start, density, max, heightFalloff], hazeY, ink (alpha), inkCol, inkK } */
+  render(scene, cam, W, H, o = {}) {
+    const aoOn = (o.ao ?? 0.85) > 0, aoScale = Math.min(0.5, 720 / Math.max(W, 1));
+    this.targets(W, H, aoScale);
+    const r = this.r;
+    r.setRenderTarget(this.rt); r.render(scene, cam);
+    this.u.projInv.value.copy(cam.projectionMatrixInverse);
+    const depth = this.rt.depthTexture, nf = [cam.near, cam.far];
+    if (aoOn) {
+      const A = this.mAO.uniforms, aw = this.aoA.width, ah = this.aoA.height;
+      A.tDepth.value = depth; A.uTexel.value.set(1 / aw, 1 / ah); A.uRadius.value = o.aoRadius ?? 1.2; A.uStrength.value = o.aoK ?? 3.2; A.uProjY.value = cam.projectionMatrix.elements[5]; A.uAspect.value = H / W;
+      this.pass(this.mAO, this.aoA);
+      const B = this.mBlur.uniforms; B.tDepth.value = depth; B.uNF.value.set(...nf);
+      B.tAO.value = this.aoA.texture; B.uDir.value.set(1 / aw, 0); this.pass(this.mBlur, this.aoB);
+      B.tAO.value = this.aoB.texture; B.uDir.value.set(0, 1 / ah); this.pass(this.mBlur, this.aoA);
+    }
+    const F = this.mFinal.uniforms;
+    F.tColor.value = this.rt.texture; F.tDepth.value = depth; F.tAO.value = aoOn ? this.aoA.texture : this.white; F.uAO.value = aoOn ? o.ao ?? 0.85 : 0;
+    F.uTexel.value.set(1 / W, 1 / H); F.uNF.value.set(...nf); F.uCamWorld.value.copy(cam.matrixWorld);
+    if (o.haze) F.uHaze.value.copy(o.haze);
+    if (o.hazeP) F.uHazeP.value.set(...o.hazeP); F.uHazeY.value = o.hazeY || 0;
+    F.uDebug.value = o.debug ? 1 : 0; F.uInkA.value = o.ink || 0; if (o.inkCol) F.uInk.value.set(o.inkCol); F.uInkK.value = o.inkK ?? 0.03;
+    this.pass(this.mFinal, null);
+  }
+}

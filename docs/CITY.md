@@ -137,7 +137,14 @@ Every texture is pixel art.
 | Plain | `solid(c)`, `stripes(a, b, n)` |
 | Façade pieces | `windowTex(frame, curtain, lit)`, `shopWindowTex(frame, lit, seed)`, `doorTex(col, kind)`, `garageTex(c)`, `signTex(text, bg, fg, { w, h, fs })`, `awningTex(a, b)` |
 
-For a custom texture, use `TX.ptex(key, wMetres, hMetres, (g, W, H, rand, P) => { ... }, { ppm })`. `P` is a pixel painter with `fill`, `rect`, `px`, `hline`, `vline`, `dither`, `speck`, `block` and `text`. Use it for TV screens, posters, rugs and book spines; always paint in crisp pixel art.
+Also: `slabs(c)` (scored concrete sidewalk slabs), `roofMembrane(c)` (flat-roof bitumen), `tactile(c)` (kerb-ramp domes). Surfaces tile seamlessly; the window texture picks one of four dressings (drapes, roller blind, venetian slats, café curtain + plant) from the curtain colour.
+
+For a custom texture, use `TX.ptex(key, wMetres, hMetres, (g, W, H, rand, P) => { ... }, { ppm })`. `P` is a pixel painter with `fill`, `rect`, `wrect` (wraps at the edges), `px`, `hline`, `vline`, `dither`, `speck`, `blob`, `crack`, `block`, `text` (crisp: thresholded, no anti-aliasing) and `tiny` (3 × 5 pixel font). For noisy surfaces use `TX.pixels(g, W, H, (x, y) => [r, g, b])` with `TX.pnoise` / `TX.fnoise` (periodic noise) and `TX.ramp` + `TX.pick` (dithered shade ramps). Use it for TV screens, posters, rugs and book spines; always paint in crisp pixel art. A texture with `userData.cutout = true` is drawn with a hard alpha test (scenes/city.js), for decals with transparent pixels.
+
+### The dressing pass (`src/vx/city/dress.js`)
+After the districts, `scenes/city.js` runs `dress(C, record)`: drainpipes, window AC units, flower boxes, grime and rain stains, meters and fire escapes on exposed façades; membrane roofs, condensers, vents, hatches, skylights, antennas, dishes, water tanks and chimneys on roofs (all in one shared atlas per building's roof group, so they fade and cut away with it); manholes, drains, patches, oil, puddles, crack sealing, arrows, gutter pans, tactile paving and tree grates on the ground (one cut-out atlas); kerbside clutter, street trees and signs, pigeons and gulls, utility poles and wires (Sunset Row) and trolley wires (Market Street). It only places things where the nav grid is open and keeps clear of doors, interactables, spots and NPCs. `?nodress=1` skips it (for A/B cost checks). Districts are built inside `batchSolids` (`districts/home/kit.js`): solid-colour boxes, quads and triangles merge into one vertex-coloured mesh per group.
+
+New prop kinds: `treeB` (rounder canopy), `sandwich` (A-board), `bags`, `dumpster`, `boxes`, `pot`, `upole` (utility pole), `scooter`, `barrier`, `firebox`. A kind with `noShadow: true` skips the shadow pass. `canopy.cball` / `canopy.leafCol` (voxprops.js) build cheap blocky foliage in 25 cm cells coloured in chunks (~3k triangles per tree instead of ~10k).
 
 ## Testing
 

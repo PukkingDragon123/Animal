@@ -9,6 +9,9 @@ import * as THREE from '../../../vendor/three.module.js';
 import { CityNav, CELL } from './nav.js';
 import * as TX from './pixtex.js';
 import { propMeshes, PROPS } from './voxprops.js';
+import { glowInfo } from '../render/glow.js';
+import { mergeLights } from '../render/pools.js';
+import { skirt } from '../render/skirt.js';
 
 const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
 const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
@@ -33,6 +36,7 @@ export class CityBuilder {
   /** quad a-b-c-d (a bottom-left, b bottom-right, c top-right, d top-left, counter-clockwise seen from the front) */
   quad(gk, tex, a, b, c, d, o = {}) {
     const A = this.acc(gk, tex), n = nrm(cross(sub(b, a), sub(d, a))), [tw, th] = tex.userData.size, base = A.P.length / 3;
+    if (!o.decal) A.solid = true;          // a mesh of nothing but decals (windows, signs on walls) casts no shadow
     let uv;
     if (o.fit) uv = o.flipU ? [[1, 0], [0, 0], [0, 1], [1, 1]] : [[0, 0], [1, 0], [1, 1], [0, 1]];
     else { const lu = len(sub(b, a)) / tw, lv = len(sub(d, a)) / th, u0 = (o.u0 || 0) / tw, v0 = (o.v0 || 0) / th; uv = [[u0, v0], [u0 + lu, v0], [u0 + lu, v0 + lv], [u0, v0 + lv]]; }
@@ -43,7 +47,8 @@ export class CityBuilder {
     return this;
   }
   tri(gk, tex, a, b, c) {
-    const A = this.acc(gk, tex), n = nrm(cross(sub(b, a), sub(c, a))), [tw, th] = tex.userData.size, base = A.P.length / 3;
+    const A = this.acc(gk, tex); A.solid = true;
+    const n = nrm(cross(sub(b, a), sub(c, a))), [tw, th] = tex.userData.size, base = A.P.length / 3;
     for (const p of [a, b, c]) { A.P.push(p[0], p[1], p[2]); A.N.push(n[0], n[1], n[2]); }
     // planar UVs from the dominant axis
     const ax = Math.abs(n[0]) > Math.abs(n[2]) ? 2 : 0;
@@ -66,7 +71,7 @@ export class CityBuilder {
     const off = o.off ?? 0.02, hw = w / 2;
     const P = { s: [[x - hw, z + off], [x + hw, z + off]], n: [[x + hw, z - off], [x - hw, z - off]], e: [[x + off, z + hw], [x + off, z - hw]], w: [[x - off, z - hw], [x - off, z + hw]] }[face];
     const [a, b] = P;
-    this.quad(gk, tex, [a[0], y, a[1]], [b[0], y, b[1]], [b[0], y + h, b[1]], [a[0], y + h, a[1]], { fit: true });
+    this.quad(gk, tex, [a[0], y, a[1]], [b[0], y, b[1]], [b[0], y + h, b[1]], [a[0], y + h, a[1]], { fit: true, decal: true });
   }
   // ---------------------------------------------------------------- ground
   /** a walkable ground patch at height y (level 0) */
@@ -113,12 +118,18 @@ export class CityBuilder {
   prop(kind, x, z, o = {}) {
     const P = PROPS[kind]; if (!P) return this;
     const L = o.L || 0, y = o.y ?? this.nav.ground(x, z, L), yaw = o.yaw || 0;
-    this.props.push({ kind, x, y, z, yaw, s: o.s || 1 });
+    this.props.push({ kind, x, y, z, yaw, s: o.s || 1, nolight: o.light === false });
     if (o.collide !== false && P.r) {
       if (Array.isArray(P.r)) { let [w, d] = P.r; if (Math.abs(Math.sin(yaw)) > 0.7) [w, d] = [d, w]; this.nav.block(x - w / 2, z - d / 2, x + w / 2, z + d / 2, L); }
       else this.nav.block(x - P.r, z - P.r, x + P.r, z + P.r, L);
     }
-    if (kind === 'lamp' && o.light !== false && this.lamps.length < 14) this.lamps.push([x, y + 4.2, z]);
+    return this;
+  }
+  /** an explicit light (props with glowing voxels light themselves): a pool of `color` light of radius r around
+   *  (x, y, z), `intensity` = its brightness right below; halo: size (m) of the glow sprite at night, 0 = none */
+  light(x, y, z, o = {}) {
+    const c = new THREE.Color(o.color ?? 0xffd8a0), k = o.intensity ?? 1;
+    (this.lights = this.lights || []).push({ x, y, z, r: o.r ?? 8, col: [c.r * k, c.g * k, c.b * k], sh: o.sh ?? Math.max(0.8, y - this.nav.ground(x, z, o.L || 0)), halo: o.halo ?? 0 });
     return this;
   }
   /** a string of lanterns between two points (Chinatown) */
@@ -387,8 +398,9 @@ export class CityBuilder {
   }
   // ---------------------------------------------------------------- finish
   finalize(stage) {
+    if (this.skirt !== false) skirt(this);
     const root = new THREE.Group(); root.name = 'city';
-    const groups = {};
+    const groups = {}, lights = [];
     for (const [gk, G] of this.groups) {
       const grp = new THREE.Group(); grp.name = gk;
       for (const A of G.values()) {
@@ -397,9 +409,17 @@ export class CityBuilder {
         g.setIndex(A.I); g.computeBoundingSphere();
         const water = gk === 'water';
         const m = new THREE.MeshLambertMaterial({ map: A.tex, side: water ? THREE.FrontSide : THREE.DoubleSide, transparent: water, opacity: water ? 0.88 : 1 });
-        const mesh = new THREE.Mesh(g, m); mesh.castShadow = !water && gk !== 'ground'; mesh.receiveShadow = true;
+        // glowing pixels (lit windows, signs, screens): an emissive twin of the texture, scaled by the mood
+        const gi = water ? null : glowInfo(A.tex, this.night);
+        if (gi) {
+          m.emissive.set(0xffffff); m.emissiveMap = gi.map;
+          if (stage && stage.glowMat) stage.glowMat(m, gi.k, gi.always); else m.emissiveIntensity = gi.k;
+          if (this.night || gi.always) windowLights(A, gi, lights);
+        }
+        const mesh = new THREE.Mesh(g, m); mesh.castShadow = mesh.userData.cast = !water && gk !== 'ground' && !!A.solid; mesh.receiveShadow = true;
         grp.add(mesh);
       }
+      shadowProxy(grp);
       groups[gk] = grp; root.add(grp);
     }
     // doors: re-parent each panel to a hinge pivot
@@ -409,7 +429,19 @@ export class CityBuilder {
       root.remove(grp); piv.add(grp); root.add(piv); D.pivot = piv; D.base = piv.rotation.y;
       const b = this.buildings[D.building]; if (b) b.doorPivots = (b.doorPivots || []).concat(piv);
     }
-    root.add(propMeshes(this.props, stage.mats));
+    // voxel props: instanced per kind and per 32 m tile, so the camera and the sun's shadow box only draw the
+    // tiles they see; every prop with glowing voxels (lamps, lanterns, neon, vending machines) throws light
+    const P = new THREE.Group(); P.name = 'props'; root.add(P);
+    const tiles = new Map(), halos = [];
+    for (const p of this.props) { const k = Math.floor(p.x / 32) + ',' + Math.floor(p.z / 32); if (!tiles.has(k)) tiles.set(k, []); tiles.get(k).push(p); }
+    for (const list of tiles.values()) {
+      const pg = propMeshes(list, stage.mats);
+      for (const im of [...pg.children]) {
+        if (im.isInstancedMesh) { im.computeBoundingSphere(); im.frustumCulled = true; if (im.material === stage.mats.glow) propLights(im, list, lights, this.nav, halos); }
+        P.add(im);
+      }
+    }
+    if (stage && stage.addLights) stage.addLights(mergeLights(lights).concat(halos, this.lights || []));
     // building group handles for the cutaway
     for (const B of this.buildings) {
       B.groups = []; for (let k = 0; k < B.floors; k++) B.groups.push({ front: groups[B.gk(k, 'front')], back: groups[B.gk(k, 'back')], in: groups[B.gk(k, 'in')] });
@@ -422,10 +454,84 @@ export class CityBuilder {
     const minimap = { w: MW, h: MH, col };
     const city = {
       minimap, npcs: this.npcs || [],
-      city: true, root, nav: this.nav, spots: this.spots, zones: this.zones, inter: this.inter, doors: this.doors, buildings: this.buildings, lamps: this.lamps, size: [this.w, 30, this.d],
+      city: true, root, nav: this.nav, spots: this.spots, zones: this.zones, inter: this.inter, doors: this.doors, buildings: this.buildings, lamps: [], lights, size: [this.w, 30, this.d],
       update: (dt, t) => { if (water) for (const m of water.children) if (m.material.map) m.material.map.offset.set(Math.sin(t * 0.2) * 0.05, t * 0.01); for (const f of this.updaters) f(dt, t); },
     };
     return city;
+  }
+}
+// ---------------------------------------------------------------- shadows
+// one merged, invisible shadow caster per group (instead of one per texture): the sun's shadow pass draws a
+// single mesh per building part. It draws nothing in the camera's pass and follows the group's visibility.
+const PROXY_MAT = new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false, side: THREE.DoubleSide });
+// fades and ghosting walk every child of a group and set these: the proxy must never draw or write depth
+for (const [k, v] of Object.entries({ colorWrite: false, depthWrite: false, transparent: false, opacity: 1 })) Object.defineProperty(PROXY_MAT, k, { get: () => v, set() {}, configurable: true });
+function shadowProxy(grp) {
+  const cast = grp.children.filter((m) => m.isMesh && m.castShadow);
+  if (cast.length < 2) return;
+  let nv = 0, ni = 0; for (const m of cast) { nv += m.geometry.attributes.position.count; ni += m.geometry.index.count; }
+  const P = new Float32Array(nv * 3), I = nv > 65535 ? new Uint32Array(ni) : new Uint16Array(ni); let ov = 0, oi = 0;
+  for (const m of cast) {
+    const g = m.geometry, pa = g.attributes.position.array, ia = g.index.array;
+    P.set(pa, ov * 3); for (let k = 0; k < ia.length; k++) I[oi + k] = ia[k] + ov;
+    ov += pa.length / 3; oi += ia.length; m.castShadow = m.userData.cast = false;
+  }
+  const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(P, 3)); geo.setIndex(new THREE.BufferAttribute(I, 1)); geo.computeBoundingSphere();
+  const px = new THREE.Mesh(geo, PROXY_MAT); px.castShadow = true; px.receiveShadow = false; px.userData.proxy = true; px.userData.cast = true; px.renderOrder = -10;
+  grp.add(px);
+}
+// ---------------------------------------------------------------- light sources
+// lit window / sign quads → small pools on the street in front of them (night only)
+function windowLights(A, gi, out) {
+  const c = gi.col, mx = Math.max(c[0], c[1], c[2], 1e-4), col = [c[0] / mx, c[1] / mx, c[2] / mx], I = A.I, P = A.P, N = A.N;
+  for (let i = 0; i < I.length;) {
+    const quad = I[i + 3] === I[i] && I[i + 4] === I[i + 2], b = I[i]; i += quad ? 6 : 3;
+    if (!quad) continue;
+    const ny = N[b * 3 + 1]; if (Math.abs(ny) > 0.5) continue;
+    const p = (k) => [P[(b + k) * 3], P[(b + k) * 3 + 1], P[(b + k) * 3 + 2]], a = p(0), bb = p(1), d = p(3), cc = p(2);
+    const area = Math.hypot(bb[0] - a[0], bb[1] - a[1], bb[2] - a[2]) * Math.hypot(d[0] - a[0], d[1] - a[1], d[2] - a[2]);
+    const x = (a[0] + cc[0]) / 2, y = (a[1] + cc[1]) / 2, z = (a[2] + cc[2]) / 2;
+    if (y > 6.5 || area < 0.2) continue;
+    const k = Math.min(0.5, gi.frac * gi.k * area * 0.5) * (y > 3 ? 0.5 : 1); if (k < 0.04) continue;
+    out.push({ x: x + N[b * 3] * 0.7, y, z: z + N[b * 3 + 2] * 0.7, r: Math.min(6.5, 3 + Math.sqrt(area) * 1.4), col: col.map((v) => v * k), sh: 1.7 });
+  }
+}
+// glowing voxels of a prop kind → where its light sits, its colour and how much glows (cached per geometry)
+const GLOW_STATS = new WeakMap();
+function glowStats(geo) {
+  if (GLOW_STATS.has(geo)) return GLOW_STATS.get(geo);
+  const p = geo.attributes.position.array, c = geo.attributes.color ? geo.attributes.color.array : null, idx = geo.index ? geo.index.array : null;
+  const n = idx ? idx.length : p.length / 3, cen = [0, 0, 0], col = [0, 0, 0]; let area = 0;
+  const v = (i) => (idx ? idx[i] : i);
+  for (let t = 0; t < n; t += 3) {
+    const i0 = v(t) * 3, i1 = v(t + 1) * 3, i2 = v(t + 2) * 3;
+    const ux = p[i1] - p[i0], uy = p[i1 + 1] - p[i0 + 1], uz = p[i1 + 2] - p[i0 + 2], wx = p[i2] - p[i0], wy = p[i2 + 1] - p[i0 + 1], wz = p[i2 + 2] - p[i0 + 2];
+    const ar = 0.5 * Math.hypot(uy * wz - uz * wy, uz * wx - ux * wz, ux * wy - uy * wx); area += ar;
+    for (let k = 0; k < 3; k++) { cen[k] += (p[i0 + k] + p[i1 + k] + p[i2 + k]) / 3 * ar; if (c) col[k] += (c[i0 + k] + c[i1 + k] + c[i2 + k]) / 3 * ar; }
+  }
+  const s = area > 0 ? { cen: cen.map((x) => x / area), col: c ? col.map((x) => x / area) : [1, 0.85, 0.6], area: area / 2 } : null;   // half the faces look away
+  GLOW_STATS.set(geo, s); return s;
+}
+// light profiles by prop kind: pool radius (m), brightness right below, shape height, halo size (m)
+const LIGHT_KINDS = [
+  [/flood/i, { r: 14, i: 2.0, halo: 2.4 }], [/lanternBig/i, { r: 6, i: 0.6, halo: 1.6 }], [/lantern/i, { r: 4, i: 0.38, halo: 1.0 }], [/lamp/i, { r: 10.5, i: 1.6, halo: 2.0 }],
+  [/bulb|string|fairy/i, { r: 3.2, i: 0.32, halo: 0.45 }], [/glowPane|win/i, { r: 4.5, i: 0.6, sh: 1.6, halo: 0 }], [/neon|sign|marquee/i, { r: 4.5, i: 0.7, sh: 1.8, halo: 1.4 }],
+  [/vending|gacha|atm|kiosk|machine|cooler|monitor|screen|tv|heal|tank|server/i, { r: 3, i: 0.42, sh: 1.2, halo: 0.9 }], [/tlight|traffic/i, { r: 2.2, i: 0.2, halo: 0.5 }], [/candle|altar|burner/i, { r: 2.4, i: 0.35, halo: 0.5 }],
+];
+const _m4 = new THREE.Matrix4(), _v3 = new THREE.Vector3();
+function propLights(im, list, out, nav, halos) {
+  const st = glowStats(im.geometry); if (!st) return;
+  const kind = im.userData.prop || '', prof = (LIGHT_KINDS.find(([re]) => re.test(kind)) || [0, null])[1];
+  const mx = Math.max(st.col[0], st.col[1], st.col[2], 1e-4), WARM = [1, 0.8, 0.58], col = st.col.map((v, k) => (0.15 + 0.85 * v / mx) * 0.62 + WARM[k] * 0.38);   // light through paper / glass reads warmer than the glow
+  const arr = list.filter((p) => p.kind === kind);   // instance i is the i-th prop of this kind in the tile
+  for (let i = 0; i < im.count; i++) {
+    if (arr[i] && arr[i].nolight) continue;
+    im.getMatrixAt(i, _m4); const s = _m4.getMaxScaleOnAxis(), q = _v3.set(...st.cen).applyMatrix4(_m4), a = st.area * s * s;
+    const I = prof ? prof.i : Math.min(1.0, 0.2 + 0.6 * Math.sqrt(a)), R = prof ? prof.r : Math.min(8, 2.2 + 4 * Math.sqrt(a));
+    const gy = nav && q.x > 0 && q.z > 0 && q.x < nav.w && q.z < nav.d ? nav.ground(q.x, q.z, 0) : 0;
+    out.push({ x: q.x, y: q.y, z: q.z, r: R * Math.sqrt(s), col: col.map((v) => v * I), sh: prof && prof.sh ? prof.sh : Math.min(6, Math.max(0.8, q.y - gy)) });
+    const h = (prof ? prof.halo : Math.min(1.2, 0.5 + Math.sqrt(a))) * s;
+    if (h > 0 && halos) halos.push({ x: q.x, y: q.y, z: q.z, r: 0, halo: h, col: st.col.map((v) => v / mx), hcol: col });
   }
 }
 // a rect minus holes → rects covering the rest (holes are axis-aligned and inside the rect)

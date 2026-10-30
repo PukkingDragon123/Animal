@@ -1,6 +1,6 @@
 // Extra voxel props for Chinatown (ct_*) and the Wharf (wf_*), registered into the shared PROPS table
 // (16 voxels per metre; each kind is sculpted once and drawn instanced). Fronts face +z (south).
-import { PROPS } from '../voxprops.js';
+import { PROPS, canopy } from '../voxprops.js';
 import { GLOW } from '../../fine.js';
 
 const disc = (F, cx, cz, y0, y1, r, c) => { for (let y = y0; y <= y1; y++) for (let z = Math.floor(cz - r); z <= cz + r; z++) for (let x = Math.floor(cx - r); x <= cx + r; x++) if ((x - cx) ** 2 + (z - cz) ** 2 <= r * r) F.set(x, y, z, typeof c === 'function' ? c(x, y, z) : c); };
@@ -107,7 +107,8 @@ const K = {
   ct_blossom: { size: [56, 84, 56], r: 0.35, build(F, r) {
     const bark = F.c('#5a3a2a'), bark2 = F.c('#6a4a34'), P = ['#f8b8c8', '#f098b0', '#fcd8e0', '#e87898', '#ffffff'].map((c) => F.c(c));
     disc(F, 28, 28, 0, 34, 2.8, (x, y) => ((x + y) % 4 ? bark : bark2));
-    for (const [bx, by, bz, br] of [[28, 44, 28, 10], [38, 52, 30, 8], [18, 54, 25, 8.5], [28, 62, 33, 8], [31, 66, 22, 6.5], [20, 46, 37, 6.5], [40, 44, 20, 6]]) { line(F, [28, 30, 28], [bx, by - 2, bz], bark, 1); ball(F, bx, by, bz, br, () => P[Math.floor(r() * (r() < 0.1 ? 5 : 4))]); }
+    const PC = ['#e07090', '#f098b0', '#f8b8c8', '#fcd0dc', '#fde4ea', '#ffffff'].map((c) => F.c(c));
+    for (const [bx, by, bz, br] of [[28, 44, 28, 10], [38, 52, 30, 8], [18, 54, 25, 8.5], [28, 62, 33, 8], [31, 66, 22, 6.5], [20, 46, 37, 6.5], [40, 44, 20, 6]]) { line(F, [28, 30, 28], [bx, by - 2, bz], bark, 1); canopy.cball(F, bx, by, bz, br, canopy.leafCol(PC), 3, 1, r); }
     for (let i = 0; i < 30; i++) F.set(10 + Math.floor(r() * 36), 0, 10 + Math.floor(r() * 36), P[Math.floor(r() * 3)]);
   } },
   ct_lionHead: { size: [20, 24, 20], r: 0.6, build(F) {

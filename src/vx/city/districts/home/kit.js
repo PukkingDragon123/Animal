@@ -407,13 +407,26 @@ export function batchSolids(C) {
     if (!S.w) quad(a, cc(f.w), [-1, 0, 0], [x0, y0, z0], [x0, y0, z1], [x0, y1, z1], [x0, y1, z0]);
     return this;
   };
+  // raw solid-coloured quads and triangles (beams, eave edges, wall caps, the faces of mixed boxes) join too
+  const oq = C.quad, ot = C.tri;
+  const nrm3 = (a, b, d) => { const ux = b[0] - a[0], uy = b[1] - a[1], uz = b[2] - a[2], vx = d[0] - a[0], vy = d[1] - a[1], vz = d[2] - a[2]; let x = uy * vz - uz * vy, y = uz * vx - ux * vz, z = ux * vy - uy * vx; const l = Math.hypot(x, y, z) || 1; return [x / l, y / l, z / l]; };
+  C.quad = function (gk, tex, a, b, c, d, o) { const h = solid(tex); if (!h || gk === 'water') return oq.call(this, gk, tex, a, b, c, d, o); quad(A(gk), col.set(h).clone(), nrm3(a, b, d), a, b, c, d); return this; };
+  C.tri = function (gk, tex, a, b, c) {
+    const h = solid(tex); if (!h || gk === 'water') return ot.call(this, gk, tex, a, b, c);
+    const T = A(gk), n = nrm3(a, b, c), k = col.set(h).clone(), base = T.P.length / 3;
+    for (const p of [a, b, c]) { T.P.push(p[0], p[1], p[2]); T.N.push(n[0], n[1], n[2]); T.C.push(k.r, k.g, k.b); }
+    T.I.push(base, base + 1, base + 2); return this;
+  };
   return (B) => {
-    C.box = orig;
+    C.box = orig; C.quad = oq; C.tri = ot;
     let done = false;
     C.updaters.push(() => {
-      if (done || !B.groups || !B.groups[0] || !B.groups[0].in) return;
+      if (done) return;
+      // the city root: from the given building, or from any building's storey-0 group
+      const any = (B && B.groups && B.groups[0] && (B.groups[0].in || B.groups[0].front)) || C.buildings.map((b) => b.groups && b.groups[0] && (b.groups[0].front || b.groups[0].back)).find(Boolean);
+      if (!any) return;
       done = true;
-      const root = B.groups[0].in.parent, mat = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide });
+      const root = any.parent, mat = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide });
       for (const [gk, a] of acc) {
         const g = new THREE.BufferGeometry();
         g.setAttribute('position', new THREE.Float32BufferAttribute(a.P, 3)); g.setAttribute('normal', new THREE.Float32BufferAttribute(a.N, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(a.C, 3));
@@ -421,6 +434,13 @@ export function batchSolids(C) {
         const m = new THREE.Mesh(g, gk === 'ground' ? mat : mat.clone()); m.castShadow = gk !== 'ground'; m.receiveShadow = true; m.name = gk + ':solids';
         let grp = root.getObjectByName(gk); if (!grp) { grp = new THREE.Group(); grp.name = gk; root.add(grp); }
         grp.add(m);
+      }
+      // a structure built only from solid boxes had no group at finalize: hand its new groups to the cutaway
+      const byName = new Map(); for (const c of root.children) byName.set(c.name, c);
+      for (const b of C.buildings) {
+        if (!b.groups) continue;
+        b.groups.forEach((G, k) => { for (const part of ['front', 'back', 'in']) if (!G[part] && byName.has(b.gk(k, part))) G[part] = byName.get(b.gk(k, part)); });
+        if (!b.roofG && byName.has(`b${b.id}:roof`)) b.roofG = byName.get(`b${b.id}:roof`);
       }
     });
   };

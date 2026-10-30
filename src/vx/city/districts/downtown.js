@@ -14,6 +14,7 @@ import * as D from './dt_tex.js';
 import { fadeable, festoon, groundDecal, groundLine, awningS, awningE, furn, rng } from './dt_kit.js';
 import { signBoard, ptext } from './dt_pix.js';
 import './pk_props.js';
+import { aoiStudy } from './dt_study.js';
 
 const PI = Math.PI;
 const say = (app, who, ...l) => app.say(who, ...l);
@@ -132,6 +133,7 @@ function tokonLab(C, night) {
       // a glass railing round the stair hole upstairs (the stairs rise north along the west wall)
       C.box(g1, TX.solid('#bfe8f0'), 119.8, 3.0, 120.0, 119.86, 3.95, 126.0);
       C.nav.block(119.8, 126.0, 120.0, 126.3, 1);
+      aoiStudy(C, B);   // the lived-in layer: reading nook, tea station, terrarium, cork board, map table, clutter (dt_study.js)
 
       // ---- interactables
       C.interact({ x: 131.5, z: 117.6, label: 'Use the healing machine', icon: 'heart', mm: true, act: async (app) => {
@@ -404,6 +406,7 @@ function cinema(C, night) {
   C.box('props', TX.solid('#d8b060'), 189.2, 0.12, 139.6, 190.8, 2.3, 140.8, { top: TX.solid('#c8303a') });
   C.decal('props', TX.ptex('dt_booth', 1.2, 0.9, (g, W, H, r, P) => { P.fill('#2a2e38'); P.rect(2, 2, W - 4, H - 4, '#ffe8b0'); P.rect(0, H - 8, W, 8, '#c8303a'); P.rect(10, 6, 18, 2, '#d8b060'); }), 190, 1.0, 140.8, 's', 1.2, 0.9);
   C.box('props', TX.solid('#c8303a'), 189.0, 2.3, 139.4, 191.0, 2.5, 141.0); C.nav.block(189.2, 139.6, 190.8, 140.8);
+  for (const it of C.inter) if (it.label === 'Buy a ticket') it.r = 1.9;   // the booth stands in front of the doors: reach it from either side
   for (const x of [183.5, 196.5]) C.prop('bollard', x, 141.4);
   C.npc({ id: 'dt_moviefan', who: 'passerby30', name: 'Movie Buff', x: 182.6, z: 140.6, yaw: PI, lines: [['Comet Cadets is sold out because of the Street Finals viewing party. Sold. Out.'], ['Kaiju Picnic is better anyway. Trust me. I\'ve seen it eleven times.']] });
   C.interact({ x: 183.4, z: 140.1, label: 'Look at the posters', icon: 'eye', act: async (app) => app.say('', 'COMET CADETS — "Space is big. Their capsules are bigger."', 'KAIJU PICNIC — "One giant appetite."', 'LOVE IN 8-BIT — "Two hearts. Zero polygons."') });

@@ -205,6 +205,33 @@ export function build(C, [x0, z0, x1, z1], ctx) {
   C.zone('Chinatown', x0, z0, x1, z1, { label: 'Chinatown', sub: 'San Francisco', music: 'senbazuru', bed: 'street' });
   C.zone('Golden Claw Dojo', 181, 35, 203, 48, { label: 'Golden Claw Dojo', sub: 'Chinatown', music: 'senbazuru', bed: null, step: 'step_wood' });
   C.zone('Jade Kettle Tea House', 131, 64.5, 142, 73.5, { label: 'Jade Kettle Tea House', sub: 'Chinatown', music: 'senbazuru', bed: null, step: 'step_wood' });
+  revealAlleys(C, ctx);
+}
+
+// ---------------------------------------------------------------- seeing into the back alleys
+// Ross Alley and Old Lane are 3 m wide between three- and four-storey shophouses; from the south-east camera the row
+// on their east side hides them completely, and fading it is not enough (roof, eaves and storeys stack up into murk).
+// While you walk an alley, the buildings between it and the camera lift their roofs and upper storeys away like a
+// dollhouse, leaving only the (faded) ground floor, so the alley, its shop doors and laundry lines stay readable.
+function revealAlleys(C, ctx) {
+  const st = ctx.stage, alleys = [[RA0 - 0.6, 32, RA1 + 0.6, 89, 13], [OL0 - 0.6, 32, OL1 + 0.6, JK0 + 0.5, 15]];
+  let list = null, ghosted = new Set();
+  const ghost = (g, a) => { g.visible = true; for (const m of g.children) { const mt = m.material; if (!mt) continue; if (!mt.transparent) { mt.transparent = true; mt.needsUpdate = true; } mt.opacity = Math.min(mt.opacity, a); mt.depthWrite = false; m.castShadow = false; } };
+  const restore = (g) => { for (const m of g.children) { const mt = m.material; if (!mt) continue; if (mt.transparent) { mt.transparent = false; mt.needsUpdate = true; } mt.opacity = 1; mt.depthWrite = true; m.castShadow = m.userData.cast ?? true; } };
+  C.updaters.push(() => {
+    const t = st && st.view && st.view.target, now = new Set();
+    const a = t && t.y < 2.5 && alleys.find(([ax0, az0, ax1, az1]) => t.x > ax0 && t.x < ax1 && t.z > az0 && t.z < az1);
+    if (a) {
+      if (!list) list = C.buildings.filter((B) => B.groups && B.o && B.o.x !== undefined);
+      for (const B of list) {
+        if (B.x < a[2] - 0.8 || B.x > a[2] + a[4] || B.z + B.d < t.z - 2.5 || B.z > t.z + 15) continue;
+        if (B.roofG) B.roofG.visible = false;
+        B.groups.forEach((G, k) => { for (const g of [G.front, G.back, G.in]) if (g) { if (k >= 1) g.visible = false; else { ghost(g, 0.12); now.add(g); } } });
+      }
+    }
+    for (const g of ghosted) if (!now.has(g)) restore(g);
+    ghosted = now;
+  });
 }
 
 // ---------------------------------------------------------------- the corner pagoda tower (Grant & Bay)

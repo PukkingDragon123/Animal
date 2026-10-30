@@ -1,6 +1,6 @@
 // Voxel props for Alamo Hill Park (pk_*), 16 voxels per metre, registered into the shared PROPS table.
 // Every kind faces +z (south) at yaw 0: yaw π/2 turns its front to the east, −π/2 to the west.
-import { PROPS } from '../voxprops.js';
+import { PROPS, canopy } from '../voxprops.js';
 import { GLOW } from '../../fine.js';
 import { vox } from './props_dt.js';
 
@@ -25,20 +25,23 @@ add('pk_oak', { size: [60, 90, 60], r: 0.35, build(F) {
   const bark = F.c('#6a4a32'), L = ['#2e6a36', '#3e7e3c', '#55984a'].map((c) => F.c(c));
   disc(F, 30, 30, 0, 44, 3, bark); disc(F, 30, 30, 0, 1, 4.5, bark);
   line(F, 30, 36, 30, 20, 52, 26, bark, 1); line(F, 30, 38, 30, 40, 54, 34, bark, 1);
-  for (const [bx, by, bz, br] of [[30, 56, 30, 14], [18, 60, 26, 10], [42, 62, 34, 10], [30, 72, 30, 11]]) ballB(F, bx, by, bz, br, (xx, y) => L[Math.min(2, Math.max(0, Math.floor((y - (by - br)) / (br * 0.7))))], 3);
+  const LL = ['#24572e', '#2e6a36', '#3e7e3c', '#55984a', '#6aac56', '#86c064'].map((c) => F.c(c)), rr = canopy.h3;
+  for (const [bx, by, bz, br] of [[30, 56, 30, 14], [18, 60, 26, 10], [42, 62, 34, 10], [30, 72, 30, 11]]) canopy.cball(F, bx, by, bz, br, canopy.leafCol(LL), 4, 1.4, () => rr(bx, by, bz + br));
 } });
 // cherry blossom: dark trunk and clouds of pink in bands
 add('pk_blossom', { size: [64, 84, 64], r: 0.35, build(F) {
   const bark = F.c('#4a3030'), P = ['#e888a8', '#f4a8c0', '#f8c0d4', '#fcd8e4'].map((c) => F.c(c));
   disc(F, 32, 32, 0, 40, 2.6, bark);
   for (const [bx, by, bz] of [[22, 50, 26], [44, 54, 30], [30, 60, 44]]) line(F, 32, 34, 32, bx, by, bz, bark, 1);
-  for (const [bx, by, bz, br] of [[32, 58, 32, 13], [20, 52, 26, 10], [46, 56, 30, 10], [30, 66, 44, 10], [38, 70, 24, 9]]) ballB(F, bx, by, bz, br, (x, y) => P[Math.min(3, Math.max(0, Math.floor((y - (by - br)) / (br * 0.55))))], 3);
+  const PP = ['#d06a90', '#e888a8', '#f4a8c0', '#f8c0d4', '#fcd8e4', '#fff0f4'].map((c) => F.c(c));
+  for (const [bx, by, bz, br] of [[32, 58, 32, 13], [20, 52, 26, 10], [46, 56, 30, 10], [30, 66, 44, 10], [38, 70, 24, 9]]) canopy.cball(F, bx, by, bz, br, canopy.leafCol(PP), 4, 1.4, () => canopy.h3(bx, by, br));
 } });
 // a round autumn maple for variety
 add('pk_maple', { size: [56, 84, 56], r: 0.35, build(F) {
   const bark = F.c('#5a4232'), L = ['#b8501e', '#d8702a', '#e8903a', '#f0b04a'].map((c) => F.c(c));
   disc(F, 28, 28, 0, 38, 2.8, bark);
-  for (const [bx, by, bz, br] of [[28, 50, 28, 12], [18, 56, 26, 9], [38, 58, 30, 9], [28, 66, 32, 10]]) { line(F, 28, 36, 28, bx, by, bz, bark, 1); ballB(F, bx, by, bz, br, (x, y) => L[Math.min(3, Math.max(0, Math.floor((y - (by - br)) / (br * 0.55))))], 3); }
+  const ML = ['#9a3e18', '#b8501e', '#d8702a', '#e8903a', '#f0b04a', '#f8c860'].map((c) => F.c(c));
+  for (const [bx, by, bz, br] of [[28, 50, 28, 12], [18, 56, 26, 9], [38, 58, 30, 9], [28, 66, 32, 10]]) { line(F, 28, 36, 28, bx, by, bz, bark, 1); canopy.cball(F, bx, by, bz, br, canopy.leafCol(ML), 4, 1.4, () => canopy.h3(bx, bz, by)); }
 } });
 // tall grass: a 2.4 × 2.4 m patch of long blades (wild Tokonmon hide here); one colour per blade keeps it light
 add('pk_tallgrass', { size: [38, 20, 38], r: 0, build(F, r) {
