@@ -60,12 +60,21 @@ add('dt_heal', { size: [48, 42, 22], r: [3.0, 1.35], build(F) {
   F.box(20, 4, 21, 27, 13, 21, red); F.box(17, 7, 21, 30, 10, 21, red);
   F.box(2, 4, 21, 6, 6, 21, mint); F.box(41, 4, 21, 45, 6, 21, mint);
 } });
-// starter capsule on a pedestal under a glass dome: red / blue / pink
-for (const [k, top, ring] of [['r', '#e8503a', '#ffb07a'], ['b', '#3a8ad8', '#8ae0ff'], ['p', '#ff5a8a', '#ffc0d8']]) add('dt_pedestal_' + k, { size: [14, 26, 14], r: 0.42, build(F) {
-  const w = F.c('#eef2f4'), w2 = F.c('#c8d4da'), g = F.c(ring, GLOW), t = F.c(top), t2 = F.c(top, GLOW), wh = F.c('#f8f8f4'), band = F.c('#2a2e38'), btn = F.c('#ffffff', GLOW), glass = F.c('#d8f4ff');
-  disc(F, 7, 7, 0, 2, 6.4, w2); disc(F, 7, 7, 3, 13, 4.6, w); disc(F, 7, 7, 14, 14, 6, g);
-  ball(F, 7, 18, 7, 3.4, (x, y) => (y > 18 ? t : y === 18 ? band : wh)); F.set(7, 18, 10, btn); F.set(7, 20, 7, t2);
-  for (let y = 15; y < 25; y++) { const r = Math.min(5.6, Math.sqrt(Math.max(0, 30 - (y - 15) ** 2 * 0.3))); for (let a = 0; a < 24; a++) { if ((a + y) % 3) continue; F.set(Math.round(7 + Math.cos(a * 0.26) * r), y, Math.round(7 + Math.sin(a * 0.26) * r), glass); } }
+// starter capsule on a small table-top pedestal under a glass dome: red / blue / pink
+for (const [k, top, ring] of [['r', '#e8503a', '#ffb07a'], ['b', '#3a8ad8', '#8ae0ff'], ['p', '#ff5a8a', '#ffc0d8']]) add('dt_pedestal_' + k, { size: [12, 17, 12], r: 0, build(F) {
+  const w = F.c('#eef2f4'), w2 = F.c('#b8c4cc'), g = F.c(ring, GLOW), t = F.c(top), t2 = F.c(top, GLOW), wh = F.c('#f8f8f4'), band = F.c('#2a2e38'), btn = F.c('#ffffff', GLOW), glass = F.c('#d8f4ff');
+  disc(F, 6, 6, 0, 1, 5.4, w2); disc(F, 6, 6, 2, 4, 3.4, w); disc(F, 6, 6, 5, 5, 5, g);
+  ball(F, 6, 8.5, 6, 2.7, (x, y) => (y > 9 ? t : y === 9 ? band : wh)); F.set(6, 9, 8, btn); F.set(6, 11, 6, t2);
+  for (let y = 6; y < 16; y++) { const r = Math.sqrt(Math.max(0, 22 - (y - 6) ** 2 * 0.22)); for (let a = 0; a < 20; a++) { if ((a + y) % 3) continue; F.set(Math.round(6 + Math.cos(a * 0.314) * r), y, Math.round(6 + Math.sin(a * 0.314) * r), glass); } }
+} });
+add('dt_monitor', { size: [14, 12, 6], r: 0, build(F) { const k = F.c('#2a2e38'), s = F.c('#7ad8ff', GLOW), s2 = F.c('#d8f8ff', GLOW); F.box(5, 0, 1, 8, 1, 4, k); F.box(6, 2, 2, 7, 3, 3, k); F.box(0, 4, 2, 13, 11, 3, k); F.box(1, 5, 4, 12, 10, 4, s); F.box(2, 8, 4, 7, 8, 4, s2); F.box(2, 6, 4, 9, 6, 4, s2); } });
+// boba cups on a counter, a neon crescent moon, a café table with two stools
+add('dt_cups', { size: [18, 8, 6], r: 0, build(F) { const lid = F.c('#ffffff'), st = F.c('#ff6a8a'), pearl = F.c('#3a2a2a'); ['#c89a6a', '#a878d8', '#ffc84a', '#8ad8a0'].forEach((c, i) => { const x = 1 + i * 4, cc = F.c(c); F.box(x, 0, 2, x + 2, 4, 4, cc); F.box(x, 1, 2, x + 2, 1, 2, pearl); F.box(x, 5, 2, x + 2, 5, 4, lid); F.box(x + 1, 6, 3, x + 1, 7, 3, st); }); } });
+add('dt_neonmoon', { size: [22, 22, 3], r: 0, build(F) { const n = F.c('#fff0a0', GLOW), p = F.c('#ff8ad8', GLOW); for (let y = 0; y < 22; y++) for (let x = 0; x < 22; x++) { const a = Math.hypot(x - 11, y - 11), b = Math.hypot(x - 15, y - 14); if (a <= 10.5 && a > 8.8 && b > 8.6) F.set(x, y, 1, n); else if (a <= 10.5 && b > 8.6 && b <= 9.6) F.set(x, y, 1, n); } for (const [x, y] of [[17, 4], [19, 8], [4, 18]]) { F.set(x, y, 1, p); F.set(x + 1, y, 1, p); F.set(x, y + 1, 1, p); F.set(x - 1, y, 1, p); F.set(x, y - 1, 1, p); } } });
+add('dt_cafetable', { size: [28, 13, 12], r: [1.4, 0.6], build(F) {
+  const t = F.c('#f4ecf8'), t2 = F.c('#d8c8e8'), m = F.c('#7a6a8a'), s = F.c('#b890e0'), s2 = F.c('#ffc0d8');
+  disc(F, 14, 6, 11, 12, 5.5, t); disc(F, 14, 6, 11, 11, 5.5, t2); F.box(13, 0, 5, 14, 10, 6, m); disc(F, 14, 6, 0, 0, 3, m);
+  for (const [x, c] of [[4, s], [24, s2]]) { disc(F, x, 6, 7, 8, 2.6, c); F.box(x, 0, 6, x, 6, 6, m); disc(F, x, 6, 0, 0, 1.8, m); }
 } });
 // analyser: a lab machine with a glowing waveform screen, dials and a capsule slot
 add('dt_machine', { size: [32, 38, 18], r: [2.0, 1.1], build(F, r) {

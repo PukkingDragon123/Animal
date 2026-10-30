@@ -40,7 +40,6 @@ const K = {
   ct_drum: { size: [22, 26, 16], r: [1.4, 1.0], build(F) {
     const red = F.c('#b8282a'), red2 = F.c('#8a1a1a'), skin = F.c('#e8d8b0'), skin2 = F.c('#d0bc90'), gold = F.c('#e0b040'), wood = F.c('#5a3a22');
     for (const x of [2, 19]) { F.box(x, 0, 3, x + 1, 20, 4, wood); F.box(x, 0, 11, x + 1, 20, 12, wood); F.box(x, 0, 3, x + 1, 1, 12, wood); }
-    for (let z = 2; z <= 13; z++) disc(F, 0, 0, 0, 0, 0, 0); // (no-op keeps the shape helpers warm)
     for (let z = 1; z <= 14; z++) { const bulge = 8.5 + Math.sin(((z - 1) / 13) * Math.PI) * 1.2; for (let y = 0; y < 26; y++) for (let x = 0; x < 22; x++) { const d = Math.hypot(x - 10.5, y - 14); if (d <= bulge) F.set(x, y, z, z === 1 || z === 14 ? (d < bulge - 1.2 ? (d < 3 ? skin2 : skin) : gold) : (Math.abs(z - 3) < 0.5 || Math.abs(z - 12) < 0.5) && d > bulge - 1 ? gold : (y + z) % 5 ? red : red2); } }
   } },
   ct_burner: { size: [18, 26, 18], r: 0.65, build(F, r) {
@@ -120,6 +119,13 @@ const K = {
     for (let x = 2; x < 19; x += 2) { F.set(x, 21, 4, fur); F.set(x, 20, 3, fur); } for (let y = 9; y < 20; y += 2) { F.set(2, y, 12, fur); F.set(18, y, 12, fur); }
   } },
   ct_altarCandle: { size: [3, 8, 3], r: 0, build(F) { const red = F.c('#c8282a'), fl = F.c('#ffd060', GLOW), g = F.c('#d8a83a'); F.box(0, 0, 0, 2, 0, 2, g); F.box(1, 1, 1, 1, 5, 1, red); F.box(1, 6, 1, 1, 7, 1, fl); } },
+  ct_lamp: { size: [14, 84, 14], r: 0.2, build(F) {
+    const g = F.c('#2e5a44'), g2 = F.c('#244a38'), gold = F.c('#d8a83a'), red = F.c('#e02a22', GLOW), dk = F.c('#a81a18', GLOW), roof = F.c('#3f8a5a');
+    disc(F, 7, 7, 0, 3, 4, g2); disc(F, 7, 7, 4, 60, 1.3, (x, y) => (y % 14 === 0 ? gold : g)); disc(F, 7, 7, 61, 62, 3, gold);
+    for (let y = 63; y < 74; y++) disc(F, 7, 7, y, y, 4.4 - Math.abs(y - 68) * 0.3, (x, yy, z) => ((x + z) % 3 ? red : dk));
+    for (let y = 74; y < 79; y++) disc(F, 7, 7, y, y, 6.5 - (y - 74) * 1.3, roof); disc(F, 7, 7, 79, 82, 0.8, gold);
+    for (const [x, z] of [[1, 1], [13, 1], [1, 13], [13, 13]]) F.set(x, 75, z, gold);
+  } },
   ct_ac: { size: [12, 9, 8], r: 0, build(F) { const b = F.c('#d8d8d0'), g = F.c('#8a8a88'), d = F.c('#5a5a58'); F.box(0, 0, 0, 11, 8, 7, b); F.box(1, 1, 8, 10, 7, 8, g); for (let y = 2; y < 7; y += 2) F.box(2, y, 8, 9, y, 8, d); disc(F, 6, 0, 0, 0, 0, b); } },
   ct_bucket: { size: [8, 8, 8], r: 0.2, build(F) { const b = F.c('#2a6aa8'), w = F.c('#5a9ad8'); disc(F, 4, 4, 0, 6, 3.4, b); disc(F, 4, 4, 6, 6, 2.6, w); } },
   // ---------------------------------------------------------------- Wharf
