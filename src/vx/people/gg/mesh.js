@@ -5,7 +5,7 @@
 import * as THREE from '../../../../vendor/three.module.js';
 import { BONE_INDEX } from './body.js';
 
-export const ATLAS = 256;
+export const ATLAS = 512;   // 512² (Gacha Garage shipped 256²): twice the texel density for the close camera
 const FACE_DENS = 430; // px per metre on the face block
 const PAD = 1;
 
@@ -125,7 +125,7 @@ export function buildMesh(plan) {
   // first guess from the area budget, then shrink until everything packs
   let area = 0;
   for (const f of loose) { sizeAt(f, 1); area += f.rect.w * f.rect.h; }
-  let scale = Math.min(1.2, Math.sqrt((ATLAS * ATLAS * 0.86 - blockRect.w * blockRect.h) / area));
+  let scale = Math.min(1.2 * ATLAS / 256, Math.sqrt((ATLAS * ATLAS * 0.86 - blockRect.w * blockRect.h) / area));
   for (let tries = 0; tries < 60; tries++) {
     const rects = [blockRect];
     for (const f of loose) { sizeAt(f, scale); rects.push(f.rect); }

@@ -3,7 +3,7 @@
 //
 // The first cabbage ever is free (nobody saw… probably). The SECOND one brings Farmer Aldo bursting out of the
 // tool shed, and behind him — squeezing out of a door far too small for it — his partner Kohlossus, a giant,
-// very angry cabbage-rabbit Tokonmon. He challenges you to a battle:
+// very angry cabbage Tokonmon. He challenges you to a battle:
 //  - win: he grudgingly lets you keep the cabbage and explains how the garden works (+ a little prize money);
 //  - lose: you're marched home and the cabbage is confiscated (and replanted).
 // After that it can happen again, but at most once per in-game day: the first cabbage you pull on a new day
@@ -95,7 +95,7 @@ export async function farmerTalk(app) {
   const g = G(app), d = day(app);
   if (g.won === d) return app.say('Farmer Aldo', pick([['You again. ONE cabbage, I said. Kohlossus is counting.'], ['Cabbages like cool mornings and lots of water. Unlike Kohlossus, who likes warm afternoons and lots of cabbage.'], ['Plant marigolds next to your cabbages. Keeps the leaf-munchers away. Mostly.']]));
   if (g.lost === d) return app.say('Farmer Aldo', 'Back again? The cabbages are counted, kid. Come back tomorrow — if you dare.');
-  return app.say('Farmer Aldo', pick([['Morning. These are community rows — you plant, you water, you share. You do NOT just yank.'], ['Kohlossus has guarded this garden since it was a bunny the size of a sprout. Now look at it.'], ['Want a cabbage? Earn it. Or pull one and see what happens. I dare you.']]));
+  return app.say('Farmer Aldo', pick([['Morning. These are community rows — you plant, you water, you share. You do NOT just yank.'], ['Kohlossus has guarded this garden since it was the size of a sprout. Now look at it.'], ['Want a cabbage? Earn it. Or pull one and see what happens. I dare you.']]));
 }
 
 // ---------------------------------------------------------------- pulling a cabbage
@@ -186,7 +186,7 @@ async function showdown(app, c, k) {
   w.burst('dust', [kohl.g.position.x, kohl.g.position.y + 0.1, kohl.g.position.z], { n: 24 });
   if (cin) await cin.hero(kohl, { low: -18, dist: 7.5, dur: 0.6 }); else await w.closeOn(kohl, { dist: 7, h: 1.6 });
   kohl.play('angry', { restart: true }); sfx(app, 'beast_roar');
-  if (!again) await app.say('', 'A rabbit the size of a car. A rabbit that is also, somehow, mostly cabbage. It is breathing very heavily through its nose.');
+  if (!again) await app.say('', 'A Tokonmon the size of a car: round, rabbit-shaped and, somehow, mostly cabbage. It is breathing very heavily through its nose.');
   await say('Farmer Aldo', again ? 'Kohlossus. You know what to do.' : 'This is Kohlossus. Garden guardian. Nine hundred cabbages eaten, zero stolen.', again ? 'Same rules as always, sprout. Win and keep it. Lose and you\'re going home with an empty bag.' : 'You want that cabbage? Get through HIM. Win, and it\'s yours. Lose, and I\'m marching you home to your mother.');
   g.met = true; g.day = d;
   const party = (app.state && app.state.party) || [];
@@ -239,7 +239,7 @@ async function confiscate(app, k, cin) {
   if (cin) await cin.end({ release: true, dur: 0 });
   await app.wait(300);
   if (app.fade) await app.fade(0, 600);
-  await app.say('Mom', pick(['…Was that the farmer from the community garden walking you home? Hm. We\'ll talk about it at dinner.', 'A very cross man with a very large rabbit just dropped you off. I\'m not even going to ask.']));
+  await app.say('Mom', pick(['…Was that the farmer from the community garden walking you home? Hm. We\'ll talk about it at dinner.', 'A very cross man with a very large cabbage Tokonmon just dropped you off. I\'m not even going to ask.']));
   if (app.save) app.save();
 }
 

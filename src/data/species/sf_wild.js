@@ -192,7 +192,7 @@ export const SPECIES = {
     ],
     ult: 'harvest_quake', ...ULT,
     gimmick: { id: 'cabbage_cape', name: 'Cabbage Cape', desc: 'Its leafy ruff swells into a cape of armour-hard leaves: a shield, +25% defense, +15% physical damage.', shield: 0.22, mods: { defMul: 1.25, physMul: 1.15 } },
-    evolve: [], temper: 'territorial', catch: 0, bond: 80, exp: 170, personality: 'An enormous, very round rabbit that is mostly cabbage — leaf ears, a leafy ruff, a cabbage heart for a belly. It guards the community garden with its whole weight, and its whole weight is a lot.',
+    evolve: [], temper: 'territorial', catch: 0, bond: 80, exp: 170, personality: 'An enormous, very round rabbit-shaped Tokonmon that is mostly cabbage — leaf ears, a leafy ruff, a cabbage heart for a belly. It guards the community garden with its whole weight, and its whole weight is a lot.',
   },
   barkorious_forced: {
     name: 'Barkorious', elem: ['hydro', 'echo'], family: 'Aquatic', stage: 3, boss: true, revertsTo: 'barkorious', role: 'BOSS — forced-bond rampage: fish cannon, belly-flop quakes',

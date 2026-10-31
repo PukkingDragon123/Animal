@@ -89,7 +89,7 @@ class HumanAnim {
 
 export class HumanPerson {
   constructor(spec, o = {}) {
-    this.h = new Human(spec, { lazy: o.lazy ?? true });
+    this.h = new Human(spec, { lazy: o.lazy ?? false });   // painted up front so the full texture always shows
     this.name = o.name || spec.id;
     this.group = this.h.root;
     this.bones = { head: this.h.b.head, body: this.h.b.chest };
