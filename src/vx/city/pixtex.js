@@ -15,7 +15,7 @@
 import * as THREE from '../../../vendor/three.module.js';
 
 export const PXM = 32;                         // design texels per metre (painters lay out their art in these)
-export const HD = 2;                           // texels per design texel: 64 per metre on the canvas
+export const HD = (typeof globalThis !== 'undefined' && globalThis.TOKON_LITE) ? 1 : 2;   // lite mode (phones / low memory): 32 per metre                           // texels per design texel: 64 per metre on the canvas
 const HD_MAX = 200000;                         // design pixels above which a texture stays at the design density
 const CACHE = new Map();
 let PK = 1, PXX = -1, PXY = -1;                // the scale of the texture being painted; the texel pixels() is filling

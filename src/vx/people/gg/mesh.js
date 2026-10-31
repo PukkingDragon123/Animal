@@ -5,7 +5,7 @@
 import * as THREE from '../../../../vendor/three.module.js';
 import { BONE_INDEX } from './body.js';
 
-export const ATLAS = 512;   // 512² (Gacha Garage shipped 256²): twice the texel density for the close camera
+export const ATLAS = (typeof globalThis !== 'undefined' && globalThis.TOKON_LITE) ? 256 : 512;   // 512² (Gacha Garage shipped 256²): twice the texel density for the close camera
 const FACE_DENS = 430; // px per metre on the face block
 const PAD = 1;
 

@@ -15,6 +15,7 @@ canvas{position:fixed;left:0;top:0;display:block}
 #err{position:fixed;left:0;top:0;z-index:9;display:none;color:#ff7a7a;background:#000c;font:12px monospace;white-space:pre-wrap;padding:8px;max-height:60vh;overflow:auto}
 </style></head>
 <body><canvas id="view"></canvas><canvas id="ui"></canvas><div id="err"></div>
+<script>(function(){var q=new URLSearchParams(location.search),m=typeof matchMedia==="function"&&matchMedia("(pointer: coarse)").matches,mem=navigator.deviceMemory||8;window.TOKON_LITE=q.get("lite")==="1"||(q.get("lite")!=="0"&&(m||mem<=4));})();</script>
 <script type="module">
 import { VxApp } from './src/vx/game/app.js';
 const app = new VxApp();

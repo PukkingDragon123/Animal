@@ -17,6 +17,6 @@ export const POST = {
 export function setupStage(stage, params = new URLSearchParams()) {
   if (params.get('look') === 'toon') { stage.setStyle({ ink: true, toon: true, inkCrease: 0.03 }); return stage; }
   const num = (k, d) => (params.get(k) === null ? d : +params.get(k));
-  stage.setStyle({ hd: true, ao: num('ao', 1), inkA: num('ink', 1), inkW: params.get('inkw') === null ? undefined : +params.get('inkw'), haze: num('haze', 1), pools: num('pools', 1), dof: num('dof', 1) });
+  stage.setStyle({ hd: true, ao: num('ao', 1), inkA: num('ink', 1), inkW: params.get('inkw') === null ? undefined : +params.get('inkw'), haze: num('haze', 1), pools: num('pools', 1), dof: num('dof', globalThis.TOKON_LITE ? 0 : 1) });
   return stage;
 }

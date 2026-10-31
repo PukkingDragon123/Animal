@@ -37,8 +37,10 @@ export class VxApp {
   async boot() {
     this.view = document.getElementById('view'); this.uiCv = document.getElementById('ui');
     const touch = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;      // phones: a lighter shadow map
-    this.stage = new VxStage({ fov: 30, shadowSize: +(this.params.get('shadow') || (touch ? 2048 : 4096)) });
+    this.stage = new VxStage({ fov: 30, shadowSize: +(this.params.get('shadow') || (globalThis.TOKON_LITE ? 1024 : touch ? 2048 : 4096)) });
     setupStage(this.stage, this.params);     // the realistic HD look (?look=toon: the old cel shading + ink)
+    // if the GPU drops the context (out of memory on phones), reload in lite mode instead of dying
+    this.view.addEventListener('webglcontextlost', (e) => { e.preventDefault(); const u = new URL(location.href); if (u.searchParams.get('lite') !== '1') { u.searchParams.set('lite', '1'); location.replace(u.href); } }, false);
     this.post = new HD2D(this.view);
     this.ui = new PixelUI(320, 180);
     const VOICES = { Coach: 'coach', 'Coach Gonda': 'coach', Kaito: 'rival', Mika: 'friend', Taro: 'kid', Riff: 'punk', Moshi: 'punk', Grandma: 'elder', 'Ms. Aoi': 'professor', '???': 'rival' };
