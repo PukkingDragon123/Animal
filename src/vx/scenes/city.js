@@ -15,6 +15,7 @@ import * as park from '../city/districts/park.js';
 import * as chinatown from '../city/districts/chinatown.js';
 import * as downtown from '../city/districts/downtown.js';
 import * as wharf from '../city/districts/wharf.js';
+import * as caveMouth from '../city/districts/cave_mouth.js';   // [cave] the Deep Cave's entrance on Alamo Hill
 import { record, dress } from '../city/dress.js';
 import { batchSolids } from '../city/districts/home/kit.js';
 import { installTrees } from '../city/props_trees.js';   // detailed tree species: swaps the stock trees, LOD + wind
@@ -58,6 +59,7 @@ export function build({ mood, stage }) {
   const batched = (fn) => { const finish = batchSolids(C); try { fn(); } finally { finish(null); } };
   batched(() => wharf.build(C, DISTRICTS.wharf, ctx));
   batched(() => park.build(C, DISTRICTS.park, ctx));
+  batched(() => caveMouth.build(C));   // [cave] the mine portal on the hill's north flank (after the park: it clears its own footprint)
   batched(() => chinatown.build(C, DISTRICTS.chinatown, ctx));
   home.build(C, DISTRICTS.home, ctx);
   batched(() => downtown.build(C, DISTRICTS.downtown, ctx));

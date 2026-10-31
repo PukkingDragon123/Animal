@@ -86,7 +86,7 @@ export function ptex(key, wM, hM, paint, o = {}) {
   const t = new THREE.CanvasTexture(cv);
   if (P.glass) t.userData.glass = P.glass.map((q) => q.map((v) => v * hd));   // glazed panes (texel rects): mirror-smooth in the material (render/surface.js)
   t.colorSpace = THREE.SRGBColorSpace; t.magFilter = THREE.NearestFilter; t.minFilter = THREE.NearestMipmapLinearFilter;
-  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 4;
+  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 8;
   t.userData.size = [wM, hM]; t.userData.key = k; t.userData.hd = hd;
   CACHE.set(k, t);
   return t;

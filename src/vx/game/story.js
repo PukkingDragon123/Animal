@@ -7,7 +7,6 @@ import * as S from '../../game/state.js';
 import { LOCATIONS } from './locations.js';
 import { SPECIES } from '../../data/species.js';
 import { view } from './cinema.js';
-import { FAMILY } from '../../px/game/ui.js';
 
 const STARTERS = ['chilichick', 'bubblion', 'strawbaa'];
 export class Story {
@@ -51,19 +50,21 @@ export class Story {
     const app = this.app, w = app.world;
     await w.load('city', { mood: 'golden', life: false });
     const size = (w.sc && w.sc.city && w.sc.city.size) || [230, 30, 180], C = [size[0] / 2, 2, size[2] / 2 + 6];
-    const R = Math.max(size[0], size[2]) * 1.02;
-    w.setCam({ target: C, dist: R, yaw: 20, pitch: 38 }); w.drift = 0;
+    const R = Math.max(size[0], size[2]) * 0.8;
+    w.setCam({ target: C, dist: R, yaw: 20, pitch: 46 }); w.drift = 0;
     const cin = app.cinema;
     if (cin) {
       const views = [];
-      for (let i = 0; i < 8; i++) views.push({ target: [C[0] + Math.sin(i * 0.8) * 10, 2, C[2] + Math.cos(i * 1.1) * 8], dist: R * (i % 2 ? 0.92 : 1.05), yaw: 20 + i * 45, pitch: i % 2 ? 34 : 41 });
+      for (let i = 0; i < 8; i++) views.push({ target: [C[0] + Math.sin(i * 0.8) * 10, 2, C[2] + Math.cos(i * 1.1) * 8], dist: R * (i % 2 ? 0.92 : 1.04), yaw: 20 + i * 45, pitch: i % 2 ? 44 : 50 });
       cin.flyover(views, { seg: 7.5 });
     }
     this.title = { t: 0, hasSave: S.hasSave() };
+    // the whole city from high up: thin the distance haze while the menu is up (the stage's own multiplier)
+    const sty = app.stage && app.stage.style, haze0 = sty ? sty.haze : undefined; if (sty) sty.haze = (haze0 ?? 1) * 0.3;
     if (app.audio.music) app.audio.music('menu', { fade: 0.5 });
     await app.fade(0, 900);
     const pick = await new Promise((r) => { this.title.pick = r; });
-    this.title = null;
+    this.title = null; if (sty) sty.haze = haze0;
     if (pick === 'continue') { this.loadSave(); await this.run(() => this.resume()); }
     else await this.run(async () => { await this.newGameSwoop(); await this.opening(); });
   }
@@ -79,37 +80,36 @@ export class Story {
     await cin.end({ release: false });
   }
   drawTitle(ui, dt) {
-    const T_ = this.title; T_.t += dt; const W = ui.w, H = ui.h, g = ui.g, t = T_.t;
-    // a soft vignette so the logo and buttons read over the city
-    const vg = g.createLinearGradient(0, 0, 0, H); vg.addColorStop(0, 'rgba(20,16,56,0.45)'); vg.addColorStop(0.32, 'rgba(20,16,56,0)'); vg.addColorStop(0.7, 'rgba(20,16,56,0)'); vg.addColorStop(1, 'rgba(20,16,56,0.55)');
-    g.fillStyle = vg; g.fillRect(0, 0, W, H); ui._fs = null;
+    const T_ = this.title; T_.t += dt; const W = ui.w, H = ui.h, g = ui.g, t = T_.t, R = Math.round;
+    // dark bands top and bottom so the logo and buttons read over the city (stepped, no gradients)
+    for (let i = 0; i < 3; i++) { g.globalAlpha = 0.14; ui.rect(0, 0, W, 8 + i * 10, T.deep); ui.rect(0, H - 8 - i * 12, W, 8 + i * 12, T.deep); }
+    g.globalAlpha = 1;
     // the logo drops in with a boing and bobs gently
-    const big = Math.min(4.2, (W - 40) / Math.max(1, ui.tw('TOKONMON', { bold: true }))), k = boingT(t * 1.2);
-    const ly = 14 + (1 - k) * -60 + Math.sin(t * 1.6) * 1.5;
-    logo(ui, 'TOKONMON', W / 2, ly, big, t);
-    // the ribbon under it
-    const rib = 'SAN FRANCISCO', rw = ui.tw(rib, { bold: true }) + 34, ry = ly + big * 7 + 12, rk = boingT(t * 1.2 - 0.35);
-    if (rk > 0.02) {
-      g.save(); g.translate(W / 2, ry + 8); g.scale(rk, rk); g.translate(-W / 2, -(ry + 8));
-      ui.panel(W / 2 - rw / 2, ry, rw, 17, { fill: T.phone, r: 8.5, thin: true });
-      ui.text(rib, W / 2, ry + 5, '#ffffff', { align: 'center', bold: true, outline: T.phoneD, spacing: 1 });
-      g.restore(); ui._fs = null; ui._font = null;
-      ui.sparkle(W / 2 + rw / 2 + 2, ry + 1, T.amberL, (Math.sin(t * 3) + 1) / 2);
-      ui.sparkle(W / 2 - rw / 2 - 2, ry + 15, '#ffffff', (Math.sin(t * 3 + 2) + 1) / 2);
+    const sc = W >= 520 ? 4 : 3, k = boingT(t * 1.2), ly = R(16 + (1 - k) * -70 + Math.sin(t * 1.6) * 1.5);
+    logo(ui, 'TOKONMON', R(W / 2), ly, sc, t);
+    // the ribbon under it: a raised name plate with diamonds
+    const rib = 'SAN FRANCISCO', rw = R(ui.tw(rib, { mini: true, bold: true }) + 30), ry = ly + 5 * sc * 1 + 16, rk = boingT(t * 1.2 - 0.35);
+    if (rk > 0.05) {
+      g.save(); g.translate(R(W / 2), ry + 6); g.scale(rk, rk); g.translate(-R(W / 2), -(ry + 6));
+      ui.panel(R(W / 2 - rw / 2), ry, rw, 13, { thin: true, r: 1, fill: T.creamL });
+      ui.gem(R(W / 2 - rw / 2) + 5, ry + 6, T.copper, 2); ui.gem(R(W / 2 + rw / 2) - 6, ry + 6, T.copper, 2);
+      ui.text(rib, R(W / 2), ry + 4, T.text, { align: 'center', mini: true, bold: true });
+      g.restore(); ui._fs = null;
+      ui.sparkle(R(W / 2 + rw / 2) + 3, ry, T.amberL, (Math.sin(t * 3) + 1) / 2);
     }
-    // the menu: big candy buttons along the bottom (Enter / C still work)
+    // the menu: copper-rimmed buttons along the bottom (Enter / C still work)
     const items = [['New Game', 'star', T.green, 'Enter', 'new']];
-    if (T_.hasSave) items.unshift(['Continue', 'save', T.blue, 'c', 'continue']);
-    const bw = Math.min(124, (W - 30) / items.length - 8), bh = 26, gap = 10, total = items.length * bw + (items.length - 1) * gap, bx0 = (W - total) / 2, by = H - bh - 26;
+    if (T_.hasSave) items.unshift(['Continue', 'save', T.cream, 'c', 'continue']);
+    const bw = Math.min(118, R((W - 30) / items.length) - 8), bh = 24, gap = 10, total = items.length * bw + (items.length - 1) * gap, bx0 = R((W - total) / 2), by = H - bh - 28;
     items.forEach(([label, icon, color, hk, id], i) => {
-      const pop = boingT(t * 1.4 - 0.6 - i * 0.12); if (pop < 0.02) return;
-      const x = bx0 + i * (bw + gap), cy = by + bh / 2;
-      g.save(); g.translate(x + bw / 2, cy); g.scale(pop, pop); g.translate(-(x + bw / 2), -cy);
-      const hit = ui.button(x, by, bw, bh, label, { color, icon, hotkey: hk, active: i === 0 });
-      g.restore(); ui._fs = null; ui._font = null;
+      const pop = boingT(t * 1.4 - 0.6 - i * 0.12); if (pop < 0.05) return;
+      const x = bx0 + i * (bw + gap), cy = by + bh;
+      g.save(); g.translate(x + R(bw / 2), cy); g.scale(pop, pop); g.translate(-(x + R(bw / 2)), -cy);
+      const hit = ui.button(x, by, bw, bh, label, { color, icon, hotkey: hk, active: i === 0, frame: 'copper' });
+      g.restore(); ui._fs = null;
       if (hit && T_.pick && t > 0.8) T_.pick(id);
     });
-    ui.text('an original homage to the music of everywhere', W / 2, H - 11, '#ffffff', { align: 'center', mini: true, bold: true, outline: T.ink });
+    ui.text('an original homage to the music of everywhere', R(W / 2), H - 12, '#ffffff', { align: 'center', mini: true, outline: T.ink });
   }
   // ------------------------------------------------------------------ UI layer for the story (title, captions, objective, phone button)
   drawUI(ui, dt) {
@@ -299,9 +299,20 @@ export class Story {
     if (Q.at('chess') !== 0) { await app.say('Uncle Ho', 'Again tomorrow, young one. These old bones need a nap.'); return; }
     await app.say('Uncle Ho', 'Ho! A young trainer. Xiangqi is slow — let\'s play the fast kind. Beat my partner and I\'ll teach you a thing or two.');
     if (!app.state.party.length) { await app.say('Uncle Ho', '…You don\'t have a partner yet? Come back when you do.'); return; }
+    // [cinema] the challenge: a slap of a piece on the board, a push-in, his card; his Kappachi hops off the bench
+    const w = this.app.world, cin = app.cinema, ho = w.actor('uncleHo'), me = w.player;
+    if (cin && cin.active && ho) {
+      app.audio.sfx && app.audio.sfx('slam', { vol: 0.7, pitch: 1.3 }); cin.shake(0.08);
+      if (app.feel) app.feel.emote(ho, '!', 1.2);
+      await cin.push(ho, { punch: 5 });
+      cin.nameCard('Uncle Ho', 'Grandmaster of Portsmouth Square', { side: 'right', wait: false, color: '#2a2418', accent: T.amber, accentL: T.amberL });
+      await app.say('Uncle Ho', 'Kappachi! Off the bench. The cannon jumps first!');
+    }
     const res = await app.startBattle({ foe: { name: 'Uncle Ho', team: [['kappachi', 6]] }, title: 'UNCLE HO', subtitle: 'Portsmouth Square', canLose: true, partySize: 2 });
     await app.fade(0, 400);
-    if (res && res.winner === 0) { await app.say('Uncle Ho', 'Hah! The board is yours today. Take this — you earned it.'); Q.next('chess'); Q.complete('chess'); }
+    const won = res && res.winner === 0;
+    if (cin && cin.active && ho && me) { ho.face(me); ho.play(won ? 'laugh' : 'nod', { restart: true }); if (app.feel) app.feel.emote(ho, won ? 'happy' : 'note', 1.6); await cin.two(ho, me, { dist: 3.6, dur: 0 }); }
+    if (won) { await app.say('Uncle Ho', 'Hah! The board is yours today. Take this — you earned it.'); Q.next('chess'); Q.complete('chess'); }
     else await app.say('Uncle Ho', 'Patience, young one. Patience wins wars.');
   }
   async tramStop() { const app = this.app; await app.say('', 'A brass sign: CALIFORNIA ST. CABLE CAR. Stops you\'ve visited are on your phone\'s map.'); app.phone.tab = 'map'; app.phone.open = true; }
@@ -311,16 +322,13 @@ export class Story {
 // ------------------------------------------------------------------ the title logo: chunky sticker type
 function boingT(t) { return t <= 0 ? 0 : t >= 1.2 ? 1 : 1 - Math.exp(-7 * t) * Math.cos(18 * t); }
 function logo(ui, str, cx, y, sc, t) {
-  const g = ui.g, size = 10.6 * sc, by = y + 7.4 * sc;
-  g.save(); g.translate(cx, by); g.rotate(-0.03 + Math.sin(t * 0.9) * 0.008);
-  g.font = `800 ${size.toFixed(2)}px ${FAMILY}`; g.textAlign = 'center'; g.textBaseline = 'alphabetic'; g.lineJoin = 'round';
-  g.fillStyle = 'rgba(20,16,56,0.5)'; g.fillText(str, 1.4 * sc, 2.2 * sc);
-  g.lineWidth = 3.4 * sc; g.strokeStyle = T.ink; g.strokeText(str, 0, 0);
-  g.lineWidth = 1.8 * sc; g.strokeStyle = '#ffffff'; g.strokeText(str, 0, 0);
-  const gr = g.createLinearGradient(0, -size * 0.7, 0, 0); gr.addColorStop(0, '#fff27a'); gr.addColorStop(0.5, '#ffb52e'); gr.addColorStop(1, '#ff5a3a');
-  g.fillStyle = gr; g.fillText(str, 0, 0);
-  // a shine sweeping across the letters every few seconds
-  const ph = ((t * 0.35) % 1.6) - 0.3, w = ui.tw(str, { bold: true }) * sc * 1.05;
-  if (ph > 0 && ph < 1) { g.globalCompositeOperation = 'source-atop'; g.fillStyle = 'rgba(255,255,255,0.55)'; const sx = -w / 2 + ph * w; g.beginPath(); g.moveTo(sx, -size); g.lineTo(sx + 6 * sc, -size); g.lineTo(sx - 2 * sc, 2); g.lineTo(sx - 8 * sc, 2); g.closePath(); g.fill(); }
-  g.restore(); ui._fs = null; ui._font = null;
+  // chunky pixel type: a 2-px ink outline and a drop shadow, a cream inner rim, a two-tone gold fill
+  const o = { align: 'center', scale: sc };
+  for (const [dx, dy] of [[0, 4], [2, 4], [-2, 4], [0, 5]]) ui.text(str, cx + dx, y + dy, '#1a0f0c', o);
+  for (let dx = -2; dx <= 2; dx++) for (let dy = -2; dy <= 2; dy++) if (Math.abs(dx) + Math.abs(dy) >= 2) ui.text(str, cx + dx, y + dy, T.ink, o);
+  ui.text(str, cx, y, '#ffe9b0', { ...o, outline: '#fff4d8' });
+  ui.text(str, cx, y, '#f0a028', { ...o, grad: ['#fff070', '#f0a028'] });
+  // a shine sweeping across every few seconds
+  const ph = ((t * 0.35) % 1.6) - 0.3, w = ui.tw(str, o);
+  if (ph > 0 && ph < 1) { const sx = Math.round(cx - w / 2 + ph * w); ui.g.save(); ui.g.beginPath(); ui.g.rect(sx, y - 2, sc * 2, sc * 9); ui.g.clip(); ui.text(str, cx, y, '#ffffff', o); ui.g.restore(); ui._fs = null; }
 }

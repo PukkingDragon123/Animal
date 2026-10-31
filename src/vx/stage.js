@@ -55,12 +55,15 @@ export class VxStage {
     this.sunFar = new THREE.DirectionalLight(0x000000, 0); this.sunFar.castShadow = true; this.sunFar.visible = false;
     this.sunFar.shadow.mapSize.set(fs, fs); this.sunFar.shadow.bias = -0.0005; this.sunFar.shadow.normalBias = 0.06;
     S.add(this.sunFar, this.sunFar.target);
-    // shadow-only casters (merged proxies, city/merge.js) sit on layer 1: the shadow cameras see them, the camera doesn't
-    this.sun.shadow.camera.layers.enable(1); this.sunFar.shadow.camera.layers.enable(1);
+
     this.shadowNear = this.lite ? 16 : 12;     // the near cascade's half-size (m) around the player (lite: the only cascade)
     this.sky = new Sky();
+    this.farHide = [];                         // objects the far shadow cascade skips (small props: build.js)
     this.post = { opts: {}, draw() {} };       // the grade (look.js POST, eased by the cinema); applied in the composite
     this.cam = new THREE.PerspectiveCamera(o.fov || 32, 16 / 9, 0.5, 2000); this.baseFov = this.cam.fov;
+    // (three's shadow pass tests objects against the camera's layers: the shadow-only proxies of city/merge.js sit on
+    // layer 1, and draw nothing in the colour pass: no colour, no depth)
+    this.cam.layers.enable(1);
     this.view = { target: new THREE.Vector3(0, 0, 0), dist: 60, yaw: 0, pitch: 52 };
     this.actors = new THREE.Group(); S.add(this.actors);
     this.lamps = [];                           // light-pool records (see lamp / addLights)
@@ -163,8 +166,23 @@ export class VxStage {
     if (this.style.hd) {
       const m = this.mood, s = this.style, P = this.post.opts || {};
       if (this.shadowFollow && this.sunDirN) this.aimNearShadow();
-      // the far cascade (wide, soft, distant shadows) is refreshed every other frame
-      if (this.sunFar.visible) { this.sunFar.shadow.autoUpdate = false; if (this.frameN % 2 === 0) this.sunFar.shadow.needsUpdate = true; }
+      // the far cascade (wide, soft, distant shadows) is refreshed every third frame
+      if (this.sunFar.visible) {
+        this.sunFar.shadow.autoUpdate = false;
+        // rendered here, on its own, without the people, creatures and the small props: in the far cascade their shadows
+        // are a few texels, and they cost a draw call each
+        if (this.frameN % 3 === 0) {
+          const hid = [this.actors, ...this.farHide].filter((o) => o.visible); for (const o of hid) o.visible = false;
+          // (a render through a camera that sees nothing, into a 1-pixel target: three draws only the shadow map)
+          const dc = this.farCam || (this.farCam = new THREE.PerspectiveCamera(1, 1, 1e5, 1e5 + 1)), dt = this.farRT || (this.farRT = new THREE.WebGLRenderTarget(1, 1, { depthBuffer: false }));
+          dc.layers.mask = this.cam.layers.mask; dc.position.set(0, -1e4, 0); dc.lookAt(0, -2e4, 0); dc.updateMatrixWorld();
+          const prevRT = this.r.getRenderTarget(), sky = this.sky.mesh.visible, hv = this.halos.points.visible;
+          this.sun.shadow.autoUpdate = false; this.sun.shadow.needsUpdate = false; this.sunFar.shadow.needsUpdate = true; this.sky.mesh.visible = false; this.halos.points.visible = false;
+          try { this.r.setRenderTarget(dt); this.r.render(this.scene, dc); }
+          finally { for (const o of hid) o.visible = true; this.sun.shadow.autoUpdate = true; this.sky.mesh.visible = sky; this.halos.points.visible = hv; this.r.setRenderTarget(prevRT); }
+        }
+        this.sunFar.shadow.needsUpdate = false;
+      }
       this.sky.u.uTime.value = this.time = (this.time || 0) + 1 / 60;
       this.cv.depthDof = 0;
       // no outlines in the realistic look: the Tokonmon's own inverted-hull lines step aside too

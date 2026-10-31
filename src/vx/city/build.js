@@ -8,12 +8,14 @@
 import * as THREE from '../../../vendor/three.module.js';
 import { CityNav, CELL } from './nav.js';
 import * as TX from './pixtex.js';
-import { propMeshes, PROPS, geoFor as geoForCached } from './voxprops.js';
+import { propMeshes, PROPS, SURF, geoFor as geoForCached } from './voxprops.js';
 import { glowInfo } from '../render/glow.js';
 import { surfaceMaterial } from '../render/surface.js';
 import { mergeLights } from '../render/pools.js';
 import { skirt } from '../render/skirt.js';
 import { mergeCity, mergeKey, PROXY_MAT, SHADOW_LAYER } from './merge.js';
+import { VPBR } from './meshkit.js';
+import { remapProps } from './props_real.js';
 
 const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
 const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
@@ -402,6 +404,8 @@ export class CityBuilder {
   finalize(stage) {
     if (this.skirt !== false) skirt(this);
     const root = new THREE.Group(); root.name = 'city';
+    // the props group first: code that looks it up by name (search.js) must not find the 'props' geometry group instead
+    const P = new THREE.Group(); P.name = 'props'; root.add(P);
     const groups = {}, lights = [];
     // the solid-colour batches (districts/home/kit.js batchSolids): one vertex-coloured mesh per group
     const solidMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.78, metalness: 0, side: THREE.DoubleSide });
@@ -441,7 +445,12 @@ export class CityBuilder {
     // the merged copy of everything static outside (city/merge.js): the buildings' own groups are only drawn while
     // the cutaway needs them (control.js); the ground and the skirt are drawn merged only
     if (this.merge !== false && !(typeof location !== 'undefined' && /[?&]nomerge=1/.test(location.search))) {
-      this.merged = mergeCity(this, root, stage);
+      this.merged = mergeCity(this, root, stage, (tex) => {
+        const m = surfaceMaterial(tex, { side: THREE.DoubleSide }), gi = glowInfo(tex, this.night);
+        if (gi) { m.emissive.set(0xffffff); m.emissiveMap = gi.map; if (stage && stage.glowMat) stage.glowMat(m, gi.k, gi.always); else m.emissiveIntensity = gi.k; }
+        if (tex.userData && tex.userData.cutout) m.alphaTest = 0.5;
+        return m;
+      });
       for (const gk in groups) {
         const bid = mergeKey(gk); if (bid === null) continue;
         groups[gk].userData.merged = true; groups[gk].visible = false;
@@ -456,20 +465,36 @@ export class CityBuilder {
     }
     // voxel props: instanced per kind and per 32 m tile, so the camera and the sun's shadow box only draw the
     // tiles they see; every prop with glowing voxels (lamps, lanterns, neon, vending machines) throws light
-    const P = new THREE.Group(); P.name = 'props'; root.add(P);
-    const tiles = new Map(), halos = [], TS = 48;
-    for (const p of this.props) { const k = Math.floor(p.x / TS) + ',' + Math.floor(p.z / TS); if (!tiles.has(k)) tiles.set(k, []); tiles.get(k).push(p); }
-    const lod = this.propLod = [];
+    remapProps(this);   // the stock voxel street furniture and cars → modelled ones (props_real.js)
+    const tiles = new Map(), halos = [], TS = 80;
+    // (the swaying trees are one instanced set per species for the whole map: their per-instance LOD does the culling)
+    for (const p of this.props) { const K = PROPS[p.kind], k = K && K.sway ? 'trees' : Math.floor(p.x / TS) + ',' + Math.floor(p.z / TS); if (!tiles.has(k)) tiles.set(k, []); tiles.get(k).push(p); }
+    // trees and modelled props stay instanced with a per-instance distance LOD; every other (voxel) prop is baked into
+    // static meshes per tile and size class (statics), each dropped as a whole past its class's draw distance; kinds
+    // other code drives instance by instance (the voxel animals life.js hides, the garden's cabbages) stay as they were
+    const lod = this.propLod = [], statics = new PropStatics(P, stage.mats, stage);
     for (const list of tiles.values()) {
       const pg = propMeshes(list, stage.mats);
       for (const im of [...pg.children]) {
         if (!im.isInstancedMesh) continue;
         im.computeBoundingSphere(); im.frustumCulled = true;
         if (im.material === stage.mats.glow) propLights(im, list, lights, this.nav, halos);
-        P.add(im); lod.push(lodEntry(im, P));
+        const kind = im.userData.prop, K = PROPS[kind];
+        if (KEEP_IM.has(kind)) P.add(im);
+        else if (K.tree || K.sway) { P.add(im); lod.push(lodEntry(im, P)); }
+        else statics.add(im);
       }
     }
-    this.updaters.push(propLodUpdater(lod));
+    statics.finish();
+    // data-only instanced meshes (never drawn): every prop of each kind, for code that looks props up (search.js)
+    const byKind = new Map(); for (const p of this.props) if (PROPS[p.kind] && !KEEP_IM.has(p.kind)) { const k = p.orig || p.kind; if (!byKind.has(k)) byKind.set(k, []); byKind.get(k).push(p); }
+    const _q = new THREE.Quaternion(), _e = new THREE.Euler(), _s = new THREE.Vector3(), _p = new THREE.Vector3(), _mm = new THREE.Matrix4();
+    for (const [kind, arr] of byKind) {
+      const im = new THREE.InstancedMesh(EMPTY_GEO, stage.mats.solid, arr.length); im.visible = false; im.userData = { prop: kind, data: true };
+      arr.forEach((p, i) => { _q.setFromEuler(_e.set(0, p.yaw || 0, 0)); _s.setScalar(p.s || 1); _mm.compose(_p.set(p.x, p.y || 0, p.z), _q, _s); im.setMatrixAt(i, _mm); });
+      P.add(im);
+    }
+    this.updaters.push(propLodUpdater(lod, statics));
     if (stage && stage.addLights) stage.addLights(mergeLights(lights).concat(halos, this.lights || []));
     // building group handles for the cutaway
     for (const B of this.buildings) {
@@ -505,7 +530,47 @@ function lodEntry(im, parent) {
   const bs = im.boundingSphere;
   return { im, lo, n, full, xz, cull2: cull * cull, cull, lod2: LOD_D * LOD_D, cx: bs.center.x, cz: bs.center.z, r: bs.radius, sig: -1 };
 }
-function propLodUpdater(lod) {
+const KEEP_IM = new Set(['wf_gull', 'wf_sealion', 'pk_pigeons', 'pk_duck', 'gd_cabbage']);
+const EMPTY_GEO = new THREE.BufferGeometry(); EMPTY_GEO.setAttribute('position', new THREE.Float32BufferAttribute([], 3));
+// size classes of the baked statics: [largest radius (m), tile (m), draw distance (m), lite draw distance]
+const CLASSES = [[0.9, 32, 34, 24], [2.6, 48, 64, 44], [1e9, 96, 170, 120]];
+class PropStatics {
+  constructor(parent, mats, stage) { this.parent = parent; this.mats = mats; this.stage = stage; this.B = new Map(); this.meshes = []; if (stage && stage.farHide) stage.farHide.length = 0; }
+  add(im) {
+    const kind = im.userData.prop, part = im.userData.part, geo = im.geometry, P = PROPS[kind], rm = SURF[kind] || [0.78, 0];
+    if (!geo.boundingSphere) geo.computeBoundingSphere();
+    const m4 = new THREE.Matrix4(), n3 = new THREE.Matrix3(), v = new THREE.Vector3();
+    const pos = geo.attributes.position, nor = geo.attributes.normal, colA = geo.attributes.color, idx = geo.index, rmA = geo.attributes.aRM;
+    for (let i = 0; i < im.count; i++) {
+      im.getMatrixAt(i, m4); const sc = m4.getMaxScaleOnAxis(), r = geo.boundingSphere.radius * sc;
+      const ci = CLASSES.findIndex((c) => r <= c[0]), C = CLASSES[ci], x = m4.elements[12], z = m4.elements[14];
+      const shadow = part !== 'glow' && !P.noShadow, key = Math.floor(x / C[1]) + ',' + Math.floor(z / C[1]) + '|' + ci + '|' + part + '|' + (shadow ? 1 : 0);
+      let b = this.B.get(key); if (!b) this.B.set(key, (b = { ci, part, shadow, P: [], N: [], C: [], R: [], I: [] }));
+      n3.getNormalMatrix(m4); const base = b.P.length / 3;
+      for (let k = 0; k < pos.count; k++) {
+        v.fromBufferAttribute(pos, k).applyMatrix4(m4); b.P.push(v.x, v.y, v.z);
+        v.fromBufferAttribute(nor, k).applyMatrix3(n3).normalize(); b.N.push(v.x, v.y, v.z);
+        if (colA) b.C.push(colA.getX(k), colA.getY(k), colA.getZ(k)); else b.C.push(1, 1, 1);
+        if (rmA) b.R.push(rmA.getX(k), rmA.getY(k)); else b.R.push(rm[0], rm[1]);
+      }
+      if (idx) for (let k = 0; k < idx.count; k++) b.I.push(base + idx.getX(k)); else for (let k = 0; k < pos.count; k++) b.I.push(base + k);
+    }
+  }
+  finish() {
+    for (const b of this.B.values()) {
+      const g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.Float32BufferAttribute(b.P, 3)); g.setAttribute('normal', new THREE.Float32BufferAttribute(b.N, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(b.C, 3));
+      if (b.part !== 'glow') g.setAttribute('aRM', new THREE.Float32BufferAttribute(b.R, 2));
+      g.setIndex(b.P.length / 3 > 65535 ? new THREE.Uint32BufferAttribute(b.I, 1) : new THREE.Uint16BufferAttribute(b.I, 1)); g.computeBoundingSphere();
+      const m = new THREE.Mesh(g, b.part === 'glow' ? this.mats.glow : VPBR); m.castShadow = b.shadow; m.receiveShadow = b.part !== 'glow'; m.userData.statics = b.ci; m.name = 'statics';
+      const C = CLASSES[b.ci], d = (LITE ? C[3] : C[2]) + g.boundingSphere.radius; m.userData.cull2 = d * d;
+      this.parent.add(m); this.meshes.push(m);
+      if (b.ci < 2 && this.stage && this.stage.farHide) this.stage.farHide.push(m);
+    }
+    this.B = null;
+  }
+}
+function propLodUpdater(lod, statics) {
   let f = 0, lx = 1e9, lz = 1e9;
   const q = typeof location !== 'undefined' ? location.search : '', off = /[?&]proplod=0/.test(q);
   return () => {
@@ -514,10 +579,10 @@ function propLodUpdater(lod) {
     const x = cam.position.x, z = cam.position.z;
     if (++f % 4 && Math.hypot(x - lx, z - lz) < 2) return;
     lx = x; lz = z;
+    for (const m of statics.meshes) { const c = m.geometry.boundingSphere.center, dx = c.x - x, dz = c.z - z; m.visible = dx * dx + dz * dz < m.userData.cull2; }
     for (const e of lod) {
       const dx = e.cx - x, dz = e.cz - z, D = e.cull + e.r;
-      if (dx * dx + dz * dz > D * D) { if (e.im.visible) { e.im.visible = false; if (e.lo) e.lo.visible = false; } continue; }
-      e.im.visible = true; if (e.lo) e.lo.visible = true;
+      if (dx * dx + dz * dz > D * D) { if (e.im.visible || (e.lo && e.lo.visible)) { e.im.visible = false; if (e.lo) e.lo.visible = false; e.sig = -1; } continue; }
       const A = e.im.instanceMatrix.array, B = e.lo ? e.lo.instanceMatrix.array : null, F = e.full, XZ = e.xz;
       let k = 0, kl = 0, sig = 0;
       for (let i = 0; i < e.n; i++) {
@@ -527,8 +592,8 @@ function propLodUpdater(lod) {
         else { for (let j = 0; j < 16; j++) A[k * 16 + j] = F[i * 16 + j]; k++; sig = (sig * 31 + i) | 0; }
       }
       if (sig === e.sig && k === e.im.count) continue;
-      e.sig = sig; e.im.count = k; e.im.instanceMatrix.needsUpdate = true;
-      if (e.lo) { e.lo.count = kl; e.lo.instanceMatrix.needsUpdate = true; }
+      e.sig = sig; e.im.count = k; e.im.instanceMatrix.needsUpdate = true; e.im.visible = k > 0;
+      if (e.lo) { e.lo.count = kl; e.lo.instanceMatrix.needsUpdate = true; e.lo.visible = kl > 0; }
     }
   };
 }

@@ -97,7 +97,7 @@ export class Cinema {
   /** bars in, the camera taken, a 30° lens (o.fov): o.prefer (deg) — the side shots favour; o.room [x0, z0, x1, z1] — keep the camera inside (interiors) */
   begin(o = {}) {
     if (!this.active) { this.active = true; this.lastSpeaker = null; this.axis.clear(); this.cards = this.cards.filter((c) => { if (c.kind === 'title') return true; if (c.done) c.done(); return false; }); }
-    this.barsTo = o.bars === false ? 0 : 1;
+    this.barsTo = o.bars === false ? 0 : typeof o.bars === 'number' ? clampN(o.bars, 0, 1) : 1;   // a number: a lighter letterbox (NPC chats)
     this.fovTo = o.fov ?? 30;                                   // the cutscene lens (the follow camera's is wider)
     const life = this.w && this.w.life; if (life && life.hush) { this.hushed = o.hush !== false; life.hush(this.hushed); }   // the street's Tokonmon step out of the shot
     this.set(o);
@@ -378,7 +378,7 @@ export class Cinema {
   nameCard(text, sub, o = {}) { return this.card({ kind: 'name', text, sub, dur: (o.hold ?? 3000) / 1000, side: o.side || 'right', ...o }); }
   card(c) {
     if (this.skipping) return Promise.resolve();
-    c.t = 0; c.dur *= this.k > 0.5 ? 1 : 0.5; this.cards = this.cards.filter((x) => x.kind !== c.kind); this.cards.push(c);
+    c.t = 0; c.dur *= this.k > 0.5 ? 1 : 0.5; this.cards = this.cards.filter((x) => x.kind !== c.kind || (c.kind === 'name' && x.side !== c.side)); this.cards.push(c);   // a name card each side (the battle's VS)
     if (c.sfx !== false && this.app.audio.sfx) this.app.audio.sfx(c.kind === 'title' ? 'gong' : 'whoosh', { vol: c.kind === 'title' ? 0.5 : 0.45, pitch: c.kind === 'name' ? 1.2 : 0.9 });
     return c.wait === false ? Promise.resolve() : new Promise((r) => { c.done = r; });
   }
@@ -574,7 +574,7 @@ export class Cinema {
   lens(st) {
     const t = now() / 1000, dt = Math.min(0.1, Math.max(0, t - (this.lt || t))); this.lt = t;
     const cam = st.cam, app = this.app;
-    if (app.battle && app.battle.active) return;
+    if (app.battle && app.battle.active) { this.battleLens(cam, t, dt); return; }
     let touched = false;
     // shake: a decaying impulse (fast) plus the handheld wobble (slow), both smooth sums of sines in real time
     const S = this.sh; S.t += dt;
@@ -606,6 +606,25 @@ export class Cinema {
     }
     this.post(dt, cam);
   }
+  // [battle] the battle owns the camera: only the impulse shake, the dutch roll and the lens punch apply on top
+  battleLens(cam, t, dt) {
+    const S = this.sh; S.t += dt;
+    const imp = this.skipping ? 0 : S.amp * Math.exp(-S.t * S.decay);
+    let touched = false;
+    if (imp > 1e-4) {
+      const ox = (Math.sin(t * 41) * 0.6 + Math.sin(t * 23 + 1.7) * 0.4) * imp, oy = (Math.sin(t * 37 + 0.4) * 0.6 + Math.sin(t * 19 + 2.3) * 0.4) * imp;
+      cam.position.addScaledVector(_a.setFromMatrixColumn(cam.matrixWorld, 0), ox).addScaledVector(_b.setFromMatrixColumn(cam.matrixWorld, 1), oy);
+      cam.rotateZ(Math.sin(t * 29 + 0.9) * imp * 0.06); touched = true;
+    }
+    this.roll += (this.rollTo - this.roll) * (1 - Math.exp(-dt * 6));
+    if (Math.abs(this.roll) > 0.01) { cam.rotateZ(this.roll * D2R); touched = true; }
+    const k = this.fovK || 0;
+    if (k > 0.02) { cam.fov = Math.max(8, cam.fov - k); cam.updateProjectionMatrix(); touched = true; this.fovBattle = true; }
+    else if (this.fovBattle) { this.fovBattle = false; cam.updateProjectionMatrix(); }
+    if (touched) cam.updateMatrixWorld();
+  }
+  /** the mood changed under a running grade (the day cycle): take the new mood's grade as the base to ease back to */
+  rebase(mood) { if (this.base) this.base = copyOpts(POST[mood] || this.app.post.opts); this.baseSc = this.w && this.w.sc; }
   // the HD-2D pass: focus band on the subject, grade overrides, everything eased; back to the mood's own when done
   post(dt, cam) {
     if (!this.pp || !this.app.post) return;

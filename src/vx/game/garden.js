@@ -114,7 +114,17 @@ async function pull(app, cabs, k) {
   await heave(app, c, k);
   if (!g.met && (g.free || 0) < 1) {
     g.free = (g.free || 0) + 1;
-    await app.say('', 'POP! A perfect cabbage — heavy, cold and squeaky-crisp. You look around.', 'Nobody saw. …Probably.');
+    await app.say('', 'POP! A perfect cabbage — heavy, cold and squeaky-crisp. You look around.');
+    // [cinema] …the shed door creaks. Just the wind. Probably.
+    const cin = app.cinema;
+    if (cin && !cin.active) {
+      me.play('lookAround', { restart: true });
+      await cin.begin({ prefer: 120, bars: 0.7, hush: false });
+      await cin.frame([SHED_DOOR[0] + 0.4, 1.3, SHED_DOOR[1]], { yaw: -70, dist: 3.4, pitch: 4, dur: 0, push: 0.12, hold: 3, focus: 0.2 });
+      sfx(app, 'door', { vol: 0.35, pitch: 0.45 }); cin.shake(0.03);
+      await app.say('', 'Nobody saw. …Probably.');
+      await cin.end({ dur: 0.6 });
+    } else await app.say('', 'Nobody saw. …Probably.');
     if (app.save) app.save();
     return;
   }
@@ -156,12 +166,14 @@ async function showdown(app, c, k) {
   const partner = w.partner;
   const say = (n, ...l) => (cin ? cin.talk(f, me, n, ...l) : app.say(n, ...l));
   if (cin) await cin.begin({ prefer: 150 });
-  // BANG — the shed door
+  // [cinema] you freeze, cabbage in hand… then BANG — the shed door
+  if (cin && app.feel) { app.feel.emote(me, '?', 1); await cin.close(me, { dist: 2.4, dur: 0, yaw: 120 }); await app.wait(500); }
   sfx(app, 'door', { vol: 1, pitch: 0.7 }); sfx(app, 'slam', { vol: 0.6 });
   if (cin) cin.shake(0.25);
   f.g.visible = true; f.place(SHED_DOOR[0], SHED_DOOR[1], -Math.PI / 2); f.play('angry', { restart: true });
   w.emote('gd_farmer', 'anger', 2);
   if (cin) await cin.push(f); else await w.closeOn(f, { dist: 3 });
+  if (cin && !again) cin.nameCard('Farmer Aldo', 'Sunset Row community garden', { side: 'right', wait: false, color: '#3a2414', accent: '#e0c070', accentL: '#fff0b0' });
   await app.say('Farmer Aldo', again ? pick(['AGAIN?! I can SEE you from the shed window, you know!', 'Every. Single. Day. Do you have a cabbage problem?!']) : 'HEY!! YOU! Put down MY cabbage!');
   // he runs at you, still shouting
   const tx = me.g.position.x + 1.8 * Math.sign(SHED_DOOR[0] - me.g.position.x || 1), tz = me.g.position.z;
@@ -182,8 +194,10 @@ async function showdown(app, c, k) {
   if (cin) { cin.track(kohl, { yaw: 150, dist: 9, pitch: 6 }); await cin.walk(kohl, kx, kz, { speed: 2.2 }); }
   else await kohl.walkTo([[kx, kz]], { speed: 2.2 });
   kohl.face(me); kohl.play('stomp', { restart: true });
-  await app.wait(700); sfx(app, 'slam'); if (cin) { cin.shake(0.6); cin.flash('#ffffff', 0.15); }
+  await app.wait(700); sfx(app, 'slam'); if (cin) { cin.shake(0.6); cin.flash('#ffffff', 0.15); cin.slowmo(0.35, 650, 350); }
   w.burst('dust', [kohl.g.position.x, kohl.g.position.y + 0.1, kohl.g.position.z], { n: 24 });
+  if (partner && app.feel) { partner.face(kohl); app.feel.emote(partner, 'sweat', 1.6); }
+  if (cin && !again) cin.nameCard('Kohlossus', 'Garden guardian  ·  cabbage Tokonmon', { side: 'left', wait: false, color: '#1e3a1a', accent: '#7ad86a', accentL: '#d8ffc8' });
   if (cin) await cin.hero(kohl, { low: -18, dist: 7.5, dur: 0.6 }); else await w.closeOn(kohl, { dist: 7, h: 1.6 });
   kohl.play('angry', { restart: true }); sfx(app, 'beast_roar');
   if (!again) await app.say('', 'A Tokonmon the size of a car: round, rabbit-shaped and, somehow, mostly cabbage. It is breathing very heavily through its nose.');
@@ -216,6 +230,8 @@ async function showdown(app, c, k) {
       'Pull one when it\'s firm and heavy, never when it\'s soft. And next time — ASK. One a day. Kohlossus will be counting.',
     ] : ['One a day, mind. Kohlossus is counting.']), { clip: 'explain' });
     kohl.play('munch', { restart: true });
+    if (partner) { partner.face(me); partner.play(partner.anim.clips.win ? 'win' : 'idle', { restart: true }); if (app.feel) app.feel.emote(partner, 'star', 1.6); }
+    if (app.feel) app.feel.emote(kohl, 'food', 1.8);
     app.toast('Farmer Aldo lets you keep the cabbage', { icon: 'leaf' });
   } else {
     g.losses = (g.losses || 0) + 1; g.lost = d;
@@ -236,10 +252,16 @@ async function confiscate(app, k, cin) {
   if (app.fade) await app.fade(1, 600);
   const home = w.spot('frontDoorOut');
   if (me) { me.place(home[0], home[1], 0, home[3]); if (w.partner) w.partner.place(home[0] + 0.9, home[1] + 0.6, 0, home[3]); if (w.city) w.city.placed(); }
-  if (cin) await cin.end({ release: true, dur: 0 });
+  // [cinema] home, empty-handed: a beat on you at the front door (the camera still has you), then Mom
+  const framed = !!(cin && cin.active && me);
+  if (framed) { me.play('sigh', { restart: true }); await cin.frame(me, { at: 'chest', yaw: 25, dist: 3.4, pitch: 8, dur: 0, push: 0.08, hold: 5 }); }
+  else if (cin) await cin.end({ release: true, dur: 0 });
   await app.wait(300);
   if (app.fade) await app.fade(0, 600);
+  if (me && app.feel) app.feel.emote(me, 'sweat', 1.6);
+  if (w.partner && app.feel) app.feel.emote(w.partner, '...', 1.6);
   await app.say('Mom', pick(['…Was that the farmer from the community garden walking you home? Hm. We\'ll talk about it at dinner.', 'A very cross man with a very large cabbage Tokonmon just dropped you off. I\'m not even going to ask.']));
+  if (framed && cin.active) await cin.end({ dur: 0.9 });
   if (app.save) app.save();
 }
 

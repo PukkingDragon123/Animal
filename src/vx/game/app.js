@@ -21,6 +21,9 @@ import { Quests, visit, drawTramSign } from './quests.js';
 import { Hud } from './hud.js';
 import { Cinema } from './cinema.js';     // [cinema] the cutscene director
 import { SearchMode } from './search.js'; // [lens] first-person search + look-closer moments
+import { Minigames } from './minigames/index.js'; // [minigames] fishing, Tokon Dash, Dumpling Rush, Mom's curry, the arcade, Beat Clash
+import { Feel } from './feel.js';         // [feel] street life, emotes, the partner's personality, talk camera, pickups
+import { Moments } from './moments.js';   // [moments] the day cycle, nightfall, district arrival vignettes
 
 // fast-travel targets on the city map (phone map / cable car)
 const CITY_SPOTS = { chinatown: 'square', alamo: 'park', pier39: 'pier', dojo: 'dojoDoor', arena: 'arena', apartment: 'frontDoorOut', home: 'frontDoorOut', lab: 'labDoor', city: 'frontDoorOut' };
@@ -43,7 +46,7 @@ export class VxApp {
     // if the GPU drops the context (out of memory on phones), reload in lite mode instead of dying
     this.view.addEventListener('webglcontextlost', (e) => { e.preventDefault(); const u = new URL(location.href); if (u.searchParams.get('lite') !== '1') { u.searchParams.set('lite', '1'); location.replace(u.href); } }, false);
     this.post = this.stage.post;             // the grade options (look.js POST); the cinema eases them
-    this.ui = new PixelUI(320, 180, { canvas: this.uiCv });          // the UI draws at the real screen resolution (see layout)
+    this.ui = new PixelUI(320, 180, { canvas: this.uiCv });          // the UI's art grid (sized in layout)
     const VOICES = { Coach: 'coach', 'Coach Gonda': 'coach', Kaito: 'rival', Mika: 'friend', Taro: 'kid', Riff: 'punk', Moshi: 'punk', Grandma: 'elder', 'Ms. Aoi': 'professor', '???': 'rival' };
     this.ui.voice = (name, ch) => { if (this.audio && this.audio.voice) this.audio.voice(VOICES[name] || 'friend', ch); };
     this.ui.sfx = (id, o) => { if (this.audio && this.audio.sfx) this.audio.sfx(id, o); };                 // every button press clicks
@@ -60,10 +63,12 @@ export class VxApp {
     this.hud = new Hud(this);
     this.cinema = new Cinema(this);                          // [cinema] bars, shots, cards, hold-to-skip
     this.search = new SearchMode(this);                      // [lens] the TokoLens (the HUD shows its button)
+    this.minigames = new Minigames(this);                    // [minigames] venues, scores, rewards (minigames/index.js)
+    this.feel = new Feel(this); this.moments = new Moments(this);   // [feel] [moments]
     this.last = performance.now();
     this.loop = this.loop.bind(this); requestAnimationFrame(this.loop);
     window.__app = this;
-    await this.story.boot();
+    if (this.minigames.wants()) await this.minigames.devBoot(); else await this.story.boot();   // [minigames] ?mg=<id> jumps straight into a mini-game
   }
   // ------------------------------------------------------------------ layout & input
   layout() {
@@ -78,12 +83,11 @@ export class VxApp {
     this.rw = Math.max(320, Math.round(W * k)); this.rh = Math.max(180, Math.round(H * k));
     this.view.width = this.rw; this.view.height = this.rh; this.view.style.width = W + 'px'; this.view.style.height = H + 'px';
     this.stage.setSize(this.rw, this.rh);
-    const target = W >= H ? H / 270 : W / 240, S_ = Math.max(1, Math.round(target * dpr));
-    this.vw = Math.ceil((W * dpr) / S_); this.vh = Math.ceil((H * dpr) / S_); this.scale = S_;
-    // the UI keeps its layout grid (vw × vh units) but draws at device resolution (up to 2× DPR): crisp text and panels
-    const ud = Math.min(2, devicePixelRatio || 1);
-    this.uiCv.style.width = W + 'px'; this.uiCv.style.height = H + 'px'; this.uiCv.style.imageRendering = 'auto';
-    this.ui.resize(this.vw, this.vh, Math.round(W * ud), Math.round(H * ud));
+    // the UI is pixel art on its own grid (~360 art px tall), scaled up by a whole number so every pixel stays crisp
+    const pw = Math.round(W * (devicePixelRatio || 1)), ph = Math.round(H * (devicePixelRatio || 1)), S_ = Math.max(1, Math.round(W >= H ? ph / 360 : pw / 320));
+    this.vw = Math.ceil(pw / S_); this.vh = Math.ceil(ph / S_); this.scale = S_;
+    this.uiCv.style.width = (this.vw * S_) / (devicePixelRatio || 1) + 'px'; this.uiCv.style.height = (this.vh * S_) / (devicePixelRatio || 1) + 'px'; this.uiCv.style.imageRendering = 'pixelated';
+    this.ui.resize(this.vw, this.vh);
   }
   bindInput() {
     const cv = this.uiCv, p = this.ui.ptr;
@@ -105,12 +109,14 @@ export class VxApp {
     if (!this.params.get('res') && !navigator.webdriver) { const P = this.perf || (this.perf = { n: 0, sum: 0, slow: 0 }); P.n++; P.sum += (now - (P.prev || now)) / 1000; P.prev = now;
       if (P.sum > 3) { const avg = P.sum / P.n; P.n = 0; P.sum = 0; const k0 = this.resK || 1; let k1 = k0; P.slow = avg > 1 / 22 ? P.slow + 1 : 0; if (P.slow >= 2) { k1 = Math.max(0.7, k0 * 0.9); P.slow = 0; } else if (avg < 1 / 50 && k0 < 1) k1 = Math.min(1, k0 / 0.9); if (k1 !== k0) { this.resK = k1; this.layout(); } } }
     try {
-      this.world.update(this.cinema ? this.cinema.tick(dt) : dt);      // [cinema] the director first (hit-stop / slow motion scale the world's dt)
-      if (this.battle && this.battle.active) this.battle.update(dt);
+      const sdt = this.cinema ? this.cinema.tick(dt) : dt;            // [cinema] the director first (hit-stop / slow motion scale the world's dt)
+      this.world.update(sdt);
+      if (this.feel) { this.feel.update(sdt, dt); this.moments.update(dt); }   // [feel] [moments]
+      if (this.battle && this.battle.active) this.battle.update(sdt);       // [battle] hit-stop and slow motion reach the fight too
       if (this.world.ready) this.stage.render();
       const ui = this.ui; ui.begin(dt);
       if (this.battle && this.battle.active) this.battle.drawUI(ui, dt);
-      else this.world.drawUI(ui, dt);
+      else { this.world.drawUI(ui, dt); if (this.feel) this.feel.drawUI(ui, dt); }   // [feel] emote bubbles, pickup pops
       if (this.cinema) this.cinema.drawUnder(ui, dt);                       // [cinema] letterbox bars
       if (this.roaming && !(this.battle && this.battle.active) && !this.story.title && !(this.cinema && this.cinema.active)) this.hud.draw(ui, dt);
       if (this.story.drawUI) this.story.drawUI(ui, dt);
@@ -202,6 +208,7 @@ export class VxApp {
   async startBattle(spec) {
     if (this.auto) { this.log && this.log.push('BATTLE ' + (spec.title || '')); await this.wait(200); return { winner: 0, auto: true }; }
     if (!this.battle) { const m = await import('./battle.js'); this.battle = new m.Battle3D(this); }
+    if (this.cinema && !this.cinema.skipping) { this.cinema.flash('#ffffff', 0.35, 0.85); this.audio.sfx && this.audio.sfx('whoosh', { pitch: 0.7 }); }   // [battle] a white flash into the fight
     await this.fade(1, 300);
     const res = await this.battle.start(spec);
     return res;

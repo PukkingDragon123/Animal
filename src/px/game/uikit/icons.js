@@ -203,13 +203,10 @@ function iconSprite(name, c, o) {
   spriteCache.set(key, S);
   return S;
 }
-// whole-physical-pixel placement: q screen pixels per art pixel
+// whole-pixel placement on the art grid: q art pixels per icon pixel
 function blitArt(s, S, x, y, q) {
-  const ui = s.ui, g = ui.g, kx = ui.kx || 1, ky = ui.ky || 1;
-  const X = Math.round(x * kx) / kx, Y = Math.round(y * ky) / ky;
-  const sm = g.imageSmoothingEnabled; g.imageSmoothingEnabled = false;
-  g.drawImage(S.cv, X, Y, (S.w * q) / kx, (S.h * q) / ky);
-  g.imageSmoothingEnabled = sm;
+  const g = s.ui.g; g.imageSmoothingEnabled = false;
+  g.drawImage(S.cv, Math.round(x), Math.round(y), S.w * q, S.h * q);
 }
 
 // ---------------------------------------------------------------- drawing
@@ -232,20 +229,19 @@ export function drawSmall(s, name, x, y, c = T.text, shadow = T.ink) {
     if (smallCache.size > 600) smallCache.clear();
     smallCache.set(key, S);
   }
-  blitArt(s, S, x, y, Math.max(1, Math.round(s.ui.k || 1)));
+  blitArt(s, S, x, y, 1);
 }
 export function bigSize(name) { const h = hqName(name); const I = h ? HQ[h] : BIG[iconName(name)]; if (!I) return { w: 12, h: 12 }; return { w: Math.max(...I.m.map((r) => r.length)) + 2, h: I.m.length + 2 }; }
 // draws centred inside a 12×12 box at (x, y) (o.scale: a 12·scale box). c: tint (null → the icon's own colours)
 // o: { scale, outline (default true), shadow (default true), tint2, dim (0..1), lo (force the 12 px art), ink }
 export function drawBig(s, name, x, y, c, o = {}) {
   if (!s || !s.ui) return;
-  const n = iconName(name), useHQ = !o.lo && hqName(name);
+  const n = iconName(name), box = 12 * (o.scale || 1), useHQ = !o.lo && hqName(name) && (box >= 14 || !BIG[n]);
   if (!useHQ && !BIG[n]) { if (SMALL[n]) drawSmall(s, n, x + 2, y + 2, c || T.text, T.ink); return; }
   const S = iconSprite(useHQ ? name : n, c, o); if (!S || !S.cv) return;
-  const ui = s.ui, k = ui.k || 1, box = 12 * (o.scale || 1);
-  // art pixels per box: HQ art fills the box; the 12 px art keeps one unit per pixel (× scale)
-  const q = S.hq ? Math.max(1, Math.round((k * box) / Math.max(S.w, S.h - 1))) : Math.max(1, Math.round(k * (o.scale || 1)));
-  const dw = (S.w * q) / k, dh = ((S.h - 1) * q) / k;
+  // HQ art fills the box in whole pixels; the 12 px art scales by the box in whole steps
+  const q = S.hq ? Math.max(1, Math.floor((box + 3) / Math.max(S.w, S.h - 1))) : Math.max(1, Math.round(box / 12));
+  const dw = S.w * q, dh = (S.h - 1) * q;
   blitArt(s, S, x + (box - dw) / 2, y + (box - dh) / 2, q);
 }
 // an icon at any size: fits the art into a size×size box (centred), crisp
@@ -297,7 +293,7 @@ function scale2x(d, w, h) {
 export function drawEmblem(s, name, cx, cy, scale = 4, tint = null, size = 0) {
   if (!s || !s.ui) return;
   const E = emblemSprite(name, scale, tint); if (!E) return;
-  const ui = s.ui, k = ui.k || 1, q = size ? Math.max(1, Math.round((k * size) / E.w)) : Math.max(1, Math.round(k * 0.75));
-  const dw = (E.w * q) / k, dh = (E.h * q) / k;
+  const q = size ? Math.max(1, Math.floor(size / E.w + 0.3)) : 1;
+  const dw = E.w * q, dh = E.h * q;
   blitArt(s, E, cx - dw / 2, cy - dh / 2, q);
 }

@@ -60,7 +60,9 @@ export class Actor {
     }
     let dy = this.targetYaw - this.yaw; while (dy > Math.PI) dy -= Math.PI * 2; while (dy < -Math.PI) dy += Math.PI * 2;
     this.yaw += dy * (1 - Math.exp(-dt * (this.kind === 'person' && this.w.city && this.w.player === this ? 14 : 9))); this.g.rotation.y = this.yaw;
-    this.anim.update(dt, { fx: ctx.fx, look: this.look ? (this.look.g ? this.look.headPos(_v) : this.look) : ctx.look });
+    // [feel] people look where they're told (a listener, the player, something nearby) and otherwise glance about on their
+    // own; staring at the camera all the time also kept the human's idle fidgets from ever starting. Tokonmon still look at you.
+    this.anim.update(dt, { fx: ctx.fx, look: this.look ? (this.look.g ? this.look.headPos(_v) : this.look) : this.kind === 'person' ? null : ctx.look });
   }
 }
 
@@ -112,6 +114,7 @@ export class VxWorld {
     // 3D-render posters into the scene's poster slots
     const slots = sc.posterSlots || mod.posterSlots;
     if (slots && slots.length) { const P = await import('../posters.js'); slots.forEach((sl, i) => P.posterDecal(st, { ...sl, poster: P.posterFor(sl, i, id) })); }
+    if (sc.city && this.app.minigames) this.app.minigames.onCity(this, sc.city);   // [minigames] mini-game venues, signs, the arcade cabinet
     this.extra = st.scene.children.filter((c) => !before.has(c));
     this.sc = sc; this.loc = L; this.id = id; this.mood = mood;
     this.locAudio();

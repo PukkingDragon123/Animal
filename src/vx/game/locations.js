@@ -56,6 +56,13 @@ export const LOCATIONS = {
       { id: 'bench', label: 'Rest', icon: 'heart', at: [17, 5.2, 38.6], act: async (app) => app.story.rest() },
     ],
   },
+  // [cave] the Deep Cave under Alamo Hill: its own map, walked like the city (scenes/cave.js, game/cave.js); the
+  // way in is the old mine portal on the hill (city/districts/cave_mouth.js). A darker, closer follow camera.
+  cave: {
+    name: 'The Deep Cave', scene: 'cave', mood: 'cave', music: 'safari', map: [0.45, 0.39], hidden: true, blurb: 'Under Alamo Hill: an old mine, a lake of glowing crystals… and a rumble.',
+    follow: { dist: 5.0, pitch: 21, h: 1.25, fov: 46, lead: 0.2, indoor: { dist: 4.6, pitch: 30, h: 1.1, fov: 46, lead: 0.1 } },
+    spots: {}, life: [],
+  },
   // the opening's places (interiors carry their own spots, shots, arenas and lights)
   apartment: { name: 'Home', scene: 'apartment', mood: 'golden', hidden: true, parent: 'chinatown', follow: { dist: 9, pitch: 26, yaw: 0, h: 1.0 },
     hotspots: [{ id: 'out', label: 'Go outside', icon: 'door', at: [0, 0, 0], spotAt: 'door', act: async (app) => app.story.goHome() }] },

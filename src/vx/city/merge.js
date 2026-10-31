@@ -20,10 +20,10 @@ import { glowInfo } from '../render/glow.js';
 export const HIDE_N = 16;
 export const HIDE = { value: new Float32Array(HIDE_N).fill(-10) };     // building ids drawn by their own groups right now
 export const SHADOW_LAYER = 1;                                         // shadow-only casters (proxies) live here
-const TILE = 64;
+const TILE = 96, FAR_TILE = 200;
 const EXT = /^b(\d+):(f\d+:(front|back)|roof)$/;
 /** the building id a group belongs to (-1: ground, skirt, street furniture), or null when the group is not merged */
-export function mergeKey(gk) { const m = EXT.exec(gk); if (m) return +m[1]; return gk === 'ground' || gk === 'skirt' || gk === 'props' ? -1 : null; }
+export function mergeKey(gk) { const m = EXT.exec(gk); if (m) return +m[1]; return gk === 'ground' || gk === 'skirt' || gk === 'props' || gk === 'far' ? -1 : null; }
 
 const VS_P = '\nattribute float aBid;\nuniform float uHide[' + HIDE_N + '];\n';
 const VS_M = '\n{ for (int i = 0; i < ' + HIDE_N + '; i++) { if (abs(uHide[i] - aBid) < 0.5) gl_Position = vec4(0.0, 0.0, 2.0, 1.0); } }\n';
@@ -77,9 +77,9 @@ function atlasPatch(m, size) {
     sh.uniforms.uAtSize = U;
     sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>' + AT_VS_P).replace('#include <begin_vertex>', '#include <begin_vertex>' + AT_VS_M);
     sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>' + AT_FS_P)
-      .replace('vec4 sampledDiffuseColor = texture2D( map, vMapUv );', 'vec4 sampledDiffuseColor = atTex( map, vMapUv );')
-      .replace('vec4 texelRoughness = texture2D( roughnessMap, vRoughnessMapUv );', 'vec4 texelRoughness = atTex( roughnessMap, vRoughnessMapUv );')
-      .replace('vec4 emissiveColor = texture2D( emissiveMap, vEmissiveMapUv );', 'vec4 emissiveColor = atTex( emissiveMap, vEmissiveMapUv );')
+      .replace('#include <map_fragment>', THREE.ShaderChunk.map_fragment.replace('texture2D( map, vMapUv )', 'atTex( map, vMapUv )'))
+      .replace('#include <roughnessmap_fragment>', THREE.ShaderChunk.roughnessmap_fragment.replace('texture2D( roughnessMap, vRoughnessMapUv )', 'atTex( roughnessMap, vRoughnessMapUv )'))
+      .replace('#include <emissivemap_fragment>', THREE.ShaderChunk.emissivemap_fragment.replace('texture2D( emissiveMap, vEmissiveMapUv )', 'atTex( emissiveMap, vEmissiveMapUv )'))
       .replace('#include <normal_fragment_maps>', '#include <normal_fragment_maps>' + AT_RELIEF);
   };
   m.userData.vxChain = true; m.userData.vxKey = 'atlas1'; m.customProgramCacheKey = () => 'atlas1';
@@ -165,14 +165,21 @@ export function mergeCity(C, root, stage, materialFor) {
     }
   }
   const atlas = new Atlas(2048, lite ? 2 : 4);
-  // biggest first packs tighter
-  const texs = new Map(); for (const [gk, G] of C.groups) if (mergeKey(gk) !== null) for (const A of G.values()) if (canAtlas(A.tex, night)) texs.set(A.tex.userData.key, A.tex);
-  for (const t of [...texs.values()].sort((a, b) => b.image.height - a.image.height || b.image.width - a.image.width)) atlas.add(t, night, fit.get(t.userData.key));
+  // pack in spatial order (each texture where it is first used, sweeping the map tile by tile), so a tile's textures
+  // share a page or two and the tile draws in a few calls
+  const first = new Map(), where = (A) => { let x = 0, z = 0; const n = Math.min(A.P.length / 3, 64); for (let i = 0; i < n; i++) { x += A.P[i * 3]; z += A.P[i * 3 + 2]; } return [x / n, z / n]; };
+  for (const [gk, G] of C.groups) if (mergeKey(gk) !== null) for (const A of G.values()) {
+    if (!canAtlas(A.tex, night)) continue;
+    const [x, z] = where(A), t = Math.floor(z / 48) * 1000 + Math.floor((x + 600) / 48), k = A.tex.userData.key, f = first.get(k);
+    if (!f || t < f.t) first.set(k, { t, tex: A.tex });
+  }
+  for (const f of [...first.values()].sort((a, b) => a.t - b.t || b.tex.image.height - a.tex.image.height)) atlas.add(f.tex, night, fit.get(f.tex.userData.key));
   // 2. buckets per tile and material
   const B = new Map(), shadow = new Map();
   const bucket = (tile, kind, mk) => { const key = tile + '|' + kind; let b = B.get(key); if (!b) { b = { tile, kind, P: [], N: [], U: [], C: [], D: [], AT: [], RL: [], I: [], ...mk() }; B.set(key, b); } return b; };
   const sbucket = (tile) => { let s = shadow.get(tile); if (!s) shadow.set(tile, (s = { P: [], D: [], I: [] })); return s; };
-  const tileOf = (x, z) => Math.floor(x / TILE) + ',' + Math.floor(z / TILE);
+  // the map in 96 m tiles; the skirt beyond it in coarse 200 m ones (seen from afar, a few big meshes are cheaper)
+  const tileOf = (x, z) => (x < -30 || z < -30 || x > C.w + 30 || z > C.d + 30 ? 'c' + Math.floor(x / FAR_TILE) + ',' + Math.floor(z / FAR_TILE) : Math.floor(x / TILE) + ',' + Math.floor(z / TILE));
   const col = new THREE.Color();
   const push = (b, A, idx, bid, at, c) => {
     const map = new Map();
@@ -205,7 +212,7 @@ export function mergeCity(C, root, stage, materialFor) {
       kind = 'A' + r.page; mk = () => ({ page: r.page });
       at = { r: [r.x / S, 1 - (r.y + r.h) / S, r.w / S, r.h / S], fit: fit.get(tex.userData.key), rel: r.rel };
     } else { kind = 'T:' + tex.userData.key; mk = () => ({ tex }); }
-    const casts = gk !== 'ground' && !!A.solid;
+    const casts = gk !== 'ground' && gk !== 'far' && !!A.solid;
     if (bid >= 0) {
       const b = C.buildings[bid], tile = tileOf(b.x + b.w / 2, b.z + b.d / 2), all = Array.from(A.I);
       push(bucket(tile, kind, mk), A, all, bid, at, c);
@@ -213,7 +220,7 @@ export function mergeCity(C, root, stage, materialFor) {
     } else {
       // ground / skirt / street furniture: triangle by triangle into the tile under its centre
       for (let t = 0; t < A.I.length; t += 3) {
-        const i0 = A.I[t], i1 = A.I[t + 1], i2 = A.I[t + 2], cx = (A.P[i0 * 3] + A.P[i1 * 3] + A.P[i2 * 3]) / 3, cz = (A.P[i0 * 3 + 2] + A.P[i1 * 3 + 2] + A.P[i2 * 3 + 2]) / 3, tile = tileOf(cx, cz);
+        const i0 = A.I[t], i1 = A.I[t + 1], i2 = A.I[t + 2], cx = (A.P[i0 * 3] + A.P[i1 * 3] + A.P[i2 * 3]) / 3, cz = (A.P[i0 * 3 + 2] + A.P[i1 * 3 + 2] + A.P[i2 * 3 + 2]) / 3, tile = gk === 'far' ? 'far' : tileOf(cx, cz);
         push(bucket(tile, kind, mk), A, [i0, i1, i2], -1, at, c);
         if (casts) pushShadow(tile, A, [i0, i1, i2], -1);
       }

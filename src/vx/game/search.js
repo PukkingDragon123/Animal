@@ -10,8 +10,8 @@
 import * as THREE from '../../../vendor/three.module.js';
 import { T } from '../../px/game/ui.js';
 import { mx, clamp01, easeOut, boing } from '../../px/game/uikit/theme.js';
-import { rgba, circle, rr } from '../../px/game/uikit/gfx.js';
-import { frame, ball, sparkle, tri } from '../../px/game/uikit/frame.js';
+import { fillDisc, discRows } from '../../px/game/uikit/gfx.js';
+import { frame, ball, sparkle, tri, woodRing, ringPx } from '../../px/game/uikit/frame.js';
 import { roundButton } from '../../px/game/uikit/widgets.js';
 import * as St from '../../game/state.js';
 import { SPECIES } from '../../data/species.js';
@@ -278,31 +278,34 @@ export class SearchMode {
       it.g.scale.setScalar(Math.max(0.01, boing(it.t * 1.5)) * (it.hover ? 1.18 : 1));
       it.g.position.y = it.home.y + Math.sin(S.t * 2.4 + it.home.x * 9) * 0.015; it.g.rotation.y += dt * (it.hover ? 2.2 : 0.4);
     }
-    const lens = S.mode === 'lens', R = Math.min(W, H) * 0.15;
-    // the lens: the world dims outside a round window around the reticle
+    const lens = S.mode === 'lens', R = Math.round(Math.min(W, H) * 0.15), r0 = Math.round;
+    // the lens: the world dims outside a round window around the reticle (pixel rows, no soft edges)
     if (lens) {
-      g.save(); g.beginPath(); g.rect(0, 0, W, H); circle(g, S.lx, S.ly, R + 4); g.fillStyle = 'rgba(16,14,48,0.42)'; g.fill('evenodd'); g.restore(); ui._fs = null;
-    } else { const vg = g.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.4, W / 2, H / 2, Math.max(W, H) * 0.72); vg.addColorStop(0, 'rgba(16,14,48,0)'); vg.addColorStop(1, 'rgba(16,14,48,0.5)'); g.fillStyle = vg; g.fillRect(0, 0, W, H); ui._fs = null; }
+      const cx0 = r0(S.lx), cy0 = r0(S.ly), A = discRows(R + 3); g.globalAlpha = 0.45; ui.fill(T.deep);
+      for (let y = 0; y < H; y++) { const j = y - cy0; if (j < -R - 3 || j > R + 3) g.fillRect(0, y, W, 1); else { const hw = A[j + R + 3]; g.fillRect(0, y, cx0 - hw, 1); g.fillRect(cx0 + hw + 1, y, W - cx0 - hw - 1, 1); } }
+      g.globalAlpha = 1;
+    } else { g.globalAlpha = 0.3; ui.fill(T.deep); for (let y = 0; y < H; y += 1) { const e = Math.abs(y / H - 0.5) * 2, n = r0(Math.max(0, e - 0.5) * W * 0.25); if (n > 0) { g.fillRect(0, y, n, 1); g.fillRect(W - n, y, n, 1); } } g.globalAlpha = 1; }
     // signal: how close the lens is to something still hidden
     let sig = 0, hit = null;
     if (lens) for (const h of S.hides) { if (h.open) continue; const s = w.project([h.x, h.y, h.z]); if (!s.vis) continue; const d = Math.hypot(s.x - S.lx, s.y - S.ly), v = clamp01(1 - d / (R * 2.6)); if (v > sig) { sig = v; hit = d < R * 0.9 ? h : null; } }
+    void hit;
     if (lens) {
       S.beepT -= dt;
       if (sig > 0.05 && S.beepT <= 0 && !busy) { S.beepT = 0.95 - sig * 0.8; if (app.audio.sfx) app.audio.sfx('ui_tap', { vol: 0.25 + sig * 0.4, pitch: 1.4 + sig * 0.8 }); S.ping = 0; }
       S.ping = (S.ping ?? 9) + dt;
-      const col = sig > 0.75 ? T.amber : sig > 0.3 ? T.cyan : '#ffffff', spin = S.t * (0.6 + sig * 4), wob = sig > 0.75 ? Math.sin(S.t * 40) * 0.8 : 0;
-      const cx = S.lx + wob, cy = S.ly;
-      g.lineCap = 'round';
-      g.strokeStyle = T.ink; g.lineWidth = 6; circle(g, cx, cy, R); g.stroke();
-      g.strokeStyle = '#ffffff'; g.lineWidth = 3.4; circle(g, cx, cy, R); g.stroke();
-      g.strokeStyle = col; g.lineWidth = 2; g.beginPath(); g.arc(cx, cy, R, spin, spin + 1.2); g.stroke(); g.beginPath(); g.arc(cx, cy, R, spin + Math.PI, spin + Math.PI + 1.2); g.stroke();
-      for (let i = 0; i < 12; i++) { const a = i * Math.PI / 6 - spin * 0.3, r1 = R - 6, r2 = R - (i % 3 ? 3.5 : 1.5); g.strokeStyle = rgba('#ffffff', 0.7); g.lineWidth = 1; g.beginPath(); g.moveTo(cx + Math.cos(a) * r1, cy + Math.sin(a) * r1); g.lineTo(cx + Math.cos(a) * r2, cy + Math.sin(a) * r2); g.stroke(); }
-      if (S.ping < 0.5) { g.strokeStyle = rgba(col, 0.8 * (1 - S.ping * 2)); g.lineWidth = 1.5; circle(g, cx, cy, R + S.ping * 22); g.stroke(); }
-      g.fillStyle = 'rgba(255,255,255,0.18)'; g.beginPath(); g.ellipse(cx - R * 0.35, cy - R * 0.5, R * 0.42, R * 0.16, -0.5, 0, Math.PI * 2); g.fill();
-      // signal meter
-      const bw = R * 1.2, by = cy + R + 8; ui.bar(cx - bw / 2, by, bw, 4, sig, { color: col, id: 'lens-sig', trail: false, shine: false });
-      if (sig > 0.75) { ui.text('!', cx, cy - R - 16 - Math.abs(Math.sin(S.t * 10)) * 2, T.amber, { align: 'center', scale: 2, bold: true, outline: T.ink }); }
-      ui._fs = null;
+      const col = sig > 0.75 ? T.amber : sig > 0.3 ? T.cyan : T.cream, spin = S.t * (0.6 + sig * 4), wob = sig > 0.75 ? r0(Math.sin(S.t * 40)) : 0;
+      const cx = r0(S.lx) + wob, cy = r0(S.ly);
+      woodRing(ui.s, cx, cy, R, { th: 4, color: sig > 0.75 ? T.brass : T.copper });
+      // spinning signal arcs + tick marks on the copper ring
+      for (let i = 0; i < 24; i++) { const a = spin + (i / 24) * Math.PI * 2, on = (i % 12) < 4; if (!on) continue; ui.px(cx + Math.cos(a) * (R + 2), cy + Math.sin(a) * (R + 2), col); }
+      for (let i = 0; i < 12; i++) { const a = i * Math.PI / 6 - spin * 0.3; ui.px(cx + Math.cos(a) * (R - 3), cy + Math.sin(a) * (R - 3), T.cream); }
+      if (S.ping < 0.5) { ringPx(ui.s, cx, cy, R + 6 + r0(S.ping * 20), col, 1 - S.ping * 2); }
+      // a glint on the glass
+      ui.rect(cx - r0(R * 0.5), cy - r0(R * 0.6), r0(R * 0.3), 1, '#ffffff'); ui.rect(cx - r0(R * 0.6), cy - r0(R * 0.5), 1, r0(R * 0.25), '#ffffff');
+      // cross-hair
+      ui.rect(cx - 3, cy, 7, 1, col); ui.rect(cx, cy - 3, 1, 7, col);
+      const bw = r0(R * 1.2), by = cy + R + 10; ui.bar(cx - r0(bw / 2), by, bw, 4, sig, { color: sig > 0.75 ? 'yellow' : 'cyan', id: 'lens-sig', trail: false, shine: false });
+      if (sig > 0.75) ui.text('!', cx, cy - R - 20 - r0(Math.abs(Math.sin(S.t * 10)) * 2), T.amber, { align: 'center', scale: 2, outline: T.ink });
     }
     // tap = search here (a drag only looks around)
     if (!busy && P.released) {
@@ -319,32 +322,32 @@ export class SearchMode {
     for (const f of S.fx) {
       f.t += dt;
       if (f.kind === 'burst') { for (let i = 0; i < 10; i++) { const a = i * 0.628 + f.t, rr2 = 6 + easeOut(f.t * 2) * 34; sparkle(ui.s, f.x + Math.cos(a) * rr2, f.y + Math.sin(a) * rr2 * 0.8, i % 2 ? T.amber : '#ffffff', clamp01(1 - f.t)); } }
-      else if (f.kind === 'item') { const k2 = easeOut(f.t * 1.4), x = f.x + (W / 2 - f.x) * k2, y = f.y + (H * 0.38 - f.y) * k2 - Math.sin(k2 * Math.PI) * 30, sz = 18 + 14 * boing(f.t * 1.5); ball(ui.s, x, y, sz * 0.62, '#ffffff'); ui.bigIcon(f.icon, x - sz / 2, y - sz / 2, null, { scale: sz / 12 }); if (f.label && f.t > 0.6) ui.text(f.label, x, y + sz * 0.62 + 4, '#ffffff', { align: 'center', bold: true, outline: T.ink }); for (let i = 0; i < 6; i++) sparkle(ui.s, x + Math.cos(i + f.t * 3) * (sz * 0.8), y + Math.sin(i + f.t * 3) * (sz * 0.8), T.amber, clamp01(1.4 - f.t)); }
-      else if (f.kind === 'puff') { for (let i = 0; i < 6; i++) { const a = i * 1.047, rr2 = 4 + f.t * 30; g.fillStyle = rgba('#ffffff', clamp01(0.7 - f.t * 1.4)); circle(g, f.x + Math.cos(a) * rr2, f.y + Math.sin(a) * rr2 * 0.7, 3 + f.t * 6); g.fill(); } ui._fs = null; }
+      else if (f.kind === 'item') { const k2 = easeOut(f.t * 1.4), x = Math.round(f.x + (W / 2 - f.x) * k2), y = Math.round(f.y + (H * 0.38 - f.y) * k2 - Math.sin(k2 * Math.PI) * 30), sz = f.t < 0.25 ? 16 : 32; woodRing(ui.s, x, y, sz === 32 ? 20 : 11, { th: 3, fill: T.cream }); ui.bigIcon(f.icon, x - sz / 2, y - sz / 2, null, { scale: sz / 12 }); if (f.label && f.t > 0.6) ui.text(f.label, x, y + 26, '#ffffff', { align: 'center', bold: true, outline: T.ink }); for (let i = 0; i < 6; i++) sparkle(ui.s, x + Math.cos(i + f.t * 3) * 28, y + Math.sin(i + f.t * 3) * 28, T.amber, clamp01(1.4 - f.t)); }
+      else if (f.kind === 'puff') { g.globalAlpha = clamp01(0.8 - f.t * 1.4); for (let i = 0; i < 6; i++) { const a = i * 1.047, rr2 = 4 + f.t * 30; fillDisc(ui, f.x + Math.cos(a) * rr2, f.y + Math.sin(a) * rr2 * 0.7, 2 + f.t * 5, T.cream); } g.globalAlpha = 1; }
     }
     S.fx = S.fx.filter((f) => f.t < 2.2);
     // the top bar: the lens badge, what you're looking at, what you found; the exit button
     const title = lens ? 'TOKOLENS' : 'LOOK CLOSER';
-    const tw = ui.tw(title, { bold: true }) + 28;
-    frame(ui, 6, 6, tw, 17, { fill: lens ? T.phone : T.blue, r: 8.5, thin: true, shadowA: 0.35 });
-    ui.bigIcon(lens ? 'lens' : 'eye', 9, 8.5, null, { shadow: false });
-    ui.text(title, 24, 10, '#ffffff', { bold: true, outline: T.ink });
+    const tw = Math.round(ui.tw(title, { mini: true, bold: true }) + 34);
+    frame(ui, 6, 6, tw, 19, { thin: true, r: 2, shadowA: 0.35 });
+    ui.bigIcon(lens ? 'lens' : 'eye', 9, 9, null, { shadow: false });
+    ui.text(title, 25, 13, T.text, { mini: true, bold: true });
     if (lens) {
-      const n = S.hides.length; for (let i = 0; i < n; i++) { const h = S.hides[i]; ball(ui.s, tw + 16 + i * 11, 14, 4, h.open ? (h.c.kind === 'none' ? '#8a8eaa' : T.amber) : '#ffffff'); if (h.open && h.c.kind !== 'none') sparkle(ui.s, tw + 16 + i * 11, 14, '#ffffff', 0.4); }
-    } else if (S.pickHint && S.items.length && !S.took) ui.text(S.pickHint, tw + 12, 10, '#ffffff', { bold: true, outline: T.ink });
-    const exit = roundButton(ui, W - 18, 18, 10, 'close', { color: '#ffffff', hotkey: 'Escape', modal: false });
+      const n = S.hides.length; for (let i = 0; i < n; i++) { const h = S.hides[i]; ball(ui.s, tw + 16 + i * 12, 15, 4, h.open ? (h.c.kind === 'none' ? '#8a7e74' : T.amber) : T.cream); if (h.open && h.c.kind !== 'none') sparkle(ui.s, tw + 16 + i * 12, 15, '#ffffff', 0.4); }
+    } else if (S.pickHint && S.items.length && !S.took) ui.text(S.pickHint, tw + 12, 11, '#ffffff', { bold: true, outline: T.ink });
+    const exit = roundButton(ui, W - 18, 18, 9, 'close', { color: T.cream, hotkey: 'Escape', modal: false });
     if ((exit.clicked || ui.key('Backspace') || ui.key('r')) && !busy && !S.revealing) { S.exit && S.exit(); }
     // hints until the first find
     if (lens && !S.found.length && S.t < 9 && !busy) {
       const a = clamp01(S.t * 2) * clamp01(9 - S.t), y = H - 26;
       g.save(); g.globalAlpha = a;
-      const hint = 'Drag to look  ·  tap to search';
-      const hw = ui.tw(hint, { bold: true }) + 34; frame(ui, W / 2 - hw / 2, y, hw, 18, { fill: T.ink, edge: '#3a3570', r: 9, thin: true });
-      ui.bigIcon('hand', W / 2 - hw / 2 + 5, y + 3, null, { shadow: false }); ui.text(hint, W / 2 - hw / 2 + 22, y + 5, '#ffffff', { bold: true });
+      const hint = 'Drag to look  -  tap to search', hw = Math.round(ui.tw(hint) + 34), hx = Math.round(W / 2 - hw / 2);
+      frame(ui, hx, y - 2, hw, 20, { thin: true, r: 2 });
+      ui.bigIcon('hand', hx + 5, y + 2, null, { shadow: false }); ui.text(hint, hx + 22, y + 4, T.text, {});
       g.restore(); ui._fs = null; ui._font = null;
     }
     if (S.msg) { S.msg.t += dt; const a = clamp01(S.msg.t * 5) * clamp01((1.8 - S.msg.t) * 3); if (a > 0) { g.save(); g.globalAlpha = a; ui.text(S.msg.text, W / 2, H * 0.7 - S.msg.t * 6, '#ffffff', { align: 'center', bold: true, outline: T.ink }); g.restore(); ui._fs = null; ui._font = null; } else if (S.msg.t > 1) S.msg = null; }
-    void tri; void rr; void mx; void frame;
+    void tri; void mx; void frame;
   }
   hitAt(S, x, y, R) {
     const w = this.app.world; let best = null, bd = R * 1.1;

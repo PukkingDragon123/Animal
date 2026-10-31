@@ -57,9 +57,8 @@ export class App {
     this.vw = Math.ceil(W * dpr / S_); this.vh = Math.ceil(H * dpr / S_); this.scale = S_;
     this.gl.width = this.vw * S_; this.gl.height = this.vh * S_;
     for (const c of [this.gl, this.uiCv]) { c.style.width = (this.vw * S_ / dpr) + 'px'; c.style.height = (this.vh * S_ / dpr) + 'px'; }
-    const ud = Math.min(2, devicePixelRatio || 1);          // the UI draws at device resolution over the same layout grid
-    this.uiCv.style.imageRendering = 'auto';
-    this.ui.resize(this.vw, this.vh, Math.round((this.vw * S_ / dpr) * ud), Math.round((this.vh * S_ / dpr) * ud));
+    this.uiCv.style.imageRendering = 'pixelated';
+    this.ui.resize(this.vw, this.vh);                       // the UI's canvas is its pixel grid; the page scales it up
     if (this.world && this.world.sc) { this.world.sc.setView(this.vw, this.vh); }
     if (this.stage3d) this.stage3d.setView(this.vw, this.vh);
     if (this.battle && this.battle.sc) this.battle.sc.setView(this.vw, this.vh);

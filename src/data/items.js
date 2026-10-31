@@ -26,6 +26,7 @@ export const ITEMS = {
   opal: { name: 'Opal Gem', icon: '🌈', kind: 'gem', price: 900, desc: 'Great against Echo and Ecto Tokonmon.', mul: 1.2, vs: { echo: 2, ecto: 2 } },
   diamond: { name: 'Diamond Gem', icon: '💠', kind: 'gem', price: 4000, desc: 'The best capture gem money can buy.', mul: 2.2 },
   star_gem: { name: 'Star Gem', icon: '🌟', kind: 'gem', price: 0, desc: 'Forged from star fragments. Resonates with legends.', mul: 4, legend: true },
+  lumen_ore: { name: 'Lumen Ore', icon: '💠', kind: 'gem', price: 650, desc: 'Glowing ore chipped from the walls of the Deep Cave under Alamo Hill. Works as a capture gem — great against Ecto and Cryo Tokonmon.', mul: 1.2, vs: { ecto: 2, cryo: 2 } },
   // mixtapes teach a skill
   mixtape_heat_wave: { name: 'Mixtape: Heat Wave', icon: '📼', kind: 'mixtape', skill: 'heat_wave', price: 2500, desc: 'Teaches Heat Wave to a Pyro Tokonmon.' },
   mixtape_ricochet: { name: 'Mixtape: Ricochet', icon: '📼', kind: 'mixtape', skill: 'ricochet', price: 2500, desc: 'Teaches Ricochet Shot to a Hydro Tokonmon.' },
@@ -38,6 +39,8 @@ export const ITEMS = {
   tamer_license: { name: 'Tamer License (Rookie)', icon: '🪪', kind: 'key', desc: 'Lets you catch Tokonmon legally in reserves.' },
   star_fragment: { name: 'Star Fragment', icon: '✨', kind: 'key', desc: 'A glowing shard of fallen starlight. Dr. Hoshino wants these.' },
   dojo_pass: { name: 'Dojo Pass', icon: '🎫', kind: 'key', desc: 'Lets you leave Tokonmon to train at the Shinsekai dojo.' },
+  miner_lantern: { name: 'Old Miner\'s Lantern', icon: '🏮', kind: 'key', desc: 'Found hanging by the mouth of the Deep Cave. Still burns bright — and the Tokonmon down there notice it.' },
+  fluorite_shard: { name: 'Fluorite Shard', icon: '🔮', kind: 'key', desc: 'A violet shard of Fluorescape\'s crystal armour, given freely. It hums softly whenever the ground shakes.' },
 };
 // Vinyl skill discs: every shared skill (the classic library) is pressed on a
 // disc. Discs are the ONLY way a skill is shared between Tokonmon; they teach a

@@ -1,15 +1,15 @@
-// Canvas helpers for the high-resolution UI. The UI draws with Canvas2D at the real screen resolution,
-// in "logical" units (the old ~480×270 layout grid) scaled by the canvas transform, so every layout
-// keeps working while text, panels and shapes come out smooth. Pixel-art icons are small sprite
-// canvases scaled up crisp (no smoothing).
-//  • css(c): any colour the game uses ('#rrggbb' strings or packed ABGR ints from surface.P) → CSS
-//  • rgba(c, a): '#rrggbb' + alpha → CSS (memoised, alpha quantised)
-//  • rr(): rounded-rect path · makeCanvas()
-//  • cachedDraw(): paint something once into a hi-res sprite and reuse it while it keeps its size
-//    (panels, buttons, bezels): the lag fix — vector work happens once, frames only blit
-//  • CanvasSurf: a Surf-compatible shim (px, rect, hline, line, ellipse, poly, blend, blit…) so older
-//    code that pokes at ui.s keeps working on the canvas
+// Pixel graphics core for the UI. The UI canvas is the art grid itself (one canvas pixel = one art pixel,
+// about 640×360 on a 1080p screen); the page scales it up by a whole number with nearest-neighbour, so
+// every pixel stays crisp. Nothing here anti-aliases: shapes are scanline runs of fillRect at integer
+// coordinates, and anything detailed (frames, buttons, discs, icons, glyphs) is painted once into a
+// packed-pixel sprite and blitted after that.
+//  • css(c) / rgba(c, a): colours ('#rrggbb' or packed ABGR ints from surface.P) → CSS strings (memoised)
+//  • sprite(key, w, h, paint) → a cached canvas painted from a Uint32 buffer (LRU by pixel budget)
+//  • blit(ui, cv, x, y): integer-aligned drawImage, smoothing off
+//  • rowIns(): per-row insets of pixel rounded rects / pills / chamfers (cached)
+//  • CanvasSurf: a Surf-compatible shim (px, rect, hline, line, ellipse, poly, blend, blit…) for older code
 import { rgb } from '../../color.js';
+import { P } from '../../surface.js';
 
 const cssCache = new Map();
 export function css(c) {
@@ -26,14 +26,10 @@ export function css(c) {
 const rgbaCache = new Map();
 export function rgba(c, a) {
   if (typeof c !== 'string') c = css(c);
-  const q = Math.max(0, Math.min(64, Math.round(a * 64)));
+  const q = Math.max(0, Math.min(32, Math.round(a * 32)));
   let A = rgbaCache.get(c); if (!A) rgbaCache.set(c, (A = new Map()));
   let v = A.get(q);
-  if (v === undefined) {
-    if (c[0] === '#') { const [r, g, b] = rgb(c); v = `rgba(${r},${g},${b},${(q / 64).toFixed(3)})`; }
-    else v = c;
-    A.set(q, v);
-  }
+  if (v === undefined) { if (c[0] === '#') { const [r, g, b] = rgb(c); v = `rgba(${r},${g},${b},${(q / 32).toFixed(3)})`; } else v = c; A.set(q, v); }
   return v;
 }
 export function makeCanvas(w, h) {
@@ -42,57 +38,75 @@ export function makeCanvas(w, h) {
   if (typeof document !== 'undefined') { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; }
   return null;
 }
-// rounded-rect path (r clamps to a pill)
-export function rr(g, x, y, w, h, r) {
-  r = Math.max(0, Math.min(r, w / 2, h / 2));
-  g.beginPath();
-  if (r <= 0) { g.rect(x, y, w, h); return; }
-  g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath();
-}
-export function circle(g, cx, cy, r) { g.beginPath(); g.arc(cx, cy, Math.max(0, r), 0, Math.PI * 2); }
-export function vgrad(g, y0, y1, stops) {
-  const gr = g.createLinearGradient(0, y0, 0, y1), n = stops.length - 1;
-  stops.forEach((c, i) => gr.addColorStop(n ? i / n : 0, css(c)));
-  return gr;
-}
-
-// ------------------------------------------------------------------ sprite cache
-// key → { cv, w, h, pad, kx, ky, last }; a sprite is made only once the same thing has been asked for on
-// a few frames running (a panel that animates its size is drawn as vectors until it settles)
-const sprites = new Map(), pending = new Map();
-let pixBudget = 0;
-const MAX_PIX = 40e6;
-export function cachedDraw(ui, key, x, y, w, h, pad, paint) {
-  const g = ui.g, kx = ui.kx, ky = ui.ky;
-  let S = sprites.get(key);
-  if (S && (S.kx !== kx || S.ky !== ky)) { sprites.delete(key); pixBudget -= S.px; S = null; }
-  if (!S) {
-    const p = pending.get(key) || 0;
-    if (p < 2 || !ui.cv || w * kx * h * ky > 6e6) {
-      pending.set(key, p + 1); if (pending.size > 2000) pending.clear();
-      g.save(); g.translate(x, y); paint(g, w, h); g.restore(); ui._fs = null;
-      return;
-    }
-    pending.delete(key);
-    const pw = Math.ceil((w + pad * 2) * kx), ph = Math.ceil((h + pad * 2) * ky), cv = makeCanvas(pw, ph);
-    if (!cv) { g.save(); g.translate(x, y); paint(g, w, h); g.restore(); return; }
-    const c2 = cv.getContext('2d'); c2.setTransform(kx, 0, 0, ky, pad * kx, pad * ky); paint(c2, w, h);
-    S = { cv, pad, kx, ky, px: pw * ph, w: pw / kx, h: ph / ky };
-    sprites.set(key, S); pixBudget += S.px;
-    while (pixBudget > MAX_PIX && sprites.size > 1) { const k0 = sprites.keys().next().value, o = sprites.get(k0); sprites.delete(k0); pixBudget -= o.px; }
-  } else { sprites.delete(key); sprites.set(key, S); }        // LRU touch
-  g.drawImage(S.cv, Math.round((x - S.pad) * kx) / kx, Math.round((y - S.pad) * ky) / ky, S.w, S.h);
-}
-export function clearSprites() { sprites.clear(); pending.clear(); pixBudget = 0; }
-
-// ------------------------------------------------------------------ pixel sprites (icons, emblems)
-// rows of packed colours → a canvas at 1 px per pixel (drawn scaled with smoothing off)
+// rows of packed colours → a canvas at 1 px per pixel
 export function pixelCanvas(w, h, put) {
   const cv = makeCanvas(w, h); if (!cv) return null;
   const c2 = cv.getContext('2d'), img = c2.createImageData(w, h), d32 = new Uint32Array(img.data.buffer);
   put(d32, w, h);
   c2.putImageData(img, 0, 0);
   return cv;
+}
+// ------------------------------------------------------------------ the sprite cache
+const sprites = new Map();
+let pix = 0;
+const MAX_PIX = 12e6;
+export function sprite(key, w, h, paint) {
+  let S = sprites.get(key);
+  if (S) { sprites.delete(key); sprites.set(key, S); return S; }
+  w = Math.max(1, Math.round(w)); h = Math.max(1, Math.round(h));
+  S = pixelCanvas(w, h, paint);
+  if (!S) return null;
+  sprites.set(key, S); pix += w * h;
+  while (pix > MAX_PIX && sprites.size > 1) { const k0 = sprites.keys().next().value, o = sprites.get(k0); sprites.delete(k0); pix -= o.width * o.height; }
+  return S;
+}
+export function clearSprites() { sprites.clear(); pix = 0; }
+export function blit(ui, cv, x, y, w, h) {
+  if (!cv) return;
+  const g = ui.g; g.imageSmoothingEnabled = false;
+  if (w == null) g.drawImage(cv, Math.round(x), Math.round(y)); else g.drawImage(cv, Math.round(x), Math.round(y), Math.round(w), Math.round(h));
+}
+// a buffer painter helper: { d, w, h, set(x, y, v), fill(v) }
+export function buf(d, w, h) { return { d, w, h, set(x, y, v) { if (x >= 0 && y >= 0 && x < w && y < h) d[y * w + x] = v; }, get(x, y) { return x >= 0 && y >= 0 && x < w && y < h ? d[y * w + x] : 0; } }; }
+export const PK = (c) => P(c);
+
+// ------------------------------------------------------------------ pixel shapes
+// row insets for a w×h shape: kind 'round' (radius r), 'pill' (r = h/2), 'chamfer' (r px diagonal cut)
+const insCache = new Map();
+export function rowIns(h, r, kind = 'round') {
+  const key = h * 4096 + r * 8 + (kind === 'pill' ? 1 : kind === 'chamfer' ? 2 : 0);
+  let A = insCache.get(key);
+  if (A) return A;
+  A = new Int16Array(h);
+  if (kind === 'pill') r = h / 2;
+  for (let j = 0; j < h; j++) {
+    const dTop = j, dBot = h - 1 - j, d = Math.min(dTop, dBot);
+    if (kind === 'chamfer') { A[j] = Math.max(0, Math.round(r) - d); continue; }
+    if (d >= r) { A[j] = 0; continue; }
+    const dy = r - d - 0.5; A[j] = Math.max(0, Math.round(r - Math.sqrt(Math.max(0, r * r - dy * dy))));
+  }
+  if (insCache.size > 2000) insCache.clear();
+  insCache.set(key, A);
+  return A;
+}
+// fill a shape (crisp scanlines) on the ui canvas
+export function fillShape(ui, x, y, w, h, c, r = 2, kind = 'round') {
+  x = Math.round(x); y = Math.round(y); w = Math.round(w); h = Math.round(h); if (w <= 0 || h <= 0) return;
+  const g = ui.fill(c), I = rowIns(h, Math.min(r, h / 2, w / 2), kind);
+  let j = 0;
+  while (j < h) { let k = j; while (k + 1 < h && I[k + 1] === I[j]) k++; const ins = I[j]; if (w - ins * 2 > 0) g.fillRect(x + ins, y + j, w - ins * 2, k - j + 1); j = k + 1; }
+}
+// a pixel disc (midpoint-ish, symmetric)
+const discCache = new Map();
+export function discRows(r) {
+  let A = discCache.get(r);
+  if (!A) { A = []; for (let j = -r; j <= r; j++) A.push(Math.floor(Math.sqrt(Math.max(0, (r + 0.5) * (r + 0.5) - j * j)))); discCache.set(r, A); }
+  return A;
+}
+export function fillDisc(ui, cx, cy, r, c) {
+  cx = Math.round(cx); cy = Math.round(cy); r = Math.max(0, Math.round(r));
+  const g = ui.fill(c), A = discRows(r);
+  for (let j = -r; j <= r; j++) { const hw = A[j + r]; g.fillRect(cx - hw, cy + j, hw * 2 + 1, 1); }
 }
 
 // ------------------------------------------------------------------ the Surf-compatible shim
@@ -102,29 +116,48 @@ export class CanvasSurf {
   get w() { return this.ui.w; }
   get h() { return this.ui.h; }
   get g() { return this.ui.g; }
-  fill(c) { const u = this.ui; if (u._fs !== c) { u.g.fillStyle = css(c); u._fs = c; } return u.g; }
-  clear() { const g = this.g; g.save(); g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, g.canvas.width, g.canvas.height); g.restore(); return this; }
+  fill(c) { return this.ui.fill(c); }
+  clear() { const g = this.g; g.clearRect(0, 0, g.canvas.width, g.canvas.height); return this; }
   touch() { return this; }
   inb(x, y) { return x >= 0 && y >= 0 && x < this.w && y < this.h; }
-  px(x, y, c) { this.fill(c).fillRect(Math.floor(x), Math.floor(y), 1.04, 1.04); }
+  px(x, y, c) { this.fill(c).fillRect(Math.floor(x), Math.floor(y), 1, 1); }
   blend(x, y, c, a) { const g = this.g; g.globalAlpha = Math.max(0, Math.min(1, a)); this.fill(c).fillRect(Math.floor(x), Math.floor(y), 1, 1); g.globalAlpha = 1; }
-  rect(x, y, w, h, c) { if (w > 0 && h > 0) this.fill(c).fillRect(x, y, w, h); }
+  rect(x, y, w, h, c) { x = Math.round(x); y = Math.round(y); w = Math.round(w); h = Math.round(h); if (w > 0 && h > 0) this.fill(c).fillRect(x, y, w, h); }
   hline(x0, x1, y, c) { if (x1 < x0) [x0, x1] = [x1, x0]; this.rect(x0, y, x1 - x0 + 1, 1, c); }
   vline(x, y0, y1, c) { if (y1 < y0) [y0, y1] = [y1, y0]; this.rect(x, y0, 1, y1 - y0 + 1, c); }
-  line(x0, y0, x1, y1, c) { const g = this.g; g.strokeStyle = css(c); g.lineWidth = 1; g.lineCap = 'round'; g.beginPath(); g.moveTo(x0 + 0.5, y0 + 0.5); g.lineTo(x1 + 0.5, y1 + 0.5); g.stroke(); }
-  ellipse(cx, cy, rx, ry, c) { const g = this.fill(c); g.beginPath(); g.ellipse(cx + 0.5, cy + 0.5, Math.max(0.5, rx + 0.5), Math.max(0.5, ry + 0.5), 0, 0, Math.PI * 2); g.fill(); }
-  circle(cx, cy, r, c) { return this.ellipse(cx, cy, r, r, c); }
-  ring(cx, cy, rx, ry, c) { const g = this.g; g.strokeStyle = css(c); g.lineWidth = 1; g.beginPath(); g.ellipse(cx + 0.5, cy + 0.5, Math.max(0.5, rx), Math.max(0.5, ry ?? rx), 0, 0, Math.PI * 2); g.stroke(); }
-  poly(pts, c) { if (!pts || pts.length < 3) return; const g = this.fill(c); g.beginPath(); g.moveTo(pts[0][0], pts[0][1]); for (let i = 1; i < pts.length; i++) g.lineTo(pts[i][0], pts[i][1]); g.closePath(); g.fill(); }
+  line(x0, y0, x1, y1, c) {
+    x0 = Math.round(x0); y0 = Math.round(y0); x1 = Math.round(x1); y1 = Math.round(y1);
+    const g = this.fill(c), dx = Math.abs(x1 - x0), dy = -Math.abs(y1 - y0), sx = x0 < x1 ? 1 : -1, sy = y0 < y1 ? 1 : -1; let e = dx + dy;
+    for (let n = 0; n < 4096; n++) { g.fillRect(x0, y0, 1, 1); if (x0 === x1 && y0 === y1) break; const e2 = 2 * e; if (e2 >= dy) { e += dy; x0 += sx; } if (e2 <= dx) { e += dx; y0 += sy; } }
+  }
+  ellipse(cx, cy, rx, ry, c) {
+    cx = Math.round(cx); cy = Math.round(cy); const g = this.fill(c);
+    for (let j = -Math.round(ry); j <= Math.round(ry); j++) { const hw = Math.floor(rx * Math.sqrt(Math.max(0, 1 - (j * j) / ((ry + 0.5) * (ry + 0.5))))); g.fillRect(cx - hw, cy + j, hw * 2 + 1, 1); }
+  }
+  circle(cx, cy, r, c) { fillDisc(this.ui, cx, cy, r, c); }
+  ring(cx, cy, rx, ry, c) {
+    ry = ry ?? rx; const g = this.fill(c); cx = Math.round(cx); cy = Math.round(cy);
+    const n = Math.max(12, Math.round((rx + ry) * 3.2)), seen = new Set();
+    for (let i = 0; i < n; i++) { const a = (i / n) * Math.PI * 2, X = Math.round(cx + Math.cos(a) * rx), Y = Math.round(cy + Math.sin(a) * ry), k = X * 65536 + Y; if (!seen.has(k)) { seen.add(k); g.fillRect(X, Y, 1, 1); } }
+  }
+  poly(pts, c) {
+    if (!pts || pts.length < 3) return;
+    const g = this.fill(c); let y0 = Infinity, y1 = -Infinity; for (const p of pts) { y0 = Math.min(y0, p[1]); y1 = Math.max(y1, p[1]); }
+    for (let y = Math.floor(y0); y <= Math.ceil(y1); y++) {
+      const yy = y + 0.5, xs = [];
+      for (let i = 0; i < pts.length; i++) { const a = pts[i], b = pts[(i + 1) % pts.length]; if ((a[1] <= yy) !== (b[1] <= yy)) xs.push(a[0] + ((yy - a[1]) / (b[1] - a[1])) * (b[0] - a[0])); }
+      xs.sort((p, q) => p - q);
+      for (let i = 0; i + 1 < xs.length; i += 2) { const xa = Math.round(xs[i]), xb = Math.round(xs[i + 1]); if (xb > xa) g.fillRect(xa, y, xb - xa, 1); }
+    }
+  }
   dither(x, y, w, h, c, density = 0.5) { const g = this.g; g.globalAlpha = density; this.rect(x, y, w, h, c); g.globalAlpha = 1; }
-  vgrad(x, y, w, h, cols) { const g = this.g; g.fillStyle = vgrad(g, y, y + h, cols); this.ui._fs = null; g.fillRect(x, y, w, h); }
-  // an old software Surf (or anything with { w, h, data: Uint32Array }) blitted as a crisp sprite
+  vgrad(x, y, w, h, cols) { const n = cols.length; for (let j = 0; j < h; j++) this.rect(x, y + j, w, 1, cols[Math.min(n - 1, Math.floor((j / h) * n))]); }
+  // an old software Surf (or anything with { w, h, data: Uint32Array }) blitted 1:1
   blit(src, x, y) {
     if (!src || !src.data) return;
     let C = surfCanvas.get(src);
     if (!C || C.v !== src.version) { C = { cv: pixelCanvas(src.w, src.h, (d) => d.set(src.data)), v: src.version }; surfCanvas.set(src, C); }
-    if (!C.cv) return;
-    const g = this.g, sm = g.imageSmoothingEnabled; g.imageSmoothingEnabled = false; g.drawImage(C.cv, x, y, src.w, src.h); g.imageSmoothingEnabled = sm;
+    blit(this.ui, C.cv, x, y);
   }
   outline() { return this; }
 }

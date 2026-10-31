@@ -1,7 +1,7 @@
 <!doctype html><html><head><meta charset="utf-8"><title>ui</title>
 <style>
 html,body{margin:0;background:#1a120a;color:#f6ead0;font:12px monospace;overflow:hidden}
-#bgc{position:absolute;left:0;top:0;image-rendering:pixelated;image-rendering:crisp-edges}#cv{position:absolute;left:0;top:0;display:block;cursor:pointer}
+#bgc{position:absolute;left:0;top:0;image-rendering:pixelated;image-rendering:crisp-edges}#cv{position:absolute;left:0;top:0;display:block;cursor:pointer;image-rendering:pixelated;image-rendering:crisp-edges}
 #nav{position:fixed;right:6px;bottom:4px;opacity:.55}#nav a{color:#ffcf5a;margin-left:6px}
 #err{position:fixed;left:0;top:0;color:#f66;white-space:pre;background:#000c}
 </style></head><body><canvas id="bgc"></canvas><canvas id="cv"></canvas><div id="nav"></div><div id="err"></div>
@@ -20,11 +20,11 @@ import { SFPhone } from '../src/vx/game/phone.js';
 
 const q = new URLSearchParams(location.search);
 const screen = q.get('screen') || 'gallery';
-const W = +(q.get('w') || 480), H = +(q.get('h') || 270), Z = +(q.get('zoom') || 3);
+const W = +(q.get('w') || 640), H = +(q.get('h') || 360), Z = +(q.get('zoom') || 2);
 const cv = document.getElementById('cv'); cv.style.width = W * Z + 'px'; cv.style.height = H * Z + 'px';
 const bgc = document.getElementById('bgc'); bgc.width = W; bgc.height = H; bgc.style.width = W * Z + 'px'; bgc.style.height = H * Z + 'px';
 document.getElementById('nav').innerHTML = ['gallery', 'icons', 'hud', 'dialog', 'dialog2', 'prompts', 'name', 'cards', 'cards3', 'menu'].map((s) => `<a href="?screen=${s}&w=${W}&h=${H}&zoom=${Z}">${s}</a>`).join('');
-const ui = new PixelUI(W, H, { canvas: cv, pw: W * Z * (devicePixelRatio || 1), ph: H * Z * (devicePixelRatio || 1) });
+const ui = new PixelUI(W, H, { canvas: cv });
 
 // ---------------------------------------------------------------- a fake "world" behind the UI: a sunny park (bg=night: the old night street)
 const bg = new Surf(W, H);

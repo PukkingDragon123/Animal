@@ -351,9 +351,9 @@ function petalAndStem(C, night) {
 // ==================================================================== OFFICE TOWERS (non-enterable)
 function towers(C, night) {
   const T = [
-    { name: 'HALCYON', x: 180, z: 112.8, w: 15, d: 9.4, floors: 9, wall: D.towerTex('bronze', night), trim: '#3a3430', base: '#2a2622', crown: '#c8a060' },
-    { name: 'NIMBUS CENTER', x: 201, z: 112.8, w: 14, d: 12.6, floors: 13, wall: D.towerTex('blue', night), trim: '#d0d8e0', base: '#5a6470', crown: '#e8eef4' },
-    { name: 'AURORA', x: 218, z: 112.8, w: 11, d: 11.2, floors: 8, wall: D.stoneTowerTex('#e0d4bc', night), trim: '#c8bca4', base: '#8a7a64', crown: '#5ab8a8' },
+    { name: 'HALCYON', x: 180, z: 112.8, w: 15, d: 9.4, floors: 19, wall: D.towerTex('bronze', night), trim: '#3a3430', base: '#2a2622', crown: '#c8a060' },
+    { name: 'NIMBUS CENTER', x: 201, z: 112.8, w: 14, d: 12.6, floors: 30, wall: D.towerTex('blue', night), trim: '#d0d8e0', base: '#5a6470', crown: '#e8eef4' },
+    { name: 'AURORA', x: 218, z: 112.8, w: 11, d: 11.2, floors: 15, wall: D.stoneTowerTex('#e0d4bc', night), trim: '#c8bca4', base: '#8a7a64', crown: '#5ab8a8' },
   ];
   for (const t of T) {
     const fh = 3.5, B = C.building({ name: t.name, x: t.x, z: t.z, w: t.w, d: t.d, floors: t.floors, fh, wall: t.wall, trim: t.trim, base: t.base, roof: { type: 'flat', tex: TX.concrete('#8a8a86'), parapet: 0.9 }, windows: { skip: ['n', 's', 'e', 'w'] }, mm: '#7a8aa0' });

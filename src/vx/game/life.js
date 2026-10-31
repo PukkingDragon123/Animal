@@ -153,7 +153,7 @@ function propMesh(kind) { const g = PROP_GEO[kind] || (PROP_GEO[kind] = PROPS[ki
 
 // ==================================================================================== the residents
 // species voice: the little cry in their bubble, a voice pitch, an extra sound, the happy clip
-const VOICE = {
+export const VOICE = {
   mopzart: ['Wuff… mop.', 0.9, null, 'conduct'], wheezowl: ['Hoo-hoo!', 1.3, null, 'hug'], kissmet: ['Mrrrow!', 1.7, 'meow', 'tailtiff'], zapkit: ['Mew! Zzt!', 2.2, 'meow', 'pounce'],
   snoozaque: ['Mmh… zzz', 1.0, null, 'comb'], cabbunny: ['Pip!', 2.4, null, 'thump'], lemmo: ['Lem-lem!', 2.1, null, 'zap'], pidgun: ['Coo-RR!', 1.5, 'coo', 'puff'], pidrose: ['Coo~', 1.7, 'coo', 'preen'],
   trashcoon: ['Chrr-chrr!', 1.6, null, 'capspin'], chochobake: ['Boo~', 1.4, null, 'lick'], weirdfin: ['Blub.', 1.8, 'bubble', 'loop'], blowhale: ['Fwoo!', 1.1, null, 'skirl'],
@@ -161,7 +161,8 @@ const VOICE = {
   foopod: ['Hup! Hup!', 2.0, null, 'shadowbox'], gradcub: ['Rrr-wuh!', 1.4, null, 'shades'], grenaday: ['Tick-tick!', 1.9, null, 'dance'], creepetal: ['…hi.', 1.6, null, 'peek'],
   bearbreak: ['Hhh…', 0.8, null, 'sigh'], studrat: ['Skree!', 2.0, null, 'swagger'], dreadrake: ['QUACK.', 0.9, null, 'flex'], woodbub: ['Bub!', 2.3, 'bubble', 'roll'],
   kanizumo: ['Kani!', 0.9, null, 'shimmy'], zapanda: ['Pan-pan!', 1.9, null, 'tailcheck'], metalfang: ['Grr.', 1.0, null, 'chug'], plastree: ['Rustle.', 1.2, null, 'pricecheck'],
-  kappachi: ['Kap!', 1.5, 'plop', 'munch'], thundersabre: ['RAWR!', 0.8, 'roar', 'roar'], polobruin: ['Hrm!', 0.8, null, 'pop'], barkorious: ['ORK!', 0.7, 'roar', 'clap'],
+  chilichick: ['Chii-chik!', 1.9, null, 'dance'], bubblion: ['Bloop~', 1.6, 'bubble', 'dance'], strawbaa: ['Baa-aa!', 2.1, null, 'dance'], kohlossus: ['HRRMPH!', 0.6, 'roar', 'stomp'],
+    kappachi: ['Kap!', 1.5, 'plop', 'munch'], thundersabre: ['RAWR!', 0.8, 'roar', 'roar'], polobruin: ['Hrm!', 0.8, null, 'pop'], barkorious: ['ORK!', 0.7, 'roar', 'clap'],
 };
 // ==================================================================================== no animals but Tokonmon
 // The world has no animals except Tokonmon: the voxel animal props are hidden (their spots are kept, and stand()

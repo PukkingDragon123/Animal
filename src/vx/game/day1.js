@@ -16,6 +16,7 @@ import { T } from '../../px/game/ui.js';
 import * as S from '../../game/state.js';
 import { SPECIES } from '../../data/species.js';
 import { view } from './cinema.js';
+import { pickHero, pickStarter } from './showcase.js';   // [ui] the 3D pick scenes
 
 const STARTERS = ['chilichick', 'bubblion', 'strawbaa'];
 const BEATS = ['wake', 'kitchen', 'tram', 'arena', 'yumi', 'pier', 'chowder', 'dojo'];
@@ -95,9 +96,7 @@ async function prologue(X) {
   st.player.name = (name || 'Ren').trim() || 'Ren';
   let g = 0;
   if (!app.auto) {
-    g = app.ui.pickCards
-      ? await app.ui.pickCards({ title: 'Are you a boy or a girl?', cards: [{ label: 'Boy', sub: 'Messy hair, big dreams', color: '#e8603a', icon: 'star' }, { label: 'Girl', sub: 'Ponytail, bigger dreams', color: '#ffd040', icon: 'heart' }] })
-      : await app.choose('Are you a boy or a girl?', ['Boy', 'Girl']);
+    g = await pickHero(app, { title: 'WHO ARE YOU?', cards: [{ label: 'Boy', sub: 'Messy hair, big dreams', icon: 'star' }, { label: 'Girl', sub: 'Ponytail, bigger dreams', icon: 'heart' }] });
   }
   st.player.gender = g === 1 ? 'girl' : 'boy';
   st.look = st.player.look = g === 1 ? 'heroine' : 'hero';
@@ -355,7 +354,7 @@ async function arena(X) {
     await say('Professor Aoi', lines[i]);
   }
   await cin.frame([aA[0], hero.g.position.y + 0.5, aA[1] - 1.3], { dist: 6.2, yaw: 10, pitch: 22, dur: 0.8, focus: 'wide' });
-  let pick = await app.choose('Who will be your partner?', ['Chilichick', 'Bubblion', 'Strawbaa']);
+  let pick = app.auto ? await app.choose('Who will be your partner?', ['Chilichick', 'Bubblion', 'Strawbaa']) : await pickStarter(app, { species: STARTERS, level: 5 });
   pick = STARTERS[pick ?? 0]; X.pick = pick;
   S.giveStarter(st, pick, 5); S.setFlag(st, 'starter_' + pick);
   const chosen = cands[STARTERS.indexOf(pick)];

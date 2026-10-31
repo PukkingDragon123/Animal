@@ -13,6 +13,8 @@ export const QUESTS = {
   tarts: { title: 'Egg Tart Run', where: 'chinatown', steps: ['Buy egg tarts at Lucky Moon Bakery', 'Bring them home to Mom'], reward: { money: 150 } },
   chess: { title: 'Grandmaster of the Square', where: 'chinatown', steps: ['Challenge the xiangqi uncle in Portsmouth Square', 'Claim your prize'], reward: { money: 300 } },
   pigeons: { title: 'Pidgun Patrol', where: 'alamo', steps: ['Count the Pidgun strutting around Alamo Square (0/5)'], count: 5, reward: { money: 200 } },
+  // [cave] the Deep Cave under Alamo Hill (src/vx/game/cave.js)
+  deepcave: { title: 'Something Rumbles Under Alamo Hill', where: 'cave', steps: ['Find where the rumbling comes from on Alamo Hill', 'Explore the Deep Cave with your lantern', 'Open the crystal gate by Mirror Lake', 'Find a way through Old Mine No. 3', 'Find what glows in the deepest chamber'], reward: { money: 600 } },
 };
 
 export class Quests {
@@ -54,7 +56,41 @@ export class Quests {
     if (Q.reward && Q.reward.money) this.app.state.money = (this.app.state.money || 0) + Q.reward.money;
     this.app.toast((Q.main ? 'Chapter complete: ' : 'Quest complete: ') + Q.title + (Q.reward && Q.reward.money ? `  +${Q.reward.money}` : ''), { icon: 'check', color: T.green, dur: 3 });
     this.app.audio.sfx && this.app.audio.sfx('reward');
+    if (!Q.main) this.celebrate(Q);
     this.app.save();
+  }
+  /** a side quest done: a QUEST COMPLETE card, the jingle, you pump a fist and your partner cheers */
+  celebrate(Q) {
+    const app = this.app, cin = app.cinema, w = app.world, me = w && w.player;
+    if (app.auto || (cin && cin.skipping)) return;
+    if (cin) cin.title('QUEST COMPLETE', Q.title, { hold: 2600, y: 0.3, wait: false, sfx: false });
+    if (app.audio.jingle) app.audio.jingle('complete');
+    if (me && w.fx) { me.play('pump', { restart: true }); w.fx.emit('star', me.headPos(), { n: 8 }); w.fx.emit('sparkle', me.headPos(), { n: 16 }); setTimeout(() => { if (me.anim && me.anim.cur === 'pump') me.play('idle', { fade: 0.3 }); }, 2400); }
+    const b = w && w.partner; if (b && b.anim) { b.play(b.anim.clips.win ? 'win' : 'idle', { restart: true }); if (app.feel) app.feel.emote(b, 'star', 1.8); }
+  }
+  // ---------------------------------------------------------------- the walkable city's quest scenes
+  /** wire the quests into a freshly built city (feel.js calls this on each new city): Mom takes the egg tarts */
+  attach(city) {
+    const mom = city && city.inter && city.inter.find((x) => x.npc === 'mom');
+    if (mom && !mom.questWrapped) { const act = mom.act; mom.questWrapped = true; mom.act = async (app, it) => (this.at('tarts') === 1 ? this.tartsScene() : act(app, it)); }
+  }
+  /** Egg Tart Run, the end: Mom gets her tarts (inside the talk camera's conversation: it cuts on each speaker) */
+  async tartsScene() {
+    const app = this.app, w = app.world, cin = app.cinema, me = w.player, mom = w.actor('mom'), nm = app.state.player.name, feel = app.feel;
+    const sfx = (n, o) => app.audio.sfx && app.audio.sfx(n, o);
+    if (mom && me) { mom.face(me); me.face(mom); me.play('explain', { restart: true }); }
+    await app.say(nm, 'Mom! Egg tarts from Lucky Moon. Still warm!');
+    if (mom) { mom.play('surprised', { restart: true }); if (mom.anim.face) mom.anim.face('surprised', 2); if (feel) feel.emote(mom, '!', 1.2); }
+    if (cin && cin.active && mom) await cin.push(mom, { punch: 4, shake: 0.05 });
+    await app.say('Mom', 'From Lucky Moon?! Mrs. Chan sells out of these before the fog even lifts!');
+    if (mom) { mom.play('excited', { restart: true }); if (feel) feel.emote(mom, 'heart', 1.8); w.fx.emit('heart', mom.headPos(), { n: 5 }); }
+    sfx('sparkle', { vol: 0.6 });
+    if (cin && cin.active && mom && me) await cin.two(mom, me, { dist: 3.4, dur: 0.6 });
+    await app.say('Mom', 'Mmm… flaky, wobbly, perfect. You\'re a good kid, you know that?', 'Here, a little something for the cable car. Don\'t spend it all on boba.');
+    if (mom) mom.play('hug', { restart: true }); if (me) me.play('peace', { restart: true });
+    this.complete('tarts');
+    await app.wait(900);
+    if (mom) mom.play('idle', { fade: 0.4 });
   }
   // the line shown in the corner: the main quest first
   objective() {

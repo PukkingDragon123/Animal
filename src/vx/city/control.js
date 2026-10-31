@@ -192,10 +192,18 @@ export class CityControl {
       a.targetYaw = this.head;
       if (!this.moving && a.anim.play && !(a.m && a.m.animator)) a.play(run ? 'run' : 'walk', { fade: 0.12 });
       this.moving = true;
-      // footsteps by surface
+      // footsteps by surface (a human reports its own footfalls instead: feel.js hooks m.onStep)
       this.stepD += moved;
-      if (this.stepD > (this.spd > 3.2 ? 0.62 : 0.44)) { this.stepD = 0; const au = this.app.audio; if (au && au.sfx) au.sfx(this.stepKind(p), { vol: this.spd > 3.2 ? 1 : 0.75, pitch: 0.94 + Math.random() * 0.12 }); }
-    } else if (this.moving) { this.moving = false; if (!(a.m && a.m.animator)) a.play(a.idleClip || 'idle', { fade: 0.2 }); }
+      if (!(a.m && a.m.onStep) && this.stepD > (this.spd > 3.2 ? 0.62 : 0.44)) { this.stepD = 0; const au = this.app.audio; if (au && au.sfx) au.sfx(this.stepKind(p), { vol: this.spd > 3.2 ? 1 : 0.75, pitch: 0.94 + Math.random() * 0.12 }); }
+      // [feel] a little dust kicked up behind you while you run
+      if (this.spd > WALK + 0.8 && (this.dustT = (this.dustT || 0) - dt) <= 0 && this.inside < 0) { this.dustT = 0.1; _s.set(p.x - this.vx * 0.06, p.y + 0.06, p.z - this.vz * 0.06); this.w.fx.emit('dust', _s, { n: 1, scale: 0.5 + Math.random() * 0.25, speed: 0.5 }); }
+      this.topSpd = Math.max((this.topSpd || 0) * Math.exp(-dt * 1.2), this.spd);
+    } else if (this.moving) {
+      this.moving = false; if (!(a.m && a.m.animator)) a.play(a.idleClip || 'idle', { fade: 0.2 });
+      // [feel] skidding to a stop from a run: a puff at your feet
+      if ((this.topSpd || 0) > RUN - 1.6 && this.inside < 0) { _s.set(p.x + Math.sin(this.head) * 0.2, p.y + 0.06, p.z + Math.cos(this.head) * 0.2); this.w.fx.emit('dust', _s, { n: 4, scale: 0.6, speed: 0.8 }); }
+      this.topSpd = 0;
+    }
   }
   stepKind(p) {
     const b = this.nav.buildingAt(p.x, p.z, this.L);
@@ -253,9 +261,14 @@ export class CityControl {
     this.fh += (P.h - this.fh) * kp; this.fdb += (P.dist - this.fdb) * kp; this.fpb += (P.pitch - this.fpb) * kp; this.ffov += (P.fov - this.ffov) * kp;
     // look at the player, a little ahead of where they're going
     const kl = kexp(dt, 2.5); this.camLead.x += (this.pvx * P.lead - this.camLead.x) * kl; this.camLead.z += (this.pvz * P.lead - this.camLead.z) * kl;
-    const kt = kexp(dt, 10); this.ft.x += (p.x + this.camLead.x - this.ft.x) * kt; this.ft.z += (p.z + this.camLead.z - this.ft.z) * kt; this.ft.y += (p.y + this.fh - this.ft.y) * kexp(dt, 6);
+    // [feel] while you interact with something, the camera leans toward it and in a little
+    const F = this.focusAt; this.focusK = (this.focusK || 0) + ((F ? 1 : 0) - (this.focusK || 0)) * kexp(dt, F ? 3.5 : 2.5);
+    if (F) this.focusP = (this.focusP || new THREE.Vector3()).copy(F);
+    const fk = this.focusK > 0.002 && this.focusP ? this.focusK * 0.38 : 0, fq = this.focusP;
+    const gx = p.x + this.camLead.x + (fk ? (fq.x - p.x) * fk : 0), gz = p.z + this.camLead.z + (fk ? (fq.z - p.z) * fk : 0), gy = p.y + this.fh + (fk ? clamp(fq.y - p.y - this.fh, -0.6, 0.6) * fk : 0);
+    const kt = kexp(dt, 10); this.ft.x += (gx - this.ft.x) * kt; this.ft.z += (gz - this.ft.z) * kt; this.ft.y += (gy - this.ft.y) * kexp(dt, 6);
     // distance and pitch; outdoors the camera pulls in in front of a building that gets in the way (fast in, slow out)
-    const dist = this.fdb * this.zoom, pitch = clamp(this.fpb + (this.zoom - 1) * 14 + this.pitchOff, 6, 72);
+    const dist = this.fdb * this.zoom * (1 - 0.16 * (this.focusK || 0)), pitch = clamp(this.fpb + (this.zoom - 1) * 14 + this.pitchOff, 6, 72);
     let want = dist;
     if (!inn) { const t = this.cast(this.ft, this.cyaw * D2R, pitch * D2R, dist + 0.5); if (t < dist + 0.4) want = Math.max(MIN_D, t - 0.4); }
     this.fd = want < this.fd ? want + (this.fd - want) * Math.exp(-dt * 30) : this.fd + (want - this.fd) * kexp(dt, 2);
@@ -385,7 +398,8 @@ export class CityControl {
     const a = this.player; this.vx = this.vz = this.spd = 0;
     if (a) a.faceTo(it.x, it.z);
     this.app.audio.sfx && this.app.audio.sfx('ui_tap');
-    this.app.story.run(async () => { await it.act(this.app, it); });
+    const feel = this.app.feel;   // [feel] a short over-the-shoulder for people, a camera nudge toward things, item pops
+    this.app.story.run(async () => { if (feel && feel.use) await feel.use(it, () => it.act(this.app, it)); else await it.act(this.app, it); });
   }
   zones(p) {
     const z = this.nav.zoneAt(p.x, p.z);

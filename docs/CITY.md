@@ -13,8 +13,9 @@ Cutscenes take the camera with `world.shot()` / `setCam()` (a shot may set `fov`
 - `src/vx/scenes/city.js`: the master plan. It holds the avenues, the district rectangles and the zones for the avenues, and it calls each district.
 - `src/vx/city/districts/*.js`: one module per district. Each exports `build(C, [x0, z0, x1, z1], ctx)` and builds only inside its rectangle.
 - `src/vx/city/build.js`: `CityBuilder`, the API below.
-- `src/vx/city/pixtex.js`: pixel-art textures. They're nearest-filtered at 32 texels per metre and every one knows its size in metres.
-- `src/vx/city/voxprops.js`: voxel-art street furniture at 16 voxels per metre, drawn as instanced meshes.
+- `src/vx/city/pixtex.js`: pixel-art textures (64 texels per metre on desktop). Every one knows its size in metres.
+- `src/vx/city/voxprops.js`: voxel-art props at 16 voxels per metre; `props_real.js` / `props_trees.js`: modelled street furniture, cars and trees.
+- `src/vx/city/merge.js`: the static merge (see Performance).
 - `src/vx/city/nav.js`: the 25 cm collision and height grid per storey. It also handles stairs, zones, `move()` with wall sliding, and A* `path()`.
 - `src/vx/city/control.js`: movement, the camera, the cutaway, doors, interaction prompts, the minimap and the partner following you.
 
@@ -147,13 +148,22 @@ After the districts, `scenes/city.js` runs `dress(C, record)`: drainpipes, windo
 New prop kinds: `treeB` (rounder canopy), `sandwich` (A-board), `bags`, `dumpster`, `boxes`, `pot`, `upole` (utility pole), `scooter`, `barrier`, `firebox`. A kind with `noShadow: true` skips the shadow pass. `canopy.cball` / `canopy.leafCol` (voxprops.js) build cheap blocky foliage in 25 cm cells coloured in chunks (~3k triangles per tree instead of ~10k).
 
 ## The look up close
-The city is seen from a close third-person camera, so the stage renders it for street level:
-- **Sky:** `src/vx/render/sky.js` paints a pixel sky dome per mood (gradient bands, the sun's glow, chunky clouds, stars at night). It is the background and, prefiltered, the environment that glossy surfaces reflect. It adds reflections only: diffuse sky light still comes from the hemisphere light.
-- **Sun shadows:** two cascades (`src/vx/render/shadows.js`). The sun carries a tight box of about ±11 m around the player (sharp contact shadows), and a black twin carries the wide box that `followShadow` aims down the street. Materials blend between the two maps near the rim of the tight box.
-- **Materials:** city surfaces are `MeshStandardMaterial`s made by `surfaceMaterial()` (`src/vx/render/surface.js`). Roughness, metalness and relief come from the texture's family, found from its key prefix (`brick`, `siding`, `rooftile`, `win`…). Relief is a per-texel normal taken from the pixel art itself, so mortar, grout, laps and grain catch the low sun. It fades out past about 30 m. Glass panes are marked in the painter with `P.glass = [[x, y, w, h], ...]` (texel rects). They and the puddles in the ground atlas get a roughness map that makes them mirror-smooth. Voxel props get a roughness and metalness per kind (`SURF` in voxprops.js).
-- **Painted, not gritty:** after painting, the big tiling textures (walls, roofs, ground) get one majority-filter pass (`despeckle` in pixtex.js). Lone specks and dither checkers take their neighbours' colour, so the surfaces read as clear colour blocks like the Tokonmon's painted box models. Relief stays subtle, and noisy ground, stucco and decals get none.
-- **Depth of field:** `src/vx/render/composite.js` focuses on the camera's look-at point. It fades in below a camera distance of about 16 m and hands over from the HD-2D tilt-shift (`cv.depthDof`). `?dof=0` turns it off.
-- **Grade:** `POST` in `src/vx/render/look.js` sets the grade per mood (bloom, vignette, split toning, saturation, vibrance and contrast).
+The city is seen from a close third-person camera, so the stage renders it for street level: painted pixel textures under physically based light.
+- **One context, full resolution:** the stage renders straight into the view canvas (`app.js`), at the canvas size × devicePixelRatio, capped at 2 on desktop and 1.5 on lite / phones, inside a pixel budget (4K desktop, ~2.3 MP lite). `?res=N` caps the long side. The adaptive step-down only acts when the frame rate stays under ~22 fps (never below 70%).
+- **Sky:** `src/vx/render/sky.js` is an analytic scattering sky (Rayleigh + Mie, turbidity per mood) drawn as a dome in the HDR frame, with fbm clouds, and stars and a moon at night. Rendered once per mood (without the sun disc) into a PMREM environment that glossy surfaces reflect.
+- **Light:** a near-white sun at ~48° by day (amber at golden hour, orange at dusk, a dim moon at night) and a sky-coloured hemisphere fill; the street lamps, windows and neon throw light pools at night (`render/pools.js`). `MOODS` in `src/vx/stage.js`.
+- **Shadows:** two cascades (`render/shadows.js`): a tight 2048² box (±12 m) around the player, and a wide far box re-rendered every third frame without the people, creatures and small props. Lite has the near cascade only (1024², ±16 m).
+- **Frame:** `render/composite.js`: HDR target (MSAA ×4 on desktop up to 2.5 MP, FXAA otherwise), ambient occlusion at half resolution (a third on lite), a two-level bloom, aerial perspective, AgX tone mapping and a neutral grade (`POST` in `render/look.js`: bloom, saturation, a gentle S-curve, white balance, vignette). No outlines. `?tone=aces|neutral`, `?msaa=0|4`, `?fxaa=1`, `?ao=0`.
+- **Textures:** still hand-painted pixel art (`pixtex.js`, 64 texels per metre on desktop), nearest-magnified, mipmapped and 8× anisotropic, with per-family roughness and pixel relief (`render/surface.js`).
+
+## Performance: what keeps the draw calls down
+- **Static merge** (`src/vx/city/merge.js`): finalize() also builds a merged copy of every building's outside (walls, façade decals, roofs), the ground, the skirt and the `'props'` geometry group: 96 m tiles in the map, 200 m tiles in the skirt, one mesh per tile and material. Every texture goes into 2048² atlas pages (with emissive and roughness twins); the shader wraps the metre UVs inside each texture's rectangle (`aAt`) and keeps the pixel relief (`aRel`). Solid colours become vertex colours. Each vertex carries its building id (`aBid`): the cutaway (`control.js`) draws a building's own groups only while it is inside / fading, and hides those ids in the merged copy (`HIDE`). Interiors draw only within ~9 m of the player. One merged shadow caster per tile, on layer 1 (shadow pass only). `?nomerge=1` turns it off for A/B checks.
+- **Props** (build.js): the voxel and modelled props are baked into static meshes per tile and size class (small: 34 m draw distance, medium: 64 m, large: 170 m; lite less). The swaying trees are one instanced set per species with a per-instance distance cull and a far twin past 30 m. The voxel animals (life.js) and the garden's cabbages stay plain instanced meshes. Every prop kind also has a data-only instanced mesh (never drawn) in the `props` group, under its original kind, for code that looks props up. `?proplod=0` disables the culling.
+- **Modelled props** (`props_real.js`, `meshkit.js`): lamps, benches, bins, hydrants, mail boxes, bollards, cones, bike hoops, signs, utility poles and cars replace the stock voxel kinds (`remapProps`, `?voxprops=1` keeps the old ones). One geometry each with per-vertex colour and roughness / metalness (`VPBR`).
+- **Trees** (`props_trees.js`): modelled species (oak, plane, linden, maple, blossom, cypress, palm), ~2–3k triangles near, ~150 far: a crooked trunk with limbs, and a crown of dark lumpy cores dressed with pixel-art leaf cards whose normals point out of the crown.
+
+## The world beyond the map (`src/vx/render/skirt.js`)
+The city grid continues a few hundred metres on every land side: the avenues run on as vistas between sidewalks, lamps and blocks of buildings (painted pixel façades with lit windows at night, cornices, rooftop tanks), taller toward the downtown skyline in the south-east. Past them a far layer (one merged mesh): the bay to the horizon with islands, a long suspension bridge, the far shore and hill ridges, melted into the sky by the aerial perspective.
 
 ## Testing
 

@@ -12,8 +12,12 @@ export const RM = { paint: [0.32, 0.25], glass: [0.06, 0.0], rubber: [0.92, 0], 
 export class Geo {
   constructor() { this.P = []; this.N = []; this.C = []; this.R = []; this.UV = []; this.I = []; this.cur = { col: [1, 1, 1], rm: RM.matte }; }
   /** set the colour (hex / Color) and surface ([rough, metal] or preset name) for what follows */
-  mat(col, rm = 'matte') { const c = new THREE.Color(col); this.cur = { col: [c.r, c.g, c.b], rm: typeof rm === 'string' ? RM[rm] : rm }; return this; }
-  v(p, n, col, uv) { const c = col || this.cur.col; this.P.push(p[0], p[1], p[2]); this.N.push(n[0], n[1], n[2]); this.C.push(c[0], c[1], c[2]); this.R.push(this.cur.rm[0], this.cur.rm[1]); this.UV.push(uv ? uv[0] : 0, uv ? uv[1] : 0); return this.P.length / 3 - 1; }
+  /** colour (hex / Color) and surface ([rough, metal] or a preset name) for what follows; o.flat: no painted shading */
+  mat(col, rm = 'matte', o = {}) { const c = new THREE.Color(col); this.cur = { col: [c.r, c.g, c.b], rm: typeof rm === 'string' ? RM[rm] : rm, flat: !!o.flat }; return this; }
+  // painted light baked into the vertex colour (like the hand-painted textures): tops lit, undersides dark,
+  // a soft occlusion near the ground
+  paint(p, n, c) { if (this.cur.flat || this.noPaint) return c; const k = (0.8 + 0.2 * n[1] + (n[1] < -0.5 ? -0.12 : 0)) * (0.72 + 0.28 * Math.min(1, Math.max(0, p[1]) / 0.45)); return [c[0] * k, c[1] * k, c[2] * k]; }
+  v(p, n, col, uv) { const c = col || this.paint(p, n, this.cur.col); this.P.push(p[0], p[1], p[2]); this.N.push(n[0], n[1], n[2]); this.C.push(c[0], c[1], c[2]); this.R.push(this.cur.rm[0], this.cur.rm[1]); this.UV.push(uv ? uv[0] : 0, uv ? uv[1] : 0); return this.P.length / 3 - 1; }
   tri(a, b, c) { this.I.push(a, b, c); return this; }
   /** append a THREE geometry (non-indexed or indexed) transformed by matrix m, in the current colour (or col(p, n) → [r,g,b]) */
   add(geo, m, col) {
@@ -48,6 +52,8 @@ export class Geo {
   /** a lathe: profile [[r, y], ...] around the y axis at c */
   lathe(c, prof, n = 12, o = {}) { const g = new THREE.LatheGeometry(prof.map(([r, y]) => new THREE.Vector2(Math.max(1e-4, r), y)), n); return this.add(g, new THREE.Matrix4().compose(new THREE.Vector3(...c), new THREE.Quaternion().setFromEuler(new THREE.Euler(o.rx || 0, o.ry || 0, o.rz || 0)), new THREE.Vector3(...(o.s || [1, 1, 1])))); }
   sphere(c, r, o = {}) { const g = new THREE.SphereGeometry(1, o.w || 10, o.h || 7); return this.add(g, new THREE.Matrix4().compose(new THREE.Vector3(...c), new THREE.Quaternion(), new THREE.Vector3(...(Array.isArray(r) ? r : [r, r, r])))); }
+  /** a tube along points pts (radius r, n sides) */
+  tube(pts, r, n = 6, o = {}) { const curve = new THREE.CatmullRomCurve3(pts.map((p) => new THREE.Vector3(...p)), false, 'catmullrom', 0.2); return this.add(new THREE.TubeGeometry(curve, o.seg || pts.length * 4, r, n, false), new THREE.Matrix4()); }
   /** an extruded side profile (pts in the x-y plane) of width w, centred on z = 0 */
   extrude(pts, w, o = {}) {
     const sh = new THREE.Shape(pts.map(([x, y]) => new THREE.Vector2(x, y))), bv = o.bevel ?? 0.04;
@@ -85,26 +91,29 @@ export function vpbr(m) {
 export const VPBR = vpbr(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1, metalness: 1 }));
 
 // ---------------------------------------------------------------- foliage
-/** a leaf-cluster texture: dozens of small overlapping leaves on transparent (alpha-tested), greyscale-ish so vertex colours tint it */
+/** a leaf-cluster texture, hand-painted pixel art: dozens of little leaves on transparent (alpha-tested), each
+ *  shaded with a four-step ramp (lit edge up-left, a dark rim down-right, a midrib), in near-greys so the vertex
+ *  colours tint them per species; nearest-filtered like the city's other pixel textures */
 let LEAF = null;
 export function leafTexture() {
   if (LEAF) return LEAF;
-  const S = 256, cv = document.createElement('canvas'); cv.width = cv.height = S; const g = cv.getContext('2d'), r = rng(9127);
-  g.clearRect(0, 0, S, S);
-  for (let i = 0; i < 150; i++) {
-    const a = r() * TAU, d = Math.sqrt(r()) * S * 0.42, x = S / 2 + Math.cos(a) * d, y = S / 2 + Math.sin(a) * d, len = 14 + r() * 16, wid = len * (0.38 + r() * 0.16), rot = r() * TAU;
-    const v = 150 + Math.floor(r() * 105), hue = Math.floor(r() * 3);
-    g.save(); g.translate(x, y); g.rotate(rot);
-    g.fillStyle = `rgb(${v - 12 + hue * 4},${v},${v - 30})`;
-    g.beginPath(); g.moveTo(-len / 2, 0); g.quadraticCurveTo(0, -wid, len / 2, 0); g.quadraticCurveTo(0, wid, -len / 2, 0); g.fill();
-    g.strokeStyle = `rgba(60,70,40,0.5)`; g.lineWidth = 1; g.beginPath(); g.moveTo(-len / 2, 0); g.lineTo(len / 2, 0); g.stroke();
-    g.restore();
+  const S = 128, cv = document.createElement('canvas'); cv.width = cv.height = S; const g = cv.getContext('2d'), r = rng(9127);
+  const im = g.createImageData(S, S), d = im.data, RAMP = [[96, 104, 70], [150, 160, 112], [196, 206, 150], [236, 242, 196]];
+  const put = (x, y, c) => { if (x < 0 || y < 0 || x >= S || y >= S) return; const i = (y * S + x) * 4; d[i] = c[0]; d[i + 1] = c[1]; d[i + 2] = c[2]; d[i + 3] = 255; };
+  // twigs first, leaves over them
+  for (let i = 0; i < 7; i++) { const a = r() * Math.PI * 2; for (let t = 0; t < S * 0.36; t++) put(Math.round(S / 2 + Math.cos(a) * t), Math.round(S / 2 + Math.sin(a) * t + t * t * 0.004), [88, 72, 54]); }
+  for (let i = 0; i < 120; i++) {
+    const a = r() * Math.PI * 2, rr = Math.sqrt(r()) * S * 0.42, cx = S / 2 + Math.cos(a) * rr, cy = S / 2 + Math.sin(a) * rr, L = 4 + r() * 4, Wd = L * (0.45 + r() * 0.2), rot = r() * Math.PI, ca = Math.cos(rot), sa = Math.sin(rot), tone = r() < 0.2 ? -1 : r() < 0.25 ? 1 : 0;
+    for (let y = Math.floor(cy - L - 1); y <= cy + L + 1; y++) for (let x = Math.floor(cx - L - 1); x <= cx + L + 1; x++) {
+      const u = ((x - cx) * ca + (y - cy) * sa) / L, v = (-(x - cx) * sa + (y - cy) * ca) / Wd, q = u * u + v * v * (1 + u * 0.6);
+      if (q > 1) continue;
+      let k = q > 0.7 ? 0 : 2; if (Math.abs(v) < 0.14) k = 1; else if ((x - cx) + (y - cy) < -L * 0.4 && q < 0.7) k = 3; else if (q > 0.45 && (x - cx) + (y - cy) > 0) k = 1;
+      put(x, y, RAMP[Math.max(0, Math.min(3, k + tone))]);
+    }
   }
   // a solid patch in the bottom-left corner (uv ≈ 0.05): the opaque cores of the clusters and palm leaflets sample it
-  g.fillStyle = 'rgb(205,210,180)'; g.fillRect(0, S - 30, 30, 30);
-  // a few twigs
-  g.strokeStyle = 'rgb(90,72,52)'; g.lineWidth = 2;
-  for (let i = 0; i < 6; i++) { const a = r() * TAU; g.beginPath(); g.moveTo(S / 2, S / 2); g.lineTo(S / 2 + Math.cos(a) * S * 0.35, S / 2 + Math.sin(a) * S * 0.35); g.stroke(); }
-  const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; t.minFilter = THREE.LinearMipmapLinearFilter; t.magFilter = THREE.LinearFilter; t.anisotropy = 4;
+  for (let y = S - 15; y < S; y++) for (let x = 0; x < 15; x++) put(x, y, RAMP[(x + y) % 5 === 0 ? 1 : 2]);
+  g.putImageData(im, 0, 0);
+  const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; t.minFilter = THREE.NearestMipmapLinearFilter; t.magFilter = THREE.NearestFilter; t.anisotropy = 4;
   LEAF = t; return t;
 }

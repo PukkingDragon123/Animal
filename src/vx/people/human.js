@@ -33,9 +33,25 @@ const CLIPS = {
   shy: { g: '_clasp', e: 'smile', post: (h) => nod(h, 0.18) }, dance: { g: 'dance', go: { bpm: 112, style: 'bounce' } },
   hug: { g: 'hug' }, explain: { g: 'explain', talk: true }, menace: { g: 'nope', e: 'angry' }, nope: { g: 'nope', e: 'angry' }, wet: { e: 'sad' },
   sit: { sit: true }, sitPhone: { sit: true, g: 'phone_idle' }, sitSad: { sit: true, e: 'sad', post: (h) => lean(h, 0.18) },
+  // battle and street reactions
+  pump: { g: 'flex', e: 'grin', hop: 0.07, post: (h, t) => lean(h, -0.05 * Math.exp(-t * 2)) },
+  flinch: { g: 'shrug', e: 'surprised', post: (h, t) => { lean(h, -0.2 * Math.exp(-t * 3.5)); nod(h, -0.12 * Math.exp(-t * 4)); } },
+  command: { g: 'point', e: 'angry', post: (h, t) => lean(h, 0.1 * Math.exp(-t * 1.5)) },
+  defeat: { e: 'sad', post: (h, t) => { const k = Math.min(1, t * 2); lean(h, 0.24 * k); nod(h, 0.3 * k); } },
+  stomp: { g: 'nope', e: 'angry', hop: 0.05, post: (h, t) => lean(h, 0.1 + Math.sin(t * 16) * 0.02 * Math.exp(-t)) },
+  excited: { g: 'clap', e: 'happy', hop: 0.1 },
+  surprised: { g: 'shrug', e: 'surprised', post: (h, t) => lean(h, -0.1 * Math.exp(-t * 3)) },
+  sigh: { e: 'sad', post: (h, t) => { const b = Math.sin(Math.min(1, t / 1.6) * Math.PI); lean(h, 0.12 * b); nod(h, 0.16 * b); } },
+  yawn: { g: '_neck', e: 'sleepy', post: (h, t) => { const b = Math.sin(Math.min(1, t / 2.2) * Math.PI); lean(h, -0.08 * b); nod(h, -0.22 * b); } },
+  scratch: { g: 'think', e: 'smile', post: (h, t) => tilt(h, 0.14 * Math.min(1, t * 3)) },
+  lookAround: { post: (h, t) => turn(h, Math.sin(Math.min(t, 3.2) * 2.0) * 0.55 * Math.sin(Math.min(1, t / 3.2) * Math.PI)) },
+  sitTalk: { sit: true, talk: true }, sitCheer: { sit: true, e: 'happy', talk: true },
 };
 function lean(h, a) { _q.setFromEuler(_e.set(a, 0, 0)); h.b.spine.quaternion.multiply(_q); }
 function nod(h, a) { _q.setFromEuler(_e.set(a, 0, 0)); h.b.head.quaternion.multiply(_q); }
+function turn(h, a) { _q.setFromEuler(_e.set(0, a, 0)); h.b.head.quaternion.multiply(_q); }
+function tilt(h, a) { _q.setFromEuler(_e.set(0, 0, a)); h.b.head.quaternion.multiply(_q); }
+function bank(h, a) { _q.setFromEuler(_e.set(0, 0, a)); h.b.spine.quaternion.multiply(_q); }
 
 // seated: hips down onto the root (the seat surface), thighs forward, shins down, hands on the lap
 function sitPose(h, k) {
@@ -54,8 +70,8 @@ function sitPose(h, k) {
 
 class HumanAnim {
   constructor(p) {
-    this.p = p; this.h = p.h; this.clips = CLIPS; this.spec = { fidget: { clips: ['wave', 'shrug', 'think', 'phone'] } };
-    this.cur = 'idle'; this.c = CLIPS.idle; this.t = 0; this.sitK = 0; this.hop = 0; this.prev = null; this.speed = 0;
+    this.p = p; this.h = p.h; this.clips = CLIPS; this.spec = { fidget: { clips: ['lookAround', 'scratch', 'shrug', 'think', 'phone', 'yawn', 'sigh'] } };
+    this.cur = 'idle'; this.c = CLIPS.idle; this.t = 0; this.sitK = 0; this.hop = 0; this.prev = null; this.speed = 0; this.runK = 0; this.bankK = 0;
   }
   play(name, o = {}) {
     const c = CLIPS[name] || CLIPS.idle, h = this.h;
@@ -79,7 +95,17 @@ class HumanAnim {
     h.update(dt, { speed: this.speed, lookAt: c.sit ? null : look, talking: !!c.talk || !!this.p.talking });
     this.sitK += ((c.sit ? 1 : 0) - this.sitK) * (1 - Math.exp(-dt * 10));
     if (this.sitK > 0.01) sitPose(h, smooth(this.sitK));
+    // gait on top of the human's own walk: lean into a run, bank into turns
+    const run = smooth((this.speed - 2.4) / 2.2), walkK = smooth(this.speed / 1.6);
+    this.runK += (run - this.runK) * (1 - Math.exp(-dt * 6));
+    if (this.runK > 0.01) { lean(h, 0.15 * this.runK); nod(h, -0.1 * this.runK); }
+    const bk = clamp(-(h.yawRate || 0) * 0.04 * walkK, -0.13, 0.13); this.bankK += (bk - this.bankK) * (1 - Math.exp(-dt * 8));
+    if (Math.abs(this.bankK) > 0.002) bank(h, this.bankK);
     if (c.post) c.post(h, this.t);
+    // footfalls: each time the gait passes a contact (twice a stride) — the world plays the step (onStep)
+    const q = Math.floor((h.phase || 0) * 2);
+    if (this.stepQ !== undefined && q !== this.stepQ && this.speed > 0.35 && (h.walkW || 0) > 0.3 && this.p.onStep) this.p.onStep(this.speed, this.p);
+    this.stepQ = q;
     // hops (cheer / win / jump): a little bounce of the whole body
     const hp = c.hop ? Math.max(0, Math.sin(this.t * 7.5)) * c.hop * (this.t < 2.2 ? 1 : 0) : 0;
     this.hop += (hp - this.hop) * (1 - Math.exp(-dt * 25));

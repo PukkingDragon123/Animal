@@ -116,7 +116,7 @@ function merge(geos, ox, oz) {
 // what each kind is made of (roughness / metalness of its voxels): glossy car and scooter paint, enamelled
 // street furniture and machines, painted steel, matte wood, leaves and canvas. Unlisted kinds use the stage's
 // voxel material (roughness 0.78).
-const SURF = {
+export const SURF = {
   car: [0.24, 0.05], scooter: [0.3, 0.05], cart: [0.45, 0], vending: [0.3, 0], mailbox: [0.38, 0.1], hydrant: [0.42, 0.1], firebox: [0.4, 0.1],
   bin: [0.5, 0.15], dumpster: [0.55, 0.2], bollard: [0.45, 0.2], lamp: [0.45, 0.25], bikeRack: [0.35, 0.6], barrier: [0.5, 0.1], sign: [0.42, 0.1],
   cone: [0.6, 0], bench: [0.7, 0], crate: [0.85, 0], boxes: [0.9, 0], bags: [0.7, 0], sandwich: [0.6, 0], parasol: [0.9, 0], upole: [0.85, 0],
