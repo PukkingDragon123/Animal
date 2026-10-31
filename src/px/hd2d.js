@@ -3,6 +3,8 @@
 // screen, a two-level bloom (a tight glow and a wide soft halo around lamps, neon and lit windows), soft
 // god-ray light shafts, and a filmic grade: split toning (cool shadows, warm highlights), saturation, an
 // S-curve contrast that never clips, lifted blacks, vignette and a whisper of film grain.
+// When the 3D stage runs its own depth of field (the close third-person camera; it sets frame.depthDof 0..1),
+// the tilt-shift steps back by that much, so the two never stack.
 const VS = `#version 300 es
 in vec2 a; out vec2 v; void main(){ v = a * 0.5 + 0.5; gl_Position = vec4(a, 0.0, 1.0); }`;
 const BRIGHT = `#version 300 es
@@ -19,7 +21,7 @@ uniform sampler2D tScene; uniform sampler2D tSoft; uniform sampler2D tBloom; uni
 uniform vec2 uLow; uniform vec2 uOut; uniform float uTime;
 uniform float uFocus; uniform float uBand; uniform float uDof; uniform float uBloom; uniform float uWide;
 uniform float uRays; uniform vec2 uRayDir; uniform vec3 uRayCol; uniform float uVig; uniform float uWarm; uniform float uNight; uniform float uSat; uniform float uCon;
-uniform vec3 uShadowTint; uniform vec3 uHighTint; uniform float uLift;
+uniform vec3 uShadowTint; uniform vec3 uHighTint; uniform float uLift; uniform float uVibe;
 in vec2 v; out vec4 o;
 float hash(vec2 p){ return fract(sin(dot(p, vec2(41.3, 289.1))) * 43758.5453); }
 void main(){
@@ -46,6 +48,8 @@ void main(){
   c = mix(c, c * uHighTint, smoothstep(0.4, 1.0, l) * (0.5 + uWarm));
   c = mix(c, c * vec3(0.72, 0.82, 1.06), uNight);
   c = max(mix(vec3(dot(c, vec3(0.2126, 0.7152, 0.0722))), c, uSat), 0.0);
+  // vibrance: lift the saturation of muted colours more than of already vivid ones (no neon over-saturation)
+  if (uVibe != 0.0) { float mx = max(c.r, max(c.g, c.b)), mn = min(c.r, min(c.g, c.b)), sat = (mx - mn) / max(mx, 1e-4); float lv = dot(c, vec3(0.2126, 0.7152, 0.0722)); c = max(mix(vec3(lv), c, 1.0 + uVibe * (1.0 - sat) * (1.0 - sat)), 0.0); }
   vec3 cc = clamp(c, 0.0, 1.0);
   c = mix(c, cc * cc * (3.0 - 2.0 * cc) + (c - cc), (uCon - 1.0) * 2.0);
   c = c * (1.0 - uLift) + uLift;
@@ -111,9 +115,9 @@ export class HD2D {
       for (let i = 0; i < 3; i++) { this.pass(this.pBlur, f, ew, eh, { t: e.tx }, { d: [0, (1 + i * 1.5) / eh] }); this.pass(this.pBlur, e, ew, eh, { t: f.tx }, { d: [(1 + i * 1.5) / ew, 0] }); }
     }
     this.pass(this.pFinal, null, OW, OH, { tScene: sc.tx, tSoft: b.tx, tBloom: c.tx, tWide: e.tx }, {
-      uLow: [W, H], uOut: [OW, OH], uTime: time, uFocus: 1 - o.focus, uBand: o.band, uDof: o.dof, uBloom: o.bloom, uWide: o.wide || 0,
+      uLow: [W, H], uOut: [OW, OH], uTime: time, uFocus: 1 - o.focus, uBand: o.band, uDof: o.dof * (1 - Math.min(1, frame.depthDof || 0)), uBloom: o.bloom, uWide: o.wide || 0,
       uRays: o.rays, uRayDir: o.rayDir, uRayCol: o.rayCol, uVig: o.vig, uWarm: o.warm, uNight: o.night, uSat: o.sat, uCon: o.contrast,
-      uShadowTint: o.shadowTint || [1, 1, 1], uHighTint: o.highTint || [1, 1, 1], uLift: o.lift || 0,
+      uShadowTint: o.shadowTint || [1, 1, 1], uHighTint: o.highTint || [1, 1, 1], uLift: o.lift || 0, uVibe: o.vibe || 0,
     });
   }
 }

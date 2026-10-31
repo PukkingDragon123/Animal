@@ -10,6 +10,7 @@ import { CityNav, CELL } from './nav.js';
 import * as TX from './pixtex.js';
 import { propMeshes, PROPS } from './voxprops.js';
 import { glowInfo } from '../render/glow.js';
+import { surfaceMaterial } from '../render/surface.js';
 import { mergeLights } from '../render/pools.js';
 import { skirt } from '../render/skirt.js';
 
@@ -408,7 +409,10 @@ export class CityBuilder {
         g.setAttribute('position', new THREE.Float32BufferAttribute(A.P, 3)); g.setAttribute('normal', new THREE.Float32BufferAttribute(A.N, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(A.U, 2));
         g.setIndex(A.I); g.computeBoundingSphere();
         const water = gk === 'water';
-        const m = new THREE.MeshLambertMaterial({ map: A.tex, side: water ? THREE.FrontSide : THREE.DoubleSide, transparent: water, opacity: water ? 0.88 : 1 });
+        // Standard materials: roughness, metalness, pixel relief and glass panes by the texture's family (render/surface.js);
+        // interiors reflect the sky far less than the street does
+        const inner = /:in$/.test(gk);
+        const m = surfaceMaterial(A.tex, { side: water ? THREE.FrontSide : THREE.DoubleSide, transparent: water, opacity: water ? 0.88 : 1, env: inner ? 0.3 : 1 });
         // glowing pixels (lit windows, signs, screens): an emissive twin of the texture, scaled by the mood
         const gi = water ? null : glowInfo(A.tex, this.night);
         if (gi) {

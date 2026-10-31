@@ -105,13 +105,30 @@ function merge(geos, ox, oz) {
 }
 
 /** Instanced placement of all props: list [{ kind, x, y, z, yaw, s }] → THREE.Group */
+// what each kind is made of (roughness / metalness of its voxels): glossy car and scooter paint, enamelled
+// street furniture and machines, painted steel, matte wood, leaves and canvas. Unlisted kinds use the stage's
+// voxel material (roughness 0.78).
+const SURF = {
+  car: [0.24, 0.05], scooter: [0.3, 0.05], cart: [0.45, 0], vending: [0.3, 0], mailbox: [0.38, 0.1], hydrant: [0.42, 0.1], firebox: [0.4, 0.1],
+  bin: [0.5, 0.15], dumpster: [0.55, 0.2], bollard: [0.45, 0.2], lamp: [0.45, 0.25], bikeRack: [0.35, 0.6], barrier: [0.5, 0.1], sign: [0.42, 0.1],
+  cone: [0.6, 0], bench: [0.7, 0], crate: [0.85, 0], boxes: [0.9, 0], bags: [0.7, 0], sandwich: [0.6, 0], parasol: [0.9, 0], upole: [0.85, 0],
+  planter: [0.8, 0], pot: [0.7, 0], lantern: [0.6, 0],
+};      // (trees keep the stage's voxel material: props_trees.js finds them by it to make them sway)
+const SURF_MATS = new WeakMap();
+function surfMat(base, kind) {
+  const s = SURF[kind]; if (!s || !base.isMeshStandardMaterial || (PROPS[kind] && PROPS[kind].tree)) return base;
+  let M = SURF_MATS.get(base); if (!M) { M = new Map(); SURF_MATS.set(base, M); }
+  const k = s.join(','); let m = M.get(k);
+  if (!m) { m = base.clone(); m.roughness = s[0]; m.metalness = s[1]; M.set(k, m); }
+  return m;
+}
 export function propMeshes(list, mats) {
   const G = new THREE.Group(), byKind = new Map();
   for (const p of list) { if (!PROPS[p.kind]) continue; if (!byKind.has(p.kind)) byKind.set(p.kind, []); byKind.get(p.kind).push(p); }
   const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), s3 = new THREE.Vector3(), v3 = new THREE.Vector3();
   for (const [kind, arr] of byKind) {
     const geo = geoFor(kind);
-    for (const [part, mat] of [['opaque', mats.solid], ['glow', mats.glow]]) {
+    for (const [part, mat] of [['opaque', surfMat(mats.solid, kind)], ['glow', mats.glow]]) {
       if (!geo[part]) continue;
       const im = new THREE.InstancedMesh(geo[part], mat, arr.length);
       arr.forEach((p, i) => { q.setFromEuler(e.set(0, p.yaw || 0, 0)); s3.setScalar(p.s || 1); m4.compose(v3.set(p.x, p.y || 0, p.z), q, s3); im.setMatrixAt(i, m4); });

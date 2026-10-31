@@ -18,11 +18,20 @@ import './props_dt.js';
 import './pk_props.js';
 import * as K from './pk_tex.js';
 import { fadeable, groundDecal, rng } from './dt_kit.js';
+import { detail, RESERVED } from './pk_more.js';   // the close-up pass: gazebo, beds, pond life, ground cover, more interactables
+import { LITTER } from '../props_trees.js';
 
 const PI = Math.PI, LH = 0.3;
 const G = { GRASS: 0, PATH: 1, PAVER: 2, VOID: 3, POND: 4, SAND: 5, COURT: 6, PLAZA: 7, LANE: 8, TALL: 9, YARD: 10 };
 
-export function build(C, [X0, Z0, X1, Z1], ctx) {
+// close-up detail: the stock furniture swaps for the park's own detailed kinds (pk_detail.js) while the park builds
+const SWAP = { bench: 'pk2_bench', pk_lamp: 'pk2_lamp', bin: 'pk2_bin', pk_duck: 'pk2_mallard', pk_lily: 'pk2_lily', pk_reeds: 'pk2_cattails', pk_blanket: 'pk2_picnic' };
+export function build(C, B, ctx) {
+  const prop = C.prop;
+  C.prop = function (kind, x, z, o) { return prop.call(this, SWAP[kind] || kind, x, z, o); };
+  try { return build0(C, B, ctx); } finally { C.prop = prop; }
+}
+function build0(C, [X0, Z0, X1, Z1], ctx) {
   const night = !!ctx.night, R = rng(9091);
   const NX = X1 - X0, NZ = Z1 - Z0, N = NX * NZ;
   const lev = new Int16Array(N), typ = new Uint8Array(N), fixed = new Uint8Array(N);
@@ -158,6 +167,7 @@ export function build(C, [X0, Z0, X1, Z1], ctx) {
   tallGrass(C, TALLS, R);
   edges(C);
   pathFurniture(C, PATHS, along, benchYaw);
+  detail(C, ctx, { T, Y, R, along, PATHS, benchYaw });
   trees(C, R, T, Y);
   people(C, ring);
 }
@@ -439,19 +449,28 @@ function trees(C, R, T, Y) {
     return true;
   };
   const placed = [];
-  const put = (kind, x, z, clear = 1.4, sp = 3.6) => { if (!ok(x, z, clear)) return false; for (const [px, pz] of placed) if (Math.hypot(px - x, pz - z) < sp) return false; placed.push([x, z]); C.prop(kind, x, z); return true; };
+  const reserved = (x, z) => RESERVED.some(([a, b, c, d]) => x > a - 1.5 && x < c + 1.5 && z > b - 1.5 && z < d + 1.5);
+  // the detailed species (props_trees.js), each with its own litter on the ground and, now and then, ferns and shrubs round its roots
+  const SCALE = { tr_oak: 0.72, tr_maple: 0.8, tr_blossom: 0.75, tr_cypress: 0.9, tr_plane: 0.78, tr_linden: 0.85 };
+  const plant = (kind, x, z, o = {}) => {
+    const yaw = R() * Math.PI * 2, y = o.y ?? Y(x, z);
+    C.prop(kind, x, z, { s: SCALE[kind] || 1, yaw, y });
+    if (LITTER[kind]) C.prop(LITTER[kind], x, z, { y: y + 0.005, yaw: R() * 6.28, collide: false, s: 0.9 });
+    if (R() < 0.3) C.prop('gr_under', x, z, { y, yaw: R() * 6.28, collide: false, s: 0.9 });
+  };
+  const put = (kind, x, z, clear = 1.4, sp = 3.6) => { if (!ok(x, z, clear) || reserved(x, z)) return false; for (const [px, pz] of placed) if (Math.hypot(px - x, pz - z) < sp) return false; placed.push([x, z]); plant(kind, x, z); return true; };
   // a few specimen trees first: cypresses crowning the hill, blossoms by the pond, maples by the bandstand
-  for (const [x, z] of [[41.6, 56.2], [57.6, 56.0], [41.0, 67.6], [57.2, 69.0], [36.0, 60.0]]) put('pk_cypress', x, z, 1.4, 5);
-  for (const [x, z] of [[57.2, 79.4], [83.0, 79.4], [58.4, 93.2], [82.6, 93.0], [74.6, 95.8]]) put('pk_blossom', x, z, 1.0, 3);
-  for (const [x, z] of [[74.6, 52.0], [89.2, 62.4], [74.8, 62.8]]) put('pk_maple', x, z, 1.0, 3);
-  // then a scatter over the lawns and hillsides, densest along the park's north and east edges
+  for (const [x, z] of [[41.6, 56.2], [57.6, 56.0], [41.0, 67.6], [57.2, 69.0], [36.0, 60.0]]) put('tr_cypress', x, z, 1.4, 5);
+  for (const [x, z] of [[57.2, 79.4], [83.0, 79.4], [58.4, 93.2], [82.6, 93.0], [74.6, 95.8]]) put('tr_blossom', x, z, 1.0, 3);
+  for (const [x, z] of [[74.6, 52.0], [89.2, 62.4], [74.8, 62.8]]) put('tr_maple', x, z, 1.0, 3);
+  // then a scatter over the lawns and hillsides, densest along the park's north and east edges (planes along the edges)
   for (let z = 34.5; z < 97; z += 3.8) for (let x = 19.5; x < 103; x += 3.8) {
     const jx = x + (R() - 0.5) * 2.2, jz = z + (R() - 0.5) * 2.2, edge = jz < 38 || jx > 99 || jz > 95.5;
     if (R() > (edge ? 0.9 : 0.42)) continue;
-    const h = Y(jx, jz), k = R(), kind = h > 1.4 && k < 0.3 ? 'pk_cypress' : k < 0.62 ? 'pk_oak' : k < 0.8 ? 'pk_maple' : 'pk_blossom';
-    put(kind, jx, jz, kind === 'pk_cypress' ? 1.6 : 1.2, kind === 'pk_cypress' ? 5.2 : 3.6);
+    const h = Y(jx, jz), k = R(), kind = h > 1.4 && k < 0.3 ? 'tr_cypress' : edge && k < 0.5 ? 'tr_plane' : k < 0.55 ? 'tr_oak' : k < 0.72 ? 'tr_maple' : k < 0.86 ? 'tr_blossom' : 'tr_linden';
+    put(kind, jx, jz, kind === 'tr_cypress' ? 1.6 : 1.2, kind === 'tr_cypress' ? 5.2 : 3.8);
   }
-  for (const [x, z] of [[2, 33.6], [11.8, 33.6], [1.4, 49.6]]) C.prop('pk_oak', x, z);
+  for (const [x, z] of [[2, 33.6], [11.8, 33.6], [1.4, 49.6]]) plant('tr_oak', x, z);
 }
 
 // ==================================================================== PEOPLE: joggers, a picnicking family, the pigeon man, a tourist

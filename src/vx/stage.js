@@ -5,21 +5,32 @@
 // and filmic tone mapping. Box-model creatures and people stand in it.
 // The stage renders into its own canvas; the HD-2D post pass (bloom, tilt-shift, grade) is applied on
 // top by src/px/hd2d.js.
+// Up close (the city's third-person camera) it adds: a painted pixel sky with the sun's glow and clouds that
+// glossy surfaces reflect (render/sky.js), Standard materials with per-family roughness and pixel relief
+// (render/surface.js), two sun shadow cascades — a tight, sharp one around the player and a wide one down the
+// street (render/shadows.js) — and a depth of field focused on the player (render/composite.js).
 // Styles (setStyle): { hd: true } is the realistic look (HDR target, AO, haze; render/composite.js);
 // { ink, toon } is the old cel look (banded shading, ink outlines), kept for comparison (?look=toon).
 import * as THREE from '../../vendor/three.module.js';
 import { OUTLINE } from './model.js';
 import { LightPools, Halos } from './render/pools.js';
 import { Composite } from './render/composite.js';
+import { installLighting, aimShadow } from './render/shadows.js';
+import { skyTexture as paintSky, envFor } from './render/sky.js';
 
-// per mood: sun (colour, intensity, direction toward the sun), sky / ground fill, haze (colour and
-// [start m, density /m, max, falloff with height /m]), sky gradient, emissive levels (glow voxels,
-// lit textures), light-pool gain, ambient occlusion strength, exposure
+installLighting();
+
+// per mood: sun (colour, intensity, direction toward the sun: the elevation sets the shadow length), sky /
+// ground fill (the ground colour is the warm light bounced off sunlit streets), haze (colour and [start m,
+// density /m, max, falloff with height /m]), sky gradient [zenith, mid, horizon] + cloud cover, environment
+// reflection strength, emissive levels (glow voxels, lit textures), light-pool gain, ambient occlusion strength,
+// exposure. Sun colours follow the real thing: near-white at ~55° by day, amber at ~20° (golden hour), deep
+// orange-red a few degrees above the horizon at dusk; the night "sun" is a cool, high moon.
 export const MOODS = {
-  day: { sun: 0xfff0d8, sunI: 3.3, sunDir: [-0.52, 1, 0.4], hemiSky: 0xb8d0f4, hemiGround: 0xa08a68, hemiI: 0.85, fog: 0xc4d4e8, hazeP: [34, 0.02, 0.35, 0.06], bg: 0x9cc4ec, sky: ['#5a8ad0', '#9cc4ec', '#dceaf4'], glow: 0.18, emissive: 0, pools: 0, ao: 0.85, exposure: 1.0 },
-  golden: { sun: 0xffc080, sunI: 3.3, sunDir: [-0.9, 0.62, 0.3], hemiSky: 0xb0b4e4, hemiGround: 0xb07a58, hemiI: 1.0, fog: 0xf0c8a8, hazeP: [32, 0.024, 0.42, 0.06], bg: 0xe8b898, sky: ['#7a8ec8', '#d8b0b8', '#f6c49a'], glow: 0.5, emissive: 0.25, pools: 0.05, halo: 0, ao: 0.85, exposure: 1.06 },
-  dusk: { sun: 0xff8a68, sunI: 1.3, sunDir: [-0.95, 0.3, 0.22], hemiSky: 0x7078c0, hemiGround: 0x5a4058, hemiI: 0.8, fog: 0x8a74a8, hazeP: [30, 0.026, 0.5, 0.06], bg: 0x5a5a9a, sky: ['#2a2a5a', '#7a5a8a', '#e88a6a'], glow: 1.8, emissive: 0.8, pools: 0.35, halo: 0.35, ao: 0.8, exposure: 1.15 },
-  night: { sun: 0x9ab0ff, sunI: 0.5, sunDir: [0.35, 1, 0.55], hemiSky: 0x40508c, hemiGround: 0x241e30, hemiI: 0.55, fog: 0x1c2244, hazeP: [30, 0.026, 0.5, 0.06], bg: 0x0c1020, sky: ['#060812', '#121a36', '#2a2a4a'], glow: 2.8, emissive: 1.0, pools: 0.45, halo: 0.5, ao: 0.75, exposure: 1.2 },
+  day: { sun: 0xfff1de, sunI: 3.4, sunDir: [-0.55, 1.0, 0.42], hemiSky: 0xaecaf2, hemiGround: 0x9a8466, hemiI: 0.9, fog: 0xc8d8ea, hazeP: [36, 0.016, 0.34, 0.05], bg: 0x9cc4ec, sky: ['#3f78c8', '#86b6e8', '#d6e6f2'], clouds: 0.42, env: 1.0, glow: 0.18, emissive: 0, pools: 0, ao: 0.9, exposure: 1.0 },
+  golden: { sun: 0xffb26a, sunI: 3.6, sunDir: [-0.9, 0.36, 0.3], hemiSky: 0x9eaee6, hemiGround: 0xb27a52, hemiI: 0.95, fog: 0xe8c4a8, hazeP: [34, 0.018, 0.34, 0.05], bg: 0xe8b898, sky: ['#4a64b0', '#c6a6c0', '#f8c08e'], clouds: 0.36, env: 1.0, glow: 0.5, emissive: 0.25, pools: 0.05, halo: 0, ao: 0.9, exposure: 1.06 },
+  dusk: { sun: 0xff7448, sunI: 1.7, sunDir: [-0.95, 0.15, 0.3], hemiSky: 0x6a72be, hemiGround: 0x5e4054, hemiI: 0.85, fog: 0x8c74a8, hazeP: [30, 0.024, 0.48, 0.05], bg: 0x5a5a9a, sky: ['#1e2458', '#76589a', '#f08a62'], clouds: 0.5, env: 0.9, glow: 1.8, emissive: 0.8, pools: 0.35, halo: 0.35, ao: 0.85, exposure: 1.16 },
+  night: { sun: 0x9ab0ff, sunI: 0.5, sunDir: [0.35, 1, 0.55], hemiSky: 0x3e4e8e, hemiGround: 0x241e30, hemiI: 0.55, fog: 0x1c2244, hazeP: [30, 0.026, 0.5, 0.06], bg: 0x0c1020, sky: ['#04060e', '#0e1630', '#262a4a'], clouds: 0.22, env: 0.7, glow: 2.8, emissive: 1.0, pools: 0.45, halo: 0.5, ao: 0.8, exposure: 1.2 },
 };
 
 const _up = new THREE.Vector3(0, 1, 0), _v1 = new THREE.Vector3(), _v2 = new THREE.Vector3(), _v3 = new THREE.Vector3(), _v4 = new THREE.Vector3();
@@ -33,14 +44,20 @@ export class VxStage {
     r.toneMapping = THREE.NeutralToneMapping; r.toneMappingExposure = 1;
     const S = this.scene = new THREE.Scene();
     this.mats = {
-      solid: new THREE.MeshLambertMaterial({ vertexColors: true }),
+      solid: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.78, metalness: 0 }),
       glow: new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false }),
-      water: new THREE.MeshPhongMaterial({ vertexColors: true, transparent: true, opacity: 0.78, shininess: 90, specular: 0x6a7a8a, depthWrite: false }),
+      water: new THREE.MeshStandardMaterial({ vertexColors: true, transparent: true, opacity: 0.8, roughness: 0.08, metalness: 0, depthWrite: false }),
     };
     this.hemi = new THREE.HemisphereLight(0xffffff, 0x888888, 1); S.add(this.hemi);
     this.sun = new THREE.DirectionalLight(0xffffff, 2); this.sun.castShadow = true;
     this.sun.shadow.mapSize.set(o.shadowSize || 4096, o.shadowSize || 4096); this.sun.shadow.bias = -0.0004; this.sun.shadow.normalBias = 0.04; this.sun.shadow.radius = 2.5;
     S.add(this.sun, this.sun.target);
+    // the far shadow cascade: a black twin of the sun that only casts (render/shadows.js); on while the shadow box follows the camera
+    const fs = Math.max(1024, (o.shadowSize || 4096) / 2);
+    this.sunFar = new THREE.DirectionalLight(0x000000, 0); this.sunFar.castShadow = true; this.sunFar.visible = false;
+    this.sunFar.shadow.mapSize.set(fs, fs); this.sunFar.shadow.bias = -0.0005; this.sunFar.shadow.normalBias = 0.06;
+    S.add(this.sunFar, this.sunFar.target);
+    this.shadowNear = 11;                      // the near cascade's half-size (m) around the player
     this.cam = new THREE.PerspectiveCamera(o.fov || 32, 16 / 9, 0.5, 2000); this.baseFov = this.cam.fov;
     this.view = { target: new THREE.Vector3(0, 0, 0), dist: 60, yaw: 0, pitch: 52 };
     this.actors = new THREE.Group(); S.add(this.actors);
@@ -69,21 +86,26 @@ export class VxStage {
   }
   fitShadow() {
     if (!this.size || this.shadowFollow) return;
+    this.sunFar.visible = false; this.sun.shadow.normalBias = 0.04; this.sun.shadow.bias = -0.0004;
     const [SX, , SZ] = this.size, cx = SX / 2, cz = SZ / 2, R = Math.hypot(SX, SZ) * 0.55 + 4, sc = this.sun.shadow.camera;
     sc.left = -R; sc.right = R; sc.top = R; sc.bottom = -R; sc.near = 1; sc.far = 600; sc.updateProjectionMatrix();
     const d = this.mood.sunDir, L = Math.hypot(...d);
     this.sun.position.set(cx + d[0] / L * 200, d[1] / L * 200, cz + d[2] / L * 200); this.sun.target.position.set(cx, 0, cz);
   }
-  /** a shadow box of radius R that follows the camera target (worlds too big for one shadow map: the city) */
+  /** a shadow box of radius R that follows the camera target (worlds too big for one shadow map: the city). It is
+   *  the far cascade; the near one (sharp, ±shadowNear m) is aimed at the player every frame in render(). */
   followShadow(t, R = 34) {
     this.shadowFollow = true;
-    const sun = this.sun, sc = sun.shadow.camera, d = this.mood.sunDir, L = Math.hypot(...d);
-    if (sc.right !== R) { sc.left = -R; sc.right = R; sc.top = R; sc.bottom = -R; sc.near = 1; sc.far = 400; sc.updateProjectionMatrix(); }
-    // snap the box to whole shadow texels in the light's own frame, so shadow edges don't crawl as you walk
-    const tx = (2 * R) / sun.shadow.mapSize.x, z = _v1.set(d[0] / L, d[1] / L, d[2] / L), x = _v2.crossVectors(_up, z).normalize(), y = _v3.crossVectors(z, x);
-    const p = _v4.set(t.x, 0, t.z), a = Math.round(p.dot(x) / tx) * tx, b = Math.round(p.dot(y) / tx) * tx, c = p.dot(z);
-    p.copy(x).multiplyScalar(a).addScaledVector(y, b).addScaledVector(z, c);
-    sun.target.position.copy(p); sun.position.copy(p).addScaledVector(z, 120); sun.target.updateMatrixWorld();
+    if (!this.sunFar.visible) { this.sunFar.visible = true; this.sun.shadow.normalBias = 0.02; this.sun.shadow.bias = -0.0002; }
+    const d = this.mood.sunDir, L = Math.hypot(...d);
+    this.sunDirN = (this.sunDirN || new THREE.Vector3()).set(d[0] / L, d[1] / L, d[2] / L);
+    aimShadow(this.sunFar, t, R, this.sunDirN);
+  }
+  /** the near cascade: a tight box around what the camera looks at, pushed a little ahead along the view */
+  aimNearShadow() {
+    const v = this.view, R = Math.min(this.shadowNear * Math.max(1, v.dist / 6), 40), yr = v.yaw * Math.PI / 180, ahead = R * 0.45;
+    _v1.set(v.target.x - Math.sin(yr) * ahead, 0, v.target.z - Math.cos(yr) * ahead);
+    aimShadow(this.sun, _v1, R, this.sunDirN);
   }
   setMood(name) {
     const m = this.mood = Object.assign({}, MOODS[name] || MOODS.day); this.moodName = name;
@@ -91,7 +113,13 @@ export class VxStage {
     this.hemi.color.set(m.hemiSky); this.hemi.groundColor.set(m.hemiGround); this.hemi.intensity = m.hemiI;
     this.haze = new THREE.Color(m.fog);
     this.scene.fog = this.style.hd ? null : new THREE.Fog(m.fog, 70, 220);
-    this.scene.background = m.sky ? skyTexture(m.sky) : new THREE.Color(m.bg);
+    if (this.style.hd && m.sky) {
+      // the painted pixel sky dome, and its reflection environment for glossy surfaces
+      const sky = paintSky(m, MOODS[name] ? name : null);
+      this.scene.background = sky.tex; this.scene.environment = envFor(this.r, sky);
+      this.scene.environmentIntensity = m.env ?? 1; this.scene.backgroundIntensity = 1;
+    } else { this.scene.background = m.sky ? skyTexture(m.sky) : new THREE.Color(m.bg); this.scene.environment = null; }
+    if (this.shadowFollow) { const d = m.sunDir, L = Math.hypot(...d); this.sunDirN = (this.sunDirN || new THREE.Vector3()).set(d[0] / L, d[1] / L, d[2] / L); }
     this.mats.glow.color.setScalar(m.glow);
     this.r.toneMappingExposure = m.exposure;
     for (const [mat, g] of this.glowMats) mat.emissiveIntensity = g.k * (g.always ? 1 : m.emissive);
@@ -128,9 +156,15 @@ export class VxStage {
     this.halos.update(this.lamps, this.cam, this.h || 720, (this.mood.halo || 0) * (this.style.pools ?? 1));
     if (this.style.hd) {
       const m = this.mood, s = this.style;
-      this.comp.render(this.scene, this.cam, this.w, this.h, { ao: (m.ao ?? 0.85) * (s.ao ?? 1), aoRadius: s.aoRadius ?? 1.2, aoK: s.aoK, haze: this.haze, hazeP: [m.hazeP[0] + this.view.dist * 0.15 - 4.5, m.hazeP[1], m.hazeP[2] * (s.haze ?? 1), m.hazeP[3]], ink: s.inkA ?? 0, inkK: s.inkK, debug: s.debug });
+      if (this.shadowFollow && this.sunDirN) this.aimNearShadow();
+      // depth of field for the close camera (focused on the look-at point: the player), off for the diorama views,
+      // where the HD-2D pass's tilt-shift does the job; hd2d.js reads cv.depthDof to hand over between the two
+      const dk = (s.dof ?? 1) * (1 - smoothstep(9, 16, this.view.dist)); this.cv.depthDof = dk;
+      const dof = dk > 0.01 ? { focus: this.view.dist, k: 0.9, tol: 0.16, px: 0.0045 * dk } : null;
+      this.comp.render(this.scene, this.cam, this.w, this.h, { ao: (m.ao ?? 0.85) * (s.ao ?? 1), aoRadius: s.aoRadius ?? 1.2, aoK: s.aoK, haze: this.haze, hazeP: [m.hazeP[0] + this.view.dist * 0.15 - 4.5, m.hazeP[1], m.hazeP[2] * (s.haze ?? 1), m.hazeP[3]], ink: s.inkA ?? 0, inkK: s.inkK, debug: s.debug, dof });
       return this.cv;
     }
+    this.cv.depthDof = 0;
     if (!this.style.ink) { this.r.render(this.scene, this.cam); return this.cv; }
     // ink: render into a target with depth, then composite with outlines found in the depth buffer
     const W = this.w, H = this.h;
@@ -149,7 +183,7 @@ export class VxStage {
   // { hd: realistic HDR look (ao, aoRadius, haze, inkA, pools: multipliers) } or the old { ink: outlines, toon: banded cel shading }
   setStyle(o = {}) {
     this.style = Object.assign(this.style || {}, o);
-    if (o.hd) { if (!this.comp) this.comp = new Composite(this.r); this.style.ink = false; this.style.toon = false; this.scene.fog = null; this.r.toneMapping = THREE.NeutralToneMapping; }
+    if (o.hd) { if (!this.comp) this.comp = new Composite(this.r); this.style.ink = false; this.style.toon = false; this.scene.fog = null; this.r.toneMapping = THREE.NeutralToneMapping; if (this.moodName) this.setMood(this.moodName); }
     if (o.ink && !this.inkScene) {
       this.inkCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1); this.inkScene = new THREE.Scene();
       this.inkQuad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.ShaderMaterial({
@@ -188,7 +222,7 @@ export class VxStage {
   toonify(root) {
     const C = this.toonCache;
     root.traverse((o) => {
-      const m = o.material; if (!m || Array.isArray(m) || !m.isMeshLambertMaterial || m.onBeforeCompile !== THREE.Material.prototype.onBeforeCompile || m.userData.keep) return;
+      const m = o.material; if (!m || Array.isArray(m) || !(m.isMeshLambertMaterial || m.isMeshStandardMaterial) || (m.onBeforeCompile !== THREE.Material.prototype.onBeforeCompile && !m.userData.vxChain) || m.userData.keep) return;
       let t = C.get(m);
       if (!t) { t = new THREE.MeshToonMaterial({ color: m.color, map: m.map, vertexColors: m.vertexColors, alphaTest: m.alphaTest, side: m.side, transparent: m.transparent, opacity: m.opacity, gradientMap: this.toonRamp, emissive: m.emissive, emissiveMap: m.emissiveMap, emissiveIntensity: m.emissiveIntensity }); C.set(m, t); }
       o.material = t;
@@ -196,7 +230,8 @@ export class VxStage {
   }
 }
 
-// a vertical sky gradient for the background
+const smoothstep = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+// a vertical sky gradient for the background (the toon look; the HD look paints a sky dome, render/sky.js)
 function skyTexture(cols) {
   const c = document.createElement('canvas'); c.width = 4; c.height = 256; const g = c.getContext('2d');
   const gr = g.createLinearGradient(0, 0, 0, 256); cols.forEach((col, i) => gr.addColorStop(i / (cols.length - 1), col)); g.fillStyle = gr; g.fillRect(0, 0, 4, 256);

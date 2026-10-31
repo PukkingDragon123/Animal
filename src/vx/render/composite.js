@@ -4,7 +4,11 @@
 //     standing on the ground (props, people, creatures) sit in soft contact shadow;
 //  2. a depth-aware blur (horizontal + vertical) that keeps the occlusion from bleeding across edges;
 //  3. the composite: occlusion, aerial haze (thicker with distance and near the ground, tinted to the
-//     sky), an optional whisper of silhouette line, then filmic tone mapping into the canvas.
+//     sky), an optional whisper of silhouette line, then filmic tone mapping into the canvas;
+//  4. for the close third-person camera, a depth of field focused on the player: the shaded frame goes to
+//     an HDR target, a half-resolution disc blur gathers it (each tap weighted by its own blur, so the sharp
+//     player never smears into the soft street behind), and the last pass blends sharp and soft by each
+//     pixel's circle of confusion before the tone mapping.
 import * as THREE from '../../../vendor/three.module.js';
 
 const VS = 'varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }';
@@ -76,6 +80,41 @@ void main() {
     col = mix(col, uHaze, clamp(hz * (0.45 + 0.55 * hh), 0.0, 1.0) * uHazeP.z);
   }
   gl_FragColor = vec4(col, 1.0);
+  #ifndef NO_TONE
+  #include <tonemapping_fragment>
+  #include <colorspace_fragment>
+  #endif
+}`;
+// circle of confusion (0..1 of the largest blur) from the view depth: a thin lens focused at uDof.x metres
+const COC = `
+float coc(float z) { return clamp((abs(z - uDofP.x) / max(z, 1e-3)) * uDofP.y - uDofP.z, 0.0, 1.0); }
+`;
+const DOF_FS = `varying vec2 vUv; uniform sampler2D tColor; uniform vec2 uNF; uniform vec4 uDofP; uniform vec2 uRad;
+${COMMON}
+float lz(vec2 uv) { float d = texture2D(tDepth, uv).x; return d >= 1.0 ? 1e5 : -perspectiveDepthToViewZ(d, uNF.x, uNF.y); }
+${COC}
+void main() {
+  float c0 = coc(lz(vUv));
+  vec3 s = texture2D(tColor, vUv).rgb * (c0 + 0.02); float w = c0 + 0.02;
+  for (int i = 0; i < 20; i++) {
+    float t = (float(i) + 0.5) / 20.0, a = float(i) * 2.3999632;
+    vec2 uv = vUv + vec2(cos(a), sin(a)) * uRad * sqrt(t);
+    float c = coc(lz(uv));
+    float k = smoothstep(sqrt(t) * 0.9 - 0.25, sqrt(t) * 0.9, c);     // a tap counts when its own blur reaches this far
+    s += texture2D(tColor, uv).rgb * k; w += k;
+  }
+  gl_FragColor = vec4(s / w, c0);
+}`;
+const BLEND_FS = `varying vec2 vUv; uniform sampler2D tColor; uniform sampler2D tSoft; uniform vec2 uNF; uniform vec4 uDofP;
+${COMMON}
+float lz(vec2 uv) { float d = texture2D(tDepth, uv).x; return d >= 1.0 ? 1e5 : -perspectiveDepthToViewZ(d, uNF.x, uNF.y); }
+${COC}
+void main() {
+  vec3 col = texture2D(tColor, vUv).rgb;
+  vec4 soft = texture2D(tSoft, vUv);
+  float c = coc(lz(vUv));
+  col = mix(col, soft.rgb, smoothstep(0.04, 0.45, c));
+  gl_FragColor = vec4(col, 1.0);
   #include <tonemapping_fragment>
   #include <colorspace_fragment>
 }`;
@@ -97,6 +136,11 @@ export class Composite {
       uInk: { value: new THREE.Color(0.35, 0.3, 0.42) }, uInkA: { value: 0 }, uInkK: { value: 0.03 }, uDebug: { value: 0 },
     });
     this.mFinal.toneMapped = true;      // the canvas gets the renderer's filmic tone mapping + sRGB
+    this.mShade = this.mFinal.clone(); this.mShade.uniforms = this.mFinal.uniforms; this.mShade.defines = { NO_TONE: '' }; this.mShade.toneMapped = false;
+    const dofP = { value: new THREE.Vector4(5, 1.4, 0.1, 0) };
+    this.mDof = sh(DOF_FS, { tDepth: { value: null }, uProjInv: projInv, tColor: { value: null }, uNF: { value: new THREE.Vector2() }, uDofP: dofP, uRad: { value: new THREE.Vector2() } });
+    this.mBlend = sh(BLEND_FS, { tDepth: { value: null }, uProjInv: projInv, tColor: { value: null }, tSoft: { value: null }, uNF: { value: new THREE.Vector2() }, uDofP: dofP });
+    this.mBlend.toneMapped = true;
     this.white = new THREE.DataTexture(new Uint8Array([255, 255, 255, 255]), 1, 1); this.white.needsUpdate = true;
   }
   targets(W, H, aoScale) {
@@ -112,7 +156,15 @@ export class Composite {
     }
   }
   pass(mat, target) { this.quad.material = mat; this.r.setRenderTarget(target); this.r.render(this.scene, this.cam); }
-  /** o: { ao (strength 0..1), aoRadius, haze: Color, hazeP: [start, density, max, heightFalloff], hazeY, ink (alpha), inkCol, inkK } */
+  dofTargets(W, H) {
+    if (!this.rtS || this.rtS.width !== W || this.rtS.height !== H) {
+      if (this.rtS) { this.rtS.dispose(); this.rtD.dispose(); }
+      this.rtS = new THREE.WebGLRenderTarget(W, H, { type: THREE.HalfFloatType, depthBuffer: false, minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter });
+      this.rtD = new THREE.WebGLRenderTarget(Math.max(1, W >> 1), Math.max(1, H >> 1), { type: THREE.HalfFloatType, depthBuffer: false, minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter });
+    }
+  }
+  /** o: { ao (strength 0..1), aoRadius, haze: Color, hazeP: [start, density, max, heightFalloff], hazeY, ink (alpha), inkCol, inkK,
+   *       dof: { focus (m), k (blur growth), tol (in-focus slack), px (largest blur radius, fraction of the height) } } */
   render(scene, cam, W, H, o = {}) {
     const aoOn = (o.ao ?? 0.85) > 0, aoScale = Math.min(0.5, 720 / Math.max(W, 1));
     this.targets(W, H, aoScale);
@@ -134,6 +186,15 @@ export class Composite {
     if (o.haze) F.uHaze.value.copy(o.haze);
     if (o.hazeP) F.uHazeP.value.set(...o.hazeP); F.uHazeY.value = o.hazeY || 0;
     F.uDebug.value = o.debug ? 1 : 0; F.uInkA.value = o.ink || 0; if (o.inkCol) F.uInk.value.set(o.inkCol); F.uInkK.value = o.inkK ?? 0.03;
-    this.pass(this.mFinal, null);
+    const D = o.dof;
+    if (!D || !(D.px > 0)) { this.pass(this.mFinal, null); return; }
+    // depth of field: shade into HDR, gather the soft copy at half resolution, blend + tone map
+    this.dofTargets(W, H);
+    this.pass(this.mShade, this.rtS);
+    const U = this.mDof.uniforms; U.tDepth.value = depth; U.tColor.value = this.rtS.texture; U.uNF.value.set(...nf);
+    U.uDofP.value.set(D.focus, D.k ?? 1.4, D.tol ?? 0.1, 0); U.uRad.value.set(D.px * H / W, D.px);
+    this.pass(this.mDof, this.rtD);
+    const Bl = this.mBlend.uniforms; Bl.tDepth.value = depth; Bl.tColor.value = this.rtS.texture; Bl.tSoft.value = this.rtD.texture; Bl.uNF.value.set(...nf);
+    this.pass(this.mBlend, null);
   }
 }

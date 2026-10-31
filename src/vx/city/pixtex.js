@@ -57,8 +57,10 @@ export function ptex(key, wM, hM, paint, o = {}) {
   const W = Math.max(1, Math.round(wM * ppm)), H = Math.max(1, Math.round(hM * ppm));
   const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
   const g = cv.getContext('2d', { willReadFrequently: true }); g.imageSmoothingEnabled = false;
-  paint(g, W, H, rnd(hashStr(key)), new Painter(g, W, H));
+  const P = new Painter(g, W, H);
+  paint(g, W, H, rnd(hashStr(key)), P);
   const t = new THREE.CanvasTexture(cv);
+  if (P.glass) t.userData.glass = P.glass;          // glazed panes (texel rects): mirror-smooth in the material (render/surface.js)
   t.colorSpace = THREE.SRGBColorSpace; t.magFilter = THREE.NearestFilter; t.minFilter = THREE.NearestMipmapLinearFilter;
   t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 4;
   t.userData.size = [wM, hM]; t.userData.key = k;
@@ -373,6 +375,7 @@ export const roofMembrane = (base = '#8a8680') => ptex('roofmem' + base, 4, 4, (
  */
 export const windowTex = (frame = '#f2ead8', curtain = '#d87a6a', lit = false) => ptex('win' + frame + curtain + lit, 1, 1.4, (g, W, H, r, P) => {
   const v = hashStr(curtain) % 4, gx = 4, gy = 5, gw = W - 8, gh = H - 11, mid = gy + Math.floor(gh / 2);
+  P.glass = [[gx, gy, gw, gh]];
   // casing
   P.fill(frame); P.rect(0, 0, W, 4, light(frame, 0.12)); P.hline(0, 0, W, light(frame, 0.28)); P.hline(0, 3, W, dark(frame, 0.22));
   P.vline(0, 4, H - 7, light(frame, 0.1)); P.vline(W - 1, 4, H - 7, dark(frame, 0.24)); P.vline(1, 4, H - 7, light(frame, 0.04));
@@ -419,6 +422,7 @@ export const windowTex = (frame = '#f2ead8', curtain = '#d87a6a', lit = false) =
 export const shopWindowTex = (frame = '#2a2a34', lit = false, seed = 1) => ptex('shopwin' + frame + lit + seed, 2, 1.8, (g, W, H, r, P) => {
   P.fill(frame); P.hline(0, 0, W, light(frame, 0.25)); P.vline(0, 0, H, light(frame, 0.12)); P.vline(W - 1, 0, H, dark(frame, 0.3));
   const gx = 2, gy = 2, gw = W - 4, gh = H - 9, back = lit ? '#f4d8a0' : '#2c3844', back2 = lit ? '#ffe8b8' : '#384858';
+  P.glass = [[gx, gy, gw, gh]];
   P.rect(gx, gy, gw, gh, back); P.rect(gx, gy, gw, Math.round(gh * 0.25), back2);
   const goods = ['#e85a4a', '#f0c840', '#5ab06a', '#4a8ad8', '#e890b0', '#f4f0ea', '#a86ad8', '#f08a3a', '#3ab8a0'], sh = lit ? '#a8784a' : '#5a4a3a';
   const shelfY = [gy + 13, gy + 25, gy + 37];
@@ -450,6 +454,7 @@ export const doorTex = (col = '#7a3a2a', kind = 'panel') => ptex('door' + col + 
   const brass = '#d8b048', brassHi = '#fff0b0';
   if (kind === 'glass') {
     const gx = 4, gy = 5, gw = W - 8, gh = H - 22;
+    P.glass = [[gx, gy, gw, gh]];
     P.rect(gx, gy, gw, gh, '#2c3a48');
     for (let y = gy; y < gy + gh; y++) for (let x = gx; x < gx + gw; x++) { const b = (x + y * 0.7) % 21; if (dith(x, y, b < 3 ? 0.6 : b < 5 ? 0.3 : 0.12 + (1 - (y - gy) / gh) * 0.2)) P.px(x, y, b < 3 ? '#d0e4f2' : '#7a98b4'); }
     P.hline(gx, gy, gw, '#1a222c'); P.vline(gx, gy, gh, '#1a222c');
@@ -458,6 +463,7 @@ export const doorTex = (col = '#7a3a2a', kind = 'panel') => ptex('door' + col + 
     P.rect(4, H - 16, W - 8, 12, dark(col, 0.15)); P.hline(4, H - 16, W - 8, light(col, 0.15));
   } else {
     // a glazed lite at the top
+    P.glass = [[5, 4, W - 10, 12]];
     P.rect(5, 4, W - 10, 12, '#3a4a5c'); for (let y = 4; y < 16; y++) for (let x = 5; x < W - 5; x++) if (dith(x, y, (x + y) % 9 < 2 ? 0.7 : 0.15)) P.px(x, y, '#a8c4dc');
     P.hline(5, 4, W - 10, dark(col, 0.4)); P.vline(Math.floor(W / 2), 4, 12, col); P.hline(5, 16, W - 10, light(col, 0.12));
     for (const [x, y, w, h] of [[5, 19, 9, 18], [W - 14, 19, 9, 18], [5, 41, 9, 22], [W - 14, 41, 9, 22]]) {

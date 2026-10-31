@@ -56,6 +56,12 @@ const FS_MAIN = `
       float vxH = clamp( 1.0 - ( vPoolW.y - vxP.a / vxL ) * 0.4, 0.0, 1.0 );      // above the lights: fades out over 2.5 m
       float vxF = 0.32 + 0.68 * clamp( vxN.y * 0.5 + 0.5, 0.0, 1.0 );              // up-facing 1, walls 0.66, undersides 0.32
       reflectedLight.directDiffuse += vxP.rgb * ( uPoolRect.w * vxH * vxF ) * material.diffuseColor;
+      #ifdef STANDARD
+        // glossy surfaces (glass, glazed tiles, puddles, car paint) also catch a sheen of the lamplight, strongest at grazing angles
+        float vxS = 1.0 - material.roughness; vxS *= vxS;
+        float vxV = 1.0 - saturate( dot( normal, geometryViewDir ) );
+        reflectedLight.directSpecular += vxP.rgb * ( uPoolRect.w * vxH * vxS * ( 0.05 + 0.6 * vxV * vxV * vxV ) );
+      #endif
     }
   }
 `;
@@ -91,6 +97,12 @@ export class LightPools {
     if (!m || this.seen.has(m)) return;
     this.seen.add(m);
     if (!(m.isMeshLambertMaterial || m.isMeshStandardMaterial || m.isMeshPhongMaterial || m.isMeshToonMaterial)) return;
+    if (m.userData.vxChain && m.onBeforeCompile !== THREE.Material.prototype.onBeforeCompile) {
+      // a material with its own patch that asks to be chained (render/surface.js relief): run both
+      const own = m.onBeforeCompile, key = 'vxpool1+' + (m.userData.vxKey || 'own'), onBC = this.onBC;
+      m.onBeforeCompile = function (sh, r) { own.call(this, sh, r); onBC(sh); };
+      m.customProgramCacheKey = () => key; m.needsUpdate = true; return;
+    }
     if (m.onBeforeCompile !== THREE.Material.prototype.onBeforeCompile) return;
     m.onBeforeCompile = this.onBC; m.customProgramCacheKey = this.cacheKey; m.needsUpdate = true;
   }

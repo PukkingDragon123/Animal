@@ -3,12 +3,12 @@
 // the ambient occlusion off, ?ink=0.2 adds a faint silhouette line.
 // POST (per mood) feeds src/px/hd2d.js: tilt-shift focus band / blur, bloom (strength, threshold, wide
 // share), god rays, vignette, and the grade: saturation, contrast, split toning (shadow / highlight tints),
-// warmth, a night blue shift and the lift of the blacks.
+// warmth, a night blue shift and the lift of the blacks; vibrance lifts muted colours without pushing vivid ones.
 export const POST = {
-  day: { focus: 0.5, band: 0.27, dof: 0.62, bloom: 0.32, threshold: 0.86, wide: 0.45, rays: 0.04, vig: 0.38, warm: 0.3, sat: 1.12, contrast: 1.05, night: 0, shadowTint: [0.93, 0.95, 1.06], highTint: [1.04, 1.01, 0.95], lift: 0.012 },
-  golden: { focus: 0.5, band: 0.27, dof: 0.62, bloom: 0.42, threshold: 0.8, wide: 0.55, rays: 0.08, vig: 0.42, warm: 0.45, sat: 1.12, contrast: 1.06, night: 0, shadowTint: [0.9, 0.9, 1.08], highTint: [1.07, 1.0, 0.9], lift: 0.012 },
-  dusk: { focus: 0.5, band: 0.27, dof: 0.62, bloom: 0.75, threshold: 0.62, wide: 0.65, rays: 0, vig: 0.5, warm: 0.3, sat: 1.14, contrast: 1.06, night: 0.04, shadowTint: [0.9, 0.88, 1.1], highTint: [1.08, 1.0, 0.9], lift: 0.016 },
-  night: { focus: 0.5, band: 0.27, dof: 0.62, bloom: 0.95, threshold: 0.55, wide: 0.7, rays: 0, vig: 0.5, warm: 0.2, sat: 1.12, contrast: 1.06, night: 0.06, shadowTint: [0.86, 0.9, 1.14], highTint: [1.08, 1.0, 0.88], lift: 0.02 },
+  day: { focus: 0.5, band: 0.27, dof: 0.62, bloom: 0.26, threshold: 0.88, wide: 0.45, rays: 0.03, vig: 0.3, warm: 0.3, sat: 1.1, vibe: 0.22, contrast: 1.07, night: 0, shadowTint: [0.94, 0.96, 1.05], highTint: [1.04, 1.01, 0.95], lift: 0.01 },
+  golden: { focus: 0.5, band: 0.27, dof: 0.62, bloom: 0.36, threshold: 0.82, wide: 0.55, rays: 0.06, vig: 0.34, warm: 0.42, sat: 1.08, vibe: 0.2, contrast: 1.08, night: 0, shadowTint: [0.92, 0.93, 1.06], highTint: [1.06, 1.0, 0.91], lift: 0.012 },
+  dusk: { focus: 0.5, band: 0.27, dof: 0.62, bloom: 0.62, threshold: 0.64, wide: 0.62, rays: 0, vig: 0.4, warm: 0.3, sat: 1.06, vibe: 0.18, contrast: 1.08, night: 0.04, shadowTint: [0.92, 0.92, 1.08], highTint: [1.08, 1.0, 0.9], lift: 0.014 },
+  night: { focus: 0.5, band: 0.27, dof: 0.62, bloom: 0.8, threshold: 0.58, wide: 0.68, rays: 0, vig: 0.42, warm: 0.2, sat: 1.06, vibe: 0.2, contrast: 1.08, night: 0.06, shadowTint: [0.88, 0.92, 1.12], highTint: [1.08, 1.0, 0.88], lift: 0.016 },
 };
 
 /** style the stage from the URL parameters (the realistic HD look unless ?look=toon) */

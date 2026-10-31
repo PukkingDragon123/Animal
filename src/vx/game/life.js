@@ -252,7 +252,7 @@ const LIFE = {
     { sp: 'pidgun', at: [36.0, 11.82, PI], y: 1.06, do: 'perch', fid: ['peck', 'puff'] },
     { sp: 'pidrose', at: [186.0, 11.82, PI], y: 1.06, do: 'perch', fid: ['preen'] },
     { sp: 'barkorious', at: [141.6, 8.1, 2.4], y: -0.62, do: 'nap', pet: false, name: 'Barkorious' },
-    { sp: 'weirdfin', at: [175.4, 5, 0], y: -0.95, do: 'swim', c: [175.6, 5.4], r: [1.8, 2.6], spin: 0.5, fid: ['loop', 'bait'], pet: false },
+    { sp: 'weirdfin', at: [176, 10.2, 0], y: -0.95, do: 'swim', c: [176.2, 10.3], r: [2.2, 0.8], spin: 0.5, fid: ['loop', 'bait'], pet: false },
     { sp: 'hawkabunga', at: [186, 6, 0], y: -0.78, do: 'swim', c: [186.0, 6.2], r: [6.0, 2.6], spin: 0.32, clip: 'shred', fid: ['kickflip'], pet: false, t: 'day' },
     { sp: 'pidgun', at: [169.4, 12.0, -PI / 2], do: 'pose', fid: ['peck', 'puff'], every: [3, 6], owner: 'wfIce', name: 'Pidgun', temper: 'wild', t: 'day', line: 'The Pidgun pretends to like you. Its eyes never leave your hands. It is waiting for a cone.' },
   ],
@@ -267,8 +267,8 @@ const LIFE = {
     { sp: 'bearbreak', at: [209.4, 127.6, -0.3], do: 'pose', fid: ['sigh', 'look'], every: [6, 10], owner: 'dt_suit', name: 'Monday', temper: 'shy', line: 'Monday the Bearbreak straightens its tie, looks at you with tired eyes, and sighs. Same, buddy. Same.', say: ['Monday, we have a call in five.'] },
     { sp: 'dreadrake', at: [136.8, 152.9, 0], do: 'pose', fid: ['flex', 'menace'], every: [6, 11], owner: 'dt_spike', name: 'Dreadrake', temper: 'proud', line: 'Spike\'s Dreadrake flexes at you. You pat its leather jacket anyway. It… quacks. Quietly.', say: ['Tch. Don\'t pet my Dreadrake.'] },
     { sp: 'studrat', at: [168.0, 165.2, -PI / 2], do: 'pose', fid: ['nibble', 'swagger'], every: [5, 9], owner: 'dt_riff', name: 'Rivet', line: 'Rivet sharpens its chrome mohawk on your shoe, then lets you scratch behind its torn ear.', say: ['Rivet! Spray cans are not snacks!'] },
-    { sp: 'kissmet', at: [140.6, 165.0, PI / 2], do: 'spar', game: 'arena', name: 'Kissmet', t: 'day' },
-    { sp: 'zapkit', at: [145.4, 165.0, -PI / 2], do: 'spar', game: 'arena', name: 'Zapkit', t: 'day' },
+    { sp: 'kissmet', at: [141.9, 165.0, PI / 2], do: 'spar', game: 'arena', name: 'Kissmet', t: 'day' },
+    { sp: 'zapkit', at: [144.1, 165.0, -PI / 2], do: 'spar', game: 'arena', name: 'Zapkit', t: 'day' },
   ],
 };
 // partners for passers-by walking the avenues (assigned to the first walkers spawned)
@@ -288,6 +288,7 @@ export class CityLife {
   /** spawn everything for this time of day (nearest first, a few per frame); safe to call twice */
   start() {
     if (this.started || this.disposed) return; this.started = true;
+    if (this.app.params && this.app.params.get('nolife')) return;      // ?nolife=1: an empty city (A/B cost checks)
     this.phase = phaseOf(this.w.mood);
     const w = this.w;
     // the kids in the pocket park
@@ -453,12 +454,12 @@ export class CityLife {
       if (o && (R.sayT = (R.sayT || 0) - dt) <= 0 && Math.hypot(o.g.position.x - me.g.position.x, o.g.position.z - me.g.position.z) < 4.5) { R.sayT = 50; this.bubble(o, pick(R.ownerSay), 'friend'); }
     }
     // a little hop (procedural, on top of the clip)
-    if (R.hop > 0) { R.hop -= dt; const k = Math.max(0, R.hop) / 0.42; p.y = R.hopY + Math.sin((1 - k) * PI) * 0.28; if (R.hop <= 0) p.y = R.hopY; }
+    if (R.hop > 0) { R.hop -= dt; const k = Math.max(0, R.hop) / 0.42; p.y = R.hopY + Math.sin((1 - k) * PI) * (R.hopH || 0.28); if (R.hop <= 0) p.y = R.hopY; }
     // periodic particles (z's, steam, notes, bubbles)
     if (e.fx && (R.fxT = (R.fxT ?? rnd(0, e.fx[1])) - dt) <= 0) { R.fxT = e.fx[1] * rnd(0.8, 1.3); this.w.fx.emit(e.fx[0], a.headPos(), { n: 1, scale: 1 }); }
     if (e.do === 'nap' && (R.zT = (R.zT ?? rnd(0, 2)) - dt) <= 0) { R.zT = rnd(2.2, 3.4); this.w.fx.emit('z', a.headPos(), { n: 1, scale: 1 }); }
   }
-  hopNow(R) { if (R.hop > 0 || R.a.path) return; R.hopY = R.a.g.position.y; R.hop = 0.42; }
+  hopNow(R, h = 0.28) { if (R.hop > 0 || R.a.path) return; R.hopY = R.a.g.position.y; R.hop = 0.42; R.hopH = h; }
   notice(R) {
     const e = R.e, a = R.a, w = this.w, me = w.player, temper = e.temper || (e.do === 'nap' ? 'sleepy' : 'friendly');
     if (e.do === 'nap') { w.fx.emit('z', a.headPos(), { n: 2 }); return; }
@@ -525,8 +526,8 @@ export class CityLife {
         }
         return;
       }
-      const snack = snackOf(st), opts = ['Pet', 'Play'];
-      if (snack) opts.push(`Share a snack (${ITEMS[snack].name})`);
+      const snack = snackOf(st), sname = snack && ITEMS[snack].name.replace(/\s*×\d+$/, ''), opts = ['Pet', 'Play'];
+      if (snack) opts.push(`Share a snack (${sname})`);
       opts.push('Leave it be');
       const who = e.owner && e.name ? `${nm} (${ownerName(this, e.owner)}'s partner)` : nm;
       const k = await app.choose(who + (e.do === 'nap' ? ' is fast asleep.' : ' looks up at you.'), opts);
@@ -546,7 +547,7 @@ export class CityLife {
         S.addItem(st, snack, -1); app.save && app.save();
         this.happy(R, 'heart', 6); w.fx.emit('sparkle', a.headPos(), { n: 10 });
         au.sfx && au.sfx('reward', { vol: 0.5 });
-        await app.say('', `${nm} gobbles up the ${ITEMS[snack].name} and does a happy little wiggle. Crumbs everywhere.`);
+        await app.say('', `${nm} gobbles up the ${sname} and does a happy little wiggle. Crumbs everywhere.`);
       }
       // its person notices
       const o = e.owner && w.actor(e.owner);
@@ -613,7 +614,12 @@ const BEHAVE = {
   wander(L, R, dt) {
     const e = R.e, a = R.a;
     if (a.path) return;
-    if ((R.t -= dt) > 0) { BEHAVE.pose(L, R, dt); return; }
+    if ((R.t -= dt) > 0) {
+      BEHAVE.pose(L, R, dt);
+      // wild ones bob up out of the tall grass now and then ("something darts between the stalks")
+      if (e.wild && (R.pk = (R.pk ?? rnd(1, 3)) - dt) <= 0) { R.pk = rnd(2.5, 5); L.hopNow(R, 0.55); L.w.fx.emit('leaf', a.headPos(), { n: 2, scale: 0.8 }); }
+      return;
+    }
     const p = a.g.position, [x0, z0, x1, z1] = e.area;
     if (Math.random() < 0.35 && e.fid) { const f = pick(e.fid); if (a.anim.clips[f]) a.play(f, { restart: true, next: R.baseClip }); R.t = rnd(2, 4); return; }
     for (let k = 0; k < 6; k++) {

@@ -17,6 +17,7 @@ import * as downtown from '../city/districts/downtown.js';
 import * as wharf from '../city/districts/wharf.js';
 import { record, dress } from '../city/dress.js';
 import { batchSolids } from '../city/districts/home/kit.js';
+import { installTrees } from '../city/props_trees.js';   // detailed tree species: swaps the stock trees, LOD + wind
 
 export const W = 230, D = 180;
 export const DISTRICTS = {
@@ -70,6 +71,7 @@ export function build({ mood, stage }) {
   // the edges of the map
   C.nav.block(0, 0, W, 0.5); C.nav.block(0, D - 0.5, W, D); C.nav.block(0, 0, 0.5, D); C.nav.block(W - 0.5, 0, W, D);
   if (!C.spots.start) C.spot('start', 110, 104, 0);
+  installTrees(C);   // the stock 'tree' / 'treeB' / 'palm' become detailed species (props_trees.js)
   const city = C.finalize(stage);
   city.dressed = dressed;
   // cut-out pixel decals (the dressing atlases): hard alpha edges, so stains, streaks and gratings sit on any surface

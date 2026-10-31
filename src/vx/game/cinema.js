@@ -63,8 +63,8 @@ const catmull = (p0, p1, p2, p3, t) => 0.5 * (2 * p1 + (-p0 + p2) * t + (2 * p0 
 
 // ---------------------------------------------------------------- grades (HD-2D pass options layered over the mood)
 export const GRADES = {
-  warm: { warm: 0.8, rays: 0.24, rayCol: [1.0, 0.82, 0.55], bloom: 0.6, wide: 0.7, sat: 1.15, lift: 0.024, vig: 0.5 },
-  morning: { warm: 0.7, rays: 0.3, rayDir: [1, 0.9], rayCol: [1.0, 0.86, 0.6], bloom: 0.7, threshold: 0.72, wide: 0.75, sat: 1.1, lift: 0.03, vig: 0.55 },
+  warm: { warm: 0.65, rays: 0.14, rayCol: [1.0, 0.82, 0.55], bloom: 0.5, sat: 1.15, contrast: 1.1, lift: 0.008, vig: 0.5 },
+  morning: { warm: 0.55, rays: 0.16, rayDir: [1, 0.9], rayCol: [1.0, 0.86, 0.6], bloom: 0.5, threshold: 0.8, sat: 1.14, contrast: 1.1, lift: 0.006, vig: 0.55 },
   tense: { sat: 0.94, contrast: 1.14, vig: 0.66, warm: 0.15, rays: 0, lift: 0.006 },
   hero: { bloom: 0.62, wide: 0.7, warm: 0.6, sat: 1.2, vig: 0.48, rays: 0.16 },
   storm: { sat: 0.7, contrast: 1.16, warm: 0.0, rays: 0, vig: 0.8, night: 0.24, bloom: 0.7, threshold: 0.66, wide: 0.6, shadowTint: [0.8, 0.86, 1.12], highTint: [0.96, 1.0, 1.06], lift: 0.02 },
@@ -77,7 +77,7 @@ export class Cinema {
   constructor(app) {
     this.app = app;
     this.active = false; this.driving = false; this.hold = null; this.shot = null; this.cur = view([0, 0, 0], 20, 45, 30);
-    this.bars = 0; this.barsTo = 0; this.prefer = 45; this.room = null; this.time = 0; this.frame = 0;
+    this.bars = 0; this.barsTo = 0; this.prefer = 45; this.room = null; this.time = 0; this.frameN = 0;
     this.fx = null; this.gradeWant = {}; this.base = null; this.pp = false; this.baseSc = null;
     this.sh = { amp: 0, t: 0, decay: 5 }; this.hh = 0; this.roll = 0; this.rollTo = 0; this.fovTo = null; this.fovBase = null; this.fovK = 0; this.fovSet = false;
     this.ts = null; this.cards = []; this.flashes = []; this.veil = { a: 0, to: 0, color: '#fff4dc', speed: 2, done: null };
@@ -453,7 +453,7 @@ export class Cinema {
     this.beatN++; this.beatName = name; const n = this.beatN;
     if (this.app.log) this.app.log.push('BEAT ' + name);
     if (!this.debug || this.skipping) return;
-    const f0 = this.frame; while (this.frame < f0 + 8) await sleep(30);
+    const f0 = this.frameN; while (this.frameN < f0 + 8) await sleep(30);
     this.beatReady = n;
     const t0 = now(); while ((window.__cineAck || 0) < n && now() - t0 < 40000) await sleep(80);
   }
@@ -524,7 +524,7 @@ export class Cinema {
   // ================================================================ per frame
   /** called by the app loop before the world updates; returns the (slow-motion / hit-stop scaled) dt for the world */
   tick(dt) {
-    this.frame++;
+    this.frameN++;
     this.updateSkip(dt);
     const sdt = dt * this.timeScale();
     this.time += sdt;
@@ -622,7 +622,7 @@ export class Cinema {
       if (Array.isArray(b)) { const arr = Array.isArray(a) ? a.slice() : b.slice(); for (let i = 0; i < b.length; i++) { arr[i] = (arr[i] ?? b[i]) + (b[i] - (arr[i] ?? b[i])) * k; off = Math.max(off, Math.abs(b[i] - arr[i])); } opts[key] = arr; }
       else { opts[key] = a + (b - a) * k; off = Math.max(off, Math.abs(b - opts[key])); }
     }
-    if (!this.driving && !this.active && off < 0.003) { Object.assign(opts, copyOpts(this.base)); this.pp = false; this.base = null; }
+    if (!this.driving && !this.active && !Object.keys(this.gradeWant).length && off < 0.003) { Object.assign(opts, copyOpts(this.base)); this.pp = false; this.base = null; }
   }
 
   // ================================================================ UI: under the HUD-free story layer, and over the fade

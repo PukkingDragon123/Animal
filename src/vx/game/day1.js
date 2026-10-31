@@ -72,8 +72,9 @@ async function prologue(X) {
   cin.focus(null, { band: 0.2, dof: 0.85 });
   await app.fade(0, 1200);
   const glide = cin.move(view([88, 3, 124], 82, 118, 30), { dur: 7.5 });
-  await cin.title('DAY 1', 'Saturday  ·  San Francisco', { hold: 3600 });
-  await cin.beat('flyover');
+  const card = cin.title('DAY 1', 'Saturday  ·  San Francisco', { hold: 3600 });
+  await app.wait(1400); await cin.beat('flyover');
+  await card;
   await glide;
   // down onto the house, up to the bedroom's bay window
   const bay = [59.6, 4.4, 152.2];
@@ -220,11 +221,11 @@ async function tram(X) {
   const lau = seat(w.addPerson('lau', 'lau', [150.0, 111.95, Math.PI]), 150.0, 111.95, Math.PI, 0.55); lau.play('sitSad', { fade: 0 });
   const weak = await w.addMon('weak', 'lemmo', [150.95, 111.25, Math.PI - 0.5], { clip: 'hurt' });
   const spike = w.addPerson('spike', 'spike', [150.3, 110.25, 0], { clip: 'angry' }), duck = await w.addMon('duck', 'dreadrake', [151.95, 109.75, -0.5], { clip: 'menace' });
-  hero.place(147.4, 109.1, 1.2); hero.play('idle');
+  hero.place(147.3, 110.75, 1.3); hero.play('idle');            // under the shelter: its roof lifts, nothing fades
   await cin.begin({ prefer: 190 });
   cin.grade('tense');
   app.audio.music && app.audio.music('tension', { fade: 1.2 });
-  const est = cin.establish([149.6, 1.0, 110.9], { from: { dist: 58, yaw: 140, pitch: 52 }, to: { dist: 13, yaw: 200, pitch: 16 }, dur: 5 });
+  const est = cin.establish([149.4, 1.0, 110.6], { from: { dist: 58, yaw: 140, pitch: 52 }, to: { dist: 12, yaw: 200, pitch: 18 }, dur: 5 });
   await app.wait(1200);
   cin.place('Market Street', 'Cable-car stop  ·  Downtown', { wait: false });
   await est;
@@ -232,7 +233,7 @@ async function tram(X) {
   await say('', 'Ding-ding — the cable car is late again. At the stop, a crowd stares at their phones, pretending not to see what\'s happening on the bench.');
   // the punk, from the old man's eye line: low, tilted, unsteady
   cin.dutch(-7).handheld(0.016);
-  await cin.talk(spike, lau, 'Spike', 'C\'mon, old man. Bench tax is doubled for you today. Pay up, or my Dreadrake sits on your little lemon.', { shot: 'hero', yaw: 12, dist: 2.1, low: -15, clip: 'angry' });
+  await cin.talk(spike, lau, 'Spike', 'C\'mon, old man. Bench tax is doubled for you today. Pay up, or my Dreadrake sits on your little lemon.', { shot: 'hero', yaw: 14, dist: 3.1, low: -12, clip: 'angry' });
   await cin.beat('tram-spike');
   cin.dutch(0);
   await cin.talk(lau, spike, 'Mr. Lau', 'P-please… that\'s my pension money…', { shot: 'close', yaw: 200, dist: 2.3, pitch: 26, face: 'sad', clip: 'sitSad' });
@@ -257,7 +258,7 @@ async function tram(X) {
   await app.wait(350);
   const sp = spike.g.position;
   w.burst('bubble', [sp.x - 2, sp.y + 1.2, sp.z + 0.5], { n: 20, speed: 2.5 }); sfx(app, 'hydro_splash');
-  await cin.frame(spike, { at: 'chest', yaw: 160, dist: 6.5, pitch: 10, dur: 0, off: [0.8, 0, -0.2], focus: 0.22 });
+  await cin.frame(spike, { at: 'chest', rel: 28, dist: 6.2, pitch: 12, dur: 0, off: [0.7, 0, -0.3], focus: 0.24 });
   await app.wait(250);
   w.burst('splash', [sp.x, sp.y + 1.2, sp.z], { n: 26 }); w.burst('drop', [duck.g.position.x, duck.g.position.y + 1.2, duck.g.position.z], { n: 18 });
   sfx(app, 'hit_heavy'); cin.flash('#ffffff', 0.35).shake(0.32, 4);
