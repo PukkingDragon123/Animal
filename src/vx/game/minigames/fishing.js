@@ -388,8 +388,8 @@ export default class Fishing {
   setCam(snap) {
     const s = this.s, st = this.state;
     if (st === 'land' && this.catchCard) { const p = (this.land && this.land.g.position) || new V3(HX + 0.95, this.deck, HZ); s.look(new V3(p.x, p.y + 0.7, p.z), 4.6, 200, 12, 36, { rate: 4 }); return; }
-    if (st === 'reel' && this.fish) { const mx = lerp(HX, this.bobPos.x, 0.38), mz = lerp(HZ, this.bobPos.z, 0.42); s.look(new V3(mx, 0.3, mz), 7.5 + this.fish.dist * 0.3, -4 + (this.bobPos.x - HX) * 0.8, 22, 42, { rate: 3 }); return; }
-    const ax = HX + this.aim * 1.2; s.look(new V3(ax, 0.1, HZ - 5.2), 9.5, -10 + this.aim * 8, 24, 42, { rate: 3, snap });
+    if (st === 'reel' && this.fish) { const mx = lerp(HX, this.bobPos.x, 0.38), mz = lerp(HZ, this.bobPos.z, 0.42), yaw = -4 + (this.bobPos.x - HX) * 0.8; s.look(new V3(mx, 0.3, mz), camDist(mz, yaw, 28), yaw, 28, 42, { rate: 3 }); return; }
+    const ax = HX + this.aim * 1.2, yaw = -10 + this.aim * 8; s.look(new V3(ax, 0.1, HZ - 5.2), camDist(HZ - 5.2, yaw, 26), yaw, 26, 42, { rate: 3, snap });
   }
   // ================================================================ HUD
   draw(ui, dt) {
@@ -453,4 +453,6 @@ export default class Fishing {
   dispose() { if (this.host) this.host.play('think'); }
 }
 const kk = (dt, r) => 1 - Math.exp(-dt * r);
+// the follow distance that keeps the camera over the pier end (z ≤ 4), clear of the carousel behind
+const camDist = (tz, yawDeg, pitchDeg) => clamp((4.0 - tz) / Math.max(0.2, Math.cos(yawDeg * Math.PI / 180) * Math.cos(pitchDeg * Math.PI / 180)), 4.2, 9.5);
 void smooth;

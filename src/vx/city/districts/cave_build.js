@@ -103,7 +103,7 @@ export function buildCave(C) {
   const gkAt = (x, z) => 'cv' + Math.floor(clamp(x, 0, W - 1) / 32) + '_' + Math.floor(clamp(z, 0, D - 1) / 26);
   const GEO = (x, z) => x > 74 && x < 98 && z > 68 && z < 92;      // the Geode's own groups (its glow is animated)
   const gkOf = (x, z) => (GEO(x, z) ? 'cv_geode' : gkAt(x, z));
-  const FT = { wet: K.wetFloorTex('#525860', 'wet'), moss: K.mossFloorTex(), dirt: K.dirtFloorTex(), geode: K.geodeFloorTex(), sand: K.wetFloorTex('#6a6254', 'sand') };
+  const FT = { wet: K.wetFloorTex('#525860', 'wet'), moss: K.mossFloorTex(), dirt: K.dirtFloorTex(), geode: K.geodeFloorTex(), sand: K.wetFloorTex('#6a6254', 'sand'), pit: K.wetFloorTex('#262a32', 'pit') };
   const MMC = { wet: '#4a4e58', moss: '#3e6040', dirt: '#6a5440', geode: '#4a3a62', sand: '#6a6254' };
   const lights = [], heroes = [], drips = [], fx = [];
   const light = (x, y, z, col, i, r, halo = 0) => { C.light(x, y, z, { color: col, intensity: i, r, halo, sh: Math.max(0.8, y - floorAt(x, z)) }); };
@@ -131,7 +131,7 @@ export function buildCave(C) {
     const pit = F.pitD(cx, cz) < -0.3 ? F.pitAt(cx, cz) : null, gk = gkOf(cx, cz);
     if (pit) {
       const y = pit.bottom + (noise2(cx * 0.5, cz * 0.5) - 0.5) * 1.2;
-      C.quad(gk, FT.wet, [x, y, z + 1], [x + 1, y, z + 1], [x + 1, y, z], [x, y, z], { u0: x, v0: -(z + 1) });
+      C.quad(gk, FT.pit, [x, y, z + 1], [x + 1, y, z + 1], [x + 1, y, z], [x, y, z], { u0: x, v0: -(z + 1) });
       C.paint(x, z, x + 1, z + 1, '#141820'); continue;
     }
     const a = F.at(cx, cz), tex = FT[a.floor] || FT.wet;

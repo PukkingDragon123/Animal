@@ -40,7 +40,7 @@ export default class Arcade {
     await s.app.wait(2300);
     s.audio.sfx('coin', { pitch: 0.9 }); setTimeout(() => s.audio.sfx('gacha'), 350);
     if (s.hero) s.hero.play('point', { restart: true });
-    await cin.move({ target: c.clone(), dist: 1.15, yaw: 90, pitch: 9 }, { dur: 1.0 });
+    await cin.move({ target: c.clone(), dist: 1.0, yaw: 90, pitch: 17 }, { dur: 1.0 });
     if (s.hero) s.hero.g.visible = false;
   }
   reset() {
@@ -188,7 +188,7 @@ export default class Arcade {
   }
   heart(x, y, on, R) { const c = on ? '#ff5a6a' : '#3a2a4a'; R(x, y, 2, 1, c); R(x + 3, y, 2, 1, c); R(x - 1, y + 1, 7, 2, c); R(x, y + 3, 5, 1, c); R(x + 1, y + 4, 3, 1, c); R(x + 2, y + 5, 1, 1, c); }
   // ================================================================ camera + 2D overlay
-  cam(snap) { const c = this.screenW; if (c) this.s.look(c.clone(), 1.12, 90, 9, 42, { rate: 6, snap }); }
+  cam(snap) { const c = this.screenW; if (c) this.s.look(c.clone().add(new V3(0, -0.02, 0)), 0.98, 90, 17, 42, { rate: 6, snap }); }
   draw(ui) {
     const s = this.s, Wd = ui.w, Hd = ui.h;
     if (s.live && !this.over) keyRow(ui, Wd / 2, Hd - 20, [['◀ ▶', 'Move'], ['SPACE', 'Bubble']]);

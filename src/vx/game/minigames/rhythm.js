@@ -15,7 +15,7 @@ const LANES = [
   { key: 'ArrowRight', alt: 'k', glyph: '▶', col: '#f0b030', dk: '#9a6a1a' },
 ];
 const J = [[0.05, 'PERFECT', 300, 3], [0.1, 'GREAT', 200, 2], [0.15, 'GOOD', 100, 1]];
-const RIVAL = ['purrcussion', 'foopod', 'mopzart', 'beatlet', 'pepperhorn'];
+const RIVAL = ['purrcussion', 'foopod', 'mopzart', 'pepperhorn', 'abbeyhorn'];
 const HIT_FX = { pyro: 'fire', hydro: 'splash', bio: 'leaf', volto: 'bolt', geo: 'rock', echo: 'note', ecto: 'ghostfire', cryo: 'sparkle', ferro: 'shard', aero: 'dust', astro: 'star', nucleo: 'ember', draco: 'ghostfire' };
 
 export default class Rhythm {
@@ -24,7 +24,7 @@ export default class Rhythm {
   static ranks = [55000, 35000, 20000];
   static rewards(res, o) {
     const items = []; if (res.won) items.push(['matcha', 1]); if (res.won && !o.mem.firsts.clash) { o.mem.firsts.clash = true; items.push(['star_candy', 1]); }
-    return { money: Math.round(res.score / 60) + (res.won ? 200 : 0), friend: (res.won ? 4 : 2) + (o.record ? 1 : 0), items };
+    return { money: Math.round(res.score / 90) + (res.won ? 150 : 0), friend: (res.won ? 4 : 2) + (o.record ? 1 : 0), items };
   }
   constructor(sess) { this.s = sess; this.prefer = 0; }
 
@@ -150,7 +150,7 @@ export default class Rhythm {
   cam(snap) {
     const s = this.s, gy = this.gy;
     if (this.closeT > 0) { this.closeT -= 1 / 60; const p = this.me.g.position; s.look(new V3(p.x + 0.8, gy + 0.6, p.z), 3.4, 330, 8, 38, { rate: 8 }); return; }
-    s.look(new V3(143, gy + 0.9, 165), 9.5, 0, 12, 40, { rate: 4, snap });
+    s.look(new V3(143, gy + 0.8, 165), 8.2, 0, 12, 40, { rate: 4, snap });
   }
   // ================================================================ HUD: the HP bars and the note highway
   draw(ui) {

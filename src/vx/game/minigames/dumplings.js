@@ -237,7 +237,7 @@ export default class Dumplings {
     this.s.end({ score: this.score, served: this.served, perfect: this.perfect, lines: [`Served ${this.served}  ·  perfect ${this.perfect}`, `Walked out ${this.lost}  ·  burnt ${this.burnt}`, `Best streak ×${this.bestCombo}`] });
   }
   say(text, dur = 1.4) { this.msg = { text, t: 0, dur }; }
-  cam(snap) { this.s.look(new V3(145.95, this.gy + 0.95, 85.35), 5.6, 22, 36, 40, { rate: 4, snap }); }
+  cam(snap) { this.s.look(new V3(146.2, this.gy + 0.9, 85.35), 5.0, 24, 33, 40, { rate: 4, snap }); }
   // ================================================================ HUD
   draw(ui) {
     const s = this.s, W = ui.w, H = ui.h, narrow = W < 360;

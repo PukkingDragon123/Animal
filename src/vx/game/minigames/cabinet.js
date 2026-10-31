@@ -48,12 +48,12 @@ export function buildCabinet(st) {
   }, { vpm: V, key: 'mg-cabinet' }));
   // the stick and the two buttons are separate pieces (they move)
   const stick = new THREE.Group(); stick.position.set(-0.19, 0.97, 0.21);
-  stick.add(voxel(st, [5, 9, 5], (F, r, H) => { const ch = F.c('#c8ccd4'), red = F.c('#e8283a'), redL = F.c('#ff6a6a'), b = F.c('#1c1428'); F.box(1, 0, 1, 3, 0, 3, b); F.box(2, 1, 2, 2, 5, 2, ch); H.ball(F, 2, 6.5, 2, 2.3, 2.3, 2.3, (x, y) => (y > 7 && x < 2 ? redL : red)); }, { vpm: 40, key: 'mg-stick' }));
+  stick.add(voxel(st, [5, 9, 5], (F, r, H) => { const ch = F.c('#c8ccd4'), red = F.c('#e8283a'), redL = F.c('#ff6a6a'), b = F.c('#1c1428'); F.box(1, 0, 1, 3, 0, 3, b); F.box(2, 1, 2, 2, 5, 2, ch); H.ball(F, 2, 6.5, 2, 2.3, 2.3, 2.3, (x, y) => (y > 7 && x < 2 ? redL : red)); }, { vpm: 90, key: 'mg-stick' }));
   g.add(stick);
   const buttons = [];
   for (const [x, c, k] of [[0.05, '#2fd4c8', 'a'], [0.17, '#ff74c0', 'b']]) {
     const b = new THREE.Group(); b.position.set(x, 0.965, 0.25);
-    b.add(voxel(st, [5, 2, 5], (F, r, H) => { const cc = F.c(c, GLOW), rim = F.c('#1c1428'); H.disc(F, 2, 2, 0, 0, 2.5, rim); H.disc(F, 2, 2, 1, 1, 2.1, cc); }, { vpm: 40, key: 'mg-btn' + k }));
+    b.add(voxel(st, [7, 3, 7], (F, r, H) => { const cc = F.c(c, GLOW), rim = F.c('#1c1428'), hi = F.c('#ffffff', GLOW); H.disc(F, 3, 3, 0, 0, 3.4, rim); H.disc(F, 3, 3, 1, 2, 2.6, cc); F.set(2, 2, 2, hi); }, { vpm: 130, key: 'mg-btn' + k }));
     g.add(b); buttons.push(b);
   }
   // the marquee (lit pixel art) and the screen

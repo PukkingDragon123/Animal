@@ -209,8 +209,18 @@ export function tick(R, dt) {
   if (!w || w.id !== 'cave' || !w.sc || w.sc.city !== R.city || CUR !== R) return;
   R.t += dt;
   if (w.life && !w.life.isCave) { w.life.dispose(); for (const id of ['kidA', 'kidB']) w.remove(id); w.life = new CaveLife(R); w.life.start(); }
+  if (!R.cleaned) { R.cleaned = true; cleanForeign(R); }
   lanternTick(R, dt); accentTick(R, dt); fxTick(R, dt); dripTick(R, dt); ambienceTick(R, dt); cartTick(R, dt); debrisTick(R, dt); eyesTick(R, dt);
   bossTick(R);
+}
+/** hooks that dress every city-engine map (the mini-game venues: their host, signs, cabinet, prompts) belong to the
+ *  city above, not down here: take them back out of the cave */
+function cleanForeign(R) {
+  const app = R.app, w = app.world, city = R.city, mg = app.minigames;
+  if (mg && mg.venueObjs) for (const o of mg.venueObjs) if (o.parent) o.parent.remove(o);
+  for (let i = city.inter.length - 1; i >= 0; i--) if (city.inter[i].mg) city.inter.splice(i, 1);
+  for (const n of city.npcs || []) w.remove(n.id);
+  if (city.npcs) city.npcs.length = 0;
 }
 // ---- the lantern in your hand
 function lanternTick(R, dt) {
@@ -761,7 +771,7 @@ async function bossFight(app) {
   // 2. the hill rumbles; stones fall; the crystals flare, ring by ring
   rumble(app, 0.4); cin.shake(0.35, 2.2);
   for (let i = 0; i < 7; i++) setTimeout(() => { const a = Math.random() * PI * 2, r = 3 + Math.random() * 5; w.burst('rock', [gx + Math.cos(a) * r, gy + 7, gz + Math.sin(a) * r], { n: 4 }); w.burst('dust', [gx + Math.cos(a) * r, gy + 0.3, gz + Math.sin(a) * r], { n: 6 }); }, i * 160);
-  for (let i = 0; i < 3; i++) { R.flare[i] = 3.2; sfx(app, 'furin', { vol: 0.35, pitch: 0.8 + i * 0.25 }); await app.wait(380); }
+  for (let i = 0; i < 3; i++) { R.flare[i] = 2.1; sfx(app, 'furin', { vol: 0.35, pitch: 0.8 + i * 0.25 }); await app.wait(380); }
   // 3. its eyes
   boss.play('doze', { restart: true });
   await cin.push(boss, { at: 'face', dist: 4.8, punch: 3 });

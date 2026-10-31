@@ -623,10 +623,11 @@ export class Session {
         const step = Math.floor((rolled / Math.max(1, target)) * 14); if (step !== m.tick && t < 0.25 + dur && t > 0.25) { m.tick = step; A.sfx('coin', { vol: 0.35, pitch: 1 + step * 0.06 }); }
         const sx = x + 14, sy = y + 13;
         ui.text(rec.scoreLabel || 'SCORE', sx, sy, T.dim, { mini: true });
-        ui.text(rec.scoreText && t > 0.25 + dur ? rec.scoreText : rec.scoreText ? rec.scoreText : fmt(rolled), sx, sy + 9, T.text, { scale: narrow ? 2 : 3 });
+        const scoreStr = rec.scoreText ? rec.scoreText : fmt(rolled), sw = ui.tw(rec.scoreText || fmt(target), { scale: narrow ? 2 : 3 });
+        ui.text(scoreStr, sx, sy + 9, T.text, { scale: narrow ? 2 : 3 });
         ui.text((rec.bestLabel || 'BEST') + '  ' + rec.bestText, sx, sy + (narrow ? 22 : 28), T.amber2, { mini: true });
         if (rec.record && t > 0.25 + dur) {
-          const sk = boing((t - 0.25 - dur) * 2), cx = sx + (narrow ? 96 : 130), cy = sy + 12;
+          const sk = boing((t - 0.25 - dur) * 2), cx = Math.min(x + w - 120, sx + sw + 48), cy = sy + 14;
           g.save(); g.translate(cx, cy); g.scale(Math.max(0.01, sk), Math.max(0.01, sk)); g.translate(-cx, -cy);
           ui.panel(cx - 38, cy - 9, 76, 18, { thin: true, fill: '#d8443e', edge: '#8e2626' }); ui.text('NEW RECORD!', cx, cy - 3, WHITE, { align: 'center', mini: true });
           g.restore(); ui._fs = null; ui._font = null;
