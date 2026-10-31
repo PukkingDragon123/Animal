@@ -2,11 +2,11 @@
 // terrain and the set pieces exist:
 //  - a white gazebo on the east lawn (sit in it), a stepping-stone trail to it, flower beds of tulips, daisies,
 //    lavender and marigolds around it
-//  - a richer pond: a ring of edge stones, cattail stands, flowering lily pads, a mallard family
+//  - a richer pond: a ring of edge stones, cattail stands, flowering lily pads
 //  - a picnic laid out on the lawn, a carved welcome sign, more slatted benches and bins
 //  - grass tufts, wildflowers and California poppies over the lawns (cheap instanced voxels, no shadows)
 //  - interactables for all of it: sit on benches, read plaques, smell the beds, hop the stones, skip a stone,
-//    watch the ducklings, tidy litter into a bin
+//    watch the pond, tidy litter into a bin
 import { TX } from '../build.js';
 import { groundDecal } from './dt_kit.js';
 import './pk_detail.js';
@@ -62,9 +62,9 @@ function gazebo(C, Y) {
   C.prop('lantern', cx, cz, { y: y0 + 2.75 });
   C.interact({ x: cx, z: cz - 0.7, r: 1.4, label: 'Sit in the gazebo', icon: 'heart', act: async (app) => {
     await sitDown(app, cx, cz - 1.45, 0, y0 + 0.31 + 0.44, [pick([
-      'You sit in the gazebo. The lawn hums with bees, and somewhere a kid is losing a game of Tokon tag very loudly.',
+      'You sit in the gazebo. The lawn hums in the sun, and somewhere a kid is losing a game of Tokon tag very loudly.',
       'Shade, a breeze, and the creak of old white paint. Your partner curls up on the cool boards and is asleep in seconds.',
-      'A Pidgun lands on the rail, looks at you, looks at your snack pocket, and waits. It is very patient.'])]);
+      'A Pidgun lands on the rail, looks at you, looks at your snack pocket, and waits. It is a very patient Tokonmon.'])]);
   } });
   C.interact({ x: cx + 1.2, z: cz - 1.8, y: y0 + 2.2, r: 1.2, label: 'Read the carvings', icon: 'eye', act: async (app) => app.say('', 'Carved into the rail, under many coats of white paint: initials in hearts, a tiny Cabbunny, and "MAY 1961 — IT RAINED, WE DANCED ANYWAY".') });
   // the stepping-stone trail from the main path to the gazebo steps
@@ -88,7 +88,7 @@ function flowerBeds(C, Y) {
   bed(85, 63, 90, 65, ['pk2_tulip_red', 'pk2_tulip_yel', 'pk2_tulip_white', 'pk2_tulip_pink', 'pk2_tulip_purple']);
   bed(94, 63, 99, 65, ['pk2_lavender', 'pk2_daisy', 'pk2_lavender', 'pk2_marigold']);
   bed(83, 76, 85, 78, ['pk2_marigold', 'pk2_daisy']);
-  C.interact({ x: 87.5, z: 66.0, label: 'Smell the tulips', icon: 'leaf', act: async (app) => { sfx(app, 'cloth', { vol: 0.4 }); await app.say('', 'Red, yellow, white, pink and purple tulips in neat rows — each one a little cup of colour.', pick(['A bee climbs out of a yellow one looking extremely pleased with itself.', 'Your partner sniffs one, sneezes, and looks betrayed.'])); } });
+  C.interact({ x: 87.5, z: 66.0, label: 'Smell the tulips', icon: 'leaf', act: async (app) => { sfx(app, 'cloth', { vol: 0.4 }); await app.say('', 'Red, yellow, white, pink and purple tulips in neat rows — each one a little cup of colour.', pick(['A little Bio Tokonmon climbs out of a yellow one, dusted in pollen and extremely pleased with itself.', 'Your partner sniffs one, sneezes, and looks betrayed.'])); } });
   C.interact({ x: 96.5, z: 66.0, label: 'Brush the lavender', icon: 'leaf', act: async (app) => { sfx(app, 'cloth', { vol: 0.4 }); await app.say('', 'You run a hand through the lavender. The smell follows you for a whole minute. Calm, purple, sleepy.'); } });
 }
 
@@ -102,15 +102,13 @@ function pond(C) {
   }
   for (const [x, z] of [[61.0, 83.4], [61.6, 88.6], [78.8, 83.0], [77.6, 89.8], [64.6, 80.4], [74.8, 80.6]]) C.prop('pk2_cattails', x, z, { y: -0.5, collide: false, yaw: x });
   for (const [x, z] of [[64.0, 85.6], [75.6, 86.0], [66.6, 89.4], [73.4, 82.6]]) C.prop('pk2_lily', x, z, { y: -0.43, collide: false, yaw: z });
-  C.prop('pk2_hen', 73.4, 87.6, { y: -0.47, yaw: 2.4, collide: false }); C.prop('pk2_ducklings', 74.6, 88.6, { y: -0.45, yaw: 2.2, collide: false });
-  C.prop('pk2_mallard', 66.4, 82.8, { y: -0.48, yaw: 0.6, collide: false });
-  C.interact({ x: 74.6, z: 79.9, r: 1.6, label: 'Watch the ducklings', icon: 'heart', act: async (app) => { sfx(app, 'coo', { pitch: 1.6, vol: 0.5 }); await app.say('', 'Four fuzzy ducklings paddle after their mother in a perfectly straight line. Then the last one spots a bug and the line is ruined forever.'); } });
+  C.interact({ x: 74.6, z: 79.9, r: 1.6, label: 'Watch the pond', icon: 'eye', act: async (app) => { sfx(app, 'bubble', { pitch: 1.3, vol: 0.5 }); await app.say('', pick(['A trail of bubbles wanders between the lily pads. Something small and blue is having a lovely time down there.', 'A lily pad wobbles, then another — a tiny water Tokonmon is hopping across them, one careful pad at a time.'])); } });
   let skips = 0;
   C.interact({ x: 61.2, z: 81.2, r: 1.5, label: 'Skip a stone', icon: 'star', act: async (app) => {
     const n = 1 + Math.floor(Math.random() * 6); skips = Math.max(skips, n);
     sfx(app, 'whoosh'); for (let i = 0; i < n; i++) setTimeout(() => sfx(app, 'plop', { pitch: 1 + i * 0.15, vol: 0.6 - i * 0.07 }), 350 + i * 220);
     const me = app.world.player; if (me) me.play('throw', { restart: true });
-    await app.say('', n === 1 ? 'Plunk. Straight to the bottom. The ducks look unimpressed.' : `${n} skips! ${n >= 5 ? 'The jogger stops to applaud.' : 'Not bad.'} (Best today: ${skips})`);
+    await app.say('', n === 1 ? 'Plunk. Straight to the bottom. Your partner looks unimpressed.' : `${n} skips! ${n >= 5 ? 'The jogger stops to applaud.' : 'Not bad.'} (Best today: ${skips})`);
   } });
 }
 
@@ -129,12 +127,12 @@ function welcome(C, Y) {
   const x = 57.0, z = 35.2, y = Y(x, z);
   C.prop('pk2_sign', x, z, { y, yaw: 0 });
   C.decal('props', TX.signTex('ALAMO HILL', '#2e5a3a', '#f4ecd0', { w: 1.5, h: 0.62, fs: 0.62 }), x, y + 0.84, z + 0.2, 's', 1.5, 0.62, { off: 0.008 });
-  C.interact({ x, z: z + 1.0, label: 'Read the welcome sign', icon: 'map', act: async (app) => app.say('', '"WELCOME TO ALAMO HILL PARK. Please: no Tokon battles on the flower beds, no feeding bread to the ducks (lettuce is fine), and no climbing the gazebo. Yes, you."') });
+  C.interact({ x, z: z + 1.0, label: 'Read the welcome sign', icon: 'map', act: async (app) => app.say('', '"WELCOME TO ALAMO HILL PARK. Please: no Tokon battles on the flower beds, no feeding bread to the pond Tokonmon (lettuce is fine), and no climbing the gazebo. Yes, you."') });
 }
 
 // ==================================================================== extra benches (with plaques) and bins
 const PLAQUES = [
-  '"For Agnes, who fed every pigeon in this park by name. 1931–2019."',
+  '"For Agnes, who knew every Tokonmon in this park by name. 1931–2019."',
   '"Sit here and watch the fog roll in. — the Okada family"',
   '"In memory of Biscuit, the bravest Pidgun on Alamo Hill."',
   '"The best seat in the city. We checked them all. — Sunset Row Running Club"',
@@ -147,7 +145,7 @@ function benches(C, H) {
     const sx = p.x + p.fx * 0.9, sz = p.z + p.fz * 0.9;
     C.interact({ x: sx, z: sz, r: 1.2, label: 'Sit on the bench', icon: 'heart', act: async (app) => {
       const y = app.world.ground(p.x, p.z) + 0.46;
-      await sitDown(app, p.x + p.fx * 0.15, p.z + p.fz * 0.15, Math.atan2(p.fx, p.fz), y, [`A little brass plaque on the backrest: ${PLAQUES[i % PLAQUES.length]}`, pick(['You sit a while. A jogger waves. A squirrel-ish Tokonmon does not.', 'The park sounds: bees, a distant ball game, ducks arguing.'])]);
+      await sitDown(app, p.x + p.fx * 0.15, p.z + p.fz * 0.15, Math.atan2(p.fx, p.fz), y, [`A little brass plaque on the backrest: ${PLAQUES[i % PLAQUES.length]}`, pick(['You sit a while. A jogger waves. A Tokonmon in the hedge does not.', 'The park sounds: leaves, a distant ball game, two Tokonmon arguing over a stick.'])]);
     } });
     const b = along(P, t + 0.04, s, 2.4); C.prop('bin', b.x, b.z);
     C.interact({ x: b.x - b.fx * 0.2, z: b.z - b.fz * 0.2, r: 1.0, label: 'Tidy up litter', icon: 'hand', act: async (app) => {
@@ -176,5 +174,5 @@ function groundCover(C, H) {
     C.prop(kind, jx, jz, { y: Y(jx, jz), yaw: Math.floor(R() * 4) * PI / 2, collide: false });
   }
   // a little sign by the wildflower meadow
-  C.interact({ x: 80.5, z: 50.6, label: 'Wildflower meadow', icon: 'leaf', act: async (app) => app.say('', 'A hand-painted sign: "NO MOW ZONE — California poppies, yarrow and lupines for the bees. Please keep your Tokonmon out (Bio-types: you may look)."') });
+  C.interact({ x: 80.5, z: 50.6, label: 'Wildflower meadow', icon: 'leaf', act: async (app) => app.say('', 'A hand-painted sign: "NO MOW ZONE — California poppies, yarrow and lupines for the pollinating Bio-types. Please keep your Tokonmon out (Bio-types: you may look)."') });
 }

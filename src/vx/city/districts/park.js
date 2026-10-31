@@ -25,7 +25,7 @@ const PI = Math.PI, LH = 0.3;
 const G = { GRASS: 0, PATH: 1, PAVER: 2, VOID: 3, POND: 4, SAND: 5, COURT: 6, PLAZA: 7, LANE: 8, TALL: 9, YARD: 10 };
 
 // close-up detail: the stock furniture swaps for the park's own detailed kinds (pk_detail.js) while the park builds
-const SWAP = { bench: 'pk2_bench', pk_lamp: 'pk2_lamp', bin: 'pk2_bin', pk_duck: 'pk2_mallard', pk_lily: 'pk2_lily', pk_reeds: 'pk2_cattails', pk_blanket: 'pk2_picnic' };
+const SWAP = { bench: 'pk2_bench', pk_lamp: 'pk2_lamp', bin: 'pk2_bin', pk_lily: 'pk2_lily', pk_reeds: 'pk2_cattails', pk_blanket: 'pk2_picnic' };
 export function build(C, B, ctx) {
   const prop = C.prop;
   C.prop = function (kind, x, z, o) { return prop.call(this, SWAP[kind] || kind, x, z, o); };

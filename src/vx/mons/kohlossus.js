@@ -19,7 +19,7 @@ const C = {
   heart: ['#f2f8d4', '#dcecb0', '#c4de92', '#a8ca78'],
   pale: ['#c8e69a', '#a8d47e', '#88bc66', '#6aa252'],
   wax: ['#8cc08e', '#6aa478', '#4e8a64', '#386e52'], rib: '#e6f4cc', vein: '#b8dca0',
-  fur: ['#fffaf0', '#f6ecd8', '#e8d8bc', '#ccb698'], pink: ['#ffc4d0', '#f49ab0', '#d87090'], tooth: '#fffef8',
+  fur: ['#fffdf6', '#fff4e0', '#f2dcc0', '#d8bc9c'], pink: ['#ffc4d0', '#f49ab0', '#d87090'], tooth: '#fffef8',
   ink: '#1e2a1a', line: '#2a1a12',
 };
 // ---------------------------------------------------------------- painting helpers
@@ -105,8 +105,8 @@ const tailP = shade(C.fur[0], { top: '#ffffff', bottom: C.fur[2], grain: 0.1 });
 const P = (o, s, tex, x = {}) => ({ o, s, tex, ...x });
 const ball = SPHERE.map(([a, b, c]) => P([BC[0] - BR[0] * a, BC[1] - BR[1] * b, BC[2] - BR[2] * c], [2 * BR[0] * a, 2 * BR[1] * b, 2 * BR[2] * c], bodyP));
 const FZ = BC[2] + BR[2] * 0.97 + 0.06;            // the face plane, just in front of the ball
-const EYES = eyeRig({ style: 'gen9', chunk: 1, shape: 'sharp', sclera: true, iris: '#f07a1a', irisDark: '#a83a0a', irisSize: 0.55, pupil: 'round', shine: 2, line: C.line, at: [-3.3, 13.1, FZ + 0.04], size: [3.8, 3.2] });
-const MOUTH = mouthRig({ at: [0, 8.4, FZ + 0.04], size: [4.6, 2.2], states: ['grit', 'frown', 'o', 'grin', 'flat', 'smile', 'wavy'], def: 'frown', line: C.line, inner: '#6a2a2a', tongue: '#f4889a', chunk: 1 });
+const EYES = eyeRig({ style: 'gen9', chunk: 1, shape: 'sharp', sclera: true, iris: '#f07a1a', irisDark: '#a83a0a', irisSize: 0.55, pupil: 'round', shine: 2, line: C.line, at: [-3.4, 13.0, FZ + 0.04], size: [4.6, 3.8] });
+const MOUTH = mouthRig({ at: [0, 7.4, FZ + 0.04], size: [6.0, 2.6], states: ['grit', 'frown', 'o', 'grin', 'flat', 'smile', 'wavy'], def: 'frown', line: C.line, inner: '#6a2a2a', tongue: '#f4889a', chunk: 1 });
 const EAR = (s) => {
   const x = s * 3.4, n = s < 0 ? 'R' : 'L';
   return [{ name: 'ear' + n, parent: 'body', pivot: [x, 19.4, -0.6], rot: [-8, 0, s * -12], cubes: [P([x - 2.5, 19.0, -1.4], [5.0, 13.6, 1.4], leafP(C.pale, { bite: s > 0 }), { faces: { up: leafP(C.heart), north: leafP(C.wax) } })] },
@@ -126,8 +126,8 @@ export const def = {
       P([-6.6, 5.6, FZ - 0.02], [13.2, 11.2, 0], faceOvalP, { plane: 'z', outline: false }),
       P([-10.8, 7.0, 3.2], [0, 4.2, 4.2], faceOvalP, { plane: 'x', outline: false }), P([10.8, 7.0, 3.2], [0, 4.2, 4.2], faceOvalP, { plane: 'x', outline: false }),
     ] },
-    { name: 'nose', parent: 'body', pivot: [0, 10.4, FZ], cubes: [P([-1.1, 9.7, FZ - 0.3], [2.2, 1.5, 1.0], pinkP)] },
-    { name: 'teeth', parent: 'body', pivot: [0, 8.0, FZ], cubes: [P([-1.25, 6.6, FZ - 0.1], [1.15, 1.6, 0.5], toothP), P([0.1, 6.6, FZ - 0.1], [1.15, 1.6, 0.5], toothP)] },
+    { name: 'nose', parent: 'body', pivot: [0, 10.4, FZ], cubes: [P([-1.2, 9.5, FZ - 0.3], [2.4, 1.6, 1.0], pinkP)] },
+    { name: 'teeth', parent: 'body', pivot: [0, 8.2, FZ], cubes: [P([-1.25, 6.9, FZ - 0.1], [1.15, 1.5, 0.45], toothP), P([0.1, 6.9, FZ - 0.1], [1.15, 1.5, 0.45], toothP)] },
     { name: 'mouth', parent: 'body', pivot: [0, 8.4, FZ], cubes: MOUTH.cubes },
     ...EYES.bones.map((b) => Object.assign(b, { parent: 'body' })),
     ...EAR(-1), ...EAR(1),
@@ -143,7 +143,7 @@ export const def = {
     // stubby paws; the left one holds the spare cabbage
     { name: 'armR', parent: 'body', pivot: [-9.6, 11.4, 2.0], rot: [0, 0, -12], cubes: [P([-13.4, 6.4, -0.4], [4.4, 6.6, 4.8], furP), P([-13.6, 5.6, 0.4], [4.0, 1.6, 4.0], padP)] },
     { name: 'armL', parent: 'body', pivot: [9.6, 11.4, 2.0], rot: [-20, 0, 12], cubes: [P([9.0, 6.4, -0.4], [4.4, 6.6, 4.8], furP), P([9.6, 5.6, 0.4], [4.0, 1.6, 4.0], padP)] },
-    { name: 'cab', parent: 'armL', pivot: [12, 5, 3.4], cubes: [P([8.6, 1.4, 1.4], [6.6, 6.0, 6.6], heldCab([8.6, 1.4, 1.4], [6.6, 6.0, 6.6]), { id: 'heldcab' })] },
+    { name: 'cab', parent: 'armL', pivot: [12, 5, 3.4], cubes: [P([8.6, 2.2, 2.2], [6.6, 4.4, 5.0], heldCab([8.6, 1.4, 1.4], [6.6, 6.0, 6.6]), { id: 'heldcab' }), P([9.4, 1.4, 1.4], [5.0, 6.0, 6.6], heldCab([8.6, 1.4, 1.4], [6.6, 6.0, 6.6]), { id: 'heldcab' }), P([9.4, 2.2, 0.6], [5.0, 4.4, 8.2], heldCab([8.6, 1.4, 1.4], [6.6, 6.0, 6.6]), { id: 'heldcab' })] },
   ],
   attach: {
     head: { bone: 'crown', at: [0, 21.4, 0], size: 12 },

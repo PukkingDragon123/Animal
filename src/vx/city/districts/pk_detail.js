@@ -1,7 +1,7 @@
 // Close-up detail props for Alamo Hill Park (pk2_*), 16 voxels per metre, registered into the shared PROPS table:
 // slatted benches with brass plaques, Victorian lamp posts with glass lanterns, slatted bins, flower beds of
 // individual tulips / daisies / lavender / marigolds, stepping stones, pond-edge stones, cattails, flowering lily
-// pads, mallards and ducklings, a picnic blanket laid for lunch, a carved park sign and the gazebo.
+// pads, a picnic blanket laid for lunch, a carved park sign and the gazebo.
 // Every kind faces +z (south) at yaw 0 (the benches, like the stock bench, seat their sitter facing −z).
 import { PROPS } from '../voxprops.js';
 import { GLOW } from '../../fine.js';
@@ -88,7 +88,7 @@ add('pk2_marigold', { size: [16, 8, 16], r: 0, noShadow: true, build(F, r) {
     for (let i = 0; i < 9; i++) { const x = 2 + (i % 3) * 5 + Math.floor(r() * 2), z = 2 + Math.floor(i / 3) * 5 + Math.floor(r() * 2); F.box(x - 2, 1, z - 2, x + 2, 3, z + 2, L[i & 1]); F.box(x - 1, 4, z - 1, x + 1, 5, z + 1, O[i % 4]); F.set(x, 6, z, O[(i + 1) % 4]); } });
 } });
 
-// ---------------------------------------------------------------- pond: stones, cattails, lily pads, ducks; stepping stones
+// ---------------------------------------------------------------- pond: stones, cattails, lily pads; stepping stones
 add('pk2_step', { size: [14, 2, 12], r: 0, noShadow: true, build(F, r) {
   const S = pal(F, ['#a8a298', '#b8b2a6', '#98928a', '#c4beb2']), moss = F.c('#6a8a3a');
   for (let z = 0; z < 12; z++) for (let x = 0; x < 14; x++) { const d = Math.hypot((x - 6.5) / 6.6, (z - 5.5) / 5.4) + (h3(x >> 1, 1, z >> 1) - 0.5) * 0.25; if (d > 1) continue; F.box(x, 0, z, x, d < 0.75 ? 1 : 0, z, d > 0.85 && h3(x, 2, z) < 0.3 ? moss : S[(h3(x >> 2, 0, z >> 2) * 4) | 0]); }
@@ -113,23 +113,6 @@ add('pk2_lily', { size: [40, 2, 40], r: 0, noShadow: true, build(F, r) {
     if (i % 3 === 0) { const fx = Math.round(cx), fz = Math.round(cz), f = fl[i % 3]; F.set(fx, 1, fz, y); F.set(fx - 1, 1, fz, f); F.set(fx + 1, 1, fz, f); F.set(fx, 1, fz - 1, f); F.set(fx, 1, fz + 1, f); }
   }
 } });
-// a mallard drake (and a hen, and ducklings), floating — the waterline sits at y 1
-add('pk2_mallard', { size: [8, 9, 14], r: 0, build(F) {
-  const head = F.c('#1e6a3e'), head2 = F.c('#2a8a4e'), ring = F.c('#f4f0e8'), chest = F.c('#6a3a2a'), body = F.c('#9a9a94'), body2 = F.c('#b0aea6'), tail = F.c('#2a2a30'), wing = F.c('#5a6a8a'), bill = F.c('#e8c040'), eye = F.c('#101010');
-  F.box(1, 0, 2, 6, 3, 10, body); F.box(2, 4, 3, 5, 4, 9, body2); F.box(1, 2, 4, 1, 3, 8, wing); F.box(6, 2, 4, 6, 3, 8, wing);
-  F.box(2, 1, 10, 5, 4, 11, chest); F.box(2, 2, 0, 5, 4, 1, tail); F.set(3, 5, 0, tail);
-  F.box(2, 5, 10, 5, 5, 11, ring); F.box(2, 6, 10, 5, 8, 12, head); F.box(3, 8, 11, 4, 8, 12, head2); F.box(3, 6, 13, 4, 7, 13, bill); F.set(2, 7, 12, eye); F.set(5, 7, 12, eye);
-} });
-add('pk2_hen', { size: [8, 8, 13], r: 0, build(F) {
-  const b = pal(F, ['#8a6a48', '#a0805a', '#6a5038']), bill = F.c('#d88a2a'), eye = F.c('#101010'), sp = F.c('#3a5aa0');
-  F.box(1, 0, 2, 6, 3, 9, (x, y, z) => b[(x + z + y) % 3]); F.box(2, 4, 3, 5, 4, 8, b[1]); F.box(1, 2, 4, 1, 2, 7, sp); F.box(6, 2, 4, 6, 2, 7, sp);
-  F.box(2, 1, 0, 5, 3, 1, b[2]); F.box(2, 4, 9, 5, 7, 11, b[0]); F.box(3, 5, 12, 4, 6, 12, bill); F.set(2, 6, 11, eye); F.set(5, 6, 11, eye);
-} });
-add('pk2_ducklings', { size: [20, 5, 16], r: 0, noShadow: true, build(F) {
-  const y = pal(F, ['#e8c850', '#d8b040', '#8a6a3a']), bill = F.c('#d88a2a'), eye = F.c('#101010');
-  [[3, 3], [9, 6], [14, 4], [7, 11]].forEach(([x, z], i) => { F.box(x, 0, z, x + 2, 1, z + 3, y[i % 2]); F.box(x, 2, z + 3, x + 2, 3, z + 4, y[(i + 1) % 2]); F.set(x + 1, 2, z + 5, bill); F.set(x, 3, z + 4, eye); F.set(x + 2, 3, z + 4, eye); F.set(x + 1, 2, z, y[2]); });
-} });
-
 // ---------------------------------------------------------------- picnic blanket laid for lunch
 add('pk2_picnic', { size: [40, 8, 32], r: 0, build(F, r) {
   const a = F.c('#c83a3a'), b = F.c('#f4ece0'), c = F.c('#e88080'), fr = F.c('#f4ece0');
