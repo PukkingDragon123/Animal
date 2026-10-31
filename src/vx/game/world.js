@@ -13,6 +13,7 @@ import { NavGrid, pick } from './nav.js';
 import { Fine } from '../fine.js';
 import { CityControl } from '../city/control.js';
 import { castHuman } from '../people/human.js';
+import { CityLife } from './life.js';   // [life] Tokonmon living in the city (see life.js)
 
 const MON_DEFS = {};
 // a species' model; variants like 'barkorious_forced' fall back to their base model, unknown ones to Chilichick
@@ -121,11 +122,13 @@ export class VxWorld {
     for (const h of this.hotspots) if (h.spotAt) { const p = this.spot(h.spotAt); h.at = [p[0], (p[3] ?? this.ground(p[0], p[1])) + 1.4, p[1]]; h.walk = [p[0], p[1]]; }
     this.ready = true;
     if (sc.city) for (const n of sc.city.npcs) { const a = this.addPerson(n.id, n.who || n.id, [n.x, n.z, n.yaw || 0, (n.L || 0) * 3]); if (n.clip) a.play(n.clip, { fade: 0 }); a.npc = n; }
+    if (sc.city) this.life = new CityLife(this, sc.city);   // [life] started by spawnLife()
     if (o.life !== false) this.spawnLife(L.life || []).catch((e) => console.warn('life', e));
     return sc;
   }
   clear() {
     const st = this.st;
+    if (this.life) { this.life.dispose(); this.life = null; }   // [life]
     if (this.city) { this.city.dispose(); this.city = null; }
     for (const a of this.actors.values()) st.actors.remove(a.g);
     this.actors.clear();
@@ -238,6 +241,7 @@ export class VxWorld {
         a.life = { lane: pts, walker: true }; a.speed = 1.1 + r() * 0.5;
       }
     }
+    if (this.city && this.life) this.life.start();   // [life] the city's Tokonmon (after the walkers, so some get partners)
   }
   thinkLife(a, dt) {
     const L = a.life; if (!L || a.path) return;
@@ -270,6 +274,7 @@ export class VxWorld {
     const look = this.st.cam.position;
     this.thinkChatter(dt);
     if (this.city) this.city.update(dt);
+    if (this.life) this.life.update(dt);   // [life] LOD + behaviours (far residents are frozen and detached)
     for (const a of [...this.actors.values()]) { if (a.life) { if (a.life.walker && !a.path && !a.started) { a.started = true; a.walkTo(a.life.lane.slice(1)); } else this.thinkLife(a, dt); } a.update(dt, { fx: this.fx, look }); }
     this.fx.update(dt);
     this.thinkFollow(dt);

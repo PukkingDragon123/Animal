@@ -6,6 +6,7 @@ import { T } from '../../px/game/ui.js';
 import * as S from '../../game/state.js';
 import { LOCATIONS } from './locations.js';
 import { SPECIES } from '../../data/species.js';
+import { view } from './cinema.js';
 
 const STARTERS = ['chilichick', 'bubblion', 'strawbaa'];
 export class Story {
@@ -47,7 +48,14 @@ export class Story {
   async titleScreen() {
     const app = this.app, w = app.world;
     await w.load('city', { mood: 'night', life: false });
-    w.setCam({ target: [150, 2, 70], dist: 95, yaw: 45, pitch: 32 }); w.drift = 1;
+    w.setCam({ target: [150, 2, 70], dist: 95, yaw: 45, pitch: 32 }); w.drift = 0;
+    // the backdrop: a slow, looping flyover of the city at night (the director's rig; no bars)
+    const cin = app.cinema;
+    if (cin) cin.flyover([
+      { target: [150, 2, 70], dist: 95, yaw: 45, pitch: 30 }, { target: [186, 4, 64], dist: 70, yaw: 80, pitch: 24 },
+      { target: [160, 2, 22], dist: 80, yaw: 150, pitch: 28 }, { target: [96, 2, 40], dist: 105, yaw: 200, pitch: 34 },
+      { target: [62, 3, 140], dist: 85, yaw: 300, pitch: 30 }, { target: [140, 2, 150], dist: 90, yaw: 10, pitch: 32 },
+    ], { seg: 14 });
     const cc = await w.addMon('t-cc', 'chilichick', [w.spot('square')[0], w.spot('square')[1], 0], { clip: 'sleep' });
     void cc;
     this.title = { t: 0, hasSave: S.hasSave() };
@@ -57,7 +65,18 @@ export class Story {
     const pick = await new Promise((r) => { this.title.pick = r; });
     this.title = null; artP.then((a) => a && a.remove());
     if (pick === 'continue') { this.loadSave(); await this.run(() => this.resume()); }
-    else await this.run(() => this.opening());
+    else await this.run(async () => { await this.newGameSwoop(); await this.opening(); });
+  }
+  // NEW GAME: the bars slide in and the night camera dives toward Sunset Row before the screen goes dark
+  async newGameSwoop() {
+    const app = this.app, cin = app.cinema; if (!cin) return;
+    if (app.audio.sfx) app.audio.sfx('whoosh', { vol: 0.8, pitch: 0.8 });
+    await cin.begin();
+    const dive = cin.move(view([64, 3, 148], 26, 330, 24), { dur: 2.4, ease: (t) => t * t * (3 - 2 * t) });
+    await app.wait(1500 * cin.k);
+    await app.fade(1, 700 * cin.k);
+    await dive;
+    await cin.end({ release: false });
   }
   drawTitle(ui, dt) {
     const T_ = this.title; T_.t += dt; const W = ui.w, H = ui.h, a = Math.min(1, T_.t / 1.5);
@@ -176,10 +195,22 @@ export class Story {
     await w.shot(w.loc.view || w.sc.view, 2.2);
   }
   async resume() {
-    const app = this.app, M = app.state.map || {}, id = M.id === 'city' || !M.id ? 'city' : M.id;
+    const app = this.app, M = app.state.map || {}, id = M.id === 'city' || !M.id ? 'city' : M.id, cin = app.cinema;
     await app.fade(1, 300); await app.world.load(id);
     if (id === 'city') { const at = M.x !== undefined ? [M.x, M.z, 0, M.y] : app.world.spot('frontDoorOut'); await this.startRoam(at); }
-    await app.fade(0, 600);
+    // back in: a short crane down onto where you left off, a place card, then the follow camera takes over
+    const p = app.world.player;
+    if (cin && p) {
+      app.world.free = false;
+      await cin.begin({ bars: false });
+      const q = p.g.position;
+      await cin.cut({ target: q.clone().setY(q.y + 1), dist: 48, yaw: 20, pitch: 55 });
+      const down = cin.move({ target: q.clone().setY(q.y + 1), dist: 18, yaw: 40, pitch: 34 }, { dur: 2.6 });
+      await app.fade(0, 600);
+      await down;
+      await cin.end({ dur: 1.0 });
+      app.world.roam(true);
+    } else await app.fade(0, 600);
     this.objective = app.state.flags.alamo_done ? 'Explore the city' : 'Open the map and go to Alamo Square';
   }
   // first visits

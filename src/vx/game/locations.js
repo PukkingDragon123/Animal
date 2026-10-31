@@ -7,12 +7,13 @@ export const LOCATIONS = {
     name: 'San Francisco', scene: 'city', mood: 'day', map: [0.5, 0.5], blurb: 'The whole city on foot.',
     // the third-person follow camera (src/vx/city/control.js): distance m, pitch °, look-at height m, lens °, look-ahead s;
     // indoor: the closer, steeper framing inside buildings. The yaw is yours (orbit) and eases back behind you as you walk.
-    follow: { dist: 8.4, pitch: 20, h: 1.35, fov: 42, lead: 0.32, indoor: { dist: 6.4, pitch: 42, h: 1.0, fov: 42, lead: 0.1 } },
+    // Close by default (a street-level view; zoom 3.5–10 m with the wheel / pinch / + -).
+    follow: { dist: 5.2, pitch: 17, h: 1.3, fov: 42, lead: 0.28, indoor: { dist: 5.0, pitch: 40, h: 1.0, fov: 42, lead: 0.1 } },
     spots: {},
-    // passers-by walking the avenue sidewalks; pigeons strutting in the park
+    // passers-by walking the avenue sidewalks (some with a partner at their heel). The city's Tokonmon (pets,
+    // helpers, wild ones, birds…) live in src/vx/game/life.js: baked, LOD'd and spawned district by district.
     life: [
       { kind: 'person', n: 12, lanes: [[[3, 31], [101, 31]], [[119, 31], [227, 31]], [[3, 99.2], [101, 99.2]], [[119, 99.2], [227, 99.2]], [[3, 109], [101, 109]], [[119, 109], [227, 109]], [[105, 35], [105, 95]], [[115, 113], [115, 177]]] },
-      { kind: 'mon', species: ['pidgun', 'pidrose'], n: 4, area: [40, 60, 64, 76], fidget: 'fidget' },
     ],
   },
   chinatown: {

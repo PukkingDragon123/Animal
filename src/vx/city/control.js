@@ -18,10 +18,11 @@ const ACC = 16, ACC_RUN = 6.5, DEC = 20, TURN = 11, TURN_RUN = 7.5;
 // framing: distance (m), pitch (°), look-at height above the feet (m), vertical lens (°), look-ahead (s of velocity)
 // LOCATIONS.city.follow overrides these ({ ..., indoor: { ... } })
 export const FRAME = {
-  out: { dist: 8.4, pitch: 20, h: 1.35, fov: 42, lead: 0.32 },
-  in: { dist: 6.4, pitch: 42, h: 1.0, fov: 42, lead: 0.1 },
+  out: { dist: 5.2, pitch: 17, h: 1.3, fov: 42, lead: 0.28 },
+  in: { dist: 5.0, pitch: 40, h: 1.0, fov: 42, lead: 0.1 },
 };
-const ZMIN = 0.62, ZMAX = 1.5, MIN_D = 2.4, D2R = Math.PI / 180, FH = 3;
+// zoom multiplies the distance: 3.5 m in to 10 m out outdoors (zooming out also tilts the camera down a little)
+const ZMIN = 0.67, ZMAX = 1.92, MIN_D = 2.0, D2R = Math.PI / 180, FH = 3;
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const kexp = (dt, r) => 1 - Math.exp(-dt * r);
 const ease = (t) => t * t * (3 - 2 * t);
@@ -286,7 +287,7 @@ export class CityControl {
   cutaway(dt, p) {
     const inside = this.inside, L = this.L, cam = this.camPos(_s), t = this.w.cam.target;
     // what must stay in view: the player head to toe (unless a cutscene looks elsewhere), and whatever the camera looks at
-    const pts = Math.hypot(p.x - t.x, p.z - t.z) < 12 ? [[p.x, p.y + 1.6, p.z], [p.x, p.y + 0.4, p.z], [t.x, t.y, t.z]] : [[t.x, t.y, t.z]];
+    const pts = Math.hypot(p.x - t.x, p.z - t.z) < 12 ? [[p.x, p.y + 1.6, p.z], [p.x, p.y + 0.9, p.z], [t.x, t.y, t.z]] : [[t.x, t.y, t.z]];
     if (this.cutB !== inside) { const P = this.c.buildings[this.cutB]; if (P && P.cut) uncut(P, this.c.doors); this.cutB = inside; }
     for (const B of this.c.buildings) {
       if (!B.groups) continue;

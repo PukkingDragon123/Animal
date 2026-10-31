@@ -143,6 +143,8 @@ export class Cinema {
     let face = NaN;
     try { a.g.updateWorldMatrix(true, true); face = a.headPos(_a).y - a.g.position.y - (a.kind === 'mon' ? 0.22 : 0.24); } catch (e) { /* not posed yet */ }
     if (!(face > 0.2 && face < 14)) face = a.kind === 'mon' ? 0.55 : 1.5;
+    // just sat down: the hips are still on their way onto the seat
+    const an = a.anim; if (an && an.c && an.c.sit && (an.sitK ?? 1) < 0.9) face -= 0.47 * (1 - (an.sitK ?? 1));
     return at === 'chest' ? face * 0.78 : at === 'waist' ? face * 0.62 : at === 'feet' ? 0.15 : at === 'top' ? face + 0.3 : face;
   }
   /** how tall an actor stands (m) — close-ups of a big Tokonmon step back */

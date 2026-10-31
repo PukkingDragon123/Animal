@@ -1,13 +1,13 @@
 # The walkable city
 
-The city is one seamless 230 × 180 m map. You walk it with direct control, survival-game style:
-- **Moving:** WASD or the arrows, with Shift to run. On touch screens, use the thumbstick on the left half.
-- **Interacting:** E, Enter or Space, or tap the prompt.
-- **Zooming:** the mouse wheel.
+The city is one seamless 230 × 180 m map. You walk it in third person, Pokémon Sword/Shield style:
+- **Moving:** WASD, the arrows or a gamepad's left stick, relative to the camera. Hold Shift or the pad's B (bottom) button to run. On touch screens, drag on the left half for the thumbstick (push it all the way to run), or tap the ground to walk there.
+- **Camera:** it follows close behind you (about 5 m, pitch about 17°) and eases back behind you while you walk forward. To orbit it, use Q / E, a mouse drag, the right stick, L / R or a drag on the right half of a touch screen. E orbits only when no prompt is showing. C (or ZL / a stick click) recentres it. Zoom from 3.5 to 10 m with the wheel, pinch or + / -.
+- **Interacting:** E, Enter, Space, the pad's A (right) button, or tap the prompt.
 
-The camera is isometric and looks from the south-east (yaw 45°, pitch 40°).
+When a building gets between the camera and you, the camera pulls in. Whatever is still in the way fades out. Indoors, the camera frames you closer and steeper. The roof and the storeys above you vanish. So do the outer walls on the camera's side and any inner wall between the camera and you, from any angle. The building is split into per-side and per-wall pieces the first time you enter it.
 
-When you're inside a building, its roof vanishes, along with the storeys above you and the walls facing the camera. Buildings standing between the camera and you fade out.
+Cutscenes take the camera with `world.shot()` / `setCam()` (a shot may set `fov`). The camera stays held until the story beat ends. Then the follow camera blends back in. Its framing lives in `LOCATIONS.city.follow` (`indoor` for interiors). The minimap and its compass turn with the camera.
 
 ## Files
 - `src/vx/scenes/city.js`: the master plan. It holds the avenues, the district rectangles and the zones for the avenues, and it calls each district.
