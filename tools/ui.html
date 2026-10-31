@@ -1,14 +1,14 @@
 <!doctype html><html><head><meta charset="utf-8"><title>ui</title>
 <style>
 html,body{margin:0;background:#1a120a;color:#f6ead0;font:12px monospace;overflow:hidden}
-#cv{display:block;image-rendering:pixelated;image-rendering:crisp-edges;cursor:pointer}
+#bgc{position:absolute;left:0;top:0;image-rendering:pixelated;image-rendering:crisp-edges}#cv{position:absolute;left:0;top:0;display:block;cursor:pointer}
 #nav{position:fixed;right:6px;bottom:4px;opacity:.55}#nav a{color:#ffcf5a;margin-left:6px}
 #err{position:fixed;left:0;top:0;color:#f66;white-space:pre;background:#000c}
-</style></head><body><canvas id="cv"></canvas><div id="nav"></div><div id="err"></div>
+</style></head><body><canvas id="bgc"></canvas><canvas id="cv"></canvas><div id="nav"></div><div id="err"></div>
 <script type="module">
 // UI kit gallery: ?screen=gallery|icons|hud|dialog|dialog2|prompts|name|cards|cards3|menu  &w=480&h=270&zoom=3&frames=90&bg=day|night&tab=party|bag|map|save|options|close
 window.onerror = (m, s, l) => { document.getElementById('err').textContent += m + ' @' + l + '\n'; };
-import { PixelUI, T } from '../src/px/game/ui.js';
+import { PixelUI, T, loadUIFont } from '../src/px/game/ui.js';
 import { BIG, SMALL } from '../src/px/game/uikit/icons.js';
 import { Surf } from '../src/px/surface.js';
 import { bayer, mix } from '../src/px/color.js';
@@ -20,10 +20,10 @@ import { Hud } from '../src/vx/game/hud.js';
 const q = new URLSearchParams(location.search);
 const screen = q.get('screen') || 'gallery';
 const W = +(q.get('w') || 480), H = +(q.get('h') || 270), Z = +(q.get('zoom') || 3);
-const cv = document.getElementById('cv'); cv.width = W; cv.height = H; cv.style.width = W * Z + 'px'; cv.style.height = H * Z + 'px';
-const ctx = cv.getContext('2d');
+const cv = document.getElementById('cv'); cv.style.width = W * Z + 'px'; cv.style.height = H * Z + 'px';
+const bgc = document.getElementById('bgc'); bgc.width = W; bgc.height = H; bgc.style.width = W * Z + 'px'; bgc.style.height = H * Z + 'px';
 document.getElementById('nav').innerHTML = ['gallery', 'icons', 'hud', 'dialog', 'dialog2', 'prompts', 'name', 'cards', 'cards3', 'menu'].map((s) => `<a href="?screen=${s}&w=${W}&h=${H}&zoom=${Z}">${s}</a>`).join('');
-const ui = new PixelUI(W, H);
+const ui = new PixelUI(W, H, { canvas: cv, pw: W * Z * (devicePixelRatio || 1), ph: H * Z * (devicePixelRatio || 1) });
 
 // ---------------------------------------------------------------- a fake "world" behind the UI: a sunny park (bg=night: the old night street)
 const bg = new Surf(W, H);
@@ -181,11 +181,8 @@ function frame(dt) {
   else if (hud) { app.t += dt; hud.draw(ui, dt); }
   ui.end();
 }
-function present() {
-  const img = ctx.createImageData(W, H), d32 = new Uint32Array(img.data.buffer), u = ui.s.data, b = bg.data;
-  for (let i = 0; i < d32.length; i++) { const v = u[i], a = v >>> 24; if (a === 255) { d32[i] = v; continue; } const w = b[i]; if (!a) { d32[i] = w; continue; } const k = a / 255; const r = (w & 255) * (1 - k) + (v & 255) * k, g = ((w >>> 8) & 255) * (1 - k) + ((v >>> 8) & 255) * k, bb = ((w >>> 16) & 255) * (1 - k) + ((v >>> 16) & 255) * k; d32[i] = (255 << 24 | bb << 16 | g << 8 | r) >>> 0; }
-  ctx.putImageData(img, 0, 0);
-}
+let bgDone = false;
+function present() { if (bgDone) return; bgDone = true; const img = bgc.getContext('2d').createImageData(W, H); new Uint32Array(img.data.buffer).set(bg.data); bgc.getContext('2d').putImageData(img, 0, 0); }
 // input (same mapping as the game)
 const p = ui.ptr;
 const pos = (e) => { const r = cv.getBoundingClientRect(); p.x = Math.floor(((e.clientX - r.left) / r.width) * W); p.y = Math.floor(((e.clientY - r.top) / r.height) * H); };
@@ -195,6 +192,7 @@ cv.addEventListener('pointerup', (e) => { pos(e); p.down = false; p.released = t
 addEventListener('keydown', (e) => { const k = e.key.length === 1 ? e.key.toLowerCase() : e.key; if (!e.repeat) ui.keys[k] = 'pressed'; });
 
 await setup();
+await loadUIFont();
 const N = +(q.get('frames') || 100);
 const t0 = performance.now();
 for (let i = 0; i < N; i++) frame(1 / 60);

@@ -6,7 +6,6 @@
 // walking: the game is told through camera shots and cutscenes; you travel with
 // the phone map and tap hotspots in each place.
 import * as THREE from '../../../vendor/three.module.js';
-import { HD2D } from '../../px/hd2d.js';
 import { VxStage } from '../stage.js';
 import { POST, setupStage } from '../render/look.js';
 import { PixelUI, T } from '../../px/game/ui.js';
@@ -37,14 +36,16 @@ export class VxApp {
   async boot() {
     this.view = document.getElementById('view'); this.uiCv = document.getElementById('ui');
     const touch = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;      // phones: a lighter shadow map
-    this.stage = new VxStage({ fov: 30, shadowSize: +(this.params.get('shadow') || (globalThis.TOKON_LITE ? 1024 : touch ? 2048 : 4096)) });
+    // the stage renders (and post-processes: render/composite.js) straight into the view canvas, in one WebGL context
+    this.stage = new VxStage({ canvas: this.view, fov: 30, shadowSize: +(this.params.get('shadow') || (globalThis.TOKON_LITE ? 1024 : touch ? 1536 : 2048)) });
     setupStage(this.stage, this.params);     // the realistic HD look (?look=toon: the old cel shading + ink)
     // if the GPU drops the context (out of memory on phones), reload in lite mode instead of dying
     this.view.addEventListener('webglcontextlost', (e) => { e.preventDefault(); const u = new URL(location.href); if (u.searchParams.get('lite') !== '1') { u.searchParams.set('lite', '1'); location.replace(u.href); } }, false);
-    this.post = new HD2D(this.view);
-    this.ui = new PixelUI(320, 180);
+    this.post = this.stage.post;             // the grade options (look.js POST); the cinema eases them
+    this.ui = new PixelUI(320, 180, { canvas: this.uiCv });          // the UI draws at the real screen resolution (see layout)
     const VOICES = { Coach: 'coach', 'Coach Gonda': 'coach', Kaito: 'rival', Mika: 'friend', Taro: 'kid', Riff: 'punk', Moshi: 'punk', Grandma: 'elder', 'Ms. Aoi': 'professor', '???': 'rival' };
     this.ui.voice = (name, ch) => { if (this.audio && this.audio.voice) this.audio.voice(VOICES[name] || 'friend', ch); };
+    this.ui.sfx = (id, o) => { if (this.audio && this.audio.sfx) this.audio.sfx(id, o); };                 // every button press clicks
     this.layout(); addEventListener('resize', () => this.layout());
     this.bindInput();
     try { const m = await import('../../audio/audio.js'); this.audio = m.audio || m.default || NO_AUDIO; } catch (e) { this.audio = NO_AUDIO; }
@@ -65,16 +66,22 @@ export class VxApp {
   // ------------------------------------------------------------------ layout & input
   layout() {
     const W = innerWidth, H = innerHeight, dpr = Math.min(2, devicePixelRatio || 1);
-    // render at native resolution (up to 2560 px); resK drops it a little when frames run slow (see loop)
-    const k = Math.min(dpr, (+(this.params.get('res') || 2560)) / Math.max(W, H)) * (this.resK || 1);
+    // the 3D view renders at the full canvas size × devicePixelRatio (capped at 2 on desktop, 1.5 on lite / phones, and
+    // within a pixel budget: 4K on desktop, ~2.3 MP on lite); ?res=N caps the long side at N px. resK only steps in
+    // when the frame rate truly collapses (see loop)
+    const lite = !!globalThis.TOKON_LITE, cap = Math.min(dpr, lite ? 1.5 : 2), budget = lite ? 2.3e6 : 8.3e6;
+    let k = Math.min(cap, Math.sqrt(budget / Math.max(1, W * H)));
+    if (this.params.get('res')) k = Math.min(k, +this.params.get('res') / Math.max(W, H));
+    k *= this.resK || 1;
     this.rw = Math.max(320, Math.round(W * k)); this.rh = Math.max(180, Math.round(H * k));
     this.view.width = this.rw; this.view.height = this.rh; this.view.style.width = W + 'px'; this.view.style.height = H + 'px';
     this.stage.setSize(this.rw, this.rh);
     const target = W >= H ? H / 270 : W / 240, S_ = Math.max(1, Math.round(target * dpr));
     this.vw = Math.ceil((W * dpr) / S_); this.vh = Math.ceil((H * dpr) / S_); this.scale = S_;
-    this.uiCv.width = this.vw; this.uiCv.height = this.vh;
-    this.uiCv.style.width = (this.vw * S_) / dpr + 'px'; this.uiCv.style.height = (this.vh * S_) / dpr + 'px';
-    this.ui.resize(this.vw, this.vh); this.uctx = this.uiCv.getContext('2d');
+    // the UI keeps its layout grid (vw × vh units) but draws at device resolution (up to 2× DPR): crisp text and panels
+    const ud = Math.min(2, devicePixelRatio || 1);
+    this.uiCv.style.width = W + 'px'; this.uiCv.style.height = H + 'px'; this.uiCv.style.imageRendering = 'auto';
+    this.ui.resize(this.vw, this.vh, Math.round(W * ud), Math.round(H * ud));
   }
   bindInput() {
     const cv = this.uiCv, p = this.ui.ptr;
@@ -91,13 +98,14 @@ export class VxApp {
   loop(now) {
     requestAnimationFrame(this.loop);
     const dt = Math.min(0.05, Math.max(0, (now - this.last) / 1000)); this.last = now; this.t += dt;
-    // adaptive resolution: average the frame time over 2 s; below ~40 fps step down 15% (to 55%), above ~57 fps step back up
-    if (!this.params.get('res')) { const P = this.perf || (this.perf = { n: 0, sum: 0 }); P.n++; P.sum += (now - (P.prev || now)) / 1000; P.prev = now;
-      if (P.sum > 2) { const avg = P.sum / P.n; P.n = 0; P.sum = 0; const k0 = this.resK || 1; let k1 = k0; if (avg > 1 / 40) k1 = Math.max(0.55, k0 * 0.85); else if (avg < 1 / 57 && k0 < 1) k1 = Math.min(1, k0 / 0.85); if (k1 !== k0) { this.resK = k1; this.layout(); } } }
+    // safety floor only: average the frame time over 3 s; if it stays under ~22 fps twice running, step the resolution
+    // down 10% (never below 70%); above ~50 fps step back up. (Headless / ?res=… runs never adapt.)
+    if (!this.params.get('res') && !navigator.webdriver) { const P = this.perf || (this.perf = { n: 0, sum: 0, slow: 0 }); P.n++; P.sum += (now - (P.prev || now)) / 1000; P.prev = now;
+      if (P.sum > 3) { const avg = P.sum / P.n; P.n = 0; P.sum = 0; const k0 = this.resK || 1; let k1 = k0; P.slow = avg > 1 / 22 ? P.slow + 1 : 0; if (P.slow >= 2) { k1 = Math.max(0.7, k0 * 0.9); P.slow = 0; } else if (avg < 1 / 50 && k0 < 1) k1 = Math.min(1, k0 / 0.9); if (k1 !== k0) { this.resK = k1; this.layout(); } } }
     try {
       this.world.update(this.cinema ? this.cinema.tick(dt) : dt);      // [cinema] the director first (hit-stop / slow motion scale the world's dt)
       if (this.battle && this.battle.active) this.battle.update(dt);
-      if (this.world.ready) { const frame = this.stage.render(); this.post.draw(frame, this.t); }
+      if (this.world.ready) this.stage.render();
       const ui = this.ui; ui.begin(dt);
       if (this.battle && this.battle.active) this.battle.drawUI(ui, dt);
       else this.world.drawUI(ui, dt);
@@ -112,7 +120,6 @@ export class VxApp {
       if (this.fadeA > 0.001) ui.fade(this.fadeA, '#0c0814');
       if (this.cinema) this.cinema.drawOver(ui, dt);                        // [cinema] flashes, veils, title / place / name cards, skip
       ui.end();
-      this.uctx.putImageData(new ImageData(new Uint8ClampedArray(ui.s.data.buffer), ui.w, ui.h), 0, 0);
     } catch (e) { if (!this._err) { this._err = true; console.error(e); const el = document.getElementById('err'); if (el) { el.style.display = 'block'; el.textContent = 'Frame: ' + (e.stack || e); } } }
   }
   // ------------------------------------------------------------------ services for the story

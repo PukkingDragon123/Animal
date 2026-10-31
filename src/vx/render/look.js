@@ -1,22 +1,21 @@
-// The look: how the stage is styled and how the HD-2D pass finishes each mood. The realistic HD look is
-// the default; ?look=toon brings back the old cel shading with ink outlines for comparison, ?ao=0 turns
-// the ambient occlusion off, ?dof=0 the close camera's depth of field. Every asset wears a warm dark ink
-// outline (silhouettes + strong creases, render/composite.js): ?ink=0 turns it off, ?ink=0.5 halves it,
-// ?inkw=2 sets its width in pixels.
-// POST (per mood) feeds src/px/hd2d.js: tilt-shift focus band / blur, bloom (strength, threshold, wide
-// share), god rays, vignette, and the grade: saturation, contrast, split toning (shadow / highlight tints),
-// warmth, a night blue shift and the lift of the blacks; vibrance lifts muted colours without pushing vivid ones.
+// The look: how the stage is styled and how each mood is graded. The realistic HD look is the default
+// (render/composite.js: AgX tone mapping, a neutral grade); ?look=toon brings back the old cel shading with ink
+// outlines for comparison, ?ao=0 turns the ambient occlusion off, ?tone=aces|neutral swaps the tone curve,
+// ?msaa=0|4 and ?fxaa=1 force the anti-aliasing.
+// POST (per mood) is a light-touch, natural grade: bloom (strength, threshold in scene-referred units), saturation,
+// a gentle S-curve, white balance (multipliers before the tone curve), a hint of vignette and black lift. The
+// cutscene director eases these keys (cinema.js); the keys it knows from the old HD-2D pass are simply ignored.
 export const POST = {
-  day: { focus: 0.5, band: 0.27, dof: 0.62, bloom: 0.28, threshold: 0.86, wide: 0.45, rays: 0.03, vig: 0.26, warm: 0.38, sat: 1.16, vibe: 0.36, contrast: 1.06, night: 0, shadowTint: [0.97, 0.97, 1.03], highTint: [1.05, 1.02, 0.95], lift: 0.008 },
-  golden: { focus: 0.5, band: 0.27, dof: 0.62, bloom: 0.38, threshold: 0.8, wide: 0.55, rays: 0.06, vig: 0.3, warm: 0.48, sat: 1.14, vibe: 0.32, contrast: 1.07, night: 0, shadowTint: [0.96, 0.95, 1.04], highTint: [1.07, 1.01, 0.91], lift: 0.01 },
-  dusk: { focus: 0.5, band: 0.27, dof: 0.62, bloom: 0.62, threshold: 0.64, wide: 0.62, rays: 0, vig: 0.34, warm: 0.4, sat: 1.12, vibe: 0.3, contrast: 1.06, night: 0.02, shadowTint: [0.95, 0.94, 1.05], highTint: [1.1, 1.01, 0.9], lift: 0.014 },
-  night: { focus: 0.5, band: 0.27, dof: 0.62, bloom: 0.78, threshold: 0.6, wide: 0.68, rays: 0, vig: 0.34, warm: 0.42, sat: 1.12, vibe: 0.3, contrast: 1.05, night: 0.03, shadowTint: [0.93, 0.95, 1.08], highTint: [1.12, 1.02, 0.86], lift: 0.02 },
+  day: { bloom: 0.1, threshold: 1.6, sat: 1.06, contrast: 0.14, wb: [1.0, 1.0, 1.0], vig: 0.16, lift: 0 },
+  golden: { bloom: 0.14, threshold: 1.4, sat: 1.05, contrast: 0.14, wb: [1.02, 1.0, 0.97], vig: 0.2, lift: 0 },
+  dusk: { bloom: 0.2, threshold: 1.1, sat: 1.04, contrast: 0.12, wb: [1.0, 0.99, 1.01], vig: 0.24, lift: 0.004 },
+  night: { bloom: 0.28, threshold: 0.9, sat: 1.0, contrast: 0.1, wb: [0.96, 0.99, 1.06], vig: 0.26, lift: 0.006 },
 };
 
 /** style the stage from the URL parameters (the realistic HD look unless ?look=toon) */
 export function setupStage(stage, params = new URLSearchParams()) {
   if (params.get('look') === 'toon') { stage.setStyle({ ink: true, toon: true, inkCrease: 0.03 }); return stage; }
   const num = (k, d) => (params.get(k) === null ? d : +params.get(k));
-  stage.setStyle({ hd: true, ao: num('ao', 1), inkA: num('ink', 1), inkW: params.get('inkw') === null ? undefined : +params.get('inkw'), haze: num('haze', 1), pools: num('pools', 1), dof: num('dof', globalThis.TOKON_LITE ? 0 : 1) });
+  stage.setStyle({ hd: true, ao: num('ao', 1), haze: num('haze', 1), pools: num('pools', 1), tone: params.get('tone') || 'agx', msaa: params.get('msaa') === null ? undefined : +params.get('msaa'), fxaa: params.get('fxaa') === null ? undefined : params.get('fxaa') === '1' });
   return stage;
 }

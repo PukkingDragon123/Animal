@@ -417,31 +417,14 @@ export function batchSolids(C) {
     for (const p of [a, b, c]) { T.P.push(p[0], p[1], p[2]); T.N.push(n[0], n[1], n[2]); T.C.push(k.r, k.g, k.b); }
     T.I.push(base, base + 1, base + 2); return this;
   };
-  return (B) => {
+  // the batches go to the builder: finalize() turns each into a vertex-coloured mesh in its group (and the static
+  // merge, city/merge.js, folds the outdoor ones into its tiles)
+  return () => {
     C.box = orig; C.quad = oq; C.tri = ot;
-    let done = false;
-    C.updaters.push(() => {
-      if (done) return;
-      // the city root: from the given building, or from any building's storey-0 group
-      const any = (B && B.groups && B.groups[0] && (B.groups[0].in || B.groups[0].front)) || C.buildings.map((b) => b.groups && b.groups[0] && (b.groups[0].front || b.groups[0].back)).find(Boolean);
-      if (!any) return;
-      done = true;
-      const root = any.parent, mat = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide });
-      for (const [gk, a] of acc) {
-        const g = new THREE.BufferGeometry();
-        g.setAttribute('position', new THREE.Float32BufferAttribute(a.P, 3)); g.setAttribute('normal', new THREE.Float32BufferAttribute(a.N, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(a.C, 3));
-        g.setIndex(a.I); g.computeBoundingSphere();
-        const m = new THREE.Mesh(g, gk === 'ground' ? mat : mat.clone()); m.castShadow = gk !== 'ground'; m.receiveShadow = true; m.name = gk + ':solids';
-        let grp = root.getObjectByName(gk); if (!grp) { grp = new THREE.Group(); grp.name = gk; root.add(grp); }
-        grp.add(m);
-      }
-      // a structure built only from solid boxes had no group at finalize: hand its new groups to the cutaway
-      const byName = new Map(); for (const c of root.children) byName.set(c.name, c);
-      for (const b of C.buildings) {
-        if (!b.groups) continue;
-        b.groups.forEach((G, k) => { for (const part of ['front', 'back', 'in']) if (!G[part] && byName.has(b.gk(k, part))) G[part] = byName.get(b.gk(k, part)); });
-        if (!b.roofG && byName.has(`b${b.id}:roof`)) b.roofG = byName.get(`b${b.id}:roof`);
-      }
-    });
+    const SB = C.solidBatches || (C.solidBatches = new Map());
+    for (const [gk, a] of acc) {
+      const t = SB.get(gk); if (!t) { SB.set(gk, a); continue; }
+      const base = t.P.length / 3; for (let i = 0; i < a.P.length; i++) { t.P.push(a.P[i]); t.N.push(a.N[i]); t.C.push(a.C[i]); } for (const i of a.I) t.I.push(i + base);
+    }
   };
 }

@@ -1,16 +1,17 @@
-// Pixel icons, two sizes:
-//  • small: 7×7 single-colour glyphs (rows of bits) drawn with an automatic bevel
-//    (lit top edges, shaded bottom edges) and a 1px drop shadow — what ui.icon()
-//    has always drawn, so every existing layout keeps its spacing.
-//  • big: ~12×12 full-colour pixel art. Masks are authored WITHOUT outline: the
-//    renderer adds the 1px ink outline and auto-shades each colour region
-//    (top edges lit, bottom/right edges shaded) so the set stays consistent.
-//    Mask letters: '.' empty · 'o' ink · 'w' white · '*' soft light (no outline)
-//    b/B tint + its dark · a/A secondary + dark · fixed colours (lower = auto-shaded,
-//    UPPER = dark tone): r red, y gold, c cyan, g green, n wood, k dark plum,
-//    m metal, l paper, p pink, s skin, v violet, f coral, e blue.
+// Pixel-art icons, drawn as crisp sprite canvases scaled to whole physical pixels:
+//  • small: 7×7 single-colour glyphs with an automatic bevel and a 1 px drop shadow (ui.icon)
+//  • big: ~12 px full-colour pixel art in a 12-unit box (ui.bigIcon). Where a detailed icon exists in
+//    icons16.js (HQ) it is drawn instead, at about 3 screen pixels per art pixel on a 1080p screen.
+//    Masks are authored WITHOUT the outline: the renderer adds the ink outline, auto-shades every
+//    colour region (lit top edges, shaded bottom edges) and bakes a soft drop shadow.
+//    BIG mask letters: "." empty, "o" ink, "w" white, "*" soft light, b/B tint + dark, a/A secondary,
+//    fixed colours (lower = auto-shaded, UPPER = dark tone): r red, y gold, c cyan, g green, n wood,
+//    k dark plum, m metal, l paper, p pink, s skin, v violet, f coral, e blue.
+//  • emblems: an icon upscaled with Scale2x into a smooth sticker (ink + white rims)
 import { P } from '../../surface.js';
-import { T, sh, mx } from './theme.js';
+import { HQ, HQ_ALIAS } from './icons16.js';
+import { pixelCanvas } from './gfx.js';
+import { T, sh, mx, pa } from './theme.js';
 
 const b = (...rows) => rows.map((r) => parseInt(r, 2));
 export const SMALL = {
@@ -137,85 +138,166 @@ function transpose(m) { const W = Math.max(...m.map((r) => r.length)); const out
 // aliases (names callers may use)
 const ALIAS = { magnify: 'zoom', camera: 'eye', move: 'dpad', team: 'party', chat: 'talk', examine: 'eye', use: 'hand', run: 'shoe', exclamation: 'exclaim', options: 'gear', settings: 'gear', close: 'cross', quest: 'star', money: 'coin', location: 'pin', home: 'house', bond: 'link', food: 'bowl', computer: 'pc', note: 'music', time: 'clock', night: 'moon', day: 'sun', arrows: 'dpad', keys: 'dpad', weather: 'cloud' };
 export const iconName = (n) => (BIG[n] || SMALL[n] ? n : ALIAS[n] || n);
-export const ICON_NAMES = [...new Set([...Object.keys(BIG), ...Object.keys(SMALL)])];
+export const ICON_NAMES = [...new Set([...Object.keys(HQ), ...Object.keys(BIG), ...Object.keys(SMALL)])];
+
 
 const FIXED = {
   r: '#ff5a64', y: '#ffcf5a', c: '#5fd8e8', g: '#6fd36a', n: '#b07040', k: '#5a3a22', m: '#b8aa98', l: '#f4ead8', p: '#ff8ab8', s: '#ffd2b0', v: '#9b7cf0', f: '#ff8a6a', e: '#4a7ae8',
 };
+const FIX16 = {
+  r: '#ff4d5e', f: '#ff8a3a', y: '#ffd23a', g: '#5fd84a', c: '#3ad8f0', e: '#4a7aff', v: '#a07aff', p: '#ff8ac8', n: '#c07a44', l: '#fff4d8', k: '#3a3a5a', m: '#c8cce0', s: '#ffd0a8',
+};
+export const hqName = (n) => (HQ[n] ? n : HQ_ALIAS[n] && HQ[HQ_ALIAS[n]] ? HQ_ALIAS[n] : null);
 
-// ---------------------------------------------------------------- drawing
-// small icon: auto-bevelled single colour + optional 1px drop shadow
-export function drawSmall(s, name, x, y, c = T.text, shadow = T.ink) {
-  const g = SMALL[name] || SMALL[ALIAS[name]];
-  if (!g) { if (BIG[iconName(name)]) drawBig(s, name, x - 2, y - 2, c, { outline: true }); return; }
-  x |= 0; y |= 0;
-  const on = (r, k) => r >= 0 && r < 7 && k >= 0 && k < 7 && (g[r] & (1 << (6 - k)));
-  if (shadow) { const sv = P(shadow); for (let r = 0; r < 7; r++) for (let k = 0; k < 7; k++) if (on(r, k)) px(s, x + k + 1, y + r + 1, sv); }
-  const lit = P(sh(c, 0.9)), base = P(c), dark = P(sh(c, -0.7));
-  for (let r = 0; r < 7; r++) for (let k = 0; k < 7; k++) {
-    if (!on(r, k)) continue;
-    const up = !on(r - 1, k), dn = !on(r + 1, k);
-    px(s, x + k, y + r, up && !dn ? lit : dn && !up ? dark : base);
-  }
-}
-function px(s, x, y, v) { if (x >= 0 && y >= 0 && x < s.w && y < s.h) s.data[y * s.w + x] = v; }
-
-// big icon. o: { scale, outline (default true), shadow (default true), tint2, dim (0..1 desaturate toward panel) }
-const bigCache = new Map();
-function compile(name, c, a, dim) {
-  const key = name + '|' + c + '|' + a + '|' + dim;
-  let out = bigCache.get(key);
-  if (out) return out;
-  const I = BIG[name]; const m = I.m;
-  const H = m.length, W = Math.max(...m.map((r) => r.length));
+// ---------------------------------------------------------------- compile a mask into a packed-colour grid
+// returns { w, h, cells: Uint32Array (w×h incl. a 1 px outline ring), solid: Uint8Array }
+const gridCache = new Map();
+function compileGrid(m, pal, c, a, dim, hq) {
+  const H = m.length, W = Math.max(...m.map((r) => r.length)), w = W + 2, h = H + 2;
   const at = (i, j) => (j >= 0 && j < H && i >= 0 && i < W ? m[j][i] || '.' : '.');
   const solid = (ch) => ch !== '.' && ch !== '*';
   const colorful = (ch) => solid(ch) && ch !== 'o';
+  const dimC = (col) => (dim ? mx(col, '#8088b0', dim) : col);
   const tone = (ch) => {
     const lo = ch.toLowerCase();
-    if (ch === 'h') { const hc = dim ? mx(sh(c, 0.9), '#7a5a40', dim) : sh(c, 0.9); return [hc, hc, hc]; }
-    let base = lo === 'b' ? c : lo === 'a' ? a : FIXED[lo] || c;
-    if (dim) base = mx(base, '#7a5a40', dim);
-    return ch !== lo ? [sh(base, -1.6), sh(base, -1.2), sh(base, -0.8)] : [sh(base, -0.75), base, sh(base, 0.85)];
+    if (ch === 'h') { const hc = hq ? '#ffffff' : sh(c, 0.9); return [hc, hc, hc]; }
+    const base = dimC(lo === 'b' ? c : lo === 'a' ? a : pal[lo] || c);
+    return ch !== lo ? [sh(base, -1.5), sh(base, -1.1), sh(base, -0.8)] : [sh(base, -0.7), base, sh(base, 0.8)];
   };
-  // canvas with a 1px border for the outline
-  const cells = [];
+  const cells = new Uint32Array(w * h), out = new Uint8Array(w * h), ink = P(T.ink);
   for (let j = -1; j <= H; j++) for (let i = -1; i <= W; i++) {
-    const ch = at(i, j);
+    const ch = at(i, j), k = (j + 1) * w + (i + 1);
     let col = null;
     if (ch === 'o') col = T.ink;
-    else if (ch === 'w') col = dim ? mx('#ffffff', '#b89a78', dim) : '#ffffff';
-    else if (ch === '*') col = dim ? '#9a7a58' : '#fff0d0';
+    else if (ch === 'w') col = dimC('#ffffff');
+    else if (ch === '*') col = dim ? '#a0a8c8' : '#fff6d8';
     else if (colorful(ch)) {
-      const [d, bb, l] = tone(ch);
-      const up = !colorful(at(i, j - 1));
-      const dn = !colorful(at(i, j + 1));
-      const rt = !colorful(at(i + 1, j));
+      const [d, bb, l] = tone(ch), up = !colorful(at(i, j - 1)), dn = !colorful(at(i, j + 1)), rt = !colorful(at(i + 1, j));
       col = up && !dn ? l : dn && !up ? d : rt && !up ? d : bb;
-    } else if (!solid(ch)) {
-      // outline: empty cell 4-adjacent to a coloured cell
-      if (colorful(at(i - 1, j)) || colorful(at(i + 1, j)) || colorful(at(i, j - 1)) || colorful(at(i, j + 1))) col = 'OUT';
-    }
-    if (col) cells.push(i + 1, j + 1, col);
+    } else if (colorful(at(i - 1, j)) || colorful(at(i + 1, j)) || colorful(at(i, j - 1)) || colorful(at(i, j + 1))) { cells[k] = ink; out[k] = 1; continue; }
+    if (col) cells[k] = P(col);
   }
-  out = { w: W + 2, h: H + 2, cells };
-  bigCache.set(key, out);
+  return { w, h, cells, out };
+}
+// the sprite canvas for an icon: { cv, w, h } in art pixels (outline included; one extra row for the shadow)
+const spriteCache = new Map();
+function iconSprite(name, c, o) {
+  const hq = !o.lo && hqName(name), shadow = o.shadow !== false, outline = o.outline !== false, dim = o.dim || 0;
+  const key = (hq ? 'H' : 'B') + (hq || name) + '|' + (c || '') + '|' + (o.tint2 || '') + '|' + dim + (shadow ? 's' : '') + (outline ? 'o' : '') + (o.ink || '');
+  let S = spriteCache.get(key);
+  if (S) return S;
+  let G;
+  if (hq) { const I = HQ[hq]; G = compileGrid(I.m, FIX16, c || I.c, o.tint2 || I.a || (c ? sh(c, -0.8) : I.c), dim, true); }
+  else { const I = BIG[name]; if (!I) return null; G = compileGrid(I.m, FIXED, c || I.c, o.tint2 || I.a || (c ? sh(c, -0.8) : I.c), dim, false); }
+  const w = G.w, h = G.h + 1, inkV = o.ink ? P(o.ink) : P(T.ink), shV = pa(T.shade, 0.38);
+  const cv = pixelCanvas(w, h, (d) => {
+    if (shadow) for (let j = 0; j < G.h; j++) for (let i = 0; i < w; i++) if (G.cells[j * w + i]) d[(j + 1) * w + i] = shV;
+    for (let j = 0; j < G.h; j++) for (let i = 0; i < w; i++) {
+      const v = G.cells[j * w + i]; if (!v) continue;
+      if (G.out[j * w + i]) { if (outline) d[j * w + i] = inkV; else if (!shadow) d[j * w + i] = 0; }
+      else d[j * w + i] = v;
+    }
+  });
+  S = { cv, w, h, hq: !!hq };
+  if (spriteCache.size > 600) spriteCache.clear();
+  spriteCache.set(key, S);
+  return S;
+}
+// whole-physical-pixel placement: q screen pixels per art pixel
+function blitArt(s, S, x, y, q) {
+  const ui = s.ui, g = ui.g, kx = ui.kx || 1, ky = ui.ky || 1;
+  const X = Math.round(x * kx) / kx, Y = Math.round(y * ky) / ky;
+  const sm = g.imageSmoothingEnabled; g.imageSmoothingEnabled = false;
+  g.drawImage(S.cv, X, Y, (S.w * q) / kx, (S.h * q) / ky);
+  g.imageSmoothingEnabled = sm;
+}
+
+// ---------------------------------------------------------------- drawing
+// small icon: auto-bevelled single colour + optional 1px drop shadow, in an 8-unit box
+const smallCache = new Map();
+export function drawSmall(s, name, x, y, c = T.text, shadow = T.ink) {
+  if (!s || !s.ui) return;
+  const g0 = SMALL[name] || SMALL[ALIAS[name]];
+  if (!g0) { if (BIG[iconName(name)] || hqName(name)) drawBig(s, name, x - 2, y - 2, c, { outline: true }); return; }
+  const key = (SMALL[name] ? name : ALIAS[name]) + '|' + c + '|' + (shadow || '');
+  let S = smallCache.get(key);
+  if (!S) {
+    const on = (r, k) => r >= 0 && r < 7 && k >= 0 && k < 7 && (g0[r] & (1 << (6 - k)));
+    const lit = P(sh(c, 0.9)), base = P(c), dark = P(sh(c, -0.7)), sv = shadow ? P(shadow) : 0;
+    const cv = pixelCanvas(8, 8, (d) => {
+      if (sv) for (let r = 0; r < 7; r++) for (let k = 0; k < 7; k++) if (on(r, k)) d[(r + 1) * 8 + k + 1] = sv;
+      for (let r = 0; r < 7; r++) for (let k = 0; k < 7; k++) { if (!on(r, k)) continue; const up = !on(r - 1, k), dn = !on(r + 1, k); d[r * 8 + k] = up && !dn ? lit : dn && !up ? dark : base; }
+    });
+    S = { cv, w: 8, h: 8 };
+    if (smallCache.size > 600) smallCache.clear();
+    smallCache.set(key, S);
+  }
+  blitArt(s, S, x, y, Math.max(1, Math.round(s.ui.k || 1)));
+}
+export function bigSize(name) { const h = hqName(name); const I = h ? HQ[h] : BIG[iconName(name)]; if (!I) return { w: 12, h: 12 }; return { w: Math.max(...I.m.map((r) => r.length)) + 2, h: I.m.length + 2 }; }
+// draws centred inside a 12×12 box at (x, y) (o.scale: a 12·scale box). c: tint (null → the icon's own colours)
+// o: { scale, outline (default true), shadow (default true), tint2, dim (0..1), lo (force the 12 px art), ink }
+export function drawBig(s, name, x, y, c, o = {}) {
+  if (!s || !s.ui) return;
+  const n = iconName(name), useHQ = !o.lo && hqName(name);
+  if (!useHQ && !BIG[n]) { if (SMALL[n]) drawSmall(s, n, x + 2, y + 2, c || T.text, T.ink); return; }
+  const S = iconSprite(useHQ ? name : n, c, o); if (!S || !S.cv) return;
+  const ui = s.ui, k = ui.k || 1, box = 12 * (o.scale || 1);
+  // art pixels per box: HQ art fills the box; the 12 px art keeps one unit per pixel (× scale)
+  const q = S.hq ? Math.max(1, Math.round((k * box) / Math.max(S.w, S.h - 1))) : Math.max(1, Math.round(k * (o.scale || 1)));
+  const dw = (S.w * q) / k, dh = ((S.h - 1) * q) / k;
+  blitArt(s, S, x + (box - dw) / 2, y + (box - dh) / 2, q);
+}
+// an icon at any size: fits the art into a size×size box (centred), crisp
+export function drawIconFit(s, name, x, y, size, c, o = {}) { drawBig(s, name, x, y, c, Object.assign({}, o, { scale: size / 12 })); }
+
+// ---------------------------------------------------------------- emblems: Scale2x stickers
+const emblemCache = new Map();
+export function emblemSprite(name, scale = 4, tint = null) {
+  const key = name + scale + tint;
+  let E = emblemCache.get(key);
+  if (E) return E;
+  const n = iconName(name), hq = hqName(name), I = hq ? HQ[hq] : BIG[n];
+  if (!I) return null;
+  const G = compileGrid(I.m, hq ? FIX16 : FIXED, tint || I.c, I.a || (tint ? sh(tint, -0.8) : I.c), 0, !!hq);
+  let w = G.w, h = G.h, d = new Uint32Array(w * h);
+  for (let i = 0; i < d.length; i++) d[i] = G.out[i] ? 0 : G.cells[i];
+  for (let k = 2; k <= scale; k *= 2) { const r = scale2x(d, w, h); d = r.d; w = r.w; h = r.h; }
+  // ink, white, ink rings
+  let pad = 4, W = w + pad * 2, Hh = h + pad * 2, D = new Uint32Array(W * Hh);
+  for (let j = 0; j < h; j++) D.set(d.subarray(j * w, j * w + w), (j + pad) * W + pad);
+  for (const col of [T.ink, '#ffffff', T.ink]) D = ring(D, W, Hh, P(col));
+  const cv = pixelCanvas(W, Hh, (o) => o.set(D));
+  E = { cv, w: W, h: Hh };
+  emblemCache.set(key, E);
+  return E;
+}
+function ring(D, W, H, v) {
+  const out = D.slice();
+  for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) {
+    if (D[j * W + i]) continue;
+    if ((i > 0 && D[j * W + i - 1]) || (i < W - 1 && D[j * W + i + 1]) || (j > 0 && D[(j - 1) * W + i]) || (j < H - 1 && D[(j + 1) * W + i])) out[j * W + i] = v;
+  }
   return out;
 }
-export function bigSize(name) { const I = BIG[iconName(name)]; if (!I) return { w: 12, h: 12 }; return { w: Math.max(...I.m.map((r) => r.length)) + 2, h: I.m.length + 2 }; }
-// draws centred inside a 12×12 box at (x, y) (scaled: a 12k box)
-export function drawBig(s, name, x, y, c, o = {}) {
-  const n = iconName(name), I = BIG[n];
-  if (!I) { if (SMALL[n]) drawSmall(s, n, x + 2, y + 2, c || T.text, T.ink); return; }
-  const sc = o.scale || 1, ink = P(o.ink || T.ink), shadowV = o.shadow === false ? 0 : P(o.shadowColor || '#1a0d04');
-  const C = compile(n, c || I.c, o.tint2 || I.a || (c ? sh(c, -0.8) : I.c), o.dim || 0);
-  const ox = (x | 0) + ((12 - C.w) >> 1) * sc, oy = (y | 0) + ((12 - C.h) >> 1) * sc;
-  const put = (i, j, v) => { for (let a2 = 0; a2 < sc; a2++) for (let b2 = 0; b2 < sc; b2++) px(s, ox + i * sc + a2, oy + j * sc + b2, v); };
-  const cells = C.cells;
-  if (shadowV) for (let k = 0; k < cells.length; k += 3) if (cells[k + 2] === 'OUT' && o.outline !== false) { /* shadow below outline */ put(cells[k], cells[k + 1] + 1, shadowV); }
-  for (let k = 0; k < cells.length; k += 3) {
-    const col = cells[k + 2];
-    if (col === 'OUT') { if (o.outline !== false) put(cells[k], cells[k + 1], ink); continue; }
-    put(cells[k], cells[k + 1], P(col));
+// Scale2x / EPX: doubles pixel art while keeping diagonals crisp
+function scale2x(d, w, h) {
+  const W = w * 2, o = new Uint32Array(W * h * 2);
+  const at = (x, y) => d[Math.max(0, Math.min(h - 1, y)) * w + Math.max(0, Math.min(w - 1, x))];
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const P0 = d[y * w + x], a = at(x, y - 1), b2 = at(x + 1, y), c = at(x - 1, y), e = at(x, y + 1), i = y * 2 * W + x * 2;
+    o[i] = c === a && c !== e && a !== b2 ? a : P0;
+    o[i + 1] = a === b2 && a !== c && b2 !== e ? b2 : P0;
+    o[i + W] = e === c && e !== b2 && c !== a ? c : P0;
+    o[i + W + 1] = b2 === e && b2 !== a && e !== c ? e : P0;
   }
+  return { d: o, w: W, h: h * 2 };
+}
+// draw an emblem centred on (cx, cy), one unit per art pixel (whole screen pixels)
+export function drawEmblem(s, name, cx, cy, scale = 4, tint = null, size = 0) {
+  if (!s || !s.ui) return;
+  const E = emblemSprite(name, scale, tint); if (!E) return;
+  const ui = s.ui, k = ui.k || 1, q = size ? Math.max(1, Math.round((k * size) / E.w)) : Math.max(1, Math.round(k * 0.75));
+  const dw = (E.w * q) / k, dh = (E.h * q) / k;
+  blitArt(s, E, cx - dw / 2, cy - dh / 2, q);
 }

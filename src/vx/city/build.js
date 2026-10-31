@@ -13,6 +13,7 @@ import { glowInfo } from '../render/glow.js';
 import { surfaceMaterial } from '../render/surface.js';
 import { mergeLights } from '../render/pools.js';
 import { skirt } from '../render/skirt.js';
+import { mergeCity, mergeKey, PROXY_MAT, SHADOW_LAYER } from './merge.js';
 
 const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
 const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
@@ -402,8 +403,19 @@ export class CityBuilder {
     if (this.skirt !== false) skirt(this);
     const root = new THREE.Group(); root.name = 'city';
     const groups = {}, lights = [];
+    // the solid-colour batches (districts/home/kit.js batchSolids): one vertex-coloured mesh per group
+    const solidMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.78, metalness: 0, side: THREE.DoubleSide });
+    for (const gk of (this.solidBatches || new Map()).keys()) if (!this.groups.has(gk)) this.groups.set(gk, new Map());
     for (const [gk, G] of this.groups) {
       const grp = new THREE.Group(); grp.name = gk;
+      const sb = this.solidBatches && this.solidBatches.get(gk);
+      if (sb && sb.I.length) {
+        const g = new THREE.BufferGeometry();
+        g.setAttribute('position', new THREE.Float32BufferAttribute(sb.P, 3)); g.setAttribute('normal', new THREE.Float32BufferAttribute(sb.N, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(sb.C, 3));
+        g.setIndex(sb.I); g.computeBoundingSphere();
+        const m = new THREE.Mesh(g, gk === 'ground' ? solidMat : solidMat.clone()); m.castShadow = m.userData.cast = gk !== 'ground'; m.receiveShadow = true; m.name = gk + ':solids';
+        grp.add(m);
+      }
       for (const A of G.values()) {
         const g = new THREE.BufferGeometry();
         g.setAttribute('position', new THREE.Float32BufferAttribute(A.P, 3)); g.setAttribute('normal', new THREE.Float32BufferAttribute(A.N, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(A.U, 2));
@@ -425,6 +437,15 @@ export class CityBuilder {
       }
       shadowProxy(grp);
       groups[gk] = grp; root.add(grp);
+    }
+    // the merged copy of everything static outside (city/merge.js): the buildings' own groups are only drawn while
+    // the cutaway needs them (control.js); the ground and the skirt are drawn merged only
+    if (this.merge !== false && !(typeof location !== 'undefined' && /[?&]nomerge=1/.test(location.search))) {
+      this.merged = mergeCity(this, root, stage);
+      for (const gk in groups) {
+        const bid = mergeKey(gk); if (bid === null) continue;
+        groups[gk].userData.merged = true; groups[gk].visible = false;
+      }
     }
     // doors: re-parent each panel to a hinge pivot
     for (const D of this.doors) {
@@ -467,7 +488,6 @@ export class CityBuilder {
 // ---------------------------------------------------------------- shadows
 // one merged, invisible shadow caster per group (instead of one per texture): the sun's shadow pass draws a
 // single mesh per building part. It draws nothing in the camera's pass and follows the group's visibility.
-const PROXY_MAT = new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false, side: THREE.DoubleSide });
 // fades and ghosting walk every child of a group and set these: the proxy must never draw or write depth
 for (const [k, v] of Object.entries({ colorWrite: false, depthWrite: false, transparent: false, opacity: 1 })) Object.defineProperty(PROXY_MAT, k, { get: () => v, set() {}, configurable: true });
 function shadowProxy(grp) {
@@ -482,6 +502,7 @@ function shadowProxy(grp) {
   }
   const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(P, 3)); geo.setIndex(new THREE.BufferAttribute(I, 1)); geo.computeBoundingSphere();
   const px = new THREE.Mesh(geo, PROXY_MAT); px.castShadow = true; px.receiveShadow = false; px.userData.proxy = true; px.userData.cast = true; px.renderOrder = -10;
+  px.layers.set(SHADOW_LAYER);     // drawn by the shadow cameras only (no empty draw call in the colour pass)
   grp.add(px);
 }
 // ---------------------------------------------------------------- light sources

@@ -1,101 +1,120 @@
-// The sky: a pixel-art sky dome painted per mood into an equirectangular texture (nearest-filtered, ordered
-// dithering between the gradient steps, chunky drifting cumulus lit by the sun from the sun's side), shown as
-// the scene background, so the close street-level camera sees a real sky with the sun's glow where the sun
-// is. The same picture is prefiltered (PMREM) into the environment that glossy surfaces reflect: glass, car
-// paint, glazed tiles and wet ground pick up the sky's colours and the bright side of the horizon.
+// The sky: a physically based daylight model (Preetham / Hosek-style analytic scattering: Rayleigh + Mie with
+// turbidity), drawn as a dome that follows the camera into the HDR frame, so the close street-level camera sees
+// a believable sky: deep blue at the zenith, a pale hazy horizon, the sun's bright forward-scattering glow and a
+// sharp disc. Soft fbm cumulus drift overhead, lit from the sun's side. At night the scattering model is run for
+// a sun well below the horizon (the last blue of twilight), with stars and a moon disc on top.
+// The same dome (without the sun's disc, which would only add fireflies) is rendered once per mood into a
+// prefiltered (PMREM) cube environment that glossy surfaces reflect: glass, car paint, wet ground.
 import * as THREE from '../../../vendor/three.module.js';
 
-const W = 1024, H = 512;
-const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
-const dith = (x, y) => (BAYER[(y & 3) * 4 + (x & 3)] + 0.5) / 16;
-const lin = (c) => new THREE.Color(c);            // linear rgb
-const CACHE = new Map();
-
-// periodic value noise (wraps in x so the dome has no seam)
-function vnoise(seed, gw, gh) {
-  let s = seed >>> 0 || 1; const L = new Float32Array(gw * gh); for (let i = 0; i < L.length; i++) { s = (s * 1664525 + 1013904223) >>> 0; L[i] = s / 4294967296; }
-  const sm = (t) => t * t * (3 - 2 * t);
-  return (u, v) => {
-    const x = (((u % 1) + 1) % 1) * gw, y = Math.max(0, Math.min(gh - 1.001, v * gh)), x0 = Math.floor(x), y0 = Math.floor(y), fx = sm(x - x0), fy = sm(y - y0);
-    const a = L[y0 * gw + (x0 % gw)], b = L[y0 * gw + ((x0 + 1) % gw)], c = L[(y0 + 1) * gw + (x0 % gw)], d = L[(y0 + 1) * gw + ((x0 + 1) % gw)];
-    return a + (b - a) * fx + (c - a) * fy + (a - b - c + d) * fx * fy;
-  };
-}
-
-/**
- * m: a stage mood. → { tex (equirect, sRGB, nearest), env (PMREM render target texture, set by `envFor`) }
- * sky: [zenith, mid, horizon] colours; sun / sunDir; fog (the horizon haze); clouds: coverage 0..1.
- */
-export function skyTexture(m, key) {
-  if (key && CACHE.has(key)) return CACHE.get(key);
-  const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
-  const g = cv.getContext('2d'), im = g.createImageData(W, H), d = im.data;
-  const [c0, c1, c2] = (m.sky || ['#5a8ad0', '#9cc4ec', '#dceaf4']).map(lin), haze = lin(m.fog || 0xc4d4e8), sunC = lin(m.sun || 0xffffff), gnd = lin(m.hemiGround || 0x807060);
-  const sd = new THREE.Vector3(...(m.sunDir || [0, 1, 0])).normalize(), night = (m.sunI || 3) < 0.8 && sd.y > 0.5;   // the night "sun" is the moon, high up
-  const cover = m.clouds ?? 0.4, n1 = vnoise(7, 12, 6), n2 = vnoise(19, 32, 14), n3 = vnoise(41, 80, 34);
-  const col = new THREE.Color(), tmp = new THREE.Color(), cl = new THREE.Color(), dir = new THREE.Vector3();
-  for (let y = 0; y < H; y++) {
-    const el = (0.5 - (y + 0.5) / H) * Math.PI, sy = Math.sin(el), cy = Math.cos(el);
-    for (let x = 0; x < W; x++) {
-      const az = ((x + 0.5) / W) * Math.PI * 2;
-      // three's equirect lookup: u = atan(dir.z, dir.x) / 2π + 0.5
-      dir.set(Math.cos(az - Math.PI) * cy, sy, Math.sin(az - Math.PI) * cy);
-      const q = dith(x, y);
-      if (sy >= -0.02) {
-        // gradient: zenith → mid → horizon, stepped into bands and dithered across each step
-        const t = 1 - Math.pow(Math.max(0, sy), 0.55), steps = 22, f = t * steps, ti = (Math.floor(f) + (f - Math.floor(f) > q ? 1 : 0)) / steps;
-        if (ti < 0.55) col.copy(c0).lerp(c1, ti / 0.55); else col.copy(c1).lerp(c2, (ti - 0.55) / 0.45);
-        // the haze band right on the horizon
-        const hb = Math.max(0, 1 - Math.max(0, sy) / 0.09); col.lerp(haze, hb * hb * 0.55);
-        // the sun's glow (Mie forward scattering) and the disc; the moon is a small cool disc
-        const cs = dir.dot(sd), a = Math.acos(Math.min(1, Math.max(-1, cs)));
-        if (!night) {
-          const glow = Math.exp(-a * 3.2) * 0.55 + Math.exp(-a * 14) * 0.6, gq = Math.floor(glow * 14 + q) / 14;
-          col.add(tmp.copy(sunC).multiplyScalar(gq * (0.55 + 0.45 * (1 - Math.max(0, sd.y)))));
-          if (a < 0.022) col.copy(tmp.copy(sunC).lerp(lin(0xffffff), 0.55)).multiplyScalar(1.6);
-        } else {
-          if (a < 0.016) col.set(0xdfe6ff); else col.add(tmp.copy(sunC).multiplyScalar(Math.floor(Math.exp(-a * 9) * 0.25 * 12 + q) / 12));
-          // stars
-          const h = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453, r = h - Math.floor(h);
-          if (sy > 0.12 && r > 0.9965) col.lerp(lin(0xf4f0ff), 0.5 + (r - 0.9965) * 140);
-        }
-        // clouds on a plane overhead (perspective: they bunch up toward the horizon)
-        if (cover > 0 && sy > 0.025) {
-          const k = 0.16 / sy, u = dir.x * k * 0.06 + 0.37, v = dir.z * k * 0.06 + 0.61;
-          const nn = n1(u, v) * 0.55 + n2(u * 2.3, v * 2.3) * 0.3 + n3(u * 5.1, v * 5.1) * 0.15;
-          const dens = (nn - (1 - cover * 0.75) + 0.1) * 3.2, fade = Math.min(1, (sy - 0.025) / 0.12);
-          if (dens * fade > q * 0.9) {
-            // lit from the sun's side: offset sample toward the sun → thinner = brighter
-            const nl = n1(u + sd.x * 0.012, v + sd.z * 0.012) * 0.55 + n2((u + sd.x * 0.012) * 2.3, (v + sd.z * 0.012) * 2.3) * 0.3;
-            const lit = Math.max(0, Math.min(1, 0.55 + (nn - nl) * 9)), lq = Math.floor(lit * 4 + q) / 4;
-            const base = night ? tmp.copy(c1).multiplyScalar(1.4) : tmp.copy(c2).lerp(lin(0xffffff), 0.6);
-            cl.copy(c1).lerp(base, 0.35).multiplyScalar(night ? 0.9 : 0.82);                                      // the cloud's shaded underside
-            cl.lerp(base.clone().lerp(sunC, night ? 0.1 : 0.35).multiplyScalar(night ? 1 : 1.12), lq);        // its sunlit tops
-            col.lerp(cl, Math.min(1, dens * fade * 1.4) * (0.75 + 0.25 * fade));
-          }
-        }
-      } else {
-        // below the horizon: the haze over the ground beyond the city
-        const t = Math.min(1, -sy / 0.3); col.copy(haze).lerp(tmp.copy(gnd).multiplyScalar(0.6).lerp(haze, 0.5), t);
-      }
-      const i = (y * W + x) * 4; col.convertLinearToSRGB();
-      d[i] = Math.min(255, col.r * 255); d[i + 1] = Math.min(255, col.g * 255); d[i + 2] = Math.min(255, col.b * 255); d[i + 3] = 255;
-    }
+const VS = `
+uniform vec3 uSun; uniform float uRayleigh; uniform float uTurbidity; uniform float uMie;
+varying vec3 vDir; varying vec3 vSunDir; varying float vSunfade; varying vec3 vBetaR; varying vec3 vBetaM; varying float vSunE;
+const float e = 2.718281828459045;
+const vec3 totalRayleigh = vec3(5.804542996261093E-6, 1.3562911419845635E-5, 3.0265902468824876E-5);
+const vec3 MieConst = vec3(1.8399918514433978E14, 2.7798023919660528E14, 4.0790479543861094E14);
+const float cutoffAngle = 1.6110731556870734;
+const float steepness = 1.5;
+float sunIntensity(float c) { c = clamp(c, -1.0, 1.0); return 1000.0 * max(0.0, 1.0 - pow(e, -((cutoffAngle - acos(c)) / steepness))); }
+void main() {
+  vDir = position;
+  vec4 p = projectionMatrix * modelViewMatrix * vec4(position + cameraPosition, 1.0);
+  gl_Position = p.xyww;
+  vSunDir = normalize(uSun);
+  vSunE = sunIntensity(vSunDir.y);
+  vSunfade = min(1.0, exp(vSunDir.y * 0.89));
+  vBetaR = totalRayleigh * (uRayleigh - (1.0 - vSunfade));
+  vBetaM = 0.434 * (0.2 * uTurbidity) * 10E-18 * MieConst * uMie;
+}`;
+const FS = `
+uniform float uMieG; uniform float uScale; uniform float uDisc; uniform float uNight; uniform float uClouds; uniform float uTime;
+uniform vec3 uMoon; uniform vec3 uGround; uniform vec3 uNightCol;
+varying vec3 vDir; varying vec3 vSunDir; varying float vSunfade; varying vec3 vBetaR; varying vec3 vBetaM; varying float vSunE;
+const float pi = 3.141592653589793;
+float h21(vec2 p) { p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
+float vn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f); return mix(mix(h21(i), h21(i + vec2(1, 0)), f.x), mix(h21(i + vec2(0, 1)), h21(i + vec2(1, 1)), f.x), f.y); }
+float fbm(vec2 p) { float s = 0.0, a = 0.5; for (int i = 0; i < 5; i++) { s += vn(p) * a; p = p * 2.03 + vec2(1.7, 9.2); a *= 0.5; } return s; }
+void main() {
+  vec3 dir = normalize(vDir);
+  float up = max(dir.y, 0.0);
+  float zen = acos(up);
+  float inv = 1.0 / (cos(zen) + 0.15 * pow(93.885 - zen * 180.0 / pi, -1.253));
+  vec3 Fex = exp(-(vBetaR * 8.4E3 * inv + vBetaM * 1.25E3 * inv));
+  float cosT = dot(dir, vSunDir);
+  float rPh = 0.05968310365946075 * (1.0 + pow(cosT * 0.5 + 0.5, 2.0));
+  float g2 = uMieG * uMieG, mPh = 0.07957747154594767 * (1.0 - g2) / pow(1.0 - 2.0 * uMieG * cosT + g2, 1.5);
+  vec3 bt = (vBetaR * rPh + vBetaM * mPh) / (vBetaR + vBetaM);
+  vec3 Lin = pow(vSunE * bt * (1.0 - Fex), vec3(1.5));
+  Lin *= mix(vec3(1.0), pow(vSunE * bt * Fex, vec3(0.5)), clamp(pow(1.0 - vSunDir.y, 5.0), 0.0, 1.0));
+  vec3 L0 = vec3(0.1) * Fex;
+  float disc = smoothstep(0.99995, 0.999975, cosT) * uDisc;
+  L0 += vSunE * 19000.0 * Fex * disc;
+  vec3 col = (Lin + L0) * 0.04 + vec3(0.0, 0.0003, 0.00075);
+  col = pow(col, vec3(1.0 / (1.2 + 1.2 * vSunfade)));
+  col *= uScale;
+  // night: a deep blue air glow, stars and the moon
+  if (uNight > 0.0) {
+    vec3 n = uNightCol * (0.35 + 0.65 * pow(1.0 - up, 3.0));
+    float st = 0.0;
+    if (dir.y > 0.05) { vec2 sp = vec2(atan(dir.z, dir.x) * 180.0, asin(dir.y) * 180.0); float h = h21(floor(sp)); st = step(0.9965, h) * (0.4 + 0.6 * h21(floor(sp) + 3.1)) * smoothstep(0.05, 0.3, dir.y) * 2.5; }
+    float md = dot(dir, normalize(uMoon));
+    vec3 moon = vec3(0.9, 0.93, 1.0) * (smoothstep(0.99985, 0.99992, md) * 6.0 + pow(max(md, 0.0), 300.0) * 0.18);
+    col = mix(col, n + vec3(st) + moon, uNight);
   }
-  g.putImageData(im, 0, 0);
-  const tex = new THREE.CanvasTexture(cv);
-  tex.mapping = THREE.EquirectangularReflectionMapping; tex.colorSpace = THREE.SRGBColorSpace;
-  tex.magFilter = THREE.NearestFilter; tex.minFilter = THREE.LinearFilter; tex.generateMipmaps = false;
-  const out = { tex, env: null };
-  if (key) CACHE.set(key, out);
-  return out;
+  // clouds: an fbm layer on a plane overhead, lit from the sun's side, thinning toward the horizon
+  if (uClouds > 0.0 && dir.y > 0.0) {
+    vec2 cp = dir.xz / (dir.y + 0.08) * 0.9 + vec2(uTime * 0.004, uTime * 0.0015);
+    float d = fbm(cp * 1.3), d2 = fbm(cp * 1.3 + vSunDir.xz * 0.06);
+    float cov = smoothstep(1.0 - uClouds * 0.85, 1.12 - uClouds * 0.6, d) * smoothstep(0.0, 0.18, dir.y);
+    float lit = clamp(0.55 + (d - d2) * 6.0, 0.0, 1.0);
+    vec3 sunC = vSunE * Fex * 0.00095 * uScale;
+    vec3 base = mix(col * 0.75 + vec3(0.08) * uScale * (1.0 - uNight), sunC + col * 0.6, lit);
+    col = mix(col, base, cov * 0.9);
+  }
+  // below the horizon: the haze over the land beyond the city
+  if (dir.y < 0.0) col = mix(col, uGround, smoothstep(0.0, -0.2, dir.y));
+  gl_FragColor = vec4(col, 1.0);
+}`;
+
+/** the sky's parameters for a mood (sunDir, sky: { turbidity, rayleigh, mie, g, scale, clouds, night }) */
+function params(m) {
+  const s = m.skyP || {};
+  return { turbidity: s.turbidity ?? 3.2, rayleigh: s.rayleigh ?? 1.4, mie: s.mie ?? 0.004, g: s.g ?? 0.82, scale: s.scale ?? 1, clouds: m.clouds ?? 0.35, night: s.night ?? 0, sunElev: s.sunElev };
 }
 
-/** the prefiltered environment for a sky (made once per sky, on the stage's renderer) */
-export function envFor(renderer, sky) {
-  if (sky.env) return sky.env;
-  const pm = new THREE.PMREMGenerator(renderer);
-  sky.env = pm.fromEquirectangular(sky.tex).texture;
-  pm.dispose();
-  return sky.env;
+export class Sky {
+  constructor() {
+    this.u = {
+      uSun: { value: new THREE.Vector3(0, 1, 0) }, uRayleigh: { value: 1.4 }, uTurbidity: { value: 3 }, uMie: { value: 0.004 }, uMieG: { value: 0.8 }, uScale: { value: 1 },
+      uDisc: { value: 1 }, uNight: { value: 0 }, uClouds: { value: 0.35 }, uTime: { value: 0 }, uMoon: { value: new THREE.Vector3(0.3, 0.8, 0.5) }, uGround: { value: new THREE.Color(0.2, 0.2, 0.2) }, uNightCol: { value: new THREE.Color(0.004, 0.007, 0.018) },
+    };
+    this.mat = new THREE.ShaderMaterial({ uniforms: this.u, vertexShader: VS, fragmentShader: FS, side: THREE.BackSide, depthWrite: false, depthTest: true, toneMapped: false, fog: false });
+    this.mesh = new THREE.Mesh(new THREE.SphereGeometry(1000, 48, 24), this.mat);
+    this.mesh.frustumCulled = false; this.mesh.renderOrder = -100; this.mesh.name = 'sky'; this.mesh.userData.sky = true;
+    this.mesh.castShadow = this.mesh.receiveShadow = false;
+    this.envCache = new Map();
+  }
+  setMood(m, key) {
+    const p = params(m), d = new THREE.Vector3(...(m.sunDir || [0, 1, 0])).normalize(), U = this.u;
+    // the night "sun" is the moon: scatter for a sun well below the horizon instead
+    if (p.night > 0) { U.uMoon.value.copy(d); d.set(-0.6, p.sunElev ?? -0.08, 0.3).normalize(); }
+    else if (p.sunElev !== undefined) { d.y = p.sunElev; d.normalize(); }
+    U.uSun.value.copy(d); U.uRayleigh.value = p.rayleigh; U.uTurbidity.value = p.turbidity; U.uMie.value = p.mie; U.uMieG.value = p.g; U.uScale.value = p.scale;
+    U.uClouds.value = p.clouds; U.uNight.value = p.night;
+    U.uGround.value.set(m.fog || 0x808890).multiplyScalar(p.night ? 0.05 : 0.6 * p.scale);
+    this.key = key;
+  }
+  /** the prefiltered environment for the current mood (rendered once per mood key, without the sun disc) */
+  env(renderer) {
+    if (this.key && this.envCache.has(this.key)) return this.envCache.get(this.key);
+    const pm = new THREE.PMREMGenerator(renderer), sc = new THREE.Scene(), mesh = new THREE.Mesh(this.mesh.geometry, this.mat);
+    mesh.frustumCulled = false; sc.add(mesh);
+    const disc = this.u.uDisc.value; this.u.uDisc.value = 0;
+    const prevAuto = renderer.autoClear;
+    const rt = pm.fromScene(sc, 0, 0.1, 2000);
+    this.u.uDisc.value = disc; renderer.autoClear = prevAuto;
+    pm.dispose();
+    if (this.key) this.envCache.set(this.key, rt.texture);
+    return rt.texture;
+  }
 }

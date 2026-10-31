@@ -11,6 +11,7 @@
 // Doors swing open as you come near. Interactables nearby show a prompt ([E] / A / tap) and run their act().
 // Zones set the place name and music. The minimap turns with the camera.
 import * as THREE from '../../../vendor/three.module.js';
+import { HIDE } from './merge.js';
 
 const WALK = 2.5, RUN = 5.2, R = 0.26;
 // m/s² up to walking pace, then on to a run (the short run-start), braking; turn rates in rad/s
@@ -289,6 +290,7 @@ export class CityControl {
     // what must stay in view: the player head to toe (unless a cutscene looks elsewhere), and whatever the camera looks at
     const pts = Math.hypot(p.x - t.x, p.z - t.z) < 12 ? [[p.x, p.y + 1.6, p.z], [p.x, p.y + 0.9, p.z], [t.x, t.y, t.z]] : [[t.x, t.y, t.z]];
     if (this.cutB !== inside) { const P = this.c.buildings[this.cutB]; if (P && P.cut) uncut(P, this.c.doors); this.cutB = inside; }
+    const det = [];
     for (const B of this.c.buildings) {
       if (!B.groups) continue;
       if (B.id === inside) {
@@ -298,10 +300,9 @@ export class CityControl {
         B.fade = B.fA = 1;
         B.groups.forEach((G, k) => { const show = k <= L; vis(G.back, show); vis(G.in, show); vis(G.front, show); });
         this.cut(B, L, cam, pts);
+        det.push(B.id);
         continue;
       }
-      if (B.roofG) B.roofG.visible = true;
-      B.groups.forEach((G) => { vis(G.back, true); vis(G.in, true); vis(G.front, true); });
       // standing between the camera and the player (or the camera inside it)? fade it out
       const x0 = B.x - 0.1, x1 = B.x + B.w + 0.1, z0 = B.z - 0.1, z1 = B.z + B.d + 0.1;
       let occ = false;
@@ -310,11 +311,20 @@ export class CityControl {
       B.fade = (B.fade ?? 1) + (want - (B.fade ?? 1)) * kexp(dt, 8);
       if (B.fade > 0.995) B.fade = 1;
       const f = B.fade;
-      if (Math.abs(f - (B.fA ?? 1)) < 0.004) continue;
-      B.fA = f;
-      if (B.roofG) alpha(B.roofG, f);
-      B.groups.forEach((G) => { alpha(G.front, f); alpha(G.back, f); alpha(G.in, f); });
+      if (Math.abs(f - (B.fA ?? 1)) >= 0.004) {
+        B.fA = f;
+        if (B.roofG) alpha(B.roofG, f);
+        B.groups.forEach((G) => { alpha(G.front, f); alpha(G.back, f); alpha(G.in, f); });
+      }
+      // level of detail: the merged copy (city/merge.js) draws the outside of every building that isn't fading; its
+      // own groups only while it is. The rooms inside only when you're close enough to see in through a doorway.
+      const merged = !!(B.groups[0] && B.groups[0].front && B.groups[0].front.userData.merged) || !!(B.roofG && B.roofG.userData.merged);
+      const own = !merged || occ || f < 1, near = !merged || rectDist(B, p.x, p.z) < 9 || rectDist(B, cam.x, cam.z) < 4;
+      if (own && merged) det.push(B.id);
+      if (B.roofG) B.roofG.visible = own;
+      B.groups.forEach((G) => { vis(G.back, own); vis(G.front, own); vis(G.in, own || near); });
     }
+    const H = HIDE.value; H.fill(-10); for (let i = 0; i < Math.min(det.length, H.length); i++) H[i] = det[i];
   }
   /** cut open the storey you stand on: the outer walls on the camera's side and any inner wall between camera and you */
   cut(B, L, cam, pts) {
@@ -427,6 +437,7 @@ export class CityControl {
   }
 }
 function vis(g, v) { if (g) g.visible = v; }
+const rectDist = (B, x, z) => Math.hypot(Math.max(B.x - x, 0, x - B.x - B.w), Math.max(B.z - z, 0, z - B.z - B.d));
 function alpha(g, a) {
   if (!g) return;
   g.visible = true;

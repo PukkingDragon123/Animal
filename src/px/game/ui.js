@@ -1,41 +1,92 @@
-// Pixel UI, drawn at the game's native low resolution every frame (immediate
-// mode). A warm hand-made look: carved wood-grain panels with soft rounded
-// corners, cream parchment insets, leaf and rope accents, dark-brown ink, moss /
-// honey / sky-teal accents and gentle motion (panels ease in, buttons squash,
-// leaves sway, selections sparkle). Words give way to pixel icons wherever an
-// icon says it clearly. Primitives (panel, button, bar, banner, icons, toasts),
-// the dialogue box with round portrait + choices, roaming-HUD widgets (icon
-// prompt bubble, keycaps, thumbstick, sun/moon dial, coin purse, hanging place
-// sign, party beads, round minimap) and full-screen modal screens (name entry,
-// card picker). Widget bodies live in ./uikit/; this class keeps the state and
-// the public API.
-import { Surf, P } from '../surface.js';
-import { text as drawText, textWidth } from '../font.js';
-import { rgb, bayer } from '../color.js';
-import { T, sh, mx, hash, clamp01, easeOut, easeOutBack } from './uikit/theme.js';
-import { drawSmall, drawBig, ICON_NAMES } from './uikit/icons.js';
-import { frame, dropShadow, gradFill, tri, gem, sparkle, ball, insetOf, sprig } from './uikit/frame.js';
+// The game UI, drawn every frame (immediate mode) with Canvas2D at the REAL screen resolution.
+// Layout still works in "UI units" — the old ~480×270 grid (w × h) — and the canvas transform scales
+// it to the device pixels, so text (a chunky rounded web font), panels and shapes are smooth and crisp
+// on any screen, while pixel-art icons are blitted as crisp scaled sprites.
+// The look is the TokoPhone's: a bright, chunky handheld-RPG gadget. Thick indigo outlines, glossy
+// white bezels around royal-blue screens, cream paper cards, candy buttons with a lip that squash and
+// boing back (with a tap sound on every press), sparkles and bounces.
+// Primitives (panel, button, bar, banner, icons, toasts), the dialogue box with round portrait +
+// choices, roaming-HUD widgets (prompt bubble, keycaps, thumbstick, clock, coins, place ribbon, party
+// medals, minimap) and full-screen modal screens (name entry, card picker). Widget bodies live in
+// ./uikit/; this class keeps the state and the public API.
+// Lag: panels and button faces are painted once into hi-res sprites (uikit/gfx.js cachedDraw), text
+// widths and font strings are memoised, and nothing per frame allocates buffers.
+import { T, mx, hash, clamp01, easeOut, easeOutBack, boing } from './uikit/theme.js';
+import { css, rgba, rr, vgrad, makeCanvas, CanvasSurf } from './uikit/gfx.js';
+import { drawSmall, drawBig, drawEmblem, ICON_NAMES } from './uikit/icons.js';
+import { frame, candy, tri, gem, sparkle, ball } from './uikit/frame.js';
 import { drawDialog } from './uikit/dialog.js';
 import * as W from './uikit/widgets.js';
-import { nameEntryScreen, pickCardsScreen, drawEmblem } from './uikit/screens.js';
+import { nameEntryScreen, pickCardsScreen } from './uikit/screens.js';
 
 export { T, ICON_NAMES };
 
-const SENTINEL = 0x01020301;
+// ------------------------------------------------------------------ the UI font
+export const FAMILY = '"TokoRound", "Baloo 2", "Arial Rounded MT Bold", "Trebuchet MS", "Helvetica Neue", Arial, sans-serif';
+let fontP = null, fontGen = 0;
+export function loadUIFont() {
+  if (fontP) return fontP;
+  if (typeof FontFace === 'undefined' || typeof document === 'undefined' || !document.fonts) return (fontP = Promise.resolve());
+  const url = new URL('../../../assets/fonts/baloo2-latin.woff2', import.meta.url).href;
+  const ff = new FontFace('TokoRound', `url(${url})`, { weight: '400 800' });
+  fontP = Promise.race([ff.load().then((f) => { document.fonts.add(f); fontGen++; }), new Promise((r) => setTimeout(r, 2500))]).catch(() => {});
+  return fontP;
+}
+let mctx = null;
+function measurer() { if (!mctx) { const c = makeCanvas(4, 4); mctx = c ? c.getContext('2d') : null; } return mctx; }
+const fontCache = new Map(), widthCache = new Map();
+let fontCacheGen = -1;
+// { font, cap } for a text style: the size is picked so capitals stand cap units tall (7 normal, 5 mini)
+function fontOf(mini, bold, sc) {
+  if (fontCacheGen !== fontGen) { fontCache.clear(); widthCache.clear(); fontCacheGen = fontGen; }
+  const key = sc * 8 + (mini ? 1 : 0) + (bold ? 2 : 0);
+  let F = fontCache.get(key);
+  if (F) return F;
+  const weight = bold ? 800 : mini ? 700 : 600, m = measurer();
+  let capR = 0.62;
+  if (m) { m.font = `${weight} 100px ${FAMILY}`; const mt = m.measureText('H'); if (mt.actualBoundingBoxAscent > 20) capR = mt.actualBoundingBoxAscent / 100; }
+  const cap = (mini ? 5 : 7) * sc, size = cap / capR;
+  F = { font: `${weight} ${size.toFixed(2)}px ${FAMILY}`, cap, size };
+  fontCache.set(key, F);
+  return F;
+}
+function measure(str, F) {
+  let M = widthCache.get(F.font); if (!M) widthCache.set(F.font, (M = new Map()));
+  let w = M.get(str);
+  if (w === undefined) { const m = measurer(); if (m) { m.font = F.font; w = m.measureText(str).width; } else w = str.length * F.size * 0.5; if (M.size > 3000) M.clear(); M.set(str, w); }
+  return w;
+}
 
 export class PixelUI {
-  constructor(w, h) {
-    this.resize(w, h);
+  // w, h: UI units. o: { canvas (draw onto this canvas), scale (pixels per unit when no size is given) }
+  constructor(w, h, o = {}) {
+    this.cv = o.canvas || makeCanvas(w * (o.scale || 3), h * (o.scale || 3));
+    this.g = this.cv ? this.cv.getContext('2d') : null;
+    this.s = new CanvasSurf(this);
+    this.k0 = o.scale || 3;
+    this.resize(w, h, o.pw, o.ph);
     this.ptr = { x: -1, y: -1, down: false, pressed: false, released: false, id: null };
     this.t = 0; this.dt = 1 / 60; this.frameN = 0;
     this.dialog = null; this.toasts = []; this.keys = {}; this.modalLock = 0;
     this.modals = []; this._typed = []; this.typed = []; this._bars = new Map(); this._anim = new Map();
+    this.sfx = null;                               // (id, o) → plays a UI sound (set by the app)
+    loadUIFont();
   }
-  resize(w, h) { this.w = w; this.h = h; this.s = new Surf(w, h); this._clipStack = null; }
+  // w, h: UI units; pw, ph: the canvas size in device pixels (default w·scale × h·scale)
+  resize(w, h, pw, ph) {
+    this.w = w; this.h = h;
+    pw = Math.max(1, Math.round(pw || w * this.k0)); ph = Math.max(1, Math.round(ph || h * this.k0));
+    if (this.cv && (this.cv.width !== pw || this.cv.height !== ph)) { this.cv.width = pw; this.cv.height = ph; }
+    this.pw = pw; this.ph = ph; this.kx = pw / w; this.ky = ph / h; this.k = Math.min(this.kx, this.ky);
+    this._fs = null; this._font = null;
+  }
   // ------------------------------------------------------------------ frame
   begin(dt) {
     this.dt = dt || 0; this.t += this.dt; this.frameN++;
-    this.s.clear(); this.hot = null; this.frameButtons = 0;
+    const g = this.g;
+    if (g) { g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = 1; g.globalCompositeOperation = 'source-over'; g.clearRect(0, 0, this.pw, this.ph); g.setTransform(this.kx, 0, 0, this.ky, 0, 0); g.textBaseline = 'alphabetic'; g.textAlign = 'left'; g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high'; }
+    this._fs = null; this._font = null;
+    this.hot = null; this.frameButtons = 0;
     // an open modal screen owns this frame's input: hide it from everything drawn before end()
     if (this.modals.length) {
       const p = this.ptr;
@@ -62,9 +113,9 @@ export class PixelUI {
     this.drawToasts();
     p.pressed = false; p.released = false;
     this.keys = {}; this.typed = [];             // key presses latch for exactly one frame
-    this.s.touch();
   }
   key(k) { return this.keys[k] === 'pressed'; }
+  click(id = 'ui_tap', o) { if (this.sfx) try { this.sfx(id, o); } catch (e) { /* audio is optional */ } }
   // ------------------------------------------------------------------ modal screens (block all other input while open)
   get modal() { return this.modals[this.modals.length - 1] || null; }
   openModal(m) {
@@ -100,45 +151,32 @@ export class PixelUI {
   // per-widget animation memory (keyed; pruned when a widget stops being drawn)
   anim(key, init) { let a = this._anim.get(key); if (!a) { a = Object.assign({ t: 0 }, init); this._anim.set(key, a); } a.seen = this.frameN; return a; }
   // ------------------------------------------------------------------ primitives
+  fill(c) { if (this._fs !== c) { this.g.fillStyle = css(c); this._fs = c; } return this.g; }
   px(x, y, c) { this.s.px(x, y, c); }
-  rect(x, y, w, h, c) { this.s.rect(x, y, w, h, c); }
+  rect(x, y, w, h, c) { if (w > 0 && h > 0) this.fill(c).fillRect(x, y, w, h); }
   fade(a, c = '#000000') {
     if (a <= 0) return;
-    const [r, g, b] = rgb(c), d = this.s.data, A = Math.round(Math.min(1, a) * 255);
-    for (let i = 0; i < d.length; i++) {
-      const v = d[i], da = v >>> 24;
-      if (!da) { d[i] = ((A << 24) | (b << 16) | (g << 8) | r) >>> 0; continue; }
-      const dr = v & 255, dg = (v >>> 8) & 255, db = (v >>> 16) & 255;
-      d[i] = ((Math.max(da, A) << 24) | ((db + (b - db) * a) << 16) | ((dg + (g - dg) * a) << 8) | (dr + (r - dr) * a)) >>> 0;
-    }
+    const g = this.g; g.fillStyle = rgba(c, Math.min(1, a)); this._fs = null;
+    g.fillRect(-1, -1, this.w + 2, this.h + 2);
   }
-  // text: o = { mini, scale, spacing, shadow, outline (true → ink), align, bold, grad: [top, bottom] }
+  // text: o = { mini, scale, spacing, shadow, outline (true → ink), align, bold, grad: [top, …, bottom] } → width
   text(str, x, y, c = T.text, o = {}) {
-    if (o.outline === true || o.shadow === true) o = Object.assign({}, o, o.outline === true ? { outline: T.ink } : {}, o.shadow === true ? { shadow: T.ink } : {});
-    const opts = Object.assign({ jpSize: 10 }, o);
-    if (o.grad) return this._gradText(str, x, y, opts);
-    if (!o.bold) return drawText(this.s, str, x, y, c, opts);
-    const off = o.align === 'center' ? 0 : o.align === 'right' ? -1 : 0;
-    const xa = x + off;
-    drawText(this.s, str, xa + 1, y, o.outline || c, opts);
-    drawText(this.s, str, xa, y, c, opts);
-    drawText(this.s, str, xa + 1, y, c, Object.assign({}, opts, { outline: null, shadow: null }));
-    return textWidth(str, opts) + 1;
-  }
-  _gradText(str, x, y, opts) {
-    const g = opts.grad, sc = opts.scale || 1, w = textWidth(str, opts) + (opts.bold ? 1 : 0);
-    const x0 = Math.round(opts.align === 'center' ? x - Math.floor(w / 2) : opts.align === 'right' ? x - w : x);
-    const o2 = Object.assign({}, opts, { grad: null });
-    this.text(str, x, y, SENTINEL, o2);
-    const rows = 8 * sc, cols = g.map((c) => P(c)), d = this.s.data, n = cols.length - 1;
-    for (let j = 0; j < rows; j++) {
-      const Y = Math.round(y) + j; if (Y < 0 || Y >= this.h) continue;
-      const t = (j / Math.max(1, 7 * sc - 1)) * n, k = Math.min(n - 1, Math.floor(t)), f = Math.min(1, t - k);
-      for (let X = Math.max(0, x0 - 1); X < Math.min(this.w, x0 + w + 2); X++) { const i = Y * this.w + X; if (d[i] === SENTINEL) d[i] = bayer(X, Y) < f ? cols[k + 1] : cols[k]; }
-    }
+    str = String(str ?? ''); if (!str) return 0;
+    const sc = o.scale || 1, F = fontOf(!!o.mini, !!o.bold, sc), g = this.g;
+    const sp = o.spacing || 0, w = measure(str, F) + (sp ? sp * (str.length - 1) : 0);
+    const x0 = o.align === 'center' ? x - w / 2 : o.align === 'right' ? x - w : x, by = y + F.cap;
+    if (this._font !== F.font) { g.font = F.font; this._font = F.font; }
+    if (sp && 'letterSpacing' in g) g.letterSpacing = sp + 'px';
+    const out = o.outline === true ? T.ink : o.outline, shad = o.shadow === true ? T.ink : o.shadow;
+    if (out) { g.lineJoin = 'round'; g.miterLimit = 2; g.strokeStyle = css(out); g.lineWidth = (o.mini ? 1.7 : 2.3) * Math.max(1, sc * 0.8); g.strokeText(str, x0, by); }
+    if (shad) { this.fill(shad).fillText(str, x0 + 0.35, by + 0.9); }
+    if (o.grad) { const gr = g.createLinearGradient(0, by - F.cap * 1.05, 0, by + 0.5); const n = o.grad.length - 1; o.grad.forEach((cc, i) => gr.addColorStop(n ? i / n : 0, css(cc))); g.fillStyle = gr; this._fs = null; }
+    else this.fill(c ?? T.text);
+    g.fillText(str, x0, by);
+    if (sp && 'letterSpacing' in g) g.letterSpacing = '0px';
     return w;
   }
-  tw(str, o = {}) { return textWidth(str, Object.assign({ jpSize: 10 }, o)) + (o.bold ? 1 : 0); }
+  tw(str, o = {}) { str = String(str ?? ''); if (!str) return 0; const F = fontOf(!!o.mini, !!o.bold, o.scale || 1); return measure(str, F) + (o.spacing ? o.spacing * (str.length - 1) : 0); }
   wrap(str, maxW, o = {}) {
     const out = [];
     for (const para of String(str).split('\n')) {
@@ -151,43 +189,32 @@ export class PixelUI {
     }
     return out;
   }
-  // 7×7 icon (auto-bevelled, drop shadow). o.big → the detailed 12×12 version (c optional: natural colours)
+  // 7×7 icon glyph (auto-bevelled, drop shadow). o.big → the detailed 12-unit version (c optional: natural colours)
   icon(name, x, y, c = T.text, shadow = T.ink, o) {
     if (o && (o.big || o.size >= 10)) return drawBig(this.s, name, x, y, o.tint ? c : null, o);
     drawSmall(this.s, name, x, y, c, shadow);
   }
-  // detailed full-colour 12×12 icon; c: tint (null → the icon's own colours); o: { scale, outline, shadow, dim }
+  // detailed full-colour pixel-art icon in a 12×12 box; c: tint (null → the icon's own colours); o: { scale, outline, shadow, dim }
   bigIcon(name, x, y, c = null, o = {}) { drawBig(this.s, name, x, y, c, o); }
-  // rounded pixel rect fill (corner radius 1–3 px hand-cut; larger radii are round, pills at h/2)
-  rrect(x, y, w, h, c, r = 2) {
-    for (let j = 0; j < h; j++) {
-      const ins = insetOf(j, h, r);
-      if (w - ins * 2 > 0) this.s.hline(x + ins, x + w - 1 - ins, y + j, c);
-    }
-  }
-  // panel: a carved wooden board. o: fill (wood colour), paper (parchment interior), alpha (translucent interior),
-  // edge / edgeL (rim tint), line, shadow, rivets (corner nails), ornate / leaves (swaying leaf sprigs), r (corner radius), thin
+  // rounded rect fill
+  rrect(x, y, w, h, c, r = 2) { if (w <= 0 || h <= 0) return; const g = this.fill(c); rr(g, x, y, w, h, r); g.fill(); }
+  // panel: a chunky gadget panel. o: fill (screen colour), paper (cream card), alpha, edge (bezel tint), line, shadow, r, thin, ornate / leaves (status LEDs)
   panel(x, y, w, h, o = {}) { frame(this, x, y, w, h, o); }
-  // a small wooden sign: a round leaf-green badge holding the icon, the title burnt into a plank, a sprig on the end.
-  // returns the plank width
+  // a ribbon title: a round coloured badge with the icon, the title on a white pill. Returns its width
   banner(x, y, str, o = {}) {
-    x = Math.round(x); y = Math.round(y);
-    const s = this.s, c = o.color || T.moss, w = this.tw(str, { bold: true }) + 24, h = 15;
-    frame(this, x + 6, y - 1, w, h, { thin: true, r: 4, fill: T.woodL, edge: T.wood, edgeL: mx(T.woodL, T.hi, 0.5), seams: false, rivets: false, shadowA: 0.3 });
-    this.text(str, x + 20, y + 3, T.text, { bold: true, shadow: T.woodDD });
-    if (o.chev !== false) sprig(s, x + w + 3, y + 3, 1, this.t, { n: 2, len: 7 });
-    ball(s, x + 7, y + 6, 8, c);
-    if (o.icon) drawSmall(s, o.icon, x + 4, y + 3, '#ffffff', mx(c, T.ink, 0.6));
+    const c = o.color || T.blue, w = this.tw(str, { bold: true }) + 24, h = 15;
+    frame(this, x + 6, y - 1, w, h, { paper: '#ffffff', r: 7.5, thin: true, shadowA: 0.3 });
+    this.text(str, x + 20, y + 3, T.paperText, { bold: true });
+    ball(this.s, x + 7, y + 6, 8, c);
+    if (o.icon) drawBig(this.s, o.icon, x + 1, y, null, { scale: 1, shadow: false });
     return w;
   }
-  // segmented bar (HP, energy): v 0..1. Ink-outlined inset track, 3-tone glossy fill with segment
-  // notches, a travelling shine, a damage trail that lingers then drains, low-value blink.
+  // segmented bar (HP, energy): v 0..1. An ink pill, a dark track, a glossy candy fill with segment notches,
+  // a travelling shine, a damage trail that lingers then drains, a low-value blink.
   // o: color, back, seg, ghost, id (trail key), shine (false = off), trail (false = off)
   bar(x, y, w, h, v, o = {}) {
-    x = Math.round(x); y = Math.round(y); w = Math.max(1, Math.round(w)); h = Math.max(1, Math.round(h));
-    v = clamp01(+v || 0);
-    const s = this.s, r = h >= 4 ? 2 : 1;
-    const key = o.id ?? x + ',' + y + ',' + w + ',' + h;
+    w = Math.max(1, w); h = Math.max(1, h); v = clamp01(+v || 0);
+    const g = this.g, key = o.id ?? (x * 7919 + y * 131 + w * 7 + h);
     let B = this._bars.get(key);
     if (!B) { B = { v, trail: v, hold: 0, flash: 0 }; this._bars.set(key, B); }
     B.seen = this.frameN;
@@ -197,110 +224,68 @@ export class PixelUI {
     B.v = v;
     if (B.hold > 0) B.hold -= this.dt; else B.trail = Math.max(v, B.trail - this.dt * 0.8);
     if (B.flash > 0) B.flash -= this.dt;
-    this.rrect(x - 1, y - 1, w + 2, h + 2, T.ink, r);
-    const back = o.back || '#3a2210';
-    s.rect(x, y, w, h, back);
-    if (h > 2) s.hline(x, x + w - 1, y, sh(back, -0.7));
-    if (h >= 4) s.hline(x + 1, x + w - 2, y + h - 1, mx(back, T.edge, 0.55));
+    const r = h / 2 + 0.6, o1 = h >= 4 ? 1.1 : 0.8;
+    this.fill(T.ink); rr(g, x - o1, y - o1, w + o1 * 2, h + o1 * 2, r + o1); g.fill();
+    this.fill(o.back || '#1a1f4a'); rr(g, x, y, w, h, r); g.fill();
     let col = o.color || (v > 0.5 ? T.green : v > 0.22 ? T.amber : T.red);
     if (!o.color && v <= 0.22 && v > 0 && ((this.t * 4) | 0) % 2) col = mx(col, '#ffffff', 0.3);
-    if (B.flash > 0) col = mx(col, '#ffffff', B.flash * 1.4);
-    const seg = o.seg || 0;
-    let fw = Math.round(w * v); if (v > 0 && fw < 1) fw = 1;
-    if (seg) for (let i = seg - 1; i < w - 1; i += seg) if (i >= fw) s.vline(x + i, y + 1, y + h - 1, mx(back, T.edge, 0.35));
-    if (o.ghost != null && o.ghost > v) { const gw = Math.round(w * Math.min(1, o.ghost)); for (let i = fw; i < gw; i++) s.vline(x + i, y, y + h - 1, '#fff0d0'); }
-    if (o.trail !== false && B.trail > v + 0.002) {
-      const tw = Math.round(w * B.trail), tc = B.hold > 0 ? '#fff8e8' : T.coralL, td = sh(T.coral, -0.2);
-      for (let i = fw; i < tw; i++) for (let j = 0; j < h; j++) s.px(x + i, y + j, j === h - 1 && h > 2 ? td : tc);
-    }
-    const L2 = mx(col, '#ffffff', 0.55), L = sh(col, 0.75), D = sh(col, -0.8), N = sh(col, -1.3), G = mx(col, '#ffffff', 0.4);
-    const shineOn = o.shine !== false && h >= 3 && fw > 5, ph = shineOn ? ((this.t * 0.55 + hash(x, y)) % 1.4) / 1.4 : -1, sx = Math.round(ph * (w + 24)) - 12;
-    for (let i = 0; i < fw; i++) {
-      const cut = h >= 4 && (i === 0 || i === w - 1);
-      const y0 = y + (cut ? 1 : 0), y1 = y + h - 1 - (cut ? 1 : 0);
-      for (let Y = y0; Y <= y1; Y++) {
-        const j = Y - y;
-        let c2 = h === 1 ? col : j === 0 ? L : h >= 4 && j === 1 ? G : j === h - 1 && h >= 3 ? D : col;
-        if (seg && i % seg === seg - 1 && i < fw - 1) c2 = j === 0 ? col : N;
-        if (shineOn && i - sx >= -(j) && i - sx < 3 - j && j < h - 1) c2 = L2;
-        s.px(x + i, Y, c2);
+    if (B.flash > 0) col = mx(col, '#ffffff', Math.min(1, Math.round(B.flash * 20) / 14));
+    const fw = v > 0 ? Math.max(h * 0.6, w * v) : 0;
+    if (o.ghost != null && o.ghost > v) { g.fillStyle = 'rgba(255,248,220,0.55)'; this._fs = null; rr(g, x, y, w * Math.min(1, o.ghost), h, r); g.fill(); }
+    if (o.trail !== false && B.trail > v + 0.002) { this.fill(B.hold > 0 ? '#fff4e0' : T.coralL); rr(g, x, y, w * B.trail, h, r); g.fill(); }
+    if (fw > 0) {
+      g.fillStyle = vgrad(g, y, y + h, [mx(col, '#ffffff', 0.45), col, mx(col, T.ink, 0.25)]); this._fs = null;
+      rr(g, x, y, fw, h, r); g.fill();
+      if (h >= 3) { g.fillStyle = 'rgba(255,255,255,0.45)'; rr(g, x + 1, y + h * 0.12, Math.max(0, fw - 2), h * 0.3, h * 0.15); g.fill(); }
+      const seg = o.seg || 0;
+      if (seg && h >= 3) { g.fillStyle = rgba(T.ink, 0.35); for (let i = seg; i < fw - 1; i += seg) g.fillRect(x + i, y + h * 0.25, 0.6, h * 0.75); }
+      if (o.shine !== false && h >= 3 && fw > 8) {
+        const ph = ((this.t * 0.55 + hash(x | 0, y | 0)) % 1.4) / 1.4, sx = x + ph * (w + 24) - 12;
+        g.save(); rr(g, x, y, fw, h, r); g.clip(); g.fillStyle = 'rgba(255,255,255,0.4)'; g.beginPath(); g.moveTo(sx, y + h); g.lineTo(sx + 3, y); g.lineTo(sx + 6, y); g.lineTo(sx + 3, y + h); g.fill(); g.restore(); this._fs = null;
       }
     }
-    if (fw > 1 && fw < w && h >= 3) s.vline(x + fw - 1, y + 1, y + h - 2, L2);
   }
   // ------------------------------------------------------------------ input
   inside(x, y, w, h) { return this.ptr.x >= x && this.ptr.y >= y && this.ptr.x < x + w && this.ptr.y < y + h; }
   blocked(o = {}) { return (this.dialog && !o.modal) || (this.modals.length && !this._inModal && !o.modal); }
-  // returns true on click; draws the button: a chunky wooden block on a darker base that squashes when pressed.
-  // o: color (accent inlay / hover rim), fill, active, disabled, icon, sub, subColor, key, hotkey, textColor, mini, modal
+  // a candy button: returns true on click. It squashes onto its lip while held, boings back on release and
+  // plays a tap sound on every press. o: color (face colour), fill, active, disabled, icon, sub, subColor, key,
+  // hotkey, textColor, mini, modal
   button(x, y, w, h, label, o = {}) {
-    x = Math.round(x); y = Math.round(y); w = Math.round(w); h = Math.round(h);
-    const over = this.inside(x, y, w, h) && !o.disabled && !this.blocked(o), down = over && this.ptr.down;
+    x = Math.round(x * 2) / 2; y = Math.round(y * 2) / 2; w = Math.round(w); h = Math.round(h);
+    const dis = !!o.disabled, blk = this.blocked(o), over = this.inside(x, y, w, h) && !dis && !blk, down = over && this.ptr.down;
     if (over) this.hot = label;
-    const s = this.s, dis = !!o.disabled;
-    const accent = dis ? '#8a7a68' : (o.color || T.leaf);
-    const base = dis ? '#7a6a58' : (o.fill || (o.active ? mx(T.wood, accent, 0.3) : T.wood));
-    const lip = h >= 13 ? 3 : 2, r = h >= 13 ? 4 : 3;
-    // squash: pressed faces drop onto the base and spread a pixel each side
-    const sq = down ? 1 : 0, dy = down ? lip - 1 : 0, fh = h - lip - sq, fy = y + dy + sq, fx = x - sq, fw = w + sq * 2;
-    const face = dis ? base : over ? mx(base, T.hi, 0.18) : base;
-    dropShadow(s, x, y, w, h, r, 0, 1, 0.35);
-    // the base under the block
-    this.rrect(x, y + lip, w, h - lip, T.ink, r);
-    const side = dis ? '#4a3e32' : mx(T.woodDD, accent, 0.18);
-    this.rrect(x + 1, y + lip, w - 2, h - lip - 1, side, Math.max(1, r - 1));
-    // the block
-    this.rrect(fx, fy, fw, fh, T.ink, r);
-    const rim = dis ? '#9a8a76' : over || o.active ? mx(accent, T.hi, 0.25) : mx(face, T.hi, 0.35);
-    this.rrect(fx + 1, fy + 1, fw - 2, fh - 2, rim, Math.max(1, r - 1));
-    if (fh > 4) {
-      gradFill(s, fx + 2, fy + 2, fw - 4, fh - 4, [mx(face, T.hi, 0.12), face, mx(face, T.woodDD, 0.25)], 1);
-      // a little grain
-      if (!dis) for (let j = fy + 4; j < fy + fh - 3; j += 3) for (let i = fx + 4 + ((j * 7) % 5); i < fx + fw - 4; i += 9) { s.px(i, j, mx(face, T.woodDD, 0.22)); s.px(i + 1, j, mx(face, T.woodDD, 0.22)); }
-      s.hline(fx + 3, fx + fw - 4, fy + fh - 2, mx(face, T.woodDD, 0.45));
-    }
-    // hover: a soft glint sweeps across
-    if (!dis && !down && (over || o.active) && fh > 6) {
-      const per = over ? 1.6 : 3.4, ph = ((this.t + hash(x, y) * per) % per) / per, gx = fx + Math.round(ph * (fw + fh + 12)) - 6;
-      const gc = mx(face, '#ffffff', 0.3);
-      for (let j = fy + 2; j < fy + fh - 2; j++) { const xx = gx - (j - fy); if (xx > fx + 2 && xx < fx + fw - 3) s.px(xx, j, gc); }
-    }
-    // accent inlay on the left edge (a coloured bead)
-    if (!dis && w > 30 && fh > 9) { const by = fy + (fh >> 1); s.px(fx + 4, by - 1, mx(accent, '#ffffff', 0.4)); s.px(fx + 5, by - 1, accent); s.px(fx + 4, by, accent); s.px(fx + 5, by, mx(accent, T.ink, 0.35)); }
-    const mini = !!o.mini, gh = mini ? 5 : 7;
-    const tx = fx + Math.round(fw / 2), ty = fy + Math.round((fh - gh) / 2);
-    const lc = dis ? '#cdbca4' : o.textColor || T.text, shad = dis ? '#5a4c3e' : T.woodDD;
+    const a = this.anim((x * 7919 + y * 104729 + w * 31 + h) | 0, { bt: 9, hov: 0 });
+    a.bt += this.dt; a.hov += ((over ? 1 : 0) - a.hov) * Math.min(1, this.dt * 14);
+    if (over && this.ptr.pressed) { this.click('ui_tap', { vol: 0.7, pitch: 1.05 + (40 / Math.max(20, w)) * 0.1 }); }
+    const hk = o.hotkey && this.key(o.hotkey) && !dis && !blk;
+    const clicked = (over && this.ptr.released) || hk;
+    if (clicked) { a.bt = 0; if (hk) this.click('ui_tap', { vol: 0.7 }); }
+    const col = dis ? '#9aa0c0' : o.fill || o.color || T.blue, lip = h >= 13 ? 3 : 2;
+    const st = dis ? 3 : down ? 2 : over || o.active ? 1 : 0;
+    const sq = a.bt < 0.7 ? Math.exp(-7 * a.bt) * Math.sin(a.bt * 26) * 0.09 : 0, grow = a.hov * 0.035;
+    const g = this.g, cx = x + w / 2, cy = y + h / 2, xf = sq !== 0 || grow > 0.001;
+    if (xf) { g.save(); g.translate(cx, cy); g.scale(1 + grow + sq, 1 + grow - sq); g.translate(-cx, -cy); }
+    candy(this, x, y, w, h, { color: col, state: st, lip, active: !!o.active && !dis });
+    const fy = y + (down ? lip - 1 : 0), fh = h - lip, mini = !!o.mini;
+    const lc = dis ? '#e4e6f4' : o.textColor || '#ffffff', ink = dis ? '#6a6e90' : mx(col, T.ink, 0.72);
+    const ty = fy + (fh - (mini ? 5 : 7)) / 2;
     if (o.icon) {
-      const bigI = fh >= 14 && !mini, iw = bigI ? 12 : 7;
-      const lw = label ? this.tw(label, { mini }) + iw + 3 : iw;
-      const ix = tx - Math.round(lw / 2);
-      if (bigI) drawBig(s, o.icon, ix, fy + Math.round((fh - 12) / 2), null, { shadow: false, dim: dis ? 0.5 : 0 });
-      else this.icon(o.icon, ix, fy + Math.round((fh - 7) / 2), dis ? '#cdbca4' : mx(accent, '#ffffff', 0.35), shad);
-      if (label) this.text(label, ix + iw + 3, ty, lc, { shadow: shad, mini });
-    } else if (label) this.text(label, tx, ty, lc, { align: 'center', shadow: shad, mini });
-    if (o.sub) this.text(o.sub, fx + fw - 4, fy + fh - 8, o.subColor || T.dim, { align: 'right', mini: true });
-    if (o.key) this.text(o.key, fx + 5, fy + 3, T.dim, { mini: true });
-    if (dis && fh > 5) for (let j = fy + 3; j < fy + fh - 2; j++) for (let i = fx + 3; i < fx + fw - 3; i++) if ((i + j) % 4 === 0) s.px(i, j, '#6a5a4a');
-    const clicked = (over && this.ptr.released) || (o.hotkey && this.key(o.hotkey) && !o.disabled && !this.blocked(o));
+      const bigI = fh >= 13 && !mini, iw = bigI ? 12 : 7, lw = label ? this.tw(label, { mini, bold: !mini }) + iw + 3 : iw, ix = cx - lw / 2;
+      if (bigI) drawBig(this.s, o.icon, ix, fy + (fh - 12) / 2, null, { shadow: false, dim: dis ? 0.5 : 0 });
+      else drawSmall(this.s, o.icon, ix, fy + (fh - 7) / 2, '#ffffff', ink);
+      if (label) this.text(label, ix + iw + 3, ty, lc, { outline: ink, mini, bold: !mini });
+    } else if (label) this.text(label, cx, ty, lc, { align: 'center', outline: ink, mini, bold: !mini });
+    if (o.sub) this.text(o.sub, x + w - 4, fy + fh - 8, o.subColor || '#ffffff', { align: 'right', mini: true, outline: ink });
+    if (o.key) this.text(o.key, x + 5, fy + 3, '#ffffff', { mini: true, outline: ink });
+    if (xf) { g.restore(); this._fs = null; this._font = null; }
     if (clicked) this.ptr.released = false;
     return clicked;
   }
   // run fn with drawing clipped to a rect (fn gets the real coordinates). r: corner radius of the clip
   clip(x, y, w, h, fn, r = 0) {
-    x = Math.round(x); y = Math.round(y);
-    const real = this.s, depth = this._clipDepth || 0;
-    // one scratch surface per nesting level (a clip inside a clip, e.g. a round portrait inside a clipped card)
-    if (!this._clipStack || this._clipStack.w !== real.w || this._clipStack.h !== real.h) { this._clipStack = []; this._clipStack.w = real.w; this._clipStack.h = real.h; }
-    const tmp = this._clipStack[depth] || (this._clipStack[depth] = new Surf(real.w, real.h));
-    // only the clip rect is ever read back, so only it needs clearing
-    { const x0 = Math.max(0, x), x1 = Math.min(real.w, x + w); if (x1 > x0) for (let j = Math.max(0, y); j < Math.min(real.h, y + h); j++) tmp.data.fill(0, j * real.w + x0, j * real.w + x1); }
-    this.s = tmp; this._clipDepth = depth + 1;
-    try { fn(); } finally { this.s = real; this._clipDepth = depth; }
-    for (let j = 0; j < h; j++) {
-      const Y = y + j; if (Y < 0 || Y >= real.h) continue;
-      const ins = r ? insetOf(j, h, r) : 0;
-      for (let X = Math.max(0, x + ins); X < Math.min(real.w, x + w - ins); X++) { const v = tmp.data[Y * real.w + X]; if (v >>> 24) real.data[Y * real.w + X] = v; }
-    }
+    const g = this.g; g.save(); rr(g, x, y, w, h, r); g.clip();
+    try { fn(); } finally { g.restore(); this._fs = null; this._font = null; }
   }
   // ------------------------------------------------------------------ dialogue
   // say(name, text, o) → Promise that resolves when the player advances; o.choices → resolves to an index.
@@ -310,7 +295,7 @@ export class PixelUI {
   }
   choose(prompt, choices, o = {}) { return this.say(o.name || '', prompt, Object.assign({}, o, { choices })); }
   drawDialog() { if (this.dialog) drawDialog(this); }
-  closeDialog(v) { const D = this.dialog; if (!D) return; this.dialog = null; this.keys = {}; D.resolve(v); }
+  closeDialog(v) { const D = this.dialog; if (!D) return; this.dialog = null; this.keys = {}; this.click('ui_tap', { vol: 0.5, pitch: 1.2 }); D.resolve(v); }
   // ------------------------------------------------------------------ toasts
   toast(str, o = {}, ms) {
     if (typeof o === 'string') o = { color: o === 'gold' ? T.amber : o === 'good' ? T.green : o === 'bad' ? T.red : undefined };
@@ -318,29 +303,26 @@ export class PixelUI {
     if (this.toasts.some((t) => t.str === str)) return;
     this.toasts.push({ str, t: 0, dur: o.dur || 2.2, color: o.color || T.amber, icon: o.icon || 'star' });
   }
-  // toasts are small parchment pills: a coloured icon bead + a few words, popping in from the top
+  // toasts are white pills with a coloured badge holding the icon, bouncing down from the top
   drawToasts() {
-    const s = this.s;
-    // top-centre on landscape; on narrow (portrait) screens below the HUD's top-left column. ui.toastY overrides
-    let y = this.toastY ?? (this.w < 360 ? Math.round(this.h * 0.22) : 5), n = 0;
+    let y = this.toastY ?? (this.w < 360 ? Math.round(this.h * 0.22) : 6), n = 0;
     for (const t of this.toasts) {
-      if (n++ >= 3) break;            // at most three at a time; the rest wait their turn
+      if (n++ >= 3) break;
       t.t += this.dt || 1 / 60;
       const kin = easeOutBack(t.t * 3.2), kout = clamp01((t.dur - t.t) * 4);
       if (kout <= 0) continue;
-      let str = String(t.str); const maxW = this.w - 40;
-      while (str.length > 4 && this.tw(str) > maxW) str = str.slice(0, -2);
-      if (str !== String(t.str)) str = str.replace(/\s*\S?$/, '') + '…';
-      const h = 18, w = this.tw(str) + 34;
-      const x = Math.round(this.w / 2 - w / 2), yy = y + Math.round((1 - kin) * -22 - (1 - easeOut(kout)) * 22);
-      frame(this, x, yy, w, h, { paper: true, r: 9, thin: true, fill: T.wood, rivets: false, shadowA: 0.35 });
-      ball(s, x + 9, yy + 9, 8, t.color);
-      drawSmall(s, t.icon, x + 6, yy + 6, '#ffffff', mx(t.color, T.ink, 0.6));
-      this.text(str, x + 21, yy + 6, T.paperText, {});
-      if (t.t < 0.7) sparkle(s, x + w - 4, yy + 2, T.amberL, 1 - t.t / 0.7);
+      let str = String(t.str); const maxW = this.w - 44;
+      if (this.tw(str) > maxW) { while (str.length > 4 && this.tw(str + '…') > maxW) str = str.slice(0, -1); str = str.replace(/\s+$/, '') + '…'; }
+      const h = 18, w = Math.round(this.tw(str) + 34);
+      const x = Math.round(this.w / 2 - w / 2), yy = y + Math.round((1 - kin) * -24 - (1 - easeOut(kout)) * 24);
+      frame(this, x, yy, w, h, { paper: '#ffffff', r: 9, thin: true, shadowA: 0.35 });
+      ball(this.s, x + 9, yy + 9, 7.5, t.color);
+      drawSmall(this.s, t.icon, x + 5.5, yy + 5.5, '#ffffff', mx(t.color, T.ink, 0.6));
+      this.text(str, x + 21, yy + 5.5, T.paperText, { bold: true });
+      if (t.t < 0.7) sparkle(this.s, x + w - 4, yy + 2, T.amber, 1 - t.t / 0.7);
       y += h + 3;
     }
-    this.toasts = this.toasts.filter((t) => t.t < t.dur);
+    if (this.toasts.length && this.toasts.some((t) => t.t >= t.dur)) this.toasts = this.toasts.filter((t) => t.t < t.dur);
   }
   // ------------------------------------------------------------------ widgets (see uikit/widgets.js)
   keycap(x, y, label, o) { return W.keycap(this, x, y, label, o); }
@@ -353,11 +335,14 @@ export class PixelUI {
   minimap(x, y, w, h, draw, o) { return W.minimap(this, x, y, w, h, draw, o); }
   objective(x, y, str, o) { return W.objective(this, x, y, str, o); }
   iconButton(x, y, size, icon, o) { return W.iconButton(this, x, y, size, icon, o); }
-  cursor(x, y, dir = 'right', c = T.amber) { tri(this.s, Math.round(x), Math.round(y), dir, 3, c); }
-  gem(x, y, c = T.cyan, r = 3) { gem(this.s, Math.round(x), Math.round(y), c, r); }
+  roundButton(cx, cy, r, icon, o) { return W.roundButton(this, cx, cy, r, icon, o); }
+  cursor(x, y, dir = 'right', c = T.amber) { tri(this.s, x, y, dir, 3, c); }
+  gem(x, y, c = T.cyan, r = 3) { gem(this.s, x, y, c, r); }
   sparkle(x, y, c = T.amberL, k = 1) { sparkle(this.s, x, y, c, k); }
-  // big smooth 'sticker' version of an icon (Scale2x ×2 or ×4, ink + white rims), centred on (cx, cy)
-  emblem(name, cx, cy, scale = 4, tint = null) { drawEmblem(this, name, Math.round(cx), Math.round(cy), scale, tint); }
+  // big smooth 'sticker' version of an icon (Scale2x, ink + white rims), centred on (cx, cy)
+  emblem(name, cx, cy, scale = 4, tint = null) { drawEmblem(this.s, name, cx, cy, scale, tint, scale * 7); }
+  // an image (canvas / ImageBitmap / ImageData) drawn smooth into a box; o: { crisp, alpha }
+  image(src, x, y, w, h, o = {}) { W.drawImage(this, src, x, y, w, h, o); }
   // ------------------------------------------------------------------ full-screen modal screens (see uikit/screens.js)
   // nameEntry({ title, value, max, sub, portrait }) → Promise<string>
   nameEntry(o = {}) { return new Promise((resolve) => this.openModal(nameEntryScreen(this, o, resolve))); }
@@ -365,3 +350,4 @@ export class PixelUI {
   // default art (no draw): a medallion with the card's icon as a big emblem (art 'boy' → star, 'girl' → heart), else its initial
   pickCards(o = {}) { return new Promise((resolve) => this.openModal(pickCardsScreen(this, o, resolve))); }
 }
+void easeOut; void boing; void vgrad;

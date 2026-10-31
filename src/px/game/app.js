@@ -28,7 +28,7 @@ export class App {
   async boot() {
     this.gl = document.getElementById('gl'); this.uiCv = document.getElementById('ui');
     this.post = new HD2D(this.gl);
-    this.ui = new PixelUI(320, 180);
+    this.ui = new PixelUI(320, 180, { canvas: this.uiCv });
     const VOICES = { 'Coach Gonda': 'coach', Kaito: 'rival', Mika: 'friend', Taro: 'kid', Thrash: 'punk', Riff: 'punk', Moshi: 'punk', 'Dr. Hoshino': 'professor', Barber: 'elder', '???': 'rival' };
     this.ui.voice = (name, ch) => { if (this.audio && this.audio.voice) this.audio.voice(VOICES[name] || 'friend', ch); };
     this.layout();
@@ -56,10 +56,10 @@ export class App {
     const S_ = Math.max(1, Math.round(target * dpr));
     this.vw = Math.ceil(W * dpr / S_); this.vh = Math.ceil(H * dpr / S_); this.scale = S_;
     this.gl.width = this.vw * S_; this.gl.height = this.vh * S_;
-    this.uiCv.width = this.vw; this.uiCv.height = this.vh;
     for (const c of [this.gl, this.uiCv]) { c.style.width = (this.vw * S_ / dpr) + 'px'; c.style.height = (this.vh * S_ / dpr) + 'px'; }
-    this.ui.resize(this.vw, this.vh);
-    this.uctx = this.uiCv.getContext('2d');
+    const ud = Math.min(2, devicePixelRatio || 1);          // the UI draws at device resolution over the same layout grid
+    this.uiCv.style.imageRendering = 'auto';
+    this.ui.resize(this.vw, this.vh, Math.round((this.vw * S_ / dpr) * ud), Math.round((this.vh * S_ / dpr) * ud));
     if (this.world && this.world.sc) { this.world.sc.setView(this.vw, this.vh); }
     if (this.stage3d) this.stage3d.setView(this.vw, this.vh);
     if (this.battle && this.battle.sc) this.battle.sc.setView(this.vw, this.vh);
@@ -95,7 +95,6 @@ export class App {
       // a release nobody consumed is a tap on the world
       if (ui.ptr.released && !ui.dialog && Math.hypot(ui.ptr.x - ui.ptr.sx, ui.ptr.y - ui.ptr.sy) < 8) this.tapWorld = [ui.ptr.x, ui.ptr.y];
       ui.end();
-      this.uctx.putImageData(new ImageData(new Uint8ClampedArray(ui.s.data.buffer), ui.w, ui.h), 0, 0);
     } catch (e) { if (!this._err) { this._err = true; console.error(e); const el = document.getElementById('err'); if (el) { el.style.display = 'block'; el.textContent = 'Frame: ' + (e.stack || e); } } }
   }
   modeObj() { return this.mode === 'world' ? this.world : this.mode === 'battle' ? this.battle : this.mode === 'title' ? this.story.title : this.story.scene; }

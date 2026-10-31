@@ -1,49 +1,44 @@
-// The voxel stage: the three.js scene for a voxel / low-poly diorama seen from above, lit like an HD-2D
-// set: a warm sun with soft shadows that follow the camera, sky/ground hemisphere fill with a warm bounce,
-// ambient occlusion in every crease and under everything that stands on the ground, aerial haze tinted
-// to the sky, glowing windows, neon and lamps at night that throw real pools of light (render/pools.js),
-// and filmic tone mapping. Box-model creatures and people stand in it.
-// The stage renders into its own canvas; the HD-2D post pass (bloom, tilt-shift, grade) is applied on
-// top by src/px/hd2d.js.
-// Up close (the city's third-person camera) it adds: a painted pixel sky with the sun's glow and clouds that
-// glossy surfaces reflect (render/sky.js), Standard materials with per-family roughness and pixel relief
-// (render/surface.js), two sun shadow cascades — a tight, sharp one around the player and a wide one down the
-// street (render/shadows.js) — and a depth of field focused on the player (render/composite.js).
-// Styles (setStyle): { hd: true } is the realistic look (HDR target, AO, haze; render/composite.js);
-// { ink, toon } is the old cel look (banded shading, ink outlines), kept for comparison (?look=toon).
+// The voxel stage: the three.js scene for the city and the dioramas, lit physically: a sun at a believable angle
+// with crisp cascaded shadows, a sky-coloured hemisphere fill with a ground bounce, an analytic scattering sky
+// (render/sky.js) that is also the reflection environment, screen-space ambient occlusion, aerial perspective,
+// emissive windows, neon and lamps that throw real pools of light at night (render/pools.js), and AgX filmic tone
+// mapping with a neutral grade (render/composite.js). Everything renders in this one WebGL context straight to
+// the canvas (no second post-processing canvas). Box-model creatures and people stand in it.
+// Styles (setStyle): { hd: true } is the realistic look; { ink, toon } is the old cel look (?look=toon).
 import * as THREE from '../../vendor/three.module.js';
 import { OUTLINE } from './model.js';
 import { LightPools, Halos } from './render/pools.js';
 import { Composite } from './render/composite.js';
 import { installLighting, aimShadow } from './render/shadows.js';
-import { skyTexture as paintSky, envFor } from './render/sky.js';
+import { Sky } from './render/sky.js';
 
 installLighting();
+const LITE = !!globalThis.TOKON_LITE;
 
-// per mood: sun (colour, intensity, direction toward the sun: the elevation sets the shadow length), sky /
-// ground fill (the ground colour is the warm light bounced off sunlit streets), haze (colour and [start m,
-// density /m, max, falloff with height /m]), sky gradient [zenith, mid, horizon] + cloud cover, environment
-// reflection strength, emissive levels (glow voxels, lit textures), light-pool gain, ambient occlusion strength,
-// exposure. Sun colours follow the real thing (near-white at ~50° by day, amber at ~22° for golden hour, deep
-// orange a few degrees above the horizon at dusk, a cool high moon at night), tuned toward the Tokonmon's
-// painted look: saturated sunny skies, warm colourful bounce, bright shadow fill, and a cosy (not murky) night.
-// ink: the outline colour of the HD composite (render/composite.js), a warm dark per mood, never pure black.
+// per mood: sun (colour, intensity, direction toward the sun: its elevation sets the shadow length), sky / ground
+// fill (hemisphere: the sky's own colour, the ground colour is light bounced off sunlit streets), haze (aerial
+// perspective: colour and [start m, density /m, max, falloff with height /m]), skyP (the scattering sky:
+// turbidity, rayleigh, scale; night: the moonlit variant), clouds, environment reflection strength, emissive
+// levels (glow voxels, lit textures), light-pool gain, ambient occlusion strength, exposure.
+// Values follow the real thing: a near-white sun at ~48° by day (sun ≈ 4–5× the sky fill on the ground), an
+// amber low sun at golden hour, deep orange at dusk, and a dim cool moon at night where the street lamps,
+// windows and neon do the lighting.
 export const MOODS = {
-  day: { ink: '#2e1c18', sun: 0xfff0d6, sunI: 3.4, sunDir: [-0.55, 0.82, 0.42], hemiSky: 0xa6ccf6, hemiGround: 0xc09468, hemiI: 1.05, fog: 0xbcd8f2, hazeP: [38, 0.014, 0.28, 0.05], bg: 0x9cc4ec, sky: ['#2f74d8', '#6eb2f0', '#cfe8f8'], clouds: 0.4, env: 0.9, glow: 0.18, emissive: 0, pools: 0, ao: 0.85, exposure: 1.04 },
-  golden: { ink: '#3a1c12', sun: 0xffb46c, sunI: 3.6, sunDir: [-0.9, 0.4, 0.3], hemiSky: 0xa4b4ee, hemiGround: 0xc88a58, hemiI: 1.05, fog: 0xf0c8a4, hazeP: [36, 0.016, 0.3, 0.05], bg: 0xe8b898, sky: ['#3f6ac4', '#d0a8c4', '#ffc488'], clouds: 0.36, env: 0.9, glow: 0.5, emissive: 0.25, pools: 0.05, halo: 0, ao: 0.85, exposure: 1.08 },
-  dusk: { ink: '#2a1626', sun: 0xff8650, sunI: 1.8, sunDir: [-0.95, 0.16, 0.3], hemiSky: 0x5e80cc, hemiGround: 0x74503e, hemiI: 1.0, fog: 0x7e82b4, hazeP: [32, 0.02, 0.4, 0.05], bg: 0x5a5a9a, sky: ['#1a2e70', '#6a6cb0', '#ff9a68'], clouds: 0.45, env: 0.85, glow: 1.8, emissive: 0.85, pools: 0.4, halo: 0.35, ao: 0.82, exposure: 1.2 },
-  night: { ink: '#180e16', sun: 0xa4b8ff, sunI: 0.6, sunDir: [0.35, 1, 0.55], hemiSky: 0x4a5ca8, hemiGround: 0x3a2a34, hemiI: 0.7, fog: 0x242c58, hazeP: [32, 0.022, 0.44, 0.06], bg: 0x0c1020, sky: ['#060a1c', '#142048', '#34305a'], clouds: 0.22, env: 0.7, glow: 2.8, emissive: 1.0, pools: 0.55, halo: 0.5, ao: 0.78, exposure: 1.3 },
+  day: { ink: '#2e1c18', sun: 0xfff3e2, sunI: 4.6, sunDir: [-0.55, 0.78, 0.42], hemiSky: 0x9ec2ea, hemiGround: 0x8a7a68, hemiI: 1.15, fog: 0xc2d2e2, hazeP: [45, 0.006, 0.55, 0.035], skyP: { turbidity: 2.6, rayleigh: 1.3, scale: 1.0 }, clouds: 0.32, env: 1.0, glow: 0.25, emissive: 0, pools: 0, ao: 0.8, exposure: 0.92 },
+  golden: { ink: '#3a1c12', sun: 0xffc48a, sunI: 4.0, sunDir: [-0.9, 0.36, 0.3], hemiSky: 0x93a8d0, hemiGround: 0x8a6a50, hemiI: 1.0, fog: 0xe0c0a4, hazeP: [40, 0.008, 0.6, 0.035], skyP: { turbidity: 3.6, rayleigh: 1.6, scale: 1.0 }, clouds: 0.3, env: 1.0, glow: 0.6, emissive: 0.25, pools: 0.05, halo: 0, ao: 0.8, exposure: 1.0 },
+  dusk: { ink: '#2a1626', sun: 0xff9a5c, sunI: 2.2, sunDir: [-0.95, 0.12, 0.3], hemiSky: 0x5a6aa0, hemiGround: 0x4a3a34, hemiI: 0.75, fog: 0x8a86a8, hazeP: [36, 0.01, 0.6, 0.04], skyP: { turbidity: 4, rayleigh: 2.2, scale: 1.0 }, clouds: 0.36, env: 0.9, glow: 1.8, emissive: 0.85, pools: 0.55, halo: 0.35, ao: 0.8, exposure: 1.25 },
+  night: { ink: '#180e16', sun: 0x9fb4e8, sunI: 0.28, sunDir: [0.35, 1, 0.55], hemiSky: 0x24304e, hemiGround: 0x1c1a1e, hemiI: 0.5, fog: 0x101a2c, hazeP: [30, 0.012, 0.6, 0.05], skyP: { night: 1, sunElev: -0.12, turbidity: 3, rayleigh: 2, scale: 1.0 }, clouds: 0.18, env: 0.6, glow: 3.2, emissive: 1.0, pools: 0.85, halo: 0.45, ao: 0.75, exposure: 1.9 },
 };
 
 const _up = new THREE.Vector3(0, 1, 0), _v1 = new THREE.Vector3(), _v2 = new THREE.Vector3(), _v3 = new THREE.Vector3(), _v4 = new THREE.Vector3();
 export class VxStage {
   constructor(o = {}) {
     this.cv = o.canvas || document.createElement('canvas');
-    const r = this.r = new THREE.WebGLRenderer({ canvas: this.cv, antialias: o.antialias ?? false, preserveDrawingBuffer: true, powerPreference: 'high-performance' });
+    const r = this.r = new THREE.WebGLRenderer({ canvas: this.cv, antialias: o.antialias ?? false, preserveDrawingBuffer: !!o.preserve, powerPreference: 'high-performance', stencil: false });
     r.setPixelRatio(1);
     r.shadowMap.enabled = true; r.shadowMap.type = THREE.PCFSoftShadowMap;
     r.outputColorSpace = THREE.SRGBColorSpace;
-    r.toneMapping = THREE.NeutralToneMapping; r.toneMappingExposure = 1;
+    r.toneMapping = THREE.AgXToneMapping; r.toneMappingExposure = 1;
     const S = this.scene = new THREE.Scene();
     this.mats = {
       solid: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.78, metalness: 0 }),
@@ -52,14 +47,19 @@ export class VxStage {
     };
     this.hemi = new THREE.HemisphereLight(0xffffff, 0x888888, 1); S.add(this.hemi);
     this.sun = new THREE.DirectionalLight(0xffffff, 2); this.sun.castShadow = true;
-    this.sun.shadow.mapSize.set(o.shadowSize || 4096, o.shadowSize || 4096); this.sun.shadow.bias = -0.0004; this.sun.shadow.normalBias = 0.04; this.sun.shadow.radius = 2.5;
+    this.sun.shadow.mapSize.set(o.shadowSize || 2048, o.shadowSize || 2048); this.sun.shadow.bias = -0.0004; this.sun.shadow.normalBias = 0.04; this.sun.shadow.radius = 2.5;
     S.add(this.sun, this.sun.target);
     // the far shadow cascade: a black twin of the sun that only casts (render/shadows.js); on while the shadow box follows the camera
-    const fs = Math.max(1024, (o.shadowSize || 4096) / 2);
+    const fs = Math.max(1024, (o.shadowSize || 2048) / 2);
+    this.lite = o.lite ?? LITE;              // lite (phones): one shadow cascade, FXAA instead of MSAA, cheaper occlusion
     this.sunFar = new THREE.DirectionalLight(0x000000, 0); this.sunFar.castShadow = true; this.sunFar.visible = false;
     this.sunFar.shadow.mapSize.set(fs, fs); this.sunFar.shadow.bias = -0.0005; this.sunFar.shadow.normalBias = 0.06;
     S.add(this.sunFar, this.sunFar.target);
-    this.shadowNear = 11;                      // the near cascade's half-size (m) around the player
+    // shadow-only casters (merged proxies, city/merge.js) sit on layer 1: the shadow cameras see them, the camera doesn't
+    this.sun.shadow.camera.layers.enable(1); this.sunFar.shadow.camera.layers.enable(1);
+    this.shadowNear = this.lite ? 16 : 12;     // the near cascade's half-size (m) around the player (lite: the only cascade)
+    this.sky = new Sky();
+    this.post = { opts: {}, draw() {} };       // the grade (look.js POST, eased by the cinema); applied in the composite
     this.cam = new THREE.PerspectiveCamera(o.fov || 32, 16 / 9, 0.5, 2000); this.baseFov = this.cam.fov;
     this.view = { target: new THREE.Vector3(0, 0, 0), dist: 60, yaw: 0, pitch: 52 };
     this.actors = new THREE.Group(); S.add(this.actors);
@@ -98,6 +98,7 @@ export class VxStage {
    *  the far cascade; the near one (sharp, ±shadowNear m) is aimed at the player every frame in render(). */
   followShadow(t, R = 34) {
     this.shadowFollow = true;
+    if (this.lite) { this.sunFar.visible = false; return; }
     if (!this.sunFar.visible) { this.sunFar.visible = true; this.sun.shadow.normalBias = 0.02; this.sun.shadow.bias = -0.0002; }
     const d = this.mood.sunDir, L = Math.hypot(...d);
     this.sunDirN = (this.sunDirN || new THREE.Vector3()).set(d[0] / L, d[1] / L, d[2] / L);
@@ -115,12 +116,15 @@ export class VxStage {
     this.hemi.color.set(m.hemiSky); this.hemi.groundColor.set(m.hemiGround); this.hemi.intensity = m.hemiI;
     this.haze = new THREE.Color(m.fog); this.inkCol = new THREE.Color(m.ink || '#2e1c18');
     this.scene.fog = this.style.hd ? null : new THREE.Fog(m.fog, 70, 220);
-    if (this.style.hd && m.sky) {
-      // the painted pixel sky dome, and its reflection environment for glossy surfaces
-      const sky = paintSky(m, MOODS[name] ? name : null);
-      this.scene.background = sky.tex; this.scene.environment = envFor(this.r, sky);
-      this.scene.environmentIntensity = m.env ?? 1; this.scene.backgroundIntensity = 1;
-    } else { this.scene.background = m.sky ? skyTexture(m.sky) : new THREE.Color(m.bg); this.scene.environment = null; }
+    if (this.style.hd) {
+      // the scattering sky dome (drawn in the HDR frame) and its reflection environment for glossy surfaces
+      this.sky.setMood(m, MOODS[name] ? name : null);
+      if (this.sky.mesh.parent !== this.scene) this.scene.add(this.sky.mesh);
+      this.scene.background = null; this.scene.environment = this.sky.env(this.r);
+      this.scene.environmentIntensity = m.env ?? 1;
+      // the haze takes the colour of the sky's horizon
+      this.haze = new THREE.Color(m.fog);
+    } else { if (this.sky.mesh.parent) this.scene.remove(this.sky.mesh); this.scene.background = new THREE.Color(m.fog); this.scene.environment = null; }
     if (this.shadowFollow) { const d = m.sunDir, L = Math.hypot(...d); this.sunDirN = (this.sunDirN || new THREE.Vector3()).set(d[0] / L, d[1] / L, d[2] / L); }
     this.mats.glow.color.setScalar(m.glow);
     this.r.toneMappingExposure = m.exposure;
@@ -157,19 +161,23 @@ export class VxStage {
     this.pools.update(this.lamps, this.view.target, (this.mood.pools || 0) * (this.style.pools ?? 1), Math.max(96, this.view.dist * 3.4));
     this.halos.update(this.lamps, this.cam, this.h || 720, (this.mood.halo || 0) * (this.style.pools ?? 1));
     if (this.style.hd) {
-      const m = this.mood, s = this.style;
+      const m = this.mood, s = this.style, P = this.post.opts || {};
       if (this.shadowFollow && this.sunDirN) this.aimNearShadow();
-      // depth of field for the close camera (focused on the look-at point: the player), off for the diorama views,
-      // where the HD-2D pass's tilt-shift does the job; hd2d.js reads cv.depthDof to hand over between the two
-      const dk = (s.dof ?? 1) * (1 - smoothstep(9, 16, this.view.dist)); this.cv.depthDof = dk;
-      const dof = dk > 0.01 ? { focus: this.view.dist, k: 0.9, tol: 0.16, px: 0.0045 * dk } : null;
-      // one ink line for every asset: the composite finds it in the depth buffer, so the Tokonmon's own hull
-      // outlines (model.js) step aside while it draws
-      const ink = s.inkA ?? 0;
-      if (ink > 0) OUTLINE.show(false);
+      // the far cascade (wide, soft, distant shadows) is refreshed every other frame
+      if (this.sunFar.visible) { this.sunFar.shadow.autoUpdate = false; if (this.frameN % 2 === 0) this.sunFar.shadow.needsUpdate = true; }
+      this.sky.u.uTime.value = this.time = (this.time || 0) + 1 / 60;
+      this.cv.depthDof = 0;
+      // no outlines in the realistic look: the Tokonmon's own inverted-hull lines step aside too
+      OUTLINE.show(false);
+      const px = this.w * this.h, msaa = s.msaa ?? (this.lite || px > 2.5e6 ? 0 : 4);
       try {
-        this.comp.render(this.scene, this.cam, this.w, this.h, { ao: (m.ao ?? 0.85) * (s.ao ?? 1), aoRadius: s.aoRadius ?? 1.2, aoK: s.aoK, haze: this.haze, hazeP: [m.hazeP[0] + this.view.dist * 0.15 - 4.5, m.hazeP[1], m.hazeP[2] * (s.haze ?? 1), m.hazeP[3]], ink, inkCol: this.inkCol, inkW: s.inkW, inkP: s.inkP, inkFade: s.inkFade, debug: s.debug, dof });
-      } finally { if (ink > 0) OUTLINE.show(true); }
+        this.comp.render(this.scene, this.cam, this.w, this.h, {
+          ao: (m.ao ?? 0.8) * (s.ao ?? 1), aoRadius: s.aoRadius ?? 0.9, aoK: s.aoK, aoScale: this.lite ? 0.33 : undefined,
+          haze: this.haze, hazeP: [m.hazeP[0], m.hazeP[1], m.hazeP[2] * (s.haze ?? 1), m.hazeP[3]], exposure: this.r.toneMappingExposure, tone: s.tone || 'agx',
+          bloom: P.bloom ?? 0.12, threshold: P.threshold ?? 1.4, sat: P.sat ?? 1, contrast: P.contrast ?? 0.12, vig: P.vig ?? 0.18, wb: P.wb, lift: P.lift || 0,
+          msaa, fxaa: s.fxaa ?? !msaa, debug: s.debug, time: this.time,
+        });
+      } finally { OUTLINE.show(true); }
       return this.cv;
     }
     this.cv.depthDof = 0;
@@ -192,7 +200,7 @@ export class VxStage {
   //   its width and thresholds, see render/composite.js) } or the old { ink: outlines, toon: banded cel shading }
   setStyle(o = {}) {
     this.style = Object.assign(this.style || {}, o);
-    if (o.hd) { if (!this.comp) this.comp = new Composite(this.r); this.style.ink = false; this.style.toon = false; this.scene.fog = null; this.r.toneMapping = THREE.NeutralToneMapping; if (this.moodName) this.setMood(this.moodName); }
+    if (o.hd) { if (!this.comp) this.comp = new Composite(this.r, { lite: this.lite }); this.style.ink = false; this.style.toon = false; this.scene.fog = null; if (this.moodName) this.setMood(this.moodName); }
     if (o.ink && !this.inkScene) {
       this.inkCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1); this.inkScene = new THREE.Scene();
       this.inkQuad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.ShaderMaterial({
