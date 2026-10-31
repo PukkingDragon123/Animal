@@ -3,7 +3,8 @@
 //    family (brick, stucco, painted siding, glazed roof tiles, asphalt, pavers, glass, enamel signs, canvas…),
 //    so the sun leaves a soft sheen on painted wood, a glint on glazed tiles and glass, and almost nothing on
 //    brick or tarmac; glossy surfaces reflect the mood's sky (render/sky.js) through the stage environment.
-//  - Pixel relief: a per-texel normal derived from the pixel art itself (the texture's own luminance; bricks
+//  - Pixel relief (kept subtle, the look is hand-painted, not gritty; none on noisy ground, stucco or decals):
+//    a per-texel normal derived from the pixel art itself (the texture's own luminance; bricks
 //    read their light mortar as the groove), sampled at the texel centres so each art pixel becomes one
 //    flat facet: mortar joints, paver bevels, siding laps, tile grout and wood grain catch the low sun and
 //    shade on the far side, crisp and blocky like the art. No extra textures: four taps of the colour map.
@@ -15,15 +16,15 @@ import * as THREE from '../../../vendor/three.module.js';
 
 // family (texture key prefix) → [roughness, metalness, relief (height amplitude in texels; < 0: light = groove)]
 const FAMILIES = [
-  [/^brick/, 0.86, 0, -1.1], [/^plaster/, 0.9, 0, 0.45], [/^siding/, 0.55, 0, 1.0], [/^rooftile/, 0.42, 0, 1.0], [/^shingle/, 0.85, 0, 0.9],
-  [/^metalroof/, 0.42, 0.35, 0.8], [/^asphalt/, 0.86, 0, 0.55], [/^pavers|^slabs/, 0.74, 0, 1.0], [/^cobble/, 0.66, 0, 1.2], [/^grass/, 0.95, 0, 0.7],
-  [/^dirt|soil|sand/, 0.96, 0, 0.6], [/^planks|wood|deck|board/, 0.6, 0, 0.8], [/^tiles/, 0.24, 0, 0.8], [/^carpet|rug|quilt|towel|knit|mat\b/, 1.0, 0, 0.4], [/^wallpaper/, 0.8, 0, 0.25],
-  [/^concrete/, 0.84, 0, 0.5], [/^tactile/, 0.6, 0, 1.2], [/^roofmem/, 0.7, 0, 0.4], [/^win/, 0.45, 0, 0.35], [/^shopwin/, 0.35, 0, 0.3],
-  [/^door/, 0.45, 0, 0.6], [/^garage/, 0.45, 0.15, 0.7], [/^sign|neon|marquee/, 0.4, 0, 0.25], [/^awning/, 0.9, 0, 0.5], [/^solid/, 0.62, 0, 0.2],
-  [/^stripes|^dash|^zebra/, 0.6, 0, 0.3], [/^dress_ground/, 0.82, 0, 0.5], [/^dress_/, 0.6, 0, 0.5], [/^water/, 0.05, 0, 0],
-  [/metal|steel|chrome|rail|pipe|tin/i, 0.4, 0.3, 0.4], [/glass|mirror|screen|tv|pc|monitor/i, 0.2, 0, 0.2], [/leaf|hedge|grass|bush|plant/i, 0.92, 0, 0.6],
+  [/^brick/, 0.86, 0, -0.6], [/^plaster/, 0.9, 0, 0], [/^siding/, 0.55, 0, 0.6], [/^rooftile/, 0.42, 0, 0.6], [/^shingle/, 0.85, 0, 0.5],
+  [/^metalroof/, 0.42, 0.25, 0.5], [/^asphalt/, 0.86, 0, 0], [/^pavers|^slabs/, 0.74, 0, 0.6], [/^cobble/, 0.66, 0, 0.7], [/^grass/, 0.95, 0, 0],
+  [/^dirt|soil|sand/, 0.96, 0, 0], [/^planks|wood|deck|board/, 0.6, 0, 0.5], [/^tiles/, 0.24, 0, 0.5], [/^carpet|rug|quilt|towel|knit|mat\b/, 1.0, 0, 0], [/^wallpaper/, 0.8, 0, 0],
+  [/^concrete/, 0.84, 0, 0], [/^tactile/, 0.6, 0, 0.7], [/^roofmem/, 0.7, 0, 0], [/^win/, 0.45, 0, 0.25], [/^shopwin/, 0.35, 0, 0.2],
+  [/^door/, 0.45, 0, 0.4], [/^garage/, 0.45, 0.1, 0.4], [/^sign|neon|marquee/, 0.4, 0, 0], [/^awning/, 0.9, 0, 0.3], [/^solid/, 0.62, 0, 0],
+  [/^stripes|^dash|^zebra/, 0.6, 0, 0], [/^dress_ground/, 0.82, 0, 0], [/^dress_/, 0.6, 0, 0.3], [/^water/, 0.05, 0, 0],
+  [/metal|steel|chrome|rail|pipe|tin/i, 0.4, 0.2, 0], [/glass|mirror|screen|tv|pc|monitor/i, 0.2, 0, 0], [/leaf|hedge|grass|bush|plant/i, 0.92, 0, 0],
 ];
-const DEFAULT = [0.75, 0, 0.35];
+const DEFAULT = [0.75, 0, 0];          // custom textures (posters, furniture, decals): no relief
 export function family(tex) {
   const key = String((tex && tex.userData && tex.userData.key) || '');
   for (const f of FAMILIES) if (f[0].test(key)) return { rough: f[1], metal: f[2], relief: f[3] };

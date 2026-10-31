@@ -48,7 +48,7 @@ const leafCol = (L, acc, accP = 0.03) => (x, y, z, d, dy) => {
   const cx = x >> 2, cy = y >> 2, cz = z >> 2, h = h3(cx, cy, cz), big = h3(x >> 4, y >> 4, z >> 4);
   if (acc && h3(cz, cx, cy) < accP && d > 0.72) return acc[(h * acc.length) | 0];
   // light from above dominates; a soft half-metre mottling and a little per-cell jitter on top
-  const v = 0.5 + dy * 0.34 + (d > 0.85 ? 0.08 : d < 0.55 ? -0.1 : 0) + (big - 0.5) * 0.22 + (h - 0.5) * 0.2;
+  const v = 0.5 + dy * 0.46 + (d > 0.85 ? 0.08 : d < 0.55 ? -0.12 : 0) + (big - 0.5) * 0.16 + (h - 0.5) * 0.1;   // painted light: clean bands, a little mottling
   return L[Math.max(0, Math.min(L.length - 1, Math.floor(v * L.length)))];
 };
 /**
@@ -135,7 +135,7 @@ function broadleaf(F, g, lo) {
 const OAK = { // coast live oak: a short stout trunk, wide-spreading crooked limbs, dense dark evergreen domes
   X: 112, Y: 118, Z: 112, H: 44, R: 4.2, lean: [3, -2], limbs: 7, spread: 30, rise: 22, clumpR: 13.5, top: 1.15, seed: 11, sy: 0.72, moss: true,
   bark: ['#5a4434', '#6c5240', '#3a2c22', '#6a5a48', '#5e7a3a'],
-  leaves: ['#1d4424', '#25522a', '#2e6030', '#386e36', '#43803c', '#529244', '#66a44e'], acc: ['#8ab050', '#a4b85a'],
+  leaves: ['#1e4a34', '#245a36', '#2e6e3a', '#3a8240', '#4c9a44', '#68b24a', '#8cc85a'], acc: ['#b8d860', '#e8d070'],
 };
 const MAPLE = { // a red/orange autumn maple: upright limbs, rounded lobed crown
   X: 96, Y: 124, Z: 96, H: 46, R: 3.2, lean: [-1, 2], limbs: 6, spread: 21, rise: 32, clumpR: 13, top: 1.2, seed: 23, sy: 0.85,
@@ -150,12 +150,12 @@ const BLOSSOM = { // flowering cherry: a dark glossy trunk, low wide limbs, clou
 const PLANE = { // London plane (SF street tree): mottled cream / olive bark, tall trunk, broad airy crown
   X: 100, Y: 140, Z: 100, H: 60, R: 3.4, lean: [0, 0], limbs: 7, spread: 23, rise: 30, clumpR: 13, top: 1.25, seed: 41, sy: 0.8, mottle: true, holes: 0.34,
   bark: ['#8a8466', '#a8a284', '#5a5440', '#d8d2b0', '#7a8a5a'],
-  leaves: ['#2c5a24', '#36682a', '#427832', '#4e883a', '#5e9a42', '#72ac4e', '#8abc5c'], acc: ['#a8c060', '#c8b858'],
+  leaves: ['#245a34', '#2e6c38', '#3a8040', '#4a9446', '#5ea84c', '#7cbc56', '#a2d066'], acc: ['#c8d870', '#f0d878'],
 };
 const LINDEN = { // a small rounded street linden (replaces the stock round 'treeB')
   X: 84, Y: 112, Z: 84, H: 40, R: 2.8, lean: [1, -1], limbs: 5, spread: 16, rise: 26, clumpR: 12.5, top: 1.35, seed: 53, sy: 0.9,
   bark: ['#5e5048', '#706054', '#3e342e', '#5e5048', '#5a6e3a'],
-  leaves: ['#2e5e28', '#3a6e2e', '#467e34', '#549040', '#64a048', '#7ab256', '#92c462'], acc: ['#d8d080'],
+  leaves: ['#2a6038', '#327440', '#3e8846', '#4e9c4a', '#66b250', '#86c45c', '#a8d86e'], acc: ['#f0e890'],
 };
 
 function cypress(F, lo) { // Monterey cypress: a leaning, forked trunk and flat wind-swept pads in tiers

@@ -461,7 +461,7 @@ async function pier(X) {
   await cin.frame(hero, { at: 'chest', yaw: 10, dist: 6.5, pitch: 12, dur: 0, off: [0, 0.4, -2.4], focus: 'wide', push: 0.1 });
   await app.wait(app.auto ? 200 : 1800);
   boss.play('cry', { restart: true }); sfx(app, 'roar', { pitch: 0.7 }); cin.shake(0.22, 3); cin.lightning();
-  await cin.orbit(boss, { yaw: -55, deg: 105, time: 9, pitch: 3, at: 'chest', push: 0.18 });
+  await cin.orbit(boss, { yaw: -28, deg: 56, time: 9, pitch: 5, dist: cin.size(boss) * 2.8, at: 'chest', push: 0.15 });
   cin.place('Pier 39', 'Fisherman\'s Wharf', { wait: false });
   w.emote('boss', 'anger', 2);
   await app.wait(app.auto ? 100 : 1500);
@@ -518,9 +518,9 @@ async function chowder(X) {
   if (yumi) seat(yumi, 158.45, 2.5, Math.PI, BY);
   if (coach) coach.place(156.2, 3.2, Math.PI * 0.7);
   if (w.partner) w.partner.place(159.3, 2.0, Math.PI);
-  await cin.two(hero, yumi || hero, { dist: 4.4, dur: 0, pitch: 6, angle: 10, dy: -0.25 });
+  await cin.two(hero, yumi || hero, { dist: 4.4, dur: 0, pitch: 13, angle: 10, dy: -0.25 });
   await app.fade(0, 600);
-  const steam = setInterval(() => { w.burst('steam', [157.55, BY + 0.55, 2.2], { n: 2 }); if (yumi) w.burst('steam', [158.45, BY + 0.55, 2.2], { n: 2 }); }, 800);
+  const steam = setInterval(() => { w.burst('steam', [157.55, BY + 0.3, 2.05], { n: 1 }); if (yumi) w.burst('steam', [158.45, BY + 0.3, 2.05], { n: 1 }); }, 1100);
   await cin.beat('chowder');
   await X.say('', 'Clam chowder in sourdough bowls, garlic crab, and a paper boat of fries the seagulls keep eyeing.');
   if (yumi) { yumi.look = hero; hero.look = yumi; }
@@ -550,9 +550,9 @@ async function dojo(X) {
   await cin.begin({ prefer: 10 });
   cin.grade('dusk');
   app.audio.music && app.audio.music('senbazuru', { fade: 1.5 });
-  const est = cin.establish([192, 2.4, 47], { from: { dist: 46, yaw: -35, pitch: 48 }, to: { dist: 15, yaw: 12, pitch: 14 }, dur: 4.5 });
+  const est = cin.establish([192, 2.2, 50.2], { from: { dist: 46, yaw: -20, pitch: 50 }, to: { dist: 15, yaw: 35, pitch: 24 }, dur: 4.5 });
   await app.wait(1000);
-  cin.place('Golden Claw Dojo', 'Chinatown  ·  Est. 1966', { wait: false });
+  cin.place('Golden Claw Dojo', 'Chinatown  ·  by the square', { wait: false });
   await est;
   await cin.beat('dojo-establish');
   // in through the doors

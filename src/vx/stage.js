@@ -24,13 +24,14 @@ installLighting();
 // ground fill (the ground colour is the warm light bounced off sunlit streets), haze (colour and [start m,
 // density /m, max, falloff with height /m]), sky gradient [zenith, mid, horizon] + cloud cover, environment
 // reflection strength, emissive levels (glow voxels, lit textures), light-pool gain, ambient occlusion strength,
-// exposure. Sun colours follow the real thing: near-white at ~55° by day, amber at ~20° (golden hour), deep
-// orange-red a few degrees above the horizon at dusk; the night "sun" is a cool, high moon.
+// exposure. Sun colours follow the real thing (near-white at ~50° by day, amber at ~22° for golden hour, deep
+// orange a few degrees above the horizon at dusk, a cool high moon at night), tuned toward the Tokonmon's
+// painted look: saturated sunny skies, warm colourful bounce, bright shadow fill, and a cosy (not murky) night.
 export const MOODS = {
-  day: { sun: 0xfff1de, sunI: 3.4, sunDir: [-0.55, 1.0, 0.42], hemiSky: 0xaecaf2, hemiGround: 0x9a8466, hemiI: 0.9, fog: 0xc8d8ea, hazeP: [36, 0.016, 0.34, 0.05], bg: 0x9cc4ec, sky: ['#3f78c8', '#86b6e8', '#d6e6f2'], clouds: 0.42, env: 1.0, glow: 0.18, emissive: 0, pools: 0, ao: 0.9, exposure: 1.0 },
-  golden: { sun: 0xffb26a, sunI: 3.6, sunDir: [-0.9, 0.36, 0.3], hemiSky: 0x9eaee6, hemiGround: 0xb27a52, hemiI: 0.95, fog: 0xe8c4a8, hazeP: [34, 0.018, 0.34, 0.05], bg: 0xe8b898, sky: ['#4a64b0', '#c6a6c0', '#f8c08e'], clouds: 0.36, env: 1.0, glow: 0.5, emissive: 0.25, pools: 0.05, halo: 0, ao: 0.9, exposure: 1.06 },
-  dusk: { sun: 0xff7448, sunI: 1.7, sunDir: [-0.95, 0.15, 0.3], hemiSky: 0x6a72be, hemiGround: 0x5e4054, hemiI: 0.85, fog: 0x8c74a8, hazeP: [30, 0.024, 0.48, 0.05], bg: 0x5a5a9a, sky: ['#1e2458', '#76589a', '#f08a62'], clouds: 0.5, env: 0.9, glow: 1.8, emissive: 0.8, pools: 0.35, halo: 0.35, ao: 0.85, exposure: 1.16 },
-  night: { sun: 0x9ab0ff, sunI: 0.5, sunDir: [0.35, 1, 0.55], hemiSky: 0x3e4e8e, hemiGround: 0x241e30, hemiI: 0.55, fog: 0x1c2244, hazeP: [30, 0.026, 0.5, 0.06], bg: 0x0c1020, sky: ['#04060e', '#0e1630', '#262a4a'], clouds: 0.22, env: 0.7, glow: 2.8, emissive: 1.0, pools: 0.45, halo: 0.5, ao: 0.8, exposure: 1.2 },
+  day: { sun: 0xfff0d6, sunI: 3.4, sunDir: [-0.55, 0.82, 0.42], hemiSky: 0xa6ccf6, hemiGround: 0xc09468, hemiI: 1.05, fog: 0xbcd8f2, hazeP: [38, 0.014, 0.28, 0.05], bg: 0x9cc4ec, sky: ['#2f74d8', '#6eb2f0', '#cfe8f8'], clouds: 0.4, env: 0.9, glow: 0.18, emissive: 0, pools: 0, ao: 0.85, exposure: 1.04 },
+  golden: { sun: 0xffb46c, sunI: 3.6, sunDir: [-0.9, 0.4, 0.3], hemiSky: 0xa4b4ee, hemiGround: 0xc88a58, hemiI: 1.05, fog: 0xf0c8a4, hazeP: [36, 0.016, 0.3, 0.05], bg: 0xe8b898, sky: ['#3f6ac4', '#d0a8c4', '#ffc488'], clouds: 0.36, env: 0.9, glow: 0.5, emissive: 0.25, pools: 0.05, halo: 0, ao: 0.85, exposure: 1.08 },
+  dusk: { sun: 0xff8650, sunI: 1.8, sunDir: [-0.95, 0.16, 0.3], hemiSky: 0x5e80cc, hemiGround: 0x74503e, hemiI: 1.0, fog: 0x7e82b4, hazeP: [32, 0.02, 0.4, 0.05], bg: 0x5a5a9a, sky: ['#1a2e70', '#6a6cb0', '#ff9a68'], clouds: 0.45, env: 0.85, glow: 1.8, emissive: 0.85, pools: 0.4, halo: 0.35, ao: 0.82, exposure: 1.2 },
+  night: { sun: 0xa4b8ff, sunI: 0.6, sunDir: [0.35, 1, 0.55], hemiSky: 0x4a5ca8, hemiGround: 0x3a2a34, hemiI: 0.7, fog: 0x242c58, hazeP: [32, 0.022, 0.44, 0.06], bg: 0x0c1020, sky: ['#060a1c', '#142048', '#34305a'], clouds: 0.22, env: 0.7, glow: 2.8, emissive: 1.0, pools: 0.55, halo: 0.5, ao: 0.78, exposure: 1.3 },
 };
 
 const _up = new THREE.Vector3(0, 1, 0), _v1 = new THREE.Vector3(), _v2 = new THREE.Vector3(), _v3 = new THREE.Vector3(), _v4 = new THREE.Vector3();

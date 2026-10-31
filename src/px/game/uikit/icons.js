@@ -83,33 +83,33 @@ export const BIG = {
   bag: { c: '#f08a50', a: '#c0603e', m: ['...nnnn...', '..n....n..', '.bbbbbbbb.', 'bbbbbbbbbb', 'bbbbbbbbbb', 'BBBByyBBBB', 'aaaayyaaaa', 'aaaaaaaaaa', 'aaaaaaaaaa', '.aaaaaaaa.'] },
   party: { c: '#ffb35a', a: '#5fd8e8', m: ['......aa.a..', '.....aaaaa..', '.....aaaaaa.', 'bb..bawaawa.', 'bbbbbaoaaoa.', 'bbbbbbaaaaa.', 'bwobbwoaaa..', 'boobboobb...', 'bpbbbbbpb...', 'bbbbobbbb...', '.bbbbbbb....'] },
   save: { c: '#5f78e8', m: ['bbbbbbbbb.', 'bbmmmmmbbb', 'bbmmMmmbbb', 'bbmmmmmbbb', 'bbbbbbbbbb', 'bllllllllb', 'blLLLLLLlb', 'bllllllllb', 'blLLLLLLlb', 'bbbbbbbbbb'] },
-  gear: { c: '#b8b0d8', m: ['....bb....', '.bb.bb.bb.', '.bwbbbbbb.', '..bbbbbb..', 'bbbb..bbbb', 'bbbb..bbbb', '..bbbbbb..', '.bbbbbbbb.', '.bb.bb.bb.', '....bb....'] },
+  gear: { c: '#cdbb9c', m: ['....bb....', '.bb.bb.bb.', '.bwbbbbbb.', '..bbbbbb..', 'bbbb..bbbb', 'bbbb..bbbb', '..bbbbbb..', '.bbbbbbbb.', '.bb.bb.bb.', '....bb....'] },
   map: { c: '#f4ead8', a: '#d8c8a8', m: ['bbbaaabbbaaa', 'bggaaabbbaca', 'bgggaarrbaca', 'bbggaaarbcca', 'bbbgaaarrcaa', 'bbbbaaaaraaa', 'bbbbaaaaayaa', 'bbbbaaaayyya', 'bbbbaaaaayaa', 'bbbaaabbbaaa'] },
   check: { c: '#7ce07a', m: ['........bb', '.......bbb', '......bbb.', 'bb...bbb..', 'bbb.bbb...', '.bbbbb....', '..bbb.....', '...b......'] },
   cross: { c: '#ff5a64', m: ['bb....bb', 'bbb..bbb', '.bbbbbb.', '..bbbb..', '..bbbb..', '.bbbbbb.', 'bbb..bbb', 'bb....bb'] },
-  talk: { c: '#f2ecff', m: ['.bbbbbbb.', 'bbbbbbbbb', 'bbbbbbbbb', 'bbobobobb', 'bbbbbbbbb', '.bbbbbbb.', '..bbb....', '..bb.....', '.b.......'] },
-  phone: { c: '#6a62a8', m: ['.bbbbb.', 'bbbobbb', 'bwcccbb', 'bcwcccb', 'bcccccb', 'bcccccb', 'bCCCCCb', 'bCCCCCb', 'bbbybbb', '.bbbbb.'] },
+  talk: { c: '#8fd8e8', m: ['.bbbbbbb.', 'bbbbbbbbb', 'bbbbbbbbb', 'bbobobobb', 'bbbbbbbbb', '.bbbbbbb.', '..bbb....', '..bb.....', '.b.......'] },
+  phone: { c: '#4f8a86', m: ['.bbbbb.', 'bbbobbb', 'bwcccbb', 'bcwcccb', 'bcccccb', 'bcccccb', 'bCCCCCb', 'bCCCCCb', 'bbbybbb', '.bbbbb.'] },
   eye: { c: '#5fd8e8', m: ['...llll...', '.llbbbbll.', 'llbwoobbll', 'llbboobbll', '.llbbbbll.', '...llll...'] },
   hand: { c: '#ffd2b0', m: ['...bb.....', '...bb.....', '...bb.....', '...bbbbbb.', '.b.bBbBbBb', 'bbbbbbbbbb', 'bbbbbbbbbb', '.bbbbbbbb.', '..bbbbbb..'] },
   bed: { c: '#ff7ab8', m: ['nn........', 'nn........', 'nnll......', 'nnllbbbbbb', 'nnllbbbbbb', 'nnnnnnnnnn', 'n........n'] },
   tv: { c: '#9a7a5a', m: ['.*....*...', '..*..*....', '...**.....', 'bbbbbbbbbb', 'bwcccccbmb', 'bccccccbbb', 'bccccccbmb', 'bCCCCCCbbb', 'bbbbbbbbbb', '.b......b.'] },
   fridge: { c: '#d8eef4', m: ['.bbbbbb.', 'bbbbbbbb', 'bbbbbbmb', 'bbbbbbmb', 'bbbbbbbb', 'BBBBBBBB', 'bbbbbbbb', 'bbbbbbmb', 'bbbbbbmb', 'bbbbbbbb', '.B....B.'] },
   book: { c: '#7a5ae0', m: ['Bbbbbbbb..', 'Bbbbbbbbl.', 'Bbbyybbbl.', 'Bbyyyybbl.', 'Bbbyybbbl.', 'Bbbbbbbbl.', 'Bbbbbbbbl.', 'Bbbbbbbbl.', '.lllllllL.'] },
-  pc: { c: '#a59cc8', m: ['bbbbbbbbbb', 'bwcccccccb', 'bcCCCcCccb', 'bccccccccb', 'bcCCcCCCcb', 'bccccccccb', 'bbbbbbbbbb', '....bb....', '..bbbbbb..'] },
+  pc: { c: '#9ab0b0', m: ['bbbbbbbbbb', 'bwcccccccb', 'bcCCCcCccb', 'bccccccccb', 'bcCCcCCCcb', 'bccccccccb', 'bbbbbbbbbb', '....bb....', '..bbbbbb..'] },
   music: { c: '#ff7ab8', m: ['...bbbbbbb', '...bbbbbbb', '...b.....b', '...b.....b', '...b.....b', '.bbb...bbb', 'bbbb..bbbb', 'bbbb..bbbb', '.bb....bb.'] },
-  cat: { c: '#c8b8e8', m: ['b........b', 'bp......pb', 'bbbbbbbbbb', 'bbbbbbbbbb', 'bbobbbbobb', 'bbobbbbobb', 'bbbbppbbbb', 'bbbobbobbb', '.bbbbbbbb.'] },
+  cat: { c: '#f0b878', m: ['b........b', 'bp......pb', 'bbbbbbbbbb', 'bbbbbbbbbb', 'bbobbbbobb', 'bbobbbbobb', 'bbbbppbbbb', 'bbbobbobbb', '.bbbbbbbb.'] },
   clock: { c: '#ffcf5a', m: ['...bbbb...', '.bbllllbb.', '.blllolllb', 'bllllolllb', 'bllllolllb', 'bllllooolb', 'bllllllllb', '.bllllllb.', '.bbllllbb.', '...bbbb...'] },
   sun: { c: '#ffc23a', m: ['....b....', '.b.....b.', '...bbb...', '..bwbbb..', 'b.bbbbb.b', '..bbbbb..', '...bbb...', '.b.....b.', '....b....'] },
   moon: { c: '#ffe89a', m: ['..bbbb...', '.bbbb...*', 'bbbb.....', 'bbb...*..', 'bbb......', 'bbb......', 'bbbb...b.', '.bbbbbbb.', '..bbbbb..'] },
   exclaim: { c: '#ffcf5a', m: ['.bb.', 'bbbb', 'bbbb', 'bbbb', '.bb.', '.bb.', '....', '.bb.', '.bb.'] },
   question: { c: '#5fd8e8', m: ['.bbbb.', 'bb..bb', '....bb', '...bb.', '..bb..', '..bb..', '......', '..bb..', '..bb..'] },
-  up: { c: '#f2ecff', m: ['....b....', '...bbb...', '..bbbbb..', '.bbbbbbb.', 'bbbbbbbbb', '...bbb...', '...bbb...', '...bbb...'] },
+  up: { c: '#fff4dc', m: ['....b....', '...bbb...', '..bbbbb..', '.bbbbbbb.', 'bbbbbbbbb', '...bbb...', '...bbb...', '...bbb...'] },
   shoe: { c: '#ff6a5a', m: ['...bbbb.....', '...bwbbb....', '...blblbb...', '..bblblbbbb.', '.bbbbbbbbbbb', 'bbbbbbbbbbbb', 'llllllllllll', '.LLLLLLLLLL.'] },
   bolt: { c: '#ffe23a', m: ['....bbb', '...bbb.', '..bbb..', '.bbbbbb', '...bbb.', '..bbb..', '.bb....', 'b......'] },
   disc: { c: '#ff8a6a', m: ['..kkkkk..', '.kwkkkkk.', 'kkkbbbkkk', 'kkbbobbkk', 'kkbbbbbkk', 'kkkbbbkKk', '.kkkkKkk.', '..kkkkk..'] },
   fist: { c: '#ffd2b0', m: ['.bbbbbbb.', 'bbBbbBbBb', 'bbBbbBbBb', 'bbbbbbbbb', 'BBBBbbbbb', 'bbbBbbbbb', '.bbbbbbb.', '..bbbbb..', '..rrrrr..'] },
   shield: { c: '#5fd8e8', a: '#ffcf5a', m: ['aaaaaaaa', 'abbbbbba', 'abwbbbba', 'abbbbbba', 'abbbbbba', '.abbbba.', '..abba..', '...aa...'] },
-  swap: { c: '#f2ecff', m: ['..b......', '.bbbbbbb.', '..b......', '.........', '......b..', '.bbbbbbb.', '......b..'] },
+  swap: { c: '#fff4dc', m: ['..b......', '.bbbbbbb.', '..b......', '.........', '......b..', '.bbbbbbb.', '......b..'] },
   dodge: { c: '#8ff0c0', m: ['...bbbbb..', '.......b..', 'bbbbbbbb..', '..........', '.bbbbbbbbb', '........b.', '..bbbbbb..'] },
   link: { c: '#5fd8e8', a: '#ff7ab8', m: ['bb.bb.....', 'bbbbb.....', '.bbbaa.aa.', '..baaaaaaa', '....aaaaa.', '.....aaa..', '......a...'] },
   bowl: { c: '#ff5a64', m: ['..*..*....', '...*..*...', '..*..*....', 'yyyyyyyyyy', 'bbbbbbbbbb', 'bwbbbbbbbb', '.bbbbbbbb.', '..bbbbbb..', '...BBBB...'] },
@@ -118,13 +118,14 @@ export const BIG = {
   drop: { c: '#2fa8ff', m: ['...b...', '...b...', '..bbb..', '.bbbbb.', 'bwbbbbb', 'bwbbbbb', 'bbbbbbb', '.bbbbb.', '..bbb..'] },
   leaf: { c: '#5fd35a', m: ['.....bbbb', '...bbbbbb', '..bbbbbGb', '.bbbbbGbb', '.bbbbGbbb', 'bbbbGbbb.', 'bbbGbbb..', 'bbGbbb...', 'G........'] },
   play: { c: '#ffcf5a', m: ['b......', 'bbb....', 'bbbbb..', 'bbbbbbb', 'bbbbb..', 'bbb....', 'b......'] },
-  menu: { c: '#f2ecff', m: ['bbbbbbbbb', 'bbbbbbbbb', '.........', 'bbbbbbbbb', 'bbbbbbbbb', '.........', 'bbbbbbbbb', 'bbbbbbbbb'] },
-  cloud: { c: '#e8e4f8', m: ['...bbb....', '..bbbbbbb.', '.bbbbbbbbb', 'bbbbbbbbbb', 'bbbbbbbbbb', '.bbbbbbbb.'] },
-  rain: { c: '#c8c4e0', m: ['...bbb....', '..bbbbbbb.', '.bbbbbbbbb', 'bbbbbbbbbb', '.bbbbbbbb.', '..........', '.c..c..c..', 'c..c..c...'] },
-  storm: { c: '#9a94b8', m: ['...bbb....', '..bbbbbbb.', '.bbbbbbbbb', 'bbbbbbbbbb', '.bbbyybbb.', '....yy....', '...yy.....', '....y.....'] },
-  fog: { c: '#c8c4e0', m: ['.bbbbbbb..', '..........', '...bbbbbbb', '..........', 'bbbbbbbb..', '..........', '..bbbbbbbb'] },
+  menu: { c: '#fff4dc', m: ['bbbbbbbbb', 'bbbbbbbbb', '.........', 'bbbbbbbbb', 'bbbbbbbbb', '.........', 'bbbbbbbbb', 'bbbbbbbbb'] },
+  cloud: { c: '#f6f4ee', m: ['...bbb....', '..bbbbbbb.', '.bbbbbbbbb', 'bbbbbbbbbb', 'bbbbbbbbbb', '.bbbbbbbb.'] },
+  rain: { c: '#d8dce4', m: ['...bbb....', '..bbbbbbb.', '.bbbbbbbbb', 'bbbbbbbbbb', '.bbbbbbbb.', '..........', '.c..c..c..', 'c..c..c...'] },
+  storm: { c: '#9aa0b0', m: ['...bbb....', '..bbbbbbb.', '.bbbbbbbbb', 'bbbbbbbbbb', '.bbbyybbb.', '....yy....', '...yy.....', '....y.....'] },
+  fog: { c: '#dcdcd4', m: ['.bbbbbbb..', '..........', '...bbbbbbb', '..........', 'bbbbbbbb..', '..........', '..bbbbbbbb'] },
   pin: { c: '#ff6a5a', m: ['..bbb..', '.bbbbb.', 'bbbwbbb', 'bbwwwbb', 'bbbwbbb', '.bbbbb.', '..bbb..', '...b...'] },
-  dpad: { c: '#d6cfee', m: ['...bbb...', '...bwb...', '...bbb...', 'bbbbbbbbb', 'bwbbBbbwb', 'bbbbbbbbb', '...bbb...', '...bwb...', '...bbb...'] },
+  dpad: { c: '#f2e2c4', m: ['...bbb...', '...bwb...', '...bbb...', 'bbbbbbbbb', 'bwbbBbbwb', 'bbbbbbbbb', '...bbb...', '...bwb...', '...bbb...'] },
+  zoom: { c: '#c07a44', a: '#7fd0e6', m: ['.bbbb.....', 'bawaab....', 'bwaaab....', 'baaaab....', '.bbbbn....', '.....nn...', '......nn..', '.......nn.', '........n.'] },
   bell: { c: '#ffcf5a', m: ['....b....', '...bbb...', '..bwbbb..', '..bbbbb..', '.bbbbbbb.', '.bbbbbbb.', 'bbbbbbbbb', '....B....'] },
 };
 BIG.down = { c: BIG.up.c, m: BIG.up.m.slice().reverse() };
@@ -134,12 +135,12 @@ BIG.back = BIG.left;
 function transpose(m) { const W = Math.max(...m.map((r) => r.length)); const out = []; for (let i = 0; i < W; i++) { let s = ''; for (let j = 0; j < m.length; j++) s += m[j][i] || '.'; out.push(s); } return out; }
 
 // aliases (names callers may use)
-const ALIAS = { team: 'party', chat: 'talk', examine: 'eye', use: 'hand', run: 'shoe', exclamation: 'exclaim', options: 'gear', settings: 'gear', close: 'cross', quest: 'star', money: 'coin', location: 'pin', home: 'house', bond: 'link', food: 'bowl', computer: 'pc', note: 'music', time: 'clock', night: 'moon', day: 'sun', arrows: 'dpad', keys: 'dpad', weather: 'cloud' };
+const ALIAS = { magnify: 'zoom', camera: 'eye', move: 'dpad', team: 'party', chat: 'talk', examine: 'eye', use: 'hand', run: 'shoe', exclamation: 'exclaim', options: 'gear', settings: 'gear', close: 'cross', quest: 'star', money: 'coin', location: 'pin', home: 'house', bond: 'link', food: 'bowl', computer: 'pc', note: 'music', time: 'clock', night: 'moon', day: 'sun', arrows: 'dpad', keys: 'dpad', weather: 'cloud' };
 export const iconName = (n) => (BIG[n] || SMALL[n] ? n : ALIAS[n] || n);
 export const ICON_NAMES = [...new Set([...Object.keys(BIG), ...Object.keys(SMALL)])];
 
 const FIXED = {
-  r: '#ff5a64', y: '#ffcf5a', c: '#5fd8e8', g: '#6fd36a', n: '#b07040', k: '#4a3e6e', m: '#a59cc8', l: '#f4ead8', p: '#ff8ab8', s: '#ffd2b0', v: '#9b7cf0', f: '#ff8a6a', e: '#4a7ae8',
+  r: '#ff5a64', y: '#ffcf5a', c: '#5fd8e8', g: '#6fd36a', n: '#b07040', k: '#5a3a22', m: '#b8aa98', l: '#f4ead8', p: '#ff8ab8', s: '#ffd2b0', v: '#9b7cf0', f: '#ff8a6a', e: '#4a7ae8',
 };
 
 // ---------------------------------------------------------------- drawing
@@ -172,9 +173,9 @@ function compile(name, c, a, dim) {
   const colorful = (ch) => solid(ch) && ch !== 'o';
   const tone = (ch) => {
     const lo = ch.toLowerCase();
-    if (ch === 'h') { const hc = dim ? mx(sh(c, 0.9), '#4e4672', dim) : sh(c, 0.9); return [hc, hc, hc]; }
+    if (ch === 'h') { const hc = dim ? mx(sh(c, 0.9), '#7a5a40', dim) : sh(c, 0.9); return [hc, hc, hc]; }
     let base = lo === 'b' ? c : lo === 'a' ? a : FIXED[lo] || c;
-    if (dim) base = mx(base, '#4e4672', dim);
+    if (dim) base = mx(base, '#7a5a40', dim);
     return ch !== lo ? [sh(base, -1.6), sh(base, -1.2), sh(base, -0.8)] : [sh(base, -0.75), base, sh(base, 0.85)];
   };
   // canvas with a 1px border for the outline
@@ -183,8 +184,8 @@ function compile(name, c, a, dim) {
     const ch = at(i, j);
     let col = null;
     if (ch === 'o') col = T.ink;
-    else if (ch === 'w') col = dim ? mx('#ffffff', '#8f86c4', dim) : '#ffffff';
-    else if (ch === '*') col = dim ? '#6e64a0' : '#d8d0f4';
+    else if (ch === 'w') col = dim ? mx('#ffffff', '#b89a78', dim) : '#ffffff';
+    else if (ch === '*') col = dim ? '#9a7a58' : '#fff0d0';
     else if (colorful(ch)) {
       const [d, bb, l] = tone(ch);
       const up = !colorful(at(i, j - 1));
@@ -206,7 +207,7 @@ export function bigSize(name) { const I = BIG[iconName(name)]; if (!I) return { 
 export function drawBig(s, name, x, y, c, o = {}) {
   const n = iconName(name), I = BIG[n];
   if (!I) { if (SMALL[n]) drawSmall(s, n, x + 2, y + 2, c || T.text, T.ink); return; }
-  const sc = o.scale || 1, ink = P(o.ink || T.ink), shadowV = o.shadow === false ? 0 : P(o.shadowColor || '#07040c');
+  const sc = o.scale || 1, ink = P(o.ink || T.ink), shadowV = o.shadow === false ? 0 : P(o.shadowColor || '#1a0d04');
   const C = compile(n, c || I.c, o.tint2 || I.a || (c ? sh(c, -0.8) : I.c), o.dim || 0);
   const ox = (x | 0) + ((12 - C.w) >> 1) * sc, oy = (y | 0) + ((12 - C.h) >> 1) * sc;
   const put = (i, j, v) => { for (let a2 = 0; a2 < sc; a2++) for (let b2 = 0; b2 < sc; b2++) px(s, ox + i * sc + a2, oy + j * sc + b2, v); };

@@ -56,7 +56,7 @@ void main(){
   // vignette + grain
   vec2 q = v - 0.5; q.x *= uOut.x / uOut.y;
   c *= mix(1.0, smoothstep(1.05, 0.25, length(q)), uVig);
-  c += (hash(v * uOut + fract(uTime)) - 0.5) * 0.016;
+  c += (hash(v * uOut + fract(uTime)) - 0.5) * 0.01;
   o = vec4(c, 1.0);
 }`;
 

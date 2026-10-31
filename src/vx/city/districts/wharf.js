@@ -262,7 +262,7 @@ function pier(C, ctx) {
   hut(C, { x: 150.5, z: 1.6, w: 5.2, d: 4.0, y0: PY, h: 3.4, name: 'arcade', wall: TX.siding('#5a3a8a'), roofCol: '#c8a040', front: 'e', glow: ctx.night, win: arcadeWin(ctx.night), winW: 3.0, winH: 1.6,
     sign: wharfSign('TIDE POOL ARCADE', '#1a1426', '#ffe04a', 4.0, 0.72, { rope: '#5ae0ff' }), signW: 4.0 });
   // a sea-lion viewing deck between them
-  C.decal('wf_pier', wharfSign('SEA LION VIEWING', '#2a6a7a', '#f8f0d8', 3.0, 0.5, { size: 8 }), 150.35, PY + 0.4, 6.4, 'e', 2.0, 0.34, { off: 0.08 });
+  C.decal('wf_pier', wharfSign('TOKON RAFTS', '#2a6a7a', '#f8f0d8', 3.0, 0.5, { size: 8 }), 150.35, PY + 0.4, 6.4, 'e', 2.0, 0.34, { off: 0.08 });
   C.prop('wf_telescope', 151.4, 6.2, { yaw: -Math.PI / 2 });
   C.interact({ x: 152.6, z: 6.2, r: 1.6, label: 'Watch the sea lions', icon: 'eye', act: async (app) => {
     sfx(app, 'roar');

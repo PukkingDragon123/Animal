@@ -67,7 +67,7 @@ export const GRADES = {
   morning: { warm: 0.55, rays: 0.16, rayDir: [1, 0.9], rayCol: [1.0, 0.86, 0.6], bloom: 0.5, threshold: 0.8, sat: 1.14, contrast: 1.1, lift: 0.006, vig: 0.55 },
   tense: { sat: 0.94, contrast: 1.14, vig: 0.66, warm: 0.15, rays: 0, lift: 0.006 },
   hero: { bloom: 0.62, wide: 0.7, warm: 0.6, sat: 1.2, vig: 0.48, rays: 0.16 },
-  storm: { sat: 0.7, contrast: 1.16, warm: 0.0, rays: 0, vig: 0.8, night: 0.24, bloom: 0.7, threshold: 0.66, wide: 0.6, shadowTint: [0.8, 0.86, 1.12], highTint: [0.96, 1.0, 1.06], lift: 0.02 },
+  storm: { sat: 0.78, contrast: 1.14, warm: 0.0, rays: 0, vig: 0.72, night: 0.12, bloom: 0.7, threshold: 0.66, wide: 0.6, shadowTint: [0.8, 0.86, 1.12], highTint: [0.96, 1.0, 1.06], lift: 0.02 },
   dusk: { warm: 0.5, sat: 1.08, vig: 0.55, rays: 0.12, rayCol: [1.0, 0.7, 0.5], bloom: 0.65 },
 };
 const POST_KEYS = ['focus', 'band', 'dof', 'bloom', 'threshold', 'wide', 'rays', 'rayDir', 'rayCol', 'vig', 'warm', 'night', 'sat', 'contrast', 'shadowTint', 'highTint', 'lift'];
@@ -506,9 +506,9 @@ export class Cinema {
   updateStorm(dt) {
     const S = this.storm; if (!S) return;
     const st = this.st; S.t += dt; const k = sine(S.t / S.dur);
-    st.sun.intensity = S.sun0 + (S.sun0 * 0.32 - S.sun0) * k; st.sun.color.copy(S.sunC0).lerp(_c1.set(0x9aa8c8), k);
+    st.sun.intensity = S.sun0 + (S.sun0 * 0.5 - S.sun0) * k; st.sun.color.copy(S.sunC0).lerp(_c1.set(0x9aa8c8), k);
     st.hemi.intensity = S.hemi0 * (1 - 0.3 * k); st.hemi.color.copy(S.hemiC0).lerp(_c2.set(0x5a6688), k);
-    st.r.toneMappingExposure = S.exp0 * (1 - 0.12 * k);
+    st.r.toneMappingExposure = S.exp0 * (1 - 0.05 * k);
     if (!S.sky && k > 0.5) { S.sky = true; st.scene.background = stormSky(); }
     // a lightning flicker now and then
     S.next = (S.next ?? 1.2) - dt;

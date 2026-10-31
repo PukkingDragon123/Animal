@@ -59,6 +59,7 @@ export function ptex(key, wM, hM, paint, o = {}) {
   const g = cv.getContext('2d', { willReadFrequently: true }); g.imageSmoothingEnabled = false;
   const P = new Painter(g, W, H);
   paint(g, W, H, rnd(hashStr(key)), P);
+  if (o.paint ?? PAINTED.test(key)) despeckle(g, W, H);
   const t = new THREE.CanvasTexture(cv);
   if (P.glass) t.userData.glass = P.glass;          // glazed panes (texel rects): mirror-smooth in the material (render/surface.js)
   t.colorSpace = THREE.SRGBColorSpace; t.magFilter = THREE.NearestFilter; t.minFilter = THREE.NearestMipmapLinearFilter;
@@ -66,6 +67,29 @@ export function ptex(key, wM, hM, paint, o = {}) {
   t.userData.size = [wM, hM]; t.userData.key = k;
   CACHE.set(k, t);
   return t;
+}
+
+// Hand-painted, not gritty: the big tiling surfaces (walls, roofs, ground) get one pass of a majority filter
+// after painting. A pixel that disagrees with most of its eight neighbours (a lone speck, a dither checker)
+// takes their colour, so the surface reads as clear colour blocks with painted shading steps, the way the
+// Tokonmon's box models are painted. Lines one pixel wide (mortar, grout, laps, cracks) survive: along a line
+// a pixel always has two neighbours that agree with it. Wraps at the edges (the tiles stay seamless).
+const PAINTED = /^(plaster|asphalt|concrete|roofmem|pavers|slabs|cobble|grass|dirt|brick|siding|shingle|rooftile|metalroof|planks)/;
+function despeckle(g, W, H) {
+  const im = g.getImageData(0, 0, W, H), d = im.data, src = new Uint32Array(d.buffer.slice(0)), out = new Uint32Array(d.buffer);
+  const cnt = new Map();
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const c = src[y * W + x]; let same = 0; cnt.clear();
+    for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) {
+      if (!i && !j) continue;
+      const n = src[((y + j + H) % H) * W + ((x + i + W) % W)];
+      if (n === c) same++; else cnt.set(n, (cnt.get(n) || 0) + 1);
+    }
+    if (same >= 2) continue;
+    let best = c, bn = 0; for (const [k, v] of cnt) if (v > bn) { bn = v; best = k; }
+    if (bn >= 5) out[y * W + x] = best;
+  }
+  g.putImageData(im, 0, 0);
 }
 
 // a tiny 3 × 5 pixel font for small crisp lettering (price tags, plates, stickers)

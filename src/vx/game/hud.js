@@ -1,12 +1,15 @@
-// The roaming HUD: location plate + day-cycle clock (top-left), money + menu
-// button (top-right), party cards (bottom-left), framed minimap (bottom-right),
-// a centred title card when you enter a new area, and the pause menu (Party,
-// Bag, Map, Save, Options, Close) which opens as a modal over everything.
+// The roaming HUD, icons and numbers first: a sun/moon dial with the time
+// (top-left), a coin purse + round menu button (top-right), party beads
+// (bottom-left), a round minimap (bottom-right), a wooden place sign that drops
+// in on a rope when you enter a new zone and then rises away, and the control
+// hint (key glyphs + icons) until you first move. The pause menu is a row of big
+// round wooden buttons with tooltips over a parchment page (Party, Bag, Map,
+// Save, Options, Close), opened as a modal over everything.
 // Call hud.draw(ui, dt) every frame while the player is roaming.
 import { T } from '../../px/game/ui.js';
-import { sh, mx, clamp01, easeOut } from '../../px/game/uikit/theme.js';
-import { gradFill, hgradRun, tri, gem, sparkle, ball, ringPx } from '../../px/game/uikit/frame.js';
-import { fmtNum } from '../../px/game/uikit/widgets.js';
+import { mx, clamp01, easeOut, easeOutBack } from '../../px/game/uikit/theme.js';
+import { gradFill, sparkle, ball, frame, woodRing } from '../../px/game/uikit/frame.js';
+import { fmtNum, roundButton } from '../../px/game/uikit/widgets.js';
 import { SPECIES, elemsOf } from '../../data/species.js';
 import { ELEMENTS } from '../../data/elements.js';
 import { ITEMS } from '../../data/items.js';
@@ -14,20 +17,22 @@ import { maxHp } from '../../game/elemon.js';
 import { weatherOf } from '../../game/time.js';
 
 const MENU = [
-  { id: 'party', label: 'Party', icon: 'party', color: T.amber, hint: 'Your Tokonmon' },
-  { id: 'bag', label: 'Bag', icon: 'bag', color: T.coral, hint: 'Items you carry' },
-  { id: 'map', label: 'Map', icon: 'map', color: T.cyan, hint: 'Open the TokoPhone map' },
-  { id: 'save', label: 'Save', icon: 'save', color: T.green, hint: 'Write your progress' },
-  { id: 'options', label: 'Options', icon: 'gear', color: T.violet, hint: 'Sound and display' },
-  { id: 'close', label: 'Close', icon: 'cross', color: T.dim, hint: 'Back to the game' },
+  { id: 'party', label: 'Party', icon: 'party', color: T.amber },
+  { id: 'bag', label: 'Bag', icon: 'bag', color: T.coral },
+  { id: 'map', label: 'Map', icon: 'map', color: T.cyan },
+  { id: 'save', label: 'Save', icon: 'save', color: T.green },
+  { id: 'options', label: 'Sound', icon: 'music', color: T.violet },
+  { id: 'close', label: 'Resume', icon: 'play', color: T.amber },
 ];
 const ITEM_ICON = { food: 'bowl', disc: 'disc', gear: 'gear', key: 'star', gem: 'coin', capture: 'coin', boost: 'bolt' };
+const ELEM_ICON = { pyro: 'flame', hydro: 'drop', bio: 'leaf', volto: 'bolt', geo: 'shield', echo: 'music', cryo: 'drop', aero: 'cloud', ecto: 'eye', ferro: 'gear', astro: 'star', nucleo: 'bolt', draco: 'flame' };
+const HINT_KEY = 'tokonmon.hintDone';
 
 export class Hud {
-  constructor(app) { this.app = app; this.t = 0; this.menu = null; this.hideK = 0; this.zone = null; this.card = null; this.ui = null; }
+  constructor(app) { this.app = app; this.t = 0; this.menu = null; this.hideK = 0; this.zone = null; this.card = null; this.ui = null; this.locN = 0; }
   get menuOpen() { return !!this.menu; }
-  // called by the world when you walk into a new zone / arrive somewhere: slides the plate and shows a title card
-  showLocation(name, sub) { this.zone = { name, sub }; this.card = { name, sub: sub || this.city(), t: 0 }; }
+  // called by the world when you walk into a new zone / arrive somewhere: the place sign drops in
+  showLocation(name, sub) { this.zone = { name, sub }; this.card = { name, sub: sub || this.city(), t: 0 }; this.locN++; }
   city() { const w = this.app.world || {}; return (w.loc && w.loc.city) || 'San Francisco'; }
   where() {
     const w = this.app.world || {}, locName = w.loc && w.loc.name;
@@ -47,71 +52,58 @@ export class Hud {
   draw(ui, dt) {
     this.ui = ui; this.t += dt;
     const app = this.app, st = app.state || {}, W = ui.w, H = ui.h, narrow = W < 360;
-    if (app.phone && app.phone.open) return;
+    if ((app.phone && app.phone.open) || this.menu) return;
     const busy = !!(ui.dialog || (app.story && app.story.busy));
     this.hideK += ((busy ? 1 : 0) - this.hideK) * Math.min(1, dt * 10);
-    const off = Math.round(this.hideK * 48);
-    // top-left: location plate, clock, objective
-    const w = this.where();
-    let y = 6;
-    if (w.name) { ui.hudLocation(6, y, w.name, w.sub); y += 28; }
+    const off = Math.round(this.hideK * 48), offL = Math.round(this.hideK * 110);
+    // top-left: the sun/moon dial + time, then the objective tag
     const time = st.time || { day: 1, hour: 12 };
-    ui.hudClock(6 - Math.round(this.hideK * 100), y, { day: time.day, time: time.hour, weather: safeWeather(time) });
-    y += 30;
+    ui.hudClock(5 - offL, 4, { day: time.day, time: time.hour, weather: safeWeather(time) });
     const obj = (app.story && app.story.objective) || (app.quests && app.quests.objective && app.quests.objective());
-    if (obj && !busy) ui.objective(6, y, obj, { maxW: narrow ? W - 12 : Math.min(240, W - 140) });
-    // top-right: menu button + money
-    const mb = 22;
-    if (ui.iconButton(W - mb - 5, 5, mb, 'menu', { color: T.amber })) this.openMenu('party', ui);
+    if (obj && !busy) ui.objective(6, 36, obj, { maxW: narrow ? W - 12 : Math.min(220, W - 150) });
+    // top-centre: the place sign (drops in when the zone changes, then rises away)
+    const w = this.where();
+    const signW = w.name ? ui.hudLocation(W >> 1, 0, w.name, w.sub, { align: 'center', hold: 3.2, id: 'zone' + this.locN }) : 0;
+    ui.toastY = signW && !narrow ? 40 : null;     // toasts queue under the sign while it hangs there
+    // top-right: menu button + coin purse
+    const mb = 24;
+    if (ui.iconButton(W - mb - 4, 3, mb, 'menu', { color: T.amber, tip: 'Menu' })) this.openMenu('party', ui);
     if (!ui.dialog && !ui.modal && (ui.key('Escape') || ui.key('Tab'))) this.openMenu('party', ui);
-    ui.hudMoney(W - mb - 10, 8, st.money || 0, { align: 'right' });
-    // bottom-right: minimap; bottom-left: party
-    const mmW = narrow ? 58 : 78, mmH = narrow ? 50 : 62, mmX = W - mmW - 6, mmY = H - mmH - 6 + off;
+    ui.hudMoney(W - mb - 8, 8, st.money || 0, { align: 'right' });
+    // bottom-right: round minimap; bottom-left: party beads
+    const mmD = narrow ? 52 : 64, mmX = W - mmD - 4, mmY = H - mmD - 4 + off;
     const world = app.world;
-    ui.minimap(mmX, mmY, mmW, mmH, world && world.drawMinimap ? (u, x, yy, ww, hh) => world.drawMinimap(u, x, yy, ww, hh) : placeholderMap, { player: !(world && world.drawMinimap), north: northOf(world) });
+    ui.minimap(mmX, mmY, mmD, mmD, world && world.drawMinimap ? (u, x, yy, ww, hh) => world.drawMinimap(u, x, yy, ww, hh) : placeholderMap, { player: !(world && world.drawMinimap), north: northOf(world) });
     const party = this.party();
-    if (party.length) ui.partyBar(6, H - 34 + off, party, { maxW: mmX - 12, full: narrow ? 1 : 2 });
+    if (party.length) ui.partyBar(6, H - 36 + off, party, { maxW: mmX - 12 });
     if (world && world.city) this.drawHint(ui, dt, busy, mmX);
-    // centred title card for a new area
-    if (this.card) this.drawCard(ui, dt);
   }
-  // the controls, spelled out for the first few seconds you roam the city (keys, a pad or touch, whichever you use)
+  // the controls as key glyphs + icons, until you first move (then never again)
   drawHint(ui, dt, busy, maxX) {
-    const c = this.app.world.city, H = ui.h;
+    const c = this.app.world.city, H = ui.h, p = this.app.world.player;
+    if (this.hintDone == null) { try { this.hintDone = typeof localStorage !== 'undefined' && localStorage.getItem(HINT_KEY) === '1'; } catch (e) { this.hintDone = false; } }
+    if (this.hintDone && !this.hintOut) return;
     if (busy || !c.active()) return;
-    this.hintT = (this.hintT || 0) + dt; const t = this.hintT, dur = 11;
-    if (t > dur) return;
-    const a = Math.min(1, t / 0.4, (dur - t) / 0.6); if (a <= 0.05) return;
-    const rows = c.pad ? [['LS', 'MOVE'], ['B', 'RUN'], ['RS', 'CAMERA'], ['A', 'TALK']]
-      : c.touch ? [['LEFT', 'MOVE'], ['RIGHT', 'CAMERA'], ['PINCH', 'ZOOM'], ['TAP', 'WALK']]
-        : [['WASD', 'MOVE'], ['SHIFT', 'RUN'], ['Q E', 'CAMERA'], ['WHEEL', 'ZOOM'], ['E', 'TALK']];
-    const width = (L) => L.reduce((s, [k, l]) => s + Math.max(11, ui.tw(k, { mini: k.length > 3 }) + 6) + ui.tw(l, { mini: true }) + 10, 0);
-    const list = width(rows) > Math.min(ui.w - 12, maxX - 12) ? rows.slice(0, 3) : rows;
-    let x = Math.round((ui.w - width(list)) / 2); const y = H - 52 + Math.round((1 - a) * 8);
-    for (const [k, l] of list) { x += ui.keycap(x, y, k) + 3; ui.text(l, x, y + 4, T.text, { mini: true, outline: T.ink }); x += ui.tw(l, { mini: true }) + 7; }
-  }
-  drawCard(ui, dt) {
-    const c = this.card; c.t += dt;
-    const dur = 2.8, W = ui.w, s = ui.s;
-    if (c.t > dur) { this.card = null; return; }
-    const kin = easeOut(c.t / 0.5), kout = clamp01((dur - c.t) / 0.4), k = Math.min(kin, kout);
-    const big = ui.tw(c.name) * 2 + 40 < W, tw = big ? ui.tw(c.name) * 2 : ui.tw(c.name, { bold: true }), cy = Math.round(ui.h * (W < 360 ? 0.42 : 0.3));
-    const half = Math.round((tw / 2 + 30) * k), cx = W >> 1;
-    // gold rules growing from the centre with gems at their ends
-    for (let i = -half; i <= half; i++) { const d = Math.abs(i) / Math.max(1, half); s.px(cx + i, cy - 4, mx(T.amberL, T.amber2, d)); s.px(cx + i, cy + (big ? 20 : 13), mx(T.amber, T.coral2, d)); }
-    gem(s, cx - half, cy - 4, T.cyan, 2); gem(s, cx + half, cy - 4, T.cyan, 2);
-    ui.clip(cx - half, cy - 2, half * 2 + 1, big ? 30 : 24, () => {
-      if (big) { ui.text(c.name, cx + 1, cy + 2, '#05030a', { align: 'center', scale: 2 }); ui.text(c.name, cx, cy, null, { align: 'center', scale: 2, outline: T.ink, grad: ['#ffffff', T.amberL, T.amber] }); }
-      else ui.text(c.name, cx, cy + 1, null, { align: 'center', bold: true, outline: T.ink, grad: ['#ffffff', T.amberL] });
-      if (c.sub) ui.text(c.sub.toUpperCase(), cx, cy + (big ? 23 : 16), T.cyan, { align: 'center', mini: true, outline: T.ink });
-    });
-    if (c.t < 0.9) sparkle(s, cx + half - 2, cy - 7, T.amberL, 1 - c.t / 0.9);
+    // first use: the player has walked a couple of steps
+    if (p && p.g) { const q = p.g.position; if (!this.hintAt) this.hintAt = [q.x, q.z]; else if (!this.hintOut && Math.hypot(q.x - this.hintAt[0], q.z - this.hintAt[1]) > 1.5) { this.hintOut = 0.001; try { localStorage.setItem(HINT_KEY, '1'); } catch (e) { /* private mode */ } } }
+    this.hintT = (this.hintT || 0) + dt;
+    if (this.hintOut) { this.hintOut += dt; if (this.hintOut > 0.5) { this.hintDone = true; this.hintOut = 0; return; } }
+    if (c.touch && !c.pad) return;    // the ghost thumbstick shows touch players where to start
+    const a = Math.min(1, this.hintT / 0.4) * (this.hintOut ? 1 - this.hintOut / 0.5 : 1); if (a <= 0.05) return;
+    const rows = c.pad ? [['LS', 'dpad'], ['B', 'shoe'], ['RS', 'eye'], ['A', 'talk']] : [['WASD', 'dpad'], ['SHIFT', 'shoe'], ['Q E', 'eye'], ['E', 'talk']];
+    const kw = (k) => Math.max(11, ui.tw(k, { mini: k.length > 3 }) + 6);
+    const widthOf = (L) => L.reduce((s, [k]) => s + kw(k) + 17, 0) - 4;
+    const list = widthOf(rows) + 16 > Math.min(ui.w - 12, maxX - 12) ? rows.slice(0, 2) : rows;
+    const tw = widthOf(list) + 14, x0 = Math.round((ui.w - tw) / 2), y = H - 30 + Math.round((1 - a) * 10);
+    frame(ui, x0, y - 4, tw, 21, { thin: true, r: 6, fill: T.wood, rivets: false, seams: false, alpha: 0.92, shadowA: 0.3 });
+    let x = x0 + 7;
+    for (const [k, icon] of list) { x += ui.keycap(x, y, k) + 2; ui.bigIcon(icon, x, y, null, { shadow: false }); x += 15; }
   }
   // ------------------------------------------------------------------ pause menu (a modal over everything)
   openMenu(tab = 'party', ui = this.ui || this.app.ui) {
     if (this.menu || !ui) return;
     const sel = Math.max(0, MENU.findIndex((m) => m.id === tab));
-    this.menu = { sel, view: null, t: 0, lp: null, opt: 0 };
+    this.menu = { sel, view: null, t: 0, lp: null, opt: 0, selT: 0, bag: 0 };
     if (this.app.keysDown) this.app.keysDown = {};          // stop walking
     this.sfx('phone_open');
     this.modal = ui.openModal({ capture: true, draw: (u, dt, live) => this.drawPauseMenu(u, dt, live), onClose: () => { this.menu = null; this.modal = null; } });
@@ -122,144 +114,143 @@ export class Hud {
     const app = this.app, M = this.menu;
     if (id === 'close') return this.closeMenu(ui);
     if (id === 'map') { this.closeMenu(ui); if (app.phone && app.phone.toggle) app.phone.toggle(); return; }
-    if (id === 'save') { if (app.save) app.save(); ui.toast('Game saved', { icon: 'check', color: T.green }); this.sfx('ui_confirm'); M.saved = this.t; return; }
+    if (id === 'save') { if (app.save) app.save(); ui.toast('Saved', { icon: 'check', color: T.green }); this.sfx('ui_confirm'); M.saved = this.t; return; }
     M.view = id; this.sfx('ui_tap');
   }
+  select(i) { const M = this.menu; if (M.sel !== i) { M.sel = i; M.selT = 0; M.view = null; this.sfx('ui_tap'); } }
   drawPauseMenu(ui, dt, live = true) {
     const M = this.menu; if (!M) return;
-    M.t += dt; this.ui = ui;
-    const W = ui.w, H = ui.h, s = ui.s, narrow = W < 360, k = easeOut(M.t * 4.5);
-    ui.fade(0.6 * k, '#0a0716');
+    M.t += dt; M.selT += dt; this.ui = ui;
+    const W = ui.w, H = ui.h, s = ui.s, narrow = W < 360, k = easeOut(M.t * 4.5), n = MENU.length;
+    ui.fade(0.55 * k, '#1a120a');
     // input
     if (live) {
-      const n = MENU.length;
-      if (ui.key('Escape') || ui.key('Tab')) { if (narrow && M.view) M.view = null; else return this.closeMenu(ui); }
-      if (!(narrow && M.view)) {
-        if (ui.key('ArrowUp') || ui.key('w')) { M.sel = (M.sel + n - 1) % n; this.sfx('ui_tap'); if (!narrow) M.view = null; }
-        if (ui.key('ArrowDown') || ui.key('s')) { M.sel = (M.sel + 1) % n; this.sfx('ui_tap'); if (!narrow) M.view = null; }
-        if (ui.key('Enter') || ui.key(' ') || ui.key('e')) this.activate(MENU[M.sel].id, ui);
-      }
+      if (ui.key('Escape') || ui.key('Tab')) return this.closeMenu(ui);
+      if (ui.key('ArrowLeft') || ui.key('a')) this.select((M.sel + n - 1) % n);
+      if (ui.key('ArrowRight') || ui.key('d')) this.select((M.sel + 1) % n);
+      if (ui.key('Enter') || ui.key(' ') || ui.key('e')) this.activate(MENU[M.sel].id, ui);
       if (!this.menu) return;
     }
-    // list panel
-    const lw = narrow ? W - 16 : 132, lx = 8 - Math.round((1 - k) * 60), ly = 8, rowH = 22;
-    const lh = narrow && M.view ? 0 : Math.min(H - 16, 44 + MENU.length * rowH + 22);
-    if (!(narrow && M.view)) {
-      ui.panel(lx, ly, lw, lh, { ornate: true, dots: true, gem: T.amber });
-      ui.banner(lx + 6, ly + 8, 'MENU', { icon: 'star', color: T.amber, chev: !narrow || true });
-      const moved = !M.lp || M.lp[0] !== ui.ptr.x || M.lp[1] !== ui.ptr.y; M.lp = [ui.ptr.x, ui.ptr.y];
-      MENU.forEach((it, i) => {
-        const ry = ly + 30 + i * rowH, rx = lx + 6, rw = lw - 12, on = M.sel === i, hit = live && ui.inside(rx, ry, rw, rowH - 2);
-        if (hit && moved && M.sel !== i) { M.sel = i; if (!narrow) M.view = null; }
-        if (on) {
-          for (let j = 0; j < rowH - 2; j++) hgradRun(s, rx, ry + j, rw, j === 0 ? [mx(T.panel, it.color, 0.7), T.panel] : j === rowH - 3 ? [sh(mx(T.panel, it.color, 0.3), -0.5), T.panel] : [mx(T.panel, it.color, 0.38), mx(T.panel, it.color, 0.12), T.panel]);
-          tri(s, rx + 2 + Math.round(Math.abs(Math.sin(M.t * 6)) * 2), ry + 7, 'right', 3, it.color);
-        }
-        ball(s, rx + 18, ry + 10, 8, on ? it.color : '#3a3058');
-        ui.bigIcon(it.icon, rx + 12, ry + 4, null, { dim: on ? 0 : 0.15, shadow: false });
-        ui.text(it.label, rx + 31, ry + 7, on ? '#ffffff' : T.dim, { bold: on, shadow: T.ink });
-        if (hit && ui.ptr.released) { ui.ptr.released = false; M.sel = i; this.activate(it.id, ui); }
-      });
-      if (!this.menu) return;
-      // footer: player + money + play info
-      const st = this.app.state || {}, fy = ly + lh - 17;
-      s.hline(lx + 8, lx + lw - 9, fy - 3, '#3a3058');
-      ui.text((st.player && st.player.name) || 'You', lx + 10, fy + 1, T.text, { shadow: T.ink });
-      ui.bigIcon('coin', lx + lw - 23 - ui.tw(fmtNum(st.money || 0)), fy - 2, null, { shadow: false });
-      ui.text(fmtNum(st.money || 0), lx + lw - 9, fy + 1, T.amber, { align: 'right', shadow: T.ink });
-    }
-    // content panel
-    if (!narrow || M.view) {
-      const it = MENU[M.sel], cx = narrow ? 8 : lx + lw + 6 + Math.round((1 - k) * 40), cy = 8, cw = narrow ? W - 16 : W - cx - 8, ch = H - 16;
-      ui.panel(cx, cy, cw, ch, { dots: false, fill: '#262038' });
-      ui.banner(cx + 6, cy + 8, it.label.toUpperCase(), { icon: it.icon === 'party' ? 'team' : it.icon === 'cross' ? 'cross' : it.icon, color: it.color });
-      if (narrow && ui.button(cx + cw - 46, cy + 7, 40, 15, 'Back', { modal: true, color: T.dim, icon: 'back' })) M.view = null;
-      const ax = cx + 10, ay = cy + 30, aw = cw - 20, ah = ch - 40;
-      ({ party: () => this.panelParty(ui, ax, ay, aw, ah), bag: () => this.panelBag(ui, ax, ay, aw, ah), map: () => this.panelMap(ui, ax, ay, aw, ah), save: () => this.panelSave(ui, ax, ay, aw, ah), options: () => this.panelOptions(ui, ax, ay, aw, ah, live), close: () => this.panelClose(ui, ax, ay, aw, ah) })[it.id]();
-      if (!narrow && H - 16 > 200) { const hy = cy + ch - 18; let hx = cx + 10; hx += ui.keycap(hx, hy, '↑') + 1; hx += ui.keycap(hx, hy, '↓') + 3; ui.text('SELECT', hx, hy + 4, T.textD, { mini: true }); hx += 30; hx += ui.keycap(hx, hy, 'Enter') + 3; ui.text('OPEN', hx, hy + 4, T.textD, { mini: true }); hx += 24; hx += ui.keycap(hx, hy, 'Esc') + 3; ui.text('CLOSE', hx, hy + 4, T.textD, { mini: true }); }
-    }
+    // the row of big round buttons
+    const r = narrow ? 10 : 13, R = r + 3, gap = narrow ? 6 : 12, rowW = n * (2 * R + 1) + (n - 1) * gap;
+    const rx0 = Math.round((W - rowW) / 2) + R, ry = 8 + R + Math.round((1 - k) * -40);
+    let tipAt = null;
+    MENU.forEach((it, i) => {
+      const cx = rx0 + i * (2 * R + 1 + gap), pop = easeOutBack(clamp01(M.t * 4 - i * 0.12));
+      const cy = ry + Math.round((1 - pop) * -12);
+      const b = roundButton(ui, cx, cy, r, it.icon, { modal: true, sel: M.sel === i, color: it.color, tip: it.label });
+      if (b.over) { if (M.lp !== i) { M.lp = i; this.select(i); } tipAt = [cx, cy, it.label]; }
+      if (b.clicked && live) { this.select(i); this.activate(it.id, ui); }
+    });
+    if (!this.menu) return;
+    if (!tipAt) { const i = M.sel; tipAt = [rx0 + i * (2 * R + 1 + gap), ry, MENU[i].label]; }
+    // the page
+    const it = MENU[M.sel], px = 8, py = ry + R + 14, pw = W - 16, ph = H - py - 6 + Math.round((1 - k) * 40);
+    frame(ui, px, py, pw, ph, { paper: true, fill: T.wood, leaves: true });
+    const ax = px + 10, ay = py + 9, aw = pw - 20, ah = ph - 18;
+    ({ party: () => this.panelParty(ui, ax, ay, aw, ah), bag: () => this.panelBag(ui, ax, ay, aw, ah, live), map: () => this.panelMap(ui, ax, ay, aw, ah), save: () => this.panelSave(ui, ax, ay, aw, ah), options: () => this.panelOptions(ui, ax, ay, aw, ah, live), close: () => this.panelClose(ui, ax, ay, aw, ah) })[it.id]();
+    tip(ui, tipAt[0], tipAt[1] + R + 3, tipAt[2]);
+    void s;
   }
   panelParty(ui, x, y, w, h) {
     const party = this.party(), s = ui.s;
-    if (!party.length) { ui.text('No Tokonmon yet.', x + 4, y + 6, T.dim, { shadow: T.ink }); return; }
-    const rh = Math.min(30, Math.floor((h - 20) / Math.max(1, party.length)));
+    if (!party.length) { ui.bigIcon('party', x + (w >> 1) - 12, y + (h >> 1) - 16, null, { scale: 2, dim: 0.4 }); return; }
+    const rh = Math.min(30, Math.floor((h - 4) / Math.max(1, party.length)) - 3);
     party.forEach((m, i) => {
-      const ry = y + i * (rh + 2);
-      ui.panel(x, ry, w, rh, { fill: i === 0 ? mx('#2b2244', T.amber, 0.08) : '#2b2244', rivets: false, edge: i === 0 ? mx(T.edge, T.amber, 0.5) : T.edge, thin: rh < 22 });
-      const ex = x + 14, ey = ry + (rh >> 1);
-      ball(s, ex, ey, Math.min(9, (rh >> 1) - 3), m.fainted ? '#5a5478' : m.color);
-      ringPx(s, ex, ey, Math.min(9, (rh >> 1) - 3) - 2, mx(m.color, '#ffffff', 0.3));
-      ui.text(m.name[0].toUpperCase(), ex + 1, ey - 3, '#ffffff', { align: 'center', bold: true, outline: sh(m.color, -1.8) });
-      ui.text(m.name, x + 28, ry + 5, '#ffffff', { bold: true, shadow: T.ink });
-      ui.text('LV' + m.level, x + 32 + ui.tw(m.name, { bold: true }), ry + 6, T.amber, { mini: true });
-      if (m.elem) { const el = ELEMENTS[m.elem], lab = (el ? el.name : m.elem).toUpperCase(), lw = ui.tw(lab, { mini: true }) + 6, lx = x + w - lw - 6; ui.rrect(lx, ry + 4, lw, 9, T.ink, 2); ui.rrect(lx + 1, ry + 5, lw - 2, 7, sh(m.color, -0.6), 1); ui.text(lab, lx + 3, ry + 6, '#ffffff', { mini: true }); }
-      if (rh >= 24) {
-        const bw = Math.max(30, w - 110);
-        ui.text('HP', x + 28, ry + rh - 10, T.textD, { mini: true });
-        ui.bar(x + 38, ry + rh - 10, bw, 4, m.maxHp ? m.hp / m.maxHp : m.hp, { seg: 5, id: 'menu-party' + i });
-        ui.text(m.fainted ? 'FAINTED' : `${m.hp}/${m.maxHp}`, x + 42 + bw, ry + rh - 10, m.fainted ? T.red : T.dim, { mini: true });
+      const ry = y + i * (rh + 3), pop = easeOut(clamp01(this.menu.selT * 5 - i * 0.25)), rx = x + Math.round((1 - pop) * 16);
+      frame(ui, rx, ry, w, rh, { thin: true, r: 4, fill: i === 0 ? mx(T.wood, T.amber, 0.12) : T.wood, rivets: false, seams: false, shadowA: 0.25 });
+      const rr = Math.min(8, (rh >> 1) - 4), ex = rx + 5 + rr + 2, ey = ry + (rh >> 1);
+      woodRing(s, ex, ey, rr, { th: 2, fill: m.fainted ? '#8a7a6a' : m.color, shadow: false });
+      ball(s, ex, ey, rr - 1, m.fainted ? '#8a7a6a' : m.color, { ink: mx(m.color, T.ink, 0.5) });
+      ui.text(m.name[0].toUpperCase(), ex + 1, ey - 3, '#ffffff', { align: 'center', bold: true, outline: mx(m.color, T.ink, 0.65) });
+      const nx = ex + rr + 8;
+      ui.text(m.name, nx, ry + 4, T.text, { bold: true, shadow: T.woodDD });
+      ui.text(String(m.level), nx + ui.tw(m.name, { bold: true }) + 4, ry + 5, T.amber, { mini: true, shadow: T.woodDD });
+      if (m.elem) ui.bigIcon(ELEM_ICON[m.elem] || 'star', rx + w - 17, ry + ((rh - 12) >> 1), null, { shadow: false });
+      if (rh >= 20) {
+        const bw = Math.max(30, w - (nx - rx) - 70);
+        ui.bar(nx, ry + rh - 9, bw, 4, m.maxHp ? m.hp / m.maxHp : m.hp, { seg: 5, id: 'menu-party' + i });
+        if (m.fainted) ui.icon('cross', nx + bw + 5, ry + rh - 11, T.red, T.woodDD);
+        else ui.text(`${m.hp}/${m.maxHp}`, nx + bw + 5, ry + rh - 9, T.dim, { mini: true, shadow: T.woodDD });
       }
     });
   }
-  panelBag(ui, x, y, w, h) {
-    const bag = (this.app.state && this.app.state.bag) || {}, ids = Object.keys(bag).filter((id) => bag[id] > 0);
-    if (!ids.length) { ui.bigIcon('bag', x + (w >> 1) - 6, y + 20, null); ui.text('Your bag is empty.', x + (w >> 1), y + 38, T.dim, { align: 'center', shadow: T.ink }); return; }
-    const cols = w >= 220 ? 2 : 1, cw = Math.floor((w - (cols - 1) * 4) / cols), rh = 22;
-    ids.slice(0, Math.floor((h - 20) / (rh + 3)) * cols).forEach((id, i) => {
-      const it = ITEMS[id] || { name: id }, cx = x + (i % cols) * (cw + 4), cy = y + Math.floor(i / cols) * (rh + 3);
-      ui.panel(cx, cy, cw, rh, { fill: '#2b2244', rivets: false, thin: true });
-      ui.bigIcon(ITEM_ICON[it.kind] || 'bag', cx + 4, cy + 5, null, { shadow: false });
-      let nm = it.name || id; while (nm.length > 2 && ui.tw(nm) > cw - 44) nm = nm.slice(0, -1);
-      ui.text(nm, cx + 20, cy + 8, T.text, { shadow: T.ink });
-      ui.text('×' + bag[id], cx + cw - 6, cy + 8, T.amber, { align: 'right', shadow: T.ink });
+  panelBag(ui, x, y, w, h, live) {
+    const bag = (this.app.state && this.app.state.bag) || {}, ids = Object.keys(bag).filter((id) => bag[id] > 0), M = this.menu;
+    if (!ids.length) { ui.bigIcon('bag', x + (w >> 1) - 12, y + (h >> 1) - 16, null, { scale: 2, dim: 0.4 }); return; }
+    const ts = 30, gap = 6, cols = Math.max(1, Math.floor((w + gap) / (ts + gap))), rowsMax = Math.max(1, Math.floor((h - 16 + gap) / (ts + gap)));
+    const list = ids.slice(0, cols * rowsMax), gx = x + Math.round((w - (cols * (ts + gap) - gap)) / 2);
+    if (live && (ui.key('ArrowDown') || ui.key('s'))) M.bag = Math.min(list.length - 1, M.bag + cols);
+    if (live && (ui.key('ArrowUp') || ui.key('w'))) M.bag = Math.max(0, M.bag - cols);
+    M.bag = Math.min(M.bag, list.length - 1);
+    list.forEach((id, i) => {
+      const it = ITEMS[id] || { name: id }, cx = gx + (i % cols) * (ts + gap), cy = y + Math.floor(i / cols) * (ts + gap);
+      const over = live && ui.inside(cx, cy, ts, ts); if (over) M.bag = i;
+      const on = M.bag === i, lift = on ? -1 : 0;
+      frame(ui, cx, cy + lift, ts, ts, { thin: true, r: 5, fill: on ? mx(T.wood, T.leaf, 0.25) : T.wood, edge: on ? T.leaf : undefined, rivets: false, seams: false, shadowA: 0.25 });
+      ui.bigIcon(ITEM_ICON[it.kind] || 'bag', cx + 9, cy + 6 + lift, null, { shadow: false });
+      ui.text('×' + bag[id], cx + ts - 4, cy + ts - 9 + lift, T.text, { align: 'right', mini: true, shadow: T.woodDD });
+      if (on && ((ui.t * 1.3) % 1) < 0.3) sparkle(ui.s, cx + ts - 4, cy + 3 + lift, T.amberL, 0.6);
     });
+    const sel = ITEMS[list[M.bag]] || { name: list[M.bag] };
+    ui.text(sel.name || list[M.bag], x + (w >> 1), y + h - 8, T.paperText, { align: 'center', bold: true });
   }
   panelMap(ui, x, y, w, h) {
-    const where = this.where();
-    ui.text('You are in', x + 4, y + 4, T.dim, { mini: true });
-    ui.text(where.name || '—', x + 4, y + 12, '#ffffff', { bold: true, shadow: T.ink });
-    if (where.sub) ui.text(where.sub.toUpperCase(), x + 4, y + 22, T.cyan, { mini: true });
-    const mw = Math.min(w - 8, 150), mh = Math.min(h - 70, 80);
-    if (mh > 30) { const world = this.app.world; ui.minimap(x + 4, y + 32, mw, mh, world && world.drawMinimap ? (u, a, b2, c, d) => world.drawMinimap(u, a, b2, c, d) : placeholderMap, { player: !(world && world.drawMinimap), north: northOf(world) }); }
-    if (ui.button(x + 4, y + h - 22, Math.min(w - 8, 120), 18, 'Open map', { modal: true, icon: 'map', color: T.cyan })) this.activate('map', ui);
+    const where = this.where(), world = this.app.world, d = Math.min(h - 4, w >> 1, 120);
+    ui.minimap(x + 4, y + ((h - d) >> 1), d, d, world && world.drawMinimap ? (u, a, b2, c, dd) => world.drawMinimap(u, a, b2, c, dd) : placeholderMap, { player: !(world && world.drawMinimap), north: northOf(world) });
+    const tx = x + d + 18, cy = y + (h >> 1);
+    ui.icon('pin', tx, cy - 26, T.coral, T.paperE);
+    ui.text(where.name || '—', tx + 10, cy - 26, T.paperText, { bold: true });
+    if (where.sub) ui.text(where.sub, tx + 10, cy - 15, T.paperDim, {});
+    const b = roundButton(ui, tx + 16, cy + 18, 13, 'map', { modal: true, sel: true, color: T.cyan, tip: 'Open map' });
+    if (b.over) tip(ui, tx + 16, cy + 37, 'Open map');
+    if (b.clicked) this.activate('map', ui);
   }
   panelSave(ui, x, y, w, h) {
     const st = this.app.state || {}, t = st.time || { day: 1, hour: 12 };
-    const rows = [['Player', (st.player && st.player.name) || '—'], ['Day', `${t.day}`], ['Party', `${(st.party || []).length} Tokonmon`], ['Money', fmtNum(st.money || 0)]];
-    rows.forEach(([k, v], i) => { ui.text(k.toUpperCase(), x + 4, y + 6 + i * 12, T.dim, { mini: true }); ui.text(v, x + 60, y + 4 + i * 12, T.text, { shadow: T.ink }); });
-    const M = this.menu;
-    if (M.saved != null && this.t - M.saved < 2) { ui.bigIcon('check', x + 4, y + rows.length * 12 + 10, null); ui.text('Saved!', x + 20, y + rows.length * 12 + 13, T.green, { bold: true, shadow: T.ink }); }
-    if (ui.button(x + 4, y + h - 22, Math.min(w - 8, 120), 18, 'Save game', { modal: true, icon: 'check', color: T.green })) this.activate('save', ui);
+    const rows = [['star', (st.player && st.player.name) || '—'], ['sun', String(t.day)], ['party', String((st.party || []).length)], ['coin', fmtNum(st.money || 0)]];
+    const cx = x + (w >> 1) - 60;
+    rows.forEach(([icon, v], i) => { const ry = y + 4 + i * 17; ui.bigIcon(icon, cx, ry, null, { shadow: false }); ui.text(v, cx + 18, ry + 3, T.paperText, { bold: true }); });
+    const M = this.menu, bx = x + (w >> 1) + 50, by = y + (h >> 1) - 4;
+    const done = M.saved != null && this.t - M.saved < 2;
+    const b = roundButton(ui, bx, by, 13, done ? 'check' : 'save', { modal: true, sel: true, color: T.green, tip: 'Save' });
+    if (b.over) tip(ui, bx, by + 19, 'Save');
+    if (b.clicked) this.activate('save', ui);
   }
   panelOptions(ui, x, y, w, h, live) {
     const st = this.app.state || {}, set = st.settings || (st.settings = {});
-    const opts = [['music', 'Music', T.pink, 'music'], ['sfx', 'Sound FX', T.cyan, 'bell']];
-    opts.forEach(([key, label, col, icon], i) => {
-      const ry = y + 4 + i * 28, v = clamp01(set[key] ?? 0.8);
-      ui.bigIcon(icon, x + 2, ry + 2, null, { shadow: false });
-      ui.text(label, x + 18, ry + 4, T.text, { shadow: T.ink });
-      const bx = x + 18, bw = Math.max(40, w - 70);
-      ui.bar(bx, ry + 15, bw, 5, v, { color: col, seg: 6, id: 'opt' + key, trail: false });
-      const step = (d) => { set[key] = Math.round(clamp01(v + d) * 10) / 10; const a = this.app.audio; if (a && a.setVolumes) a.setVolumes({ [key]: set[key] }); this.sfx('ui_tap'); };
-      if (ui.button(bx + bw + 6, ry + 10, 16, 14, '-', { modal: true, color: col })) step(-0.1);
-      if (ui.button(bx + bw + 24, ry + 10, 16, 14, '+', { modal: true, color: col })) step(0.1);
-      if (live && ui.ptr.down && ui.inside(bx, ry + 12, bw, 10)) { set[key] = Math.round(clamp01((ui.ptr.x - bx) / bw) * 20) / 20; const a = this.app.audio; if (a && a.setVolumes) a.setVolumes({ [key]: set[key] }); }
+    const opts = [['music', T.pink, 'music', '-', '='], ['sfx', T.cyan, 'bell', '[', ']']];
+    const step = (key, d) => { set[key] = Math.round(clamp01((set[key] ?? 0.8) + d) * 10) / 10; const a = this.app.audio; if (a && a.setVolumes) a.setVolumes({ [key]: set[key] }); this.sfx('ui_tap'); };
+    opts.forEach(([key, col, icon, kDn, kUp], i) => {
+      const ry = y + 8 + i * 30, v = clamp01(set[key] ?? 0.8);
+      ui.bigIcon(icon, x + 4, ry, null, { shadow: false });
+      const bx = x + 46, bw = Math.max(40, w - 96);
+      if (ui.button(x + 22, ry - 1, 18, 15, '', { modal: true, color: col, icon: 'left', hotkey: kDn })) step(key, -0.1);
+      ui.bar(bx, ry + 4, bw, 6, v, { color: col, seg: 6, id: 'opt' + key, trail: false });
+      if (ui.button(bx + bw + 6, ry - 1, 18, 15, '', { modal: true, color: col, icon: 'right', hotkey: kUp })) step(key, 0.1);
+      if (live && ui.ptr.down && ui.inside(bx, ry, bw, 14)) { set[key] = Math.round(clamp01((ui.ptr.x - bx) / bw) * 20) / 20; const a = this.app.audio; if (a && a.setVolumes) a.setVolumes({ [key]: set[key] }); }
     });
-    if (live && (ui.key('ArrowLeft') || ui.key('ArrowRight'))) { const key = 'music', d = ui.key('ArrowLeft') ? -0.1 : 0.1; set[key] = Math.round(clamp01((set[key] ?? 0.8) + d) * 10) / 10; const a = this.app.audio; if (a && a.setVolumes) a.setVolumes({ [key]: set[key] }); }
   }
   panelClose(ui, x, y, w, h) {
-    ui.text('Back to the streets.', x + 4, y + 6, T.text, { shadow: T.ink });
-    ui.text('Press Esc any time to pause.', x + 4, y + 18, T.dim, { mini: true });
-    if (ui.button(x + 4, y + h - 22, Math.min(w - 8, 120), 18, 'Resume', { modal: true, icon: 'play', color: T.amber })) this.closeMenu(ui);
+    const b = roundButton(ui, x + (w >> 1), y + (h >> 1) - 4, 16, 'play', { modal: true, sel: true, color: T.amber, tip: 'Resume' });
+    if (b.over) tip(ui, x + (w >> 1), y + (h >> 1) + 18, 'Resume');
+    if (b.clicked) this.closeMenu(ui);
   }
 }
 
+// a small wooden tooltip tag centred under (cx, y)
+function tip(ui, cx, y, str) {
+  const w = ui.tw(str) + 12, x = Math.round(cx - w / 2), s = ui.s;
+  frame(ui, x, y + 3, w, 13, { thin: true, r: 4, fill: T.woodL, edge: T.wood, rivets: false, seams: false, shadowA: 0.3 });
+  s.px(cx, y + 1, T.ink); s.px(cx - 1, y + 2, T.ink); s.px(cx, y + 2, T.woodL); s.px(cx + 1, y + 2, T.ink);
+  ui.text(str, x + 6, y + 6, T.text, { shadow: T.woodDD });
+}
 // the minimap and its compass turn with the city's camera (north stays up elsewhere)
 function northOf(world) { return world && world.city && world.city.mapYaw ? world.city.mapYaw() : 0; }
 function safeWeather(t) { try { return weatherOf(t); } catch (e) { return 'clear'; } }
 // stand-in minimap texture when the world has no drawMinimap
 function placeholderMap(ui, x, y, w, h) {
   const s = ui.s;
-  gradFill(s, x, y, w, h, ['#24304a', '#1a2238'], 0);
-  for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) if ((i + 2) % 12 === 0 || (j + 4) % 10 === 0) s.px(x + i, y + j, '#34446a');
+  gradFill(s, x, y, w, h, ['#6a9a4a', '#4f7a3a'], 0);
+  for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) if ((i + 2) % 12 === 0 || (j + 4) % 10 === 0) s.px(x + i, y + j, '#c8b890');
 }

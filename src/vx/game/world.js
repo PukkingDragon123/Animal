@@ -71,7 +71,7 @@ const CHATTER = {
     'I\'m training for the League. For real this time.', 'Team Metallica tagged the wall again…', 'Have you tried the gear shop?', 'Boba first, battles later.', 'Who\'s that rookie with the angry chick?',
     'My Tokon only listens to vinyl.', 'Rent is SO high in this city.', 'Lunch break! Finally.', 'Hehe, nice partner!'],
   chinatown: ['Fresh dumplings! Hot hot hot!', 'Mr. Wong is still mad about that hot sauce.', 'Lanterns go up tonight!'],
-  pier39: ['The sea lions are loud today.', 'Barkorious was here last night!', 'Clam chowder in a bread bowl. Peak.'],
+  pier39: ['Barkorious and his raft gang are loud today.', 'Barkorious was here last night!', 'Clam chowder in a bread bowl. Peak.'],
   dojo: ['Breathe in… strike!', 'Master Lau never misses tea time.', 'Again! From the top!'],
   tram: ['Hold on tight!', 'Next stop: Pier 39!', 'Ding ding!'],
   arena: ['Who\'s up next?', 'That combo was nasty!', 'The street league is heating up!'],

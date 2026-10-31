@@ -6,6 +6,7 @@ import { TX } from '../../build.js';
 import * as T from './tex.js';
 import * as K from './kit.js';
 import * as W from './lines.js';
+import * as FX from './furni.js';   // hand-painted furniture models (fridge, stove, hutch, sofa, piano…)
 
 const { S, rig } = K;
 export const HOME = { x: 56, z: 141, w: 14, d: 11 };
@@ -58,6 +59,7 @@ export function buildHome(C, ctx = {}) {
 // ======================================================================== interior
 function interior(C, B, P, st) {
   const g0 = B.gk(0, 'in'), g1 = B.gk(1, 'in');
+  const F = st.F = FX.furnish(C, B);
   // ---------------------------------------------------------------- shell: partitions, stubs, papered outer walls, stairs
   const wainscot = T.wood('#a8784a');
   // ground floor
@@ -105,13 +107,15 @@ function interior(C, B, P, st) {
   K.floor(C, g0, T.checker('#f2ecdc', '#a8ccbc', 8), 56.2, 141.2, 64.31, 146.06, 0.03);
   const cab = '#f6f0e2', top = T.counter('#e8e2d6'), knob = '#c8a050';
   // fridge (north-west corner)
-  { const R = rig(C, g0, 0, 's', 56.25, 141.22, 56.97, 141.94); R.box(T.metal('#e8ece8'), 0, 0, 0, 0.72, 1.84, 0.72, { top: S('#dfe3df') }); R.pic(T.fridgeFront(), 'f', 0.36, 0.72, 0, 0.72, 1.84, 0.004); R.block(0, 0, 0.72, 0.72); plant(R, 0.36, 0.3, { y: 1.84, s: 0.7, kind: 'fern', block: false }); }
+  st.fridge = F.put(0, FX.FRIDGE, 56.62, 141.58, 's', { block: [56.25, 141.22, 56.97, 141.94] });
   // counter run with the sink under the window, the stove, and the rice cooker
-  { const R = rig(C, g0, 0, 's', 57.0, 141.2, 59.2, 141.8); K.cabinet(R, { w: 2.2, d: 0.6, h: 0.9, col: cab, drawer: true, n: 4, knob }); R.box(top, -0.01, 0.9, 0, 2.21, 0.95, 0.63, { top }); R.top(T.sinkTop(), 1.0, 0.05, 1.8, 0.58, 0.952); R.box(S('#c8ccd4'), 1.36, 0.95, 0.04, 1.44, 1.25, 0.1); R.box(S('#c8ccd4'), 1.37, 1.2, 0.08, 1.43, 1.24, 0.24); R.box(S('#f8f4ec'), 0.2, 0.95, 0.1, 0.6, 0.965, 0.42, { top: S('#e8c890') }); R.box(S('#e8473a'), 0.3, 0.965, 0.2, 0.36, 1.0, 0.26); R.box(S('#6ab04a'), 0.42, 0.965, 0.22, 0.5, 0.99, 0.3); }
-  { const R = rig(C, g0, 0, 's', 59.2, 141.2, 59.9, 141.8); R.box(T.metal('#e8e8e4'), 0, 0, 0, 0.7, 0.9, 0.6); R.pic(T.stoveFront(), 'f', 0.35, 0.6, 0.0, 0.7, 0.88, 0.004); R.box(S('#2a2a32'), 0, 0.9, 0, 0.7, 0.93, 0.6); R.top(T.stoveTop(), 0.0, 0.0, 0.7, 0.6, 0.932); R.box(S('#3a3a44'), 0, 0.93, 0, 0.7, 1.05, 0.06); R.block(0, 0, 0.7, 0.6);
-    // a pot of curry and the range hood
-    R.box(S('#c83a32'), 0.08, 0.93, 0.32, 0.32, 1.1, 0.56); R.box(S('#a82e2a'), 0.06, 1.1, 0.3, 0.34, 1.12, 0.58); R.box(S('#2a2a32'), 0.17, 1.12, 0.41, 0.23, 1.16, 0.47);
+  { const R = rig(C, g0, 0, 's', 57.0, 141.2, 59.2, 141.8); K.cabinet(R, { w: 2.2, d: 0.6, h: 0.9, col: cab, drawer: true, n: 4, knob }); R.box(top, -0.01, 0.9, 0, 2.21, 0.95, 0.63, { top }); R.top(T.sinkTop(), 1.0, 0.05, 1.8, 0.58, 0.952); }
+  st.faucet = F.put(0, FX.FAUCET, 58.4, 141.31, 's', { y: 0.952 });
+  F.put(0, FX.DISHRACK, 57.38, 141.48, 's', { y: 0.952 });
+  { const R = rig(C, g0, 0, 's', 59.2, 141.2, 59.9, 141.8); R.block(0, 0, 0.7, 0.6);
+    // the range hood over the vintage range (the range itself is a painted model: a pot of curry and a kettle on the hob)
     R.box(T.metal('#c8ccd4'), -0.05, 1.75, 0, 0.75, 1.95, 0.5); R.box(T.metal('#b8bcc4'), 0.15, 1.95, 0, 0.55, 2.95, 0.3); }
+  st.stove = F.put(0, FX.STOVE, 59.55, 141.51, 's');
   { const R = rig(C, g0, 0, 's', 59.9, 141.2, 61.15, 141.8); K.cabinet(R, { w: 1.25, d: 0.6, h: 0.9, col: cab, drawer: true, n: 2, knob }); R.box(top, -0.01, 0.9, 0, 1.26, 0.95, 0.63, { top });
     R.box(S('#f4f0ea'), 0.55, 0.95, 0.12, 0.85, 1.21, 0.4); R.pic(T.riceCooker(), 'f', 0.7, 0.4, 0.95, 0.3, 0.26, 0.004); R.box(S('#e8705a'), 0.57, 1.21, 0.14, 0.83, 1.25, 0.38);   // rice cooker
     R.box(S('#3a3a44'), 0.12, 0.95, 0.12, 0.3, 1.18, 0.3); R.box(S('#3a3a44'), 0.3, 1.05, 0.18, 0.36, 1.12, 0.22); R.box(S('#e8c060'), 0.17, 1.18, 0.17, 0.25, 1.21, 0.25);   // kettle
@@ -126,6 +130,7 @@ function interior(C, B, P, st) {
   for (const [a, b] of [[57.0, 57.85], [58.95, 61.15], [62.35, 64.25]]) C.box(g0, bs, a, 0.95, 141.2, b, 1.45, 141.215);
   // pantry, calendar, clock and the radio shelf on the west wall
   { const R = rig(C, g0, 0, 'e', 56.2, 142.2, 56.75, 143.05); R.box(T.paint(cab), 0, 0, 0, 0.85, 2.1, 0.55); R.pic(T.cabFront(0.85, 2.0, cab, { n: 2, knob }), 'f', 0.425, 0.55, 0.06, 0.85, 2.0, 0.004); R.block(0, 0, 0.85, 0.55); }
+  st.hutch = F.put(0, FX.HUTCH, 56.48, 144.5, 'e', { s: 0.9, block: [56.2, 143.82, 56.72, 145.18] });
   const cal = T.calendar(7); C.decal(g0, cal, 56.21, 1.35, 143.6, 'e', 0.36, 0.5, { off: 0.008 });
   C.decal(g0, T.clockFace(), 56.21, 1.9, 145.5, 'e', 0.34, 0.34, { off: 0.008 });
   // dining table, chairs, fruit bowl
@@ -140,17 +145,19 @@ function interior(C, B, P, st) {
   K.rugAt(C, g0, T.rugLiving(), 57.3, 147.8, 60.1, 149.8, 0.03);
   const tvTex = K.tvStand(rig(C, g0, 0, 'e', 56.2, 148.0, 56.7, 149.6), { col: '#6a4a32' });
   K.anim(B, tvTex, (t) => (st.tv.ch ? 2 * st.tv.ch - 1 + (Math.floor(t * 1.6) & 1) : 0));
-  K.bookshelf(rig(C, g0, 0, 'e', 56.2, 150.3, 56.55, 151.3), { h: 1.9, col: '#7a5236', seed: 3 });
-  plant(rig(C, g0, 0, 'e', 56.2, 147.2, 56.9, 147.9), 0.35, 0.35, { kind: 'tall', s: 1.1 });
+  F.put(0, FX.BOOKCASE(3, 16, 30), 56.43, 150.8, 'e', { block: [56.2, 150.3, 56.66, 151.3] });
+  F.put(0, FX.PLANT('#c8704a', '#3e8e46', 1.35), 56.6, 147.55, 's', { block: [56.25, 147.2, 56.95, 147.9] });
   K.frame(C, g0, T.photo('beach'), 56.21, 1.6, 148.35, 'e', 0.32, 0.26); K.frame(C, g0, T.photo('baby'), 56.21, 1.68, 148.85, 'e', 0.32, 0.26); K.frame(C, g0, T.photo('house'), 56.21, 1.6, 149.35, 'e', 0.32, 0.26);
   K.frame(C, g0, T.photo('boat', '#6a4428', 0.42, 0.3), 56.21, 2.02, 148.85, 'e', 0.42, 0.3);
-  { const R = rig(C, g0, 0, 's', 57.95, 148.35, 58.95, 149.25); K.table(R, { w: 1.0, d: 0.9, h: 0.42, col: '#8a5a36', shelf: true }); K.bookStack(R, 0.25, 0.42, 0.3, 2); K.mug(R, 0.7, 0.42, 0.55, '#e8705a'); R.box(S('#2a2a32'), 0.55, 0.42, 0.2, 0.75, 0.44, 0.28); }
-  K.sofa(rig(C, g0, 0, 'w', 60.05, 147.85, 60.95, 149.85), { col: '#5a8aa8', pillow: '#f2c84a', pillow2: '#e8705a', throw: '#f2d68a' });
-  K.sofa(rig(C, g0, 0, 's', 57.35, 146.3, 58.3, 147.2), { col: '#d87a5a', seats: 1, pillow: '#9cc4b4', pillows: true });
-  const lampT = K.toggle(B, 0, 'lamp', true);
-  K.floorLamp(rig(C, g0, 0, 's', 60.0, 150.0, 60.6, 150.6), 0.3, 0.3, { toggle: lampT, shade: '#f8e0b0' });
+  st.coffee = F.put(0, FX.COFFEE, 58.45, 148.8, 's', { block: [57.95, 148.4, 58.95, 149.2] });
+  F.put(0, FX.SOFA('#4a7aa8', ['#f2c84a', '#e8705a'], '#f2d68a'), 60.52, 148.85, 'w', { block: [60.05, 147.8, 60.95, 149.9] });
+  F.put(0, FX.ARMCHAIR('#d87a5a'), 57.83, 146.78, 's', { block: [57.35, 146.3, 58.35, 147.2] });
+  const lampM = F.put(0, FX.FLOORLAMP, 60.3, 150.3, 's', { block: [60.12, 150.12, 60.48, 150.48] });
+  const lampT = { on: true, set(v) { this.on = v; lampM.show('lampOn', v); } };
+  // the upright piano against the hall partition
+  st.piano = F.put(0, FX.PIANO, 64.0, 147.05, 'w', { block: [63.7, 146.3, 64.32, 147.8] });
   { const R = rig(C, g0, 0, 's', 61.75, 146.19, 63.25, 146.65); K.cabinet(R, { w: 1.5, d: 0.46, h: 0.8, col: '#7a5236', body: T.wood('#7a5236'), top: T.wood('#8a6244'), n: 3, knob: '#e8c890' });
-    R.box(S('#3a3a44'), 0.25, 0.8, 0.1, 0.65, 1.04, 0.32); R.pic(T.radioFront(), 'f', 0.45, 0.32, 0.8, 0.4, 0.24, 0.004); R.box(S('#c8ccd4'), 0.6, 1.04, 0.2, 0.62, 1.3, 0.22);
+    F.put(0, FX.RADIO, R.at(0.45, 0.22).x, R.at(0.45, 0.22).z, 's', { y: R.y + 0.8 });
     R.box(S('#5a8aa8'), 1.05, 0.8, 0.12, 1.25, 1.1, 0.32); plant(R, 1.15, 0.22, { y: 1.1, s: 0.45, kind: 'flower', block: false, pot: '#5a8aa8' }); }
   K.frame(C, wKL, T.painting(), 62.5, 1.45, 146.19, 's', 1.0, 0.6);
   const wilt = K.toggle(B, 0, 'plantWilt', true, (app) => !(app && app.state && app.state.flags && app.state.flags.sr_plant)), perky = K.toggle(B, 0, 'plantPerky', false, (app) => !!(app && app.state && app.state.flags && app.state.flags.sr_plant));
@@ -172,9 +179,8 @@ function interior(C, B, P, st) {
 
   // ---------------------------------------------------------------- bathroom
   K.floor(C, g0, T.tilesSq('#f4f6f8', '#a8c4cc', 8), 65.94, 141.2, 69.8, 146.06, 0.03);
-  { const R = rig(C, g0, 0, 's', 67.4, 141.22, 69.75, 142.05); R.box(S('#f4f4f0'), 0, 0, 0, 2.35, 0.55, 0.83, { top: S('#f8f8f4') }); R.top(T.tubTop(), 0.05, 0.05, 2.3, 0.78, 0.553); R.box(S('#c8ccd4'), 2.1, 0.55, 0.05, 2.2, 0.85, 0.12); R.box(S('#c8ccd4'), 2.12, 0.8, 0.1, 2.18, 0.84, 0.3); R.block(0, 0, 2.35, 0.83);
-    R.box(S('#4ab0d8'), 0.9, 0.55, 0.35, 1.05, 0.66, 0.48); R.box(S('#f8a030'), 1.05, 0.6, 0.4, 1.09, 0.63, 0.44); }
-  { const R = rig(C, g0, 0, 's', 66.15, 141.22, 66.85, 141.72); R.box(S('#f4f4f0'), 0.25, 0, 0.12, 0.45, 0.7, 0.32); R.box(S('#f4f4f0'), 0, 0.7, 0, 0.7, 0.86, 0.5, { top: S('#f8f8f4') }); R.top(T.basinTop(), 0.06, 0.04, 0.64, 0.46, 0.862); R.box(S('#c8ccd4'), 0.32, 0.86, 0.02, 0.38, 1.02, 0.08); R.block(0, 0, 0.7, 0.5); }
+  F.put(0, FX.TUB, 68.6, 141.64, 's', { block: [67.5, 141.22, 69.72, 142.05] });
+  st.vanity = F.put(0, FX.VANITY, 66.5, 141.48, 's', { block: [66.12, 141.22, 66.88, 141.76] });
   C.decal(g0, T.mirror(0.55, 0.7), 66.5, 1.15, 141.21, 's', 0.55, 0.7, { off: 0.01 });
   { const R = rig(C, g0, 0, 'e', 65.94, 144.37, 66.64, 144.88); R.box(S('#f4f4f0'), 0, 0.38, 0, 0.51, 0.82, 0.2); R.box(S('#f4f4f0'), 0.06, 0, 0.18, 0.45, 0.4, 0.66); R.box(S('#e8eef0'), 0.04, 0.4, 0.16, 0.47, 0.44, 0.7); R.block(0, 0, 0.51, 0.7); }
   C.box(wS2, S('#c8ccd4'), 65.94, 1.45, 142.5, 65.98, 1.49, 143.4); C.decal(wS2, T.towel('#e8705a'), 65.98, 0.95, 142.95, 'e', 0.5, 0.55, { off: 0.004 });
@@ -185,11 +191,13 @@ function interior(C, B, P, st) {
   // ---------------------------------------------------------------- bedroom (first floor, south-west)
   const Y1 = 3;
   K.rugAt(C, g1, T.rugStars(), 58.6, 148.0, 61.2, 149.8, Y1 + 0.03);
-  K.bed(rig(C, g1, 1, 'e', 56.2, 148.3, 58.25, 149.5), { w: 1.2, d: 2.05, wood: '#c89a62', quilt: T.quilt(['#e8705a', '#f2c84a', '#5a8aa8', '#f4ece0'], 'kid'), quiltSide: '#e8705a', key: 'kid' });
+  F.put(1, FX.BED(['#e8705a', '#f2c84a', '#5a8aa8', '#f4ece0']), 57.26, 148.9, 'e', { block: [56.2, 148.3, 58.3, 149.5] });
+  F.put(1, FX.FIGSHELF, 56.34, 148.9, 'e', { y: Y1 + 1.5, s: 0.85 });
   { const R = rig(C, g1, 1, 'e', 56.2, 147.7, 56.65, 148.2); K.cabinet(R, { w: 0.5, d: 0.45, h: 0.55, col: '#f4ece0', n: 1, drawer: true }); K.tableLamp(R, 0.15, 0.55, 0.22, { base: '#e8705a', shade: '#f8e8c0' }); R.box(S('#4a8ad8'), 0.32, 0.55, 0.15, 0.44, 0.65, 0.26); }
-  K.plush(rig(C, g1, 1, 'e', 56.2, 148.3, 58.25, 149.5), 0.85, 0.6, 0.35, 'bear', { s: 1.2 });
+
   K.wardrobe(rig(C, g1, 1, 's', 56.3, 146.19, 57.5, 146.79), { col: '#e8dcc8' });
-  { const R = rig(C, g1, 1, 's', 57.9, 146.19, 59.5, 146.84); K.desk(R, { w: 1.6, d: 0.65, col: '#c89a62' }); const scr = K.pc(R, 0.62, 0.74, 0.16); K.anim(B, scr, (t) => Math.floor(t * 1.4) & 1); K.tableLamp(R, 1.35, 0.74, 0.2, { base: '#4a8ad8', shade: '#f8f0d0', s: 0.09 }); K.bookStack(R, 1.25, 0.74, 0.48, 3); }
+  { const R = rig(C, g1, 1, 's', 57.9, 146.19, 59.5, 146.84); R.block(0, 0, 1.6, 0.65); const scr = K.pc(R, 0.62, 0.75, 0.16); K.anim(B, scr, (t) => Math.floor(t * 1.4) & 1); }
+  F.put(1, FX.DESK, 58.7, 146.52, 's');
   K.officeChair(rig(C, g1, 1, 's', 58.4, 147.0, 59.0, 147.5), 0.3, 0.3, { col: '#e8705a', back: 0.22 });
   K.bookshelf(rig(C, g1, 1, 's', 59.8, 146.19, 60.8, 146.54), { h: 1.85, col: '#f4ece0', seed: 7, toys: true, pal: ['#e8473a', '#4a8ad8', '#f8c840', '#6ab04a', '#e890b0', '#8a5ad8', '#f4f0e8'] });
   { const R = rig(C, g1, 1, 's', 61.3, 146.19, 62.9, 146.69); const gs = K.tvStand(R, { w: 1.6, d: 0.5, h: 0.48, col: '#5a8aa8', tw: 0.82, th: 0.52, screen: T.gameAtlas() }); K.anim(B, gs, (t) => (st.game.on ? Math.floor(t * 3) & 1 : 0));
@@ -204,7 +212,7 @@ function interior(C, B, P, st) {
     R.box(S('#e8473a'), 1.38, 1.64, 0.06, 1.5, 1.74, 0.2, { gk }); R.box(S('#f4f0ea'), 1.4, 1.74, 0.1, 1.48, 1.8, 0.16, { gk }); }
   for (const [kind, x, y] of [['chick', 58.7, 1.5], ['league', 63.6, 1.25]]) C.decal(wP2, T.poster(kind), x, Y1 + y, 146.19, 's', 0.7, 0.95, { off: 0.01 });
   C.decal(wP2, T.poster('space'), 60.3, Y1 + 1.95, 146.19, 's', 0.7, 0.95, { off: 0.01 });
-  C.decal(g1, T.poster('band'), 56.215, Y1 + 1.35, 149.0, 'e', 0.7, 0.95, { off: 0.008 });
+  C.decal(g1, T.poster('band'), 56.215, Y1 + 1.9, 149.75, 'e', 0.6, 0.82, { off: 0.008 });
   C.decal(g1, T.poster('map'), 56.215, Y1 + 1.2, 147.2, 'e', 0.7, 0.95, { off: 0.008 });
   // beanbag, window seat, plushies, a lamp
   { const R = rig(C, g1, 1, 's', 61.7, 147.55, 62.55, 148.35); R.box(T.fabric('#f2c84a'), 0.05, 0, 0.05, 0.8, 0.3, 0.75); R.box(T.fabric('#f2c84a'), 0.1, 0.3, 0.05, 0.75, 0.55, 0.3); R.box(T.fabric('#e8b040'), 0.12, 0.3, 0.3, 0.72, 0.36, 0.7); R.block(0.05, 0.05, 0.8, 0.75); K.plush(R, 0.4, 0.36, 0.5, 'blob', { col: '#4a8ad8' }); }
@@ -217,7 +225,7 @@ function interior(C, B, P, st) {
   K.rugAt(C, g1, T.rugRound('#e8a0b0', '#f6eadc'), 58.7, 143.6, 60.3, 145.2, Y1 + 0.03);
   K.bed(rig(C, g1, 1, 's', 58.6, 141.2, 60.4, 143.3), { w: 1.8, d: 2.1, wood: '#8a5a36', quilt: T.quilt(['#e8a0b0', '#f6eadc', '#9cc4b4', '#f2d68a'], 'mom'), quiltSide: '#e8a0b0', key: 'mom', head: 1.25 });
   for (const x0 of [57.95, 60.5]) { const R = rig(C, g1, 1, 's', x0, 141.2, x0 + 0.55, 141.65); K.cabinet(R, { w: 0.55, d: 0.45, h: 0.55, col: '#f6eadc', n: 1, drawer: true }); K.tableLamp(R, 0.27, 0.55, 0.22, { base: '#9cc4b4', shade: '#f8e8d0' }); }
-  { const R = rig(C, g1, 1, 'e', 56.2, 142.4, 56.7, 143.8); K.cabinet(R, { w: 1.4, d: 0.5, h: 0.85, col: '#f6eadc', drawer: true, n: 2 }); R.box(S('#e8a0b0'), 0.2, 0.85, 0.15, 0.32, 1.0, 0.27); R.box(S('#f4f0ea'), 0.5, 0.85, 0.12, 0.62, 0.9, 0.3); K.frame(C, g1, T.photo('bridge', '#c8a050', 0.3, 0.24), 56.75, Y1 + 0.87, 143.5, 'e', 0.3, 0.24); }
+  st.dresser = F.put(1, FX.DRESSER, 56.5, 143.1, 'e', { block: [56.2, 142.5, 56.78, 143.7] });
   C.decal(g1, T.mirror(0.6, 0.8), 56.215, Y1 + 1.15, 143.1, 'e', 0.6, 0.8, { off: 0.012 });
   { const R = rig(C, g1, 1, 's', 61.55, 141.2, 62.95, 141.8); K.table(R, { w: 1.4, d: 0.6, h: 0.74, col: '#c89a62' }); R.box(S('#f4f0ea'), 0.4, 0.74, 0.15, 0.95, 0.98, 0.4); R.box(S('#f4f0ea'), 0.4, 0.98, 0.15, 0.9, 1.04, 0.28); R.box(S('#e8705a'), 0.42, 0.74, 0.42, 1.3, 0.76, 0.58); R.box(S('#9cc4b4'), 1.0, 0.74, 0.1, 1.25, 0.84, 0.3); }
   chair(C, g1, 'n', 62.0, 142.2, '#c89a62', '#e8a0b0');
@@ -256,7 +264,23 @@ function interior(C, B, P, st) {
     app.toast(title, { icon: 'tv' });
     await app.say('', ...sets[tv.n % sets.length]);
   } });
-  I({ x: 59.55, z: 149.0, label: 'Sit on the sofa', icon: 'heart', act: async (app) => { sfx(app, 'cloth'); await app.say('', W.pick(['You sink into the sofa. The cushion remembers exactly where you sit.', 'You find a coin, a hair tie and a dried-up fry between the cushions. Classic sofa.', 'Ahh. Five more minutes. ...Okay, ten.'])); } });
+  I({ x: 59.55, z: 149.0, label: 'Sit on the sofa', icon: 'heart', act: async (app) => { await FX.sit(app, 60.42, 148.6, -Math.PI / 2, 0.5, [W.pick(['You sink into the sofa. The cushion remembers exactly where you sit.', 'You find a coin, a hair tie and a dried-up fry between the cushions. Classic sofa.', 'Ahh. Five more minutes. ...Okay, ten.'])]); } });
+  I({ x: 57.83, z: 147.6, label: 'Sit in the armchair', icon: 'heart', act: async (app) => { await FX.sit(app, 57.83, 146.86, 0, 0.47, [W.pick(['Grandma\'s flowery armchair. It smells faintly of lavender and peppermints.', 'You sit. The springs go "boing" in a very old, very comfortable way.'])]); } });
+  I({ x: 58.45, z: 149.6, label: 'Flip through the book', icon: 'book', act: async (app) => {
+    const pg = st.coffee; sfx(app, 'page'); pg.open('page', true); if (app.wait) await app.wait(450);
+    const L = [['"A Field Guide to Bay Area Tokonmon" — open at the Bio-types. Someone has drawn a tiny crown on Cabbunny.'], ['The next page: a pressed four-leaf clover, and Mom\'s handwriting: "found it at Alamo Hill, 1998".'], ['A chapter on gardening with Tokonmon. One whole page just says "DO NOT LET THEM NEAR THE CABBAGES." Huh.']];
+    await app.say('', ...L[(st.leaf = ((st.leaf ?? -1) + 1)) % L.length]); pg.open('page', false); sfx(app, 'page', { pitch: 1.2 }); } });
+  I({ x: 63.3, z: 147.05, label: 'Play the piano', icon: 'music', act: async (app) => {
+    const pn = st.piano; pn.open('lid', true); if (app.wait) await app.wait(350);
+    const k = await app.choose('The old upright. Half the keys stick, all of them are loved.', ['Play a little tune', 'Bash the low keys', 'Close the lid']);
+    if (k === 2 || k < 0) { pn.open('lid', false); sfx(app, 'thud', { vol: 0.4 }); return; }
+    const NOTES = k === 0 ? [1, 1.12, 1.26, 1.33, 1.5, 1.33, 1.26, 1.12, 1] : [0.5, 0.47, 0.5, 0.45, 0.42];
+    const me = app.world.player; if (me) { me.faceTo(64.5, 147.05); me.play('dance', { restart: true }); }
+    for (const n of NOTES) { sfx(app, 'furin', { pitch: n, vol: 0.55 }); if (app.wait) await app.wait(k === 0 ? 260 : 180); }
+    if (me) me.play('idle', { fade: 0.3 });
+    await app.say('', k === 0 ? W.pick(['A wobbly little tune. From the kitchen, Mom hums along.', 'You play the only song you know. Your partner sways to it, very seriously.']) : 'BONG BONG BONG. Somewhere upstairs, something falls over. Mom: "Lovely, sweetheart!"');
+    pn.open('lid', false);
+  } });
   I({ x: 57.0, z: 150.8, label: 'Read a book', icon: 'book', act: async (app) => { const b = W.BOOKS[st.book++ % W.BOOKS.length]; sfx(app, 'page'); await app.say('', `You pull out "${b[0]}".`, ...b.slice(1)); } });
   I({ x: 56.9, z: 148.85, y: 1.8, label: 'Look at the photos', icon: 'eye', act: async (app) => { const L = [
     ['A photo of Ocean Beach on a rare clear day. The sand still has paw prints in it if you squint.'],
@@ -274,15 +298,23 @@ function interior(C, B, P, st) {
     else await app.say('', W.pick(['The plant is thriving. It looks at you with something like gratitude. Plants can do that, right?', 'Still perky! It even leans toward you a little when you walk past.'])); } });
   I({ x: 57.4, z: 142.4, label: 'Open the fridge', icon: 'fridge', act: async (app) => {
     const F = flags(app), d = day(app);
-    sfx(app, 'door', { vol: 0.4, pitch: 1.3 });
+    sfx(app, 'door', { vol: 0.4, pitch: 1.3 }); st.fridge.open('door', true); try { await fridge(app, F, d); } finally { st.fridge.open('door', false); sfx(app, 'door_close', { vol: 0.4, pitch: 1.3 }); }
+  } });
+  const fridge = async (app, F, d) => {
     if (F.sr_fridge === d) { await app.say('', W.pick(['Leftovers, mustard, and a note in Mom\'s writing: "ONE snack per day. I counted."', 'The fridge hums at you. You already had your snack today. The fridge knows.'])); return; }
     F.sr_fridge = d;
     const SN = [['ramune', 'Ramune Soda'], ['lemon_tart', 'Lemon Tart'], ['ice_cream', 'Soft-Serve']], [id, nm] = SN[d % SN.length];
     if (app.state && app.state.bag && typeof app.state.bag === 'object') { app.state.bag[id] = (app.state.bag[id] || 0) + 1; sfx(app, 'reward'); app.toast(`Got a ${nm}!`, { icon: 'bag' }); await app.say('', `You grab a ${nm} for later. There is a sticky note on it: "for my favourite tamer".`); if (app.save) app.save(); }
     else await app.say('', `You grab a ${nm} and eat it right there in front of the open fridge, like a true professional.`);
+  };
+  I({ x: 59.55, z: 142.3, label: 'Stove', icon: 'flame', act: async (app) => { const L = W.MOM_STOVE[(st.stoveN = ((st.stoveN ?? -1) + 1)) % W.MOM_STOVE.length]; st.stove.open('oven', true); sfx(app, 'door', { vol: 0.3, pitch: 1.5 }); await app.say('Mom', ...L); st.stove.open('oven', false); sfx(app, 'thud', { vol: 0.3 }); } });
+  I({ x: 57.1, z: 144.5, label: 'Open the hutch', icon: 'hand', act: async (app) => {
+    const h = st.hutch; h.open('doorL', true); h.open('doorR', true); sfx(app, 'door', { vol: 0.35, pitch: 1.6 });
+    await app.say('', W.pick(['Grandma\'s good china, the gravy boat nobody is allowed to use, and a tin of biscuits hidden behind the gravy boat.', 'Tablecloths, birthday candles, forty-one rubber bands and the "emergency" chocolate. It is always an emergency.']));
+    h.open('doorL', false); h.open('doorR', false); sfx(app, 'door_close', { vol: 0.35, pitch: 1.6 });
   } });
-  I({ x: 59.55, z: 142.3, label: 'Stove', icon: 'flame', act: async (app) => { const L = W.MOM_STOVE[(st.stove = ((st.stove ?? -1) + 1)) % W.MOM_STOVE.length]; await app.say('Mom', ...L); } });
-  I({ x: 58.4, z: 142.25, label: 'Sink', icon: 'drop', act: async (app) => { sfx(app, 'bubble'); await app.say('', W.pick(['You wash your hands. From somewhere behind you: "With SOAP, please."', 'You pour a glass of water and drink it at the window. Somebody\'s Pidgun is sitting on the fence, judging you.', 'There is one spoon in the sink. You wash it. Mom will never know what a hero you were.'])); } });
+  I({ x: 58.0, z: 142.25, label: 'Dish rack', icon: 'hand', act: async (app) => { sfx(app, 'ui_tap', { pitch: 1.6 }); await app.say('', W.pick(['Three plates, two cups, one wooden spoon with a suspicious burn mark. Somebody let the curry catch again.', 'You dry a plate and put it away. Mom calls "THANK you!" from somewhere without even looking.'])); } });
+  I({ x: 58.4, z: 142.25, label: 'Sink', icon: 'drop', act: async (app) => { st.faucet.show('tapOn', true); sfx(app, 'bubble'); app.wait && setTimeout(() => st.faucet.show('tapOn', false), 2600); await app.say('', W.pick(['You wash your hands. From somewhere behind you: "With SOAP, please."', 'You pour a glass of water and drink it at the window. Somebody\'s Pidgun is sitting on the fence, judging you.', 'There is one spoon in the sink. You wash it. Mom will never know what a hero you were.'])); } });
   I({ x: 60.7, z: 142.3, label: 'Rice cooker', icon: 'bowl', act: async (app) => { sfx(app, 'notification', { pitch: 1.3 }); await app.say('', '♪ Doo-dee-doo! The rice cooker plays its little song.', 'Rice ready in 12 minutes. It has said 12 minutes for the last 40 minutes. It is doing its best.'); } });
   I({ x: 58.7, z: 144.95, label: 'Fruit bowl', icon: 'hand', act: async (app) => { await app.say('', W.pick(['Apples, a banana, and one lemon nobody remembers buying. The lemon has seen things.', 'You take an apple and polish it on your sleeve. Crunch. Perfect.'])); } });
   I({ x: 56.8, z: 143.6, y: 1.55, label: 'Calendar', icon: 'clock', act: async (app) => {
@@ -291,6 +323,7 @@ function interior(C, B, P, st) {
   I({ x: 56.8, z: 145.5, y: 1.95, label: 'Clock', icon: 'clock', act: async (app) => { const h = (app.state && app.state.time && app.state.time.hour) ?? 9; await app.say('', `The kitchen clock says it's about ${((Math.round(h) + 11) % 12) + 1} o'clock. It runs five minutes fast. It has run five minutes fast since before you were born.`); } });
   I({ x: 68.8, z: 147.0, label: 'Shoe bench', icon: 'shoe', act: async (app) => app.say('', 'Mom\'s gardening boots, your sneakers, and one tiny sock that belongs to nobody in this family.', 'Your jacket is on its hook. The red one. Iconic. No need to change.') });
   I({ x: 64.95, z: 151.2, y: 1.7, label: 'Hall mirror', icon: 'eye', act: async (app) => { const { name } = W.who(app); await app.say('', `Quick check before heading out. ${name}: ready for anything. Probably.`); } });
+  I({ x: 66.9, z: 142.2, r: 0.8, label: 'Turn on the tap', icon: 'drop', act: async (app) => { const v = st.vanity, on = !st.tap; st.tap = on; v.show('tapOn', on); sfx(app, on ? 'bubble' : 'ui_tap', { pitch: on ? 0.8 : 1.4 }); if (on) app.toast('The old brass tap coughs, then runs.', { icon: 'drop' }); } });
   I({ x: 66.5, z: 142.4, label: 'Mirror', icon: 'eye', act: async (app) => { const { name, kind } = W.who(app), L = W.MIRROR(name, kind); await app.say('', ...L[(st.mirror = ((st.mirror ?? -1) + 1)) % L.length]); } });
   I({ x: 68.4, z: 142.6, label: 'Bath', icon: 'drop', act: async (app) => { sfx(app, 'boing', { vol: 0.6 }); await app.say('', 'A rubber Foopod sits in the empty tub, fists raised, ready to fight the tide.', 'You squeeze it. It squeaks with tremendous courage.'); } });
 
@@ -334,7 +367,10 @@ function interior(C, B, P, st) {
   I1({ x: 56.95, z: 150.6, y: 1.6, label: 'Window', icon: 'eye', act: async (app) => app.say('', 'Out the side window: the neighbour\'s laundry line, a lemon tree, and the corner of Lark Lane where it drops down toward Market Street.') });
   I1({ x: 59.5, z: 144.2, label: 'Mom\'s quilt', icon: 'heart', act: async (app) => app.say('', 'Mom\'s bed, made with hospital corners. On the pillow: a library book called "Tamer Moms: You Are Doing Great". It is bookmarked halfway.') });
   I1({ x: 62.2, z: 142.3, label: 'Sewing table', icon: 'hand', act: async (app) => app.say('', 'Mom\'s sewing machine and a half-finished patch: a little flame. It is shaped exactly like your partner\'s crest.', 'There is a note pinned to it: "for the jacket — SURPRISE (don\'t look)". ...You did not see that.') });
-  I1({ x: 57.1, z: 143.1, label: 'Dresser', icon: 'eye', act: async (app) => app.say('', 'A framed photo of the Golden Gate at sunset — Mom and Dad\'s first trip together, she says. A bottle of rose hand cream. A spare hair ribbon.') });
+  I1({ x: 57.1, z: 143.1, label: 'Dresser', icon: 'eye', act: async (app) => {
+    const dr = st.dresser; dr.open('drawer2', true); sfx(app, 'slide_door', { vol: 0.4, pitch: 1.4 });
+    await app.say('', 'A framed photo of the Golden Gate at sunset — Mom and Dad\'s first trip together, she says. A bottle of rose hand cream. A spare hair ribbon.', 'The top drawer: neatly rolled socks, Dad\'s old letters tied with string, and a baby tooth in a matchbox labelled with your name. Mom!');
+    dr.open('drawer2', false); sfx(app, 'slide_door', { vol: 0.4, pitch: 1.2 }); } });
   I1({ x: 67.65, z: 142.3, y: 1.6, label: 'Postcards', icon: 'eye', act: async (app) => { const L = [
     ['Postcard: "Greetings from the Arctic Shelf! A Coolpillar sat on my boot for an hour. I did not move. Science. — Dad"'],
     ['Postcard: "The sea Tokonmon here glow at night. The whole ocean looks like a city. Wish you could see it. — Dad"'],

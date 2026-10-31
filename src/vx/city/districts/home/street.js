@@ -8,6 +8,8 @@ import * as T from './tex.js';
 import * as K from './kit.js';
 import * as W from './lines.js';
 import { PROPS } from '../../voxprops.js';
+import '../../props_garden.js';
+import { registerCabbages, farmerTalk, FARMER } from '../../../game/garden.js';   // the cabbage event
 
 // the engine's car seeds its colour from the kind's name length, so aliases with longer names give a varied car park
 const CARS = ['car'];
@@ -155,8 +157,8 @@ function ochoa(C) {
       K.bookshelf(rig(C, g, 0, 'e', 34.22, 148.6, 34.6, 149.7), { h: 1.8, col: '#5a3a24', seed: 21 });
       { const R = rig(C, g, 0, 'e', 34.22, 150.3, 34.72, 151.5); K.cabinet(R, { w: 1.2, d: 0.5, h: 0.95, col: '#5a3a24', body: T.wood('#5a3a24'), n: 2, knob: '#e8c890' }); R.box(T.glass('#a8d0e8'), 0.05, 0.95, 0.05, 1.15, 1.75, 0.45); R.box(S('#f8c840'), 0.2, 0.95, 0.2, 0.36, 1.2, 0.32); R.box(S('#c8ccd4'), 0.6, 0.95, 0.2, 0.75, 1.15, 0.32); R.box(S('#e8473a'), 0.85, 0.95, 0.18, 1.0, 1.05, 0.3); }
       K.frame(C, g, T.photo('garden'), 34.21, 1.5, 147.6, 'e', 0.32, 0.26); K.frame(C, g, T.photo('bridge'), 34.21, 1.55, 148.15, 'e', 0.32, 0.26);
-      // the cat on her cushion, the knitting basket
-      C.box(g, T.fabric('#e8705a'), 36.2, 0, 150.4, 36.9, 0.12, 151.0); C.box(g, S('#4a4a54'), 36.35, 0.12, 150.55, 36.75, 0.3, 150.85); C.box(g, S('#4a4a54'), 36.6, 0.25, 150.58, 36.8, 0.42, 150.82); C.box(g, S('#4a4a54'), 36.62, 0.42, 150.6, 36.66, 0.48, 150.64); C.box(g, S('#4a4a54'), 36.74, 0.42, 150.6, 36.78, 0.48, 150.64); C.box(g, S('#4a4a54'), 36.2, 0.12, 150.75, 36.38, 0.18, 150.82); C.box(g, S('#f8d84a'), 36.79, 0.33, 150.64, 36.8, 0.35, 150.66); C.nav.block(36.2, 150.4, 36.9, 151.0, 0);
+      // her Zapkit's cushion (Duchess naps on it: src/vx/game/life.js), the knitting basket
+      C.box(g, T.fabric('#e8705a'), 36.2, 0, 150.4, 36.9, 0.12, 151.0); C.nav.block(36.2, 150.4, 36.9, 151.0, 0);
       C.box(g, T.knit('#c8a070'), 35.3, 0, 146.4, 35.75, 0.3, 146.85); C.box(g, S('#e8705a'), 35.4, 0.3, 146.5, 35.55, 0.4, 146.65); C.box(g, S('#7ab0d8'), 35.55, 0.3, 146.6, 35.7, 0.38, 146.75); C.nav.block(35.3, 146.4, 35.75, 146.85, 0);
       for (const [x, z, k] of [[38.9, 142.7, 'tall'], [38.9, 151.3, 'fern'], [34.6, 143.6, 'flower']]) K.plant(rig(C, g, 0, 's', x - 0.35, z - 0.35, x + 0.35, z + 0.35), 0.35, 0.35, { kind: k });
       K.floorLamp(rig(C, g, 0, 's', 34.3, 144.55, 34.8, 145.05), 0.25, 0.25, { shade: '#f8e0b0', toggle: K.toggle(B, 0, 'lamp', true) });
@@ -171,7 +173,6 @@ function ochoa(C) {
       const I = (o) => C.interact({ r: 1.2, ...o });
       I({ x: 35.45, z: 143.3, label: 'Piano', icon: 'music', act: async (app) => { sfx(app, 'furin', { pitch: 0.7 }); await app.say('', 'You press a key. PLONK. A slightly out-of-tune note hangs in the air.', 'Mrs. Ochoa, without looking up: "That one has been flat since 1987. It has character."'); } });
       I({ x: 35.2, z: 147.5, label: 'Tea', icon: 'bowl', act: async (app) => { await app.say('Mrs. Ochoa', 'Have some tea, dear. Chamomile and a little honey. It cures everything except bad manners.'); sfx(app, 'bubble'); app.toast('A warm, cosy feeling', { icon: 'heart' }); } });
-      I({ x: 36.55, z: 150.0, label: 'Pet the cat', icon: 'cat', act: async (app) => { sfx(app, 'meow'); await app.say('', 'The cat, Duchess, opens one eye, judges you thoroughly, and allows exactly three strokes.', W.pick(['Purr.', 'On the fourth stroke, she bites. Gently. A warning.'])); } });
       I({ x: 35.5, z: 147.2, label: 'Knitting basket', icon: 'hand', r: 0.8, act: async (app) => app.say('', 'Half a scarf in red and yellow. "For your little fire chick," says Mrs. Ochoa. "Its neck looks cold. Do they have necks?"') });
       I({ x: 37.15, z: 143.2, label: 'Grandfather clock', icon: 'clock', act: async (app) => { sfx(app, 'gong', { vol: 0.3 }); await app.say('', 'TOCK... TOCK... The clock is older than the house. Possibly older than the hill.'); } });
       I({ x: 35.2, z: 149.15, label: 'Old journal', icon: 'book', act: async (app) => app.say('', 'A tamer\'s journal from 1972, in Mrs. Ochoa\'s neat handwriting. "Day 41. Snoozaque slept through the whole battle. We lost. Best day ever."') });
@@ -220,10 +221,10 @@ function milo(C) {
       { const R = rig(C, g, 0, 's', 55.25, 121.5, 56.6, 122.75); const P = [['bear', 0.25, 0, 0.3], ['chick', 0.7, 0, 0.35], ['blob', 1.1, 0, 0.6], ['bear', 0.45, 0.32, 0.55], ['blob', 0.85, 0.22, 0.25], ['chick', 0.6, 0.45, 0.85]]; const cols = ['#6ab04a', '#e890b0', '#4a8ad8']; P.forEach(([k, x, y, z], i) => K.plush(R, x, y, z, k, { s: 1.3, col: cols[i % 3] })); R.block(0.05, 0.05, 1.3, 1.2); }
       // cardboard Tokon Center
       { const R = rig(C, g, 0, 's', 57.4, 121.6, 58.9, 122.75); R.box(S('#c8a070'), 0, 0, 0, 1.5, 0.9, 1.1, { top: S('#b8905a') }); R.box(S('#e8473a'), 0.2, 0.9, 0.3, 1.3, 1.2, 0.36); R.box(S('#f4f0ea'), 0.6, 0.95, 0.36, 0.9, 1.15, 0.37); R.box(S('#e8473a'), 0.71, 0.98, 0.37, 0.79, 1.12, 0.375); R.box(S('#e8473a'), 0.66, 1.03, 0.37, 0.84, 1.07, 0.375); R.box(S('#3a3a44'), 0.55, 0, 1.1, 0.95, 0.6, 1.105); R.block(0, 0, 1.5, 1.1); }
-      // toy chest, a figure shelf, the hamster's cage
+      // toy chest, a figure shelf, an old exercise wheel (Commander Biscuit, Milo's Lemmo, naps beside it: life.js)
       { const R = rig(C, g, 0, 's', 57.6, 113.21, 58.8, 113.81); R.box(S('#4a8ad8'), 0, 0, 0, 1.2, 0.55, 0.6, { top: S('#3a7ac8') }); R.box(S('#f8d84a'), 0, 0.42, 0, 1.2, 0.48, 0.61); R.box(S('#e8473a'), 0.3, 0.55, 0.2, 0.42, 0.68, 0.32); R.box(S('#6ab04a'), 0.7, 0.55, 0.25, 0.9, 0.62, 0.45); R.block(0, 0, 1.2, 0.6); }
       { const R = rig(C, g, 0, 's', 57.5, 113.21, 59.2, 113.45); const gk = wM; void gk; R.box(T.wood('#f4f0e8'), 0, 1.85, 0, 1.7, 1.89, 0.24); for (let i = 0; i < 8; i++) { const c = ['#e8473a', '#4a8ad8', '#6ab04a', '#f8c840', '#8a5ad8', '#f090b0', '#3aa8a0', '#f8a030'][i]; R.box(S(c), 0.1 + i * 0.2, 1.89, 0.06, 0.2 + i * 0.2, 2.02 + (i % 3) * 0.03, 0.16); R.box(S('#1a1a22'), 0.12 + i * 0.2, 1.97, 0.16, 0.14 + i * 0.2, 1.99, 0.165); } }
-      { const R = rig(C, g, 0, 'e', 55.2, 117.6, 55.7, 118.3); K.table(R, { w: 0.7, d: 0.5, h: 0.6, col: '#f4f0e8' }); R.box(T.glass('#d8eef8'), 0.08, 0.6, 0.08, 0.62, 0.9, 0.42); R.box(S('#e8c890'), 0.1, 0.6, 0.1, 0.6, 0.64, 0.4); R.box(S('#c8a070'), 0.3, 0.64, 0.2, 0.42, 0.72, 0.3); R.box(S('#f4f0e8'), 0.5, 0.64, 0.12, 0.56, 0.78, 0.18); }
+      { const R = rig(C, g, 0, 'e', 55.2, 117.6, 55.7, 118.3); K.table(R, { w: 0.7, d: 0.5, h: 0.6, col: '#f4f0e8' }); R.box(T.glass('#d8eef8'), 0.08, 0.6, 0.08, 0.62, 0.9, 0.42); R.box(S('#e8c890'), 0.1, 0.6, 0.1, 0.6, 0.64, 0.4); R.box(S('#f4f0e8'), 0.5, 0.64, 0.12, 0.56, 0.78, 0.18); }
       // the rest of the house: a little kitchen, a sofa, family snaps
       K.floor(C, g, T.checker('#f4ece0', '#f4d58d', 8), 59.44, 113.2, 63.8, 116.5, 0.03);
       { const R = rig(C, g, 0, 's', 59.6, 113.2, 62.9, 113.8); K.cabinet(R, { w: 3.3, d: 0.6, h: 0.9, col: '#f6f0e2', drawer: true, n: 5 }); R.box(T.counter('#e8e2d6'), -0.01, 0.9, 0, 3.31, 0.95, 0.63); R.top(T.sinkTop(), 0.4, 0.05, 1.2, 0.58, 0.952); R.top(T.stoveTop(), 2.2, 0.0, 2.9, 0.6, 0.952); K.upperCab(R, { w: 3.3, col: '#f6f0e2', n: 5 }); }
@@ -238,7 +239,6 @@ function milo(C) {
       I({ x: 56.2, z: 121.0, label: 'Plush mountain', icon: 'heart', act: async (app) => { sfx(app, 'boing'); await app.say('', 'You pat the summit of the plush mountain. An avalanche of soft creatures gently buries your feet.', 'Milo: "They LIKE you!"'); } });
       I({ x: 58.1, z: 121.2, label: 'Cardboard Tokon Center', icon: 'heart', act: async (app) => { sfx(app, 'notification', { pitch: 1.4 }); await app.say('', 'A cardboard box with a red cross taped on. Inside: a toy stethoscope and a sign: "ALL TOKON HEALED FREE. ALSO DOLLS."', 'You feel... strangely refreshed. Milo is very proud.'); } });
       I({ x: 58.2, z: 114.3, label: 'Toy chest', icon: 'hand', act: async (app) => app.say('', 'Toy capsules, a rubber Foopod, three yo-yos and a single sock with "TRAINING GEAR" written on it in marker.') });
-      I({ x: 55.9, z: 118.0, label: 'Hamster', icon: 'heart', act: async (app) => app.say('', 'A round hamster named Commander Biscuit sits in his wheel, not running, just thinking about it.', 'Milo: "He\'s officially Tokon number nine. The League hasn\'t replied to my letter yet."') });
       I({ x: 58.3, z: 113.9, y: 2.2, label: 'Figure shelf', icon: 'star', act: async (app) => app.say('', 'Eight tiny figurines lined up by height, then by colour, then — after an argument with himself — by "coolness".') });
       I({ x: 56.3, z: 115.2, label: 'Bunk bed', icon: 'bed', act: async (app) => app.say('', 'The top bunk belongs to Milo. The bottom bunk belongs to "guests and Tokonmon". There is a plush chick asleep on it.') });
       C.zone('milo', 55, 113, 64, 123, { label: 'Milo\'s House', sub: 'Sunset Row', music: 'lemon', step: 'step_wood' });
@@ -272,7 +272,7 @@ function market(C) {
         R.block(0, 0, 4.0, 0.7);
       }
       { const R = rig(C, g, 0, 's', 100.9, 149.5, 103.25, 150.3); R.box(T.wood('#6a4428'), 0, 0, 0, 2.35, 1.0, 0.8, { top: T.counter('#e8e2d6') }); R.pic(T.cabFront(2.35, 0.9, '#2e6a5a', { n: 3 }), 'f', 1.175, 0.8, 0.05, 2.35, 0.9); R.box(S('#3a3a44'), 0.3, 1.0, 0.15, 0.75, 1.25, 0.5); R.top(T.registerTop(), 0.3, 0.15, 0.75, 0.5, 1.252); R.box(T.glass('#d8eef8'), 1.4, 1.0, 0.2, 1.75, 1.35, 0.55); R.box(S('#f8c840'), 1.45, 1.0, 0.25, 1.7, 1.2, 0.5); R.block(0, 0, 2.35, 0.8);
-        R.box(S('#f8a030'), 1.95, 1.0, 0.25, 2.25, 1.14, 0.5); R.box(S('#f8a030'), 2.15, 1.1, 0.3, 2.28, 1.24, 0.42); R.box(S('#f8a030'), 2.17, 1.24, 0.31, 2.2, 1.28, 0.34); R.box(S('#f8a030'), 2.24, 1.24, 0.31, 2.27, 1.28, 0.34); }
+        /* the shop's Kissmet naps on this end of the counter (life.js) */ }
       { const R = rig(C, g, 0, 'e', 94.7, 146.5, 95.2, 148.5); R.box(S('#c8c4bc'), 0, 0, 0, 2.0, 1.4, 0.5); R.pic(T.shopShelf(2, 1.3, 31), 'f', 1.0, 0.5, 0.05, 2.0, 1.3, 0.004); R.block(0, 0, 2.0, 0.5); }
       C.decal(g, T.noticeBoard(), 94.71, 1.5, 150.1, 'e', 0.8, 0.6, { off: 0.008 });
       { const R = rig(C, g, 0, 's', 102.3, 145.0, 103.2, 145.9); R.box(S('#e8473a'), 0, 0, 0, 0.9, 0.9, 0.9, { top: T.glass('#d8eef8') }); R.box(S('#f8d84a'), 0.1, 0.9, 0.1, 0.8, 0.95, 0.8); R.block(0, 0, 0.9, 0.9); }
@@ -281,7 +281,6 @@ function market(C) {
       I({ x: 98.0, z: 144.6, label: 'Drinks cooler', icon: 'fridge', act: async (app) => { sfx(app, 'bubble'); await app.say('', 'Rows of ramune in every colour. A hand-written card on the middle shelf: "MYSTERY FLAVOUR — no refunds, no regrets, no idea."'); } });
       I({ x: 98.2, z: 147.6, label: 'Snack shelves', icon: 'bag', act: async (app) => app.say('', W.pick(['Seaweed crisps, rice crackers, a lonely jar of pickles. The delivery truck still has not made it up the hill.', 'Gem polish, capsule refills, a "Rookie Tamer Starter Snack Pack". It is just three granola bars and a sticker.'])) });
       I({ x: 95.3, z: 150.1, y: 1.8, label: 'Notice board', icon: 'eye', act: async (app) => app.say('', 'LOST: one Trashcoon, answers to "Mister Lid". FOR SALE: bicycle, slightly haunted. WANTED: garden volunteers. FREE: zucchini (please).') });
-      I({ x: 102.7, z: 149.3, label: 'The shop cat', icon: 'cat', r: 1.0, act: async (app) => { sfx(app, 'meow'); await app.say('', 'An orange cat sleeps on the counter next to the register, one paw on the "ring for service" bell. Nobody rings it. Nobody dares.'); } });
       I({ x: 102.75, z: 146.4, label: 'Ice cream freezer', icon: 'fridge', act: async (app) => app.say('', 'The ice-cream freezer hums a long, low note. Inside: popsicles, mochi, and one very old tub of something green.') });
       C.zone('market', 94.5, 143, 103.5, 153, { label: 'Corner Market', sub: 'Sunset Row', music: 'vibes', step: 'step_concrete' });
     },
@@ -339,7 +338,7 @@ function communityGarden(C) {
   C.box('props', S('#2e6a5a'), 91.2, 1.4, 166.95, 93.0, 1.9, 167.15); C.decal('props', TX.signTex('GARDEN', '#2e6a5a', '#f8f0d0', { w: 1.8, h: 0.5, fs: 0.65 }), 92.1, 1.4, 167.15, 's', 1.8, 0.5, { off: 0.005 });
   K.floor(C, 'ground', T.pebbles('#d8ccb8'), 91.4, 167.1, 92.8, 179.4, 0.014); K.floor(C, 'ground', T.pebbles('#d8ccb8'), 81.2, 172.3, 103.4, 173.4, 0.016);
   const crops = [['#5aa04a', '#e8473a'], ['#6ab04a', null], ['#4a8a42', '#f8a030'], ['#7ab85a', '#a85ad8'], ['#5aa04a', '#f8d84a'], ['#4a8a42', '#e8473a']];
-  [[82, 168.2, 86.4, 171.6], [86.8, 168.2, 91.0, 171.6], [93.2, 168.2, 97.6, 171.6], [98.0, 168.2, 102.6, 171.6], [82, 174.0, 86.4, 177.6], [86.8, 174.0, 91.0, 177.6]].forEach(([a, b, c, d], i) => {
+  [[82, 168.2, 86.4, 171.6], [86.8, 168.2, 91.0, 171.6], [93.2, 168.2, 97.6, 171.6], [98.0, 168.2, 102.6, 171.6]].forEach(([a, b, c, d], i) => {
     C.box('props', T.wood('#8a5a36'), a, 0, b, c, 0.4, d, { top: T.soil('#5a3a28') }); C.nav.block(a, b, c, d, 0);
     const [leaf, fruit] = crops[i];
     for (let x = a + 0.35; x < c - 0.2; x += 0.5) for (let z = b + 0.4; z < d - 0.2; z += 0.7) {
@@ -349,18 +348,43 @@ function communityGarden(C) {
   });
   // sunflowers along the east fence
   for (let z = 174; z < 179; z += 0.8) { C.box('props', S('#5a8a3a'), 102.9, 0, z - 0.04, 102.98, 2.1 + (z % 2) * 0.3, z + 0.04); C.box('props', S('#f8c840'), 102.7, 2.0 + (z % 2) * 0.3, z - 0.22, 102.9, 2.4 + (z % 2) * 0.3, z + 0.22); C.box('props', S('#6a4428'), 102.66, 2.12 + (z % 2) * 0.3, z - 0.1, 102.7, 2.28 + (z % 2) * 0.3, z + 0.1); C.nav.block(102.8, z - 0.1, 103.05, z + 0.1, 0); }
+  vegPatch(C);
   // tool shed, water barrel, compost bins, scarecrow
   C.building({ x: 97.8, z: 175.0, w: 3.6, d: 3.2, floors: 1, fh: 2.4, wall: TX.siding('#c8a070'), trim: '#f6f0e2', base: '#6a5a52', roof: { type: 'gable', ridge: 'x', h: 1.0, eave: 0.2, tex: TX.shingles('#3a5a4a') }, door: { side: 'w', at: 0.5, col: '#2e6a5a', label: 'Tool shed', act: async (app) => app.say('', 'Rakes, hoes, forty identical trowels and a sign: "RETURN THE TROWELS. WE KNOW WHO YOU ARE, GERALD."') }, windows: { every: 3, skip: ['n', 'e'] }, mm: '#b89468' });
   C.box('props', S('#3a6a9a'), 95.6, 0, 177.6, 96.3, 0.9, 178.3, { top: TX.water('#4a8ac0') }); C.nav.block(95.55, 177.55, 96.35, 178.35, 0);
-  for (const x of [82.2, 83.4]) { C.box('props', T.wood('#6a4428'), x, 0, 178.2, x + 1.0, 0.8, 179.2, { top: T.soil('#4a3020') }); C.nav.block(x, 178.2, x + 1.0, 179.2, 0); }
-  { const x = 89.0, z = 178.6; C.box('props', T.wood('#6a4428'), x - 0.04, 0, z - 0.04, x + 0.04, 1.8, z + 0.04); C.box('props', T.wood('#6a4428'), x - 0.6, 1.25, z - 0.03, x + 0.6, 1.32, z + 0.03); C.box('props', S('#3a6a9a'), x - 0.2, 0.8, z - 0.12, x + 0.2, 1.4, z + 0.12); C.box('props', S('#f0d8a0'), x - 0.14, 1.4, z - 0.12, x + 0.14, 1.66, z + 0.12); C.box('props', S('#c8402a'), x - 0.22, 1.66, z - 0.16, x + 0.22, 1.72, z + 0.16); C.box('props', S('#c8402a'), x - 0.12, 1.72, z - 0.1, x + 0.12, 1.86, z + 0.1); C.nav.block(x - 0.25, z - 0.15, x + 0.25, z + 0.15, 0); }
+  for (const x of [82.7, 83.9]) C.prop('gd_compost', x, 178.75);
+  C.prop('gd_scarecrow', 89.0, 178.85);
   C.npc({ id: 'gardener', who: 'passerby31', name: 'Gardener', x: 92.1, z: 172.8, yaw: -0.4, L: 0, lines: W.GARDENER });
+  // Farmer Aldo keeps the tool shed (hidden inside until you have met him: src/vx/game/garden.js)
+  C.npc({ id: 'gd_farmer', who: FARMER, name: 'Farmer Aldo', x: 96.6, z: 175.2, yaw: -Math.PI / 2, L: 0, lines: async (app) => farmerTalk(app) });
+  { const it = C.inter[C.inter.length - 1]; it.when = (app) => !!(app.state && app.state.flags && app.state.flags.gd && app.state.flags.gd.met); }
+  C.prop('gd_tools', 97.6, 175.3, { yaw: -Math.PI / 2 }); C.prop('gd_wcan', 95.2, 177.3, { yaw: 0.5 }); C.prop('gd_barrow', 94.6, 175.9, { yaw: 0.3 });
   const I = (o) => C.interact({ r: 1.3, ...o });
   I({ x: 84.2, z: 172.2, label: 'Tomato bed', icon: 'leaf', act: async (app) => app.say('', 'Tomatoes so red they look painted. A small sign: "Creepetal-grown. Slightly haunted. Delicious."') });
   I({ x: 95.4, z: 172.2, label: 'Pumpkin patch', icon: 'leaf', act: async (app) => app.say('', 'One of the pumpkins has a carefully carved face that says "PLEASE DO NOT EAT ME". It is sweating slightly.') });
-  I({ x: 89.0, z: 177.9, label: 'Scarecrow', icon: 'eye', act: async (app) => app.say('', 'The scarecrow wears a League rookie cap. Three Pidgun sit on its arms, using it as a lookout tower.', 'It has failed at its one job. It looks happy anyway.') });
+  I({ x: 89.0, z: 178.1, label: 'Scarecrow', icon: 'eye', act: async (app) => app.say('', 'A straw-hatted scarecrow in a patched plaid shirt. Three Pidgun sit on its arms, using it as a lookout tower.', 'It has failed at its one job. It looks happy anyway.') });
+  I({ x: 95.4, z: 176.8, label: 'Watering can', icon: 'drop', act: async (app) => { sfx(app, 'bubble', { pitch: 0.8 }); await app.say('', 'You fill the watering can at the barrel and give the cabbage rows a long drink. The soil goes dark and smells like rain.', 'Behind the shed, something very large sighs contentedly.'); } });
   I({ x: 88.9, z: 172.5, label: 'Giant zucchini', icon: 'leaf', act: async (app) => app.say('', 'The famous zucchini, roughly the size of a sea lion. It has a ribbon that says "WINNER". Nobody remembers entering it in anything.') });
   C.box('props', S('#6ab04a'), 88.0, 0.0, 172.25, 89.9, 0.42, 172.75); C.box('props', S('#7ac05a'), 88.1, 0.42, 172.3, 89.8, 0.46, 172.7); C.box('props', S('#e8473a'), 88.9, 0.3, 172.74, 89.0, 0.4, 172.76);
+}
+
+/** the in-ground vegetable patch (x 81.6–91.2, z 173.8–178.1): rows of individual cabbages, lettuces and carrots
+ *  with row markers; every cabbage can be pulled up (the cabbage event, src/vx/game/garden.js) */
+function vegPatch(C) {
+  K.floor(C, 'ground', T.soil('#4e3424'), 81.6, 173.75, 91.2, 178.1, 0.016);
+  for (const z of [174.95, 176.05, 177.0]) K.floor(C, 'ground', T.soil('#3e2a1c'), 81.7, z - 0.08, 91.1, z + 0.08, 0.02);   // furrows
+  C.box('props', T.wood('#8a5a36'), 81.5, 0, 173.65, 91.3, 0.12, 173.75); C.box('props', T.wood('#8a5a36'), 81.5, 0, 178.1, 91.3, 0.12, 178.2);
+  const cabs = [];
+  for (const z of [174.4, 177.55]) for (let x = 82.3; x < 91; x += 0.95) { const xx = Math.round(x * 100) / 100; C.prop('gd_cabbage', xx, z, { yaw: (xx * 7) % 6.28, collide: false }); C.nav.block(xx - 0.2, z - 0.2, xx + 0.2, z + 0.2, 0); cabs.push({ x: xx, z, y: 0 }); }
+  for (let x = 82.2, i = 0; x < 91; x += 0.62, i++) C.prop(i % 3 === 2 ? 'gd_lettuceR' : 'gd_lettuce', x, 175.5, { yaw: i, collide: false });
+  for (let x = 82.15, i = 0; x < 91; x += 0.42, i++) C.prop('gd_carrot', x, 176.55, { yaw: i * 1.3, collide: false });
+  for (const [x, z] of [[81.75, 174.4], [81.75, 175.5], [81.75, 176.55], [81.75, 177.55]]) C.prop('gd_marker', x, z, { yaw: Math.PI / 2, collide: false });
+  // marigolds at the row ends (they keep the leaf-munchers away, says the farmer)
+  for (const z of [174.9, 177.05]) C.prop('pk2_marigold', 91.0, z, { collide: false, s: 0.5 });
+  registerCabbages(C, cabs);
+  const I = (o) => C.interact({ r: 1.0, ...o });
+  I({ x: 86.5, z: 175.5, label: 'Lettuce row', icon: 'leaf', act: async (app) => app.say('', 'Frilly green and red lettuces, crisp with dew. A hand-lettered marker: "LETTUCE — SHARE ME (one leaf each, Gerald)".') });
+  I({ x: 86.5, z: 176.55, label: 'Carrot row', icon: 'leaf', act: async (app) => app.say('', 'Feathery carrot tops and a ring of orange shoulders just peeking out of the soil. Not ready yet. Patience.') });
 }
 
 // ======================================================================== lamps, trees, cars, bins, hydrants, signs

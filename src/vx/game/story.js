@@ -81,13 +81,17 @@ export class Story {
   drawTitle(ui, dt) {
     const T_ = this.title; T_.t += dt; const W = ui.w, H = ui.h, a = Math.min(1, T_.t / 1.5);
     if (!T_.art) {   // the pixel logo only until the high-res key art (keyart.js) is ready
-      ui.text('TOKONMON', W >> 1, Math.round(H * 0.2) - Math.round((1 - a) * 10), T.amber, { align: 'center', scale: 3, outline: '#2a0e10', shadow: '#000000' });
-      ui.text('SAN FRANCISCO', W >> 1, Math.round(H * 0.2) + 28, T.cyan, { align: 'center', outline: '#0c1420' });
+      const ly = Math.round(H * 0.2) - Math.round((1 - a) * 10);
+      ui.text('TOKONMON', (W >> 1) + 1, ly + 3, '#1a0d04', { align: 'center', scale: 3 });
+      ui.text('TOKONMON', W >> 1, ly, null, { align: 'center', scale: 3, outline: T.ink, grad: [T.paperL, T.amberL, T.amber] });
+      ui.sparkle(W / 2 + 62, ly + 2 + Math.round(Math.sin(T_.t * 2)), T.amberL, (Math.sin(T_.t * 3) + 1) / 2);
+      ui.text('SAN FRANCISCO', W >> 1, ly + 28, T.paper, { align: 'center', outline: T.ink });
     }
-    const by = Math.round(H * (T_.art ? 0.46 : 0.62)), bw = 110;
-    if (ui.button((W >> 1) - bw / 2, by, bw, 18, 'NEW GAME', { color: T.amber, hotkey: 'Enter' }) && T_.pick) T_.pick('new');
-    if (T_.hasSave && ui.button((W >> 1) - bw / 2, by + 22, bw, 18, 'CONTINUE', { color: T.cyan, hotkey: 'c' }) && T_.pick) T_.pick('continue');
-    ui.text('an original homage to the music of everywhere', W >> 1, H - 12, T.dim, { align: 'center', mini: true });
+    // two wooden buttons with icons (Enter / C still work)
+    const by = Math.round(H * (T_.art ? 0.46 : 0.62)), bw = 116, pop = (i) => Math.round((1 - Math.min(1, Math.max(0, T_.t * 3 - i * 0.3))) * 10);
+    if (ui.button((W >> 1) - bw / 2, by + pop(0), bw, 22, 'New Game', { color: T.leaf, icon: 'leaf', hotkey: 'Enter' }) && T_.pick) T_.pick('new');
+    if (T_.hasSave && ui.button((W >> 1) - bw / 2, by + 26 + pop(1), bw, 22, 'Continue', { color: T.cyan, icon: 'book', hotkey: 'c' }) && T_.pick) T_.pick('continue');
+    ui.text('an original homage to the music of everywhere', W >> 1, H - 12, T.paper, { align: 'center', mini: true, outline: T.ink });
   }
   // ------------------------------------------------------------------ UI layer for the story (title, captions, objective, phone button)
   drawUI(ui, dt) {
@@ -98,8 +102,8 @@ export class Story {
     if (this.busy || ui.dialog || (app.battle && app.battle.active)) return;
     if (app.roaming && app.hud) return;   // the HUD shows the objective and opens the phone / menu
     const obj = this.objective || (app.quests && app.quests.objective());
-    if (obj) { const w = Math.min(ui.w - 70, ui.tw(obj) + 22); ui.panel(4, 4, w, 15, {}); ui.icon('star', 8, 8, T.amber); ui.text(obj, 18, 8, T.text); }
-    if (app.state.flags.phone && !app.phone.open && ui.button(ui.w - 26, 4, 22, 20, '', { icon: 'phone', color: T.cyan, hotkey: 'Tab' })) app.phone.toggle();
+    if (obj) ui.objective(4, 4, obj, { maxW: ui.w - 70 });
+    if (app.state.flags.phone && !app.phone.open && ui.iconButton(ui.w - 28, 3, 24, 'phone', { color: T.cyan, hotkey: 'Tab' })) app.phone.toggle();
   }
   cap(text, sub, dur = 4) { this.caption = { text, sub, dur, t: 0 }; }
   // the objective marker: a bouncing arrow over the goal, or an arrow at the screen edge pointing to it

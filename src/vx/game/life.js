@@ -162,6 +162,57 @@ const VOICE = {
   kanizumo: ['Kani!', 0.9, null, 'shimmy'], zapanda: ['Pan-pan!', 1.9, null, 'tailcheck'], metalfang: ['Grr.', 1.0, null, 'chug'], plastree: ['Rustle.', 1.2, null, 'pricecheck'],
   kappachi: ['Kap!', 1.5, 'plop', 'munch'], thundersabre: ['RAWR!', 0.8, 'roar', 'roar'], polobruin: ['Hrm!', 0.8, null, 'pop'], barkorious: ['ORK!', 0.7, 'roar', 'clap'],
 };
+// ==================================================================================== no animals but Tokonmon
+// The world has no animals except Tokonmon: the voxel animal props are hidden (their spots are kept, and stand()
+// puts Tokonmon there), and every line an interactable or resident says passes through tokonize().
+const ANIMAL_PROPS = new Set(['wf_gull', 'wf_sealion', 'pk_pigeons', 'pk_duck']);
+const REWORD = [
+  [/Eight sea lions on five rafts/g, 'Barkorious and his raft gang, sprawled over five rafts'],
+  [/A big bull shoves two others/g, 'Barkorious shoves two Kappachi'], [/A pup slides off the raft/g, 'A little Kappachi slides off the raft'],
+  [/like warm sausages, flippers twitching/g, 'like warm dumplings, flippers and claws twitching'],
+  [/Sea lions guaranteed, whales if you're lucky/g, 'Barkorious guaranteed, a Blowhale if you\'re lucky'],
+  [/sea lions arguing over their rafts/g, 'raft Tokonmon arguing over their rafts'], [/\bsea lions\b/g, 'raft Tokonmon'], [/\bSea lions\b/g, 'Raft Tokonmon'], [/\ba sea lion\b/g, 'a Barkorious'],
+  [/\bseagulls?\b|\bgulls?\b/g, 'Pidgun'], [/a seal pops up/g, 'a Weirdfin pops up'], [/\bpigeons\b/g, 'Pidgun'], [/\bA pigeon\b/g, 'A Pidgun'], [/\ba pigeon\b/g, 'a Pidgun'],
+  [/It's got a crab living in it/g, 'It\'s got a Foopod living in it'], [/a silver perch/g, 'a startled Weirdfin'], [/a grinning crab painted/g, 'a grinning Kanizumo painted'],
+  [/Look at the size of this one — it waved at me!/g, 'Clawdia hauled the whole catch up here herself!'],
+  [/Three ducks race over, followed — very slowly — by a turtle with a Tokonmon sitting on its shell/g, 'A Weirdfin and a Woodbub race over, followed — very slowly — by a Kappachi with a Lemmo sitting on its head'],
+  [/A little red bird is having the bath of its life/g, 'A little Pidrose is having the bath of its life'], [/A small dog barks/g, 'A small Tokonmon yaps'], [/shaped like a fish/g, 'shaped like a Weirdfin'],
+  [/One is the hamster\./g, 'One is Commander Biscuit, his Lemmo.'], [/about the hamster\. We have a hamster\./g, 'about the Lemmo. We have a Lemmo.'], [/That cat on the counter/g, 'That Kissmet on the counter'],
+];
+export const tokonize = (t) => (typeof t === 'string' ? REWORD.reduce((s, [re, to]) => s.replace(re, to), t) : t);
+const RELABEL = { 'Feed the ducks': 'Feed the pond Tokonmon', 'Watch the sea lions': 'Watch the Tokon rafts' };
+/** hide the voxel animals (remembering where they stood) and make every interactable speak tokonize()d lines */
+function purge(city, app) {
+  const spots = {};
+  city.root.traverse((o) => {
+    if (!o.isInstancedMesh || !ANIMAL_PROPS.has(o.userData.prop)) return;
+    const k = o.userData.prop, L = spots[k] || (spots[k] = []), M = new THREE.Matrix4(), P = new THREE.Vector3(), Q = new THREE.Quaternion(), Sc = new THREE.Vector3();
+    if (o.visible) for (let i = 0; i < o.count; i++) { o.getMatrixAt(i, M); M.decompose(P, Q, Sc); if (!L.some((q) => Math.hypot(q[0] - P.x, q[2] - P.z) < 0.05)) L.push([P.x, P.y, P.z, new THREE.Euler().setFromQuaternion(Q).y]); }
+    o.visible = false;
+  });
+  for (const it of city.inter) {
+    if (RELABEL[it.label]) it.label = RELABEL[it.label];
+    if (it.lifeSay) continue;
+    const act = it.act; it.lifeSay = true;
+    it.act = async (a, x) => { const say = a.say; a.say = (n, ...l) => say.call(a, n, ...l.map(tokonize)); try { return await act(a, x); } finally { a.say = say; } };
+  }
+  void app; return spots;
+}
+/** Tokonmon for the spots the voxel animals left: Tokon pigeons for the flocks and gulls, a raft gang, pond swimmers */
+function stand(L) {
+  const S_ = L.animals, out = [], near = (x, z, r) => L.res.some((R) => (R.e.sp === 'pidgun' || R.e.sp === 'pidrose') && Math.hypot(R.x - x, R.z - z) < r);
+  (S_.pk_pigeons || []).slice(0, 10).forEach(([x, , z], i) => {
+    if (near(x, z, 3)) return;
+    const d = x < 104 && z > 32 && z < 98 ? 'park' : z < 32 ? 'wharf' : x > 116 && z < 98 ? 'chinatown' : 'downtown';
+    for (let k = 0; k < (i < 2 ? 2 : 1); k++) out.push({ sp: k ? 'pidrose' : 'pidgun', at: [x + (k - 0.5) * 0.8, z, rnd(0, 6)], do: 'wander', area: [x - 1.4, z - 1.2, x + 1.4, z + 1.2], fid: k ? ['peck', 'preen'] : ['peck', 'puff'], speed: 0.6, t: 'day', d });
+  });
+  (S_.wf_gull || []).filter(([, , z]) => z > 0).filter((_, i) => i % 3 === 0).slice(0, 6).forEach(([x, y, z, yaw], i) => out.push({ sp: i % 2 ? 'pidrose' : 'pidgun', at: [x, z, yaw], y, do: 'perch', fid: ['peck', i % 2 ? 'preen' : 'puff'], d: 'wharf' }));
+  const raft = [['kappachi', 'nap'], ['kanizumo', 'pose', ['shimmy', 'salt']], ['kappachi', 'pose', ['munch', 'wax']], ['woodbub', 'pose', ['roll']]];
+  (S_.wf_sealion || []).filter(([, y, z]) => z > 0 && y < 0).slice(0, raft.length).forEach(([x, y, z, yaw], i) => out.push({ sp: raft[i][0], at: [x, z, yaw], y, do: raft[i][1], fid: raft[i][2], pet: false, name: nameOf(raft[i][0]), d: 'wharf' }));
+  const pond = [['woodbub', 'roll'], ['kappachi', 'munch']];
+  (S_.pk_duck || []).slice(0, pond.length).forEach(([x, , z], i) => out.push({ sp: pond[i][0], at: [x, z, 0], y: -0.62, do: 'swim', c: [x, z], r: [1.1, 0.8], spin: 0.3 + i * 0.1, fid: [pond[i][1]], pet: false, d: 'park' }));
+  return out;
+}
 const nameOf = (sp) => (SPECIES[sp] && SPECIES[sp].name) || (sp === 'pidrose' ? 'Pidgun' : sp[0].toUpperCase() + sp.slice(1));
 
 /*
@@ -180,6 +231,12 @@ const LIFE = {
       line: 'Wheezowl stirs the pot with one wing and shoos you off the wontons with the other. Hoo-WHEEZE.', say: ['Wheezowl, don\'t let it boil over!', 'She\'s a better cook than me, honestly.'] },
     { sp: 'kissmet', at: [36.3, 155.66, 0.15], y: 0.72, do: 'pose', fid: ['tailtiff', 'firetrick'], every: [7, 12], owner: 'ochoa', name: 'Bruja', temper: 'proud',
       line: 'Bruja balances on the picket fence like it\'s a catwalk, lets you scratch her chin exactly twice, then looks away.', say: ['Bruja! Off the fence, mija!'], talk: ['That little lion on my fence is Bruja. She guards the roses from the pigeons. And from me.'] },
+    { sp: 'zapkit', at: [36.55, 150.72, PI / 2], y: 0.12, do: 'nap', owner: 'ochoa', name: 'Duchess', temper: 'proud',
+      line: 'Duchess the Zapkit opens one eye, judges you thoroughly, and allows exactly three strokes. On the fourth, a tiny spark. A warning.' },
+    { sp: 'kissmet', at: [102.95, 149.9, 0.3], y: 1.0, do: 'nap', owner: 'mrpark', name: 'Ginger',
+      line: 'Ginger the Kissmet sleeps on the counter by the register, one paw on the "ring for service" bell. Nobody rings it. Nobody dares.' },
+    { sp: 'lemmo', at: [56.25, 118.1, -PI / 2], do: 'nap', owner: 'milo', name: 'Commander Biscuit',
+      line: 'Commander Biscuit, Milo\'s Lemmo, naps beside an exercise wheel he has never once used. Milo: "He\'s officially Tokon number nine. The League hasn\'t replied to my letter yet."' },
     { sp: 'snoozaque', at: [23.6, 152.6, 0.1], do: 'nap', name: 'Snoozaque', temper: 'sleepy', line: 'It is sprawled across the porch step in the sun, one arm over its eyes. It snores a little louder when you pet it.' },
     { sp: 'zapkit', at: [76.4, 123.32, 0], y: 3.86, do: 'pose', fid: ['ho', 'pounce'], every: [8, 14], dusk: 'sleep', pet: false, name: 'Zapkit', temper: 'proud' },
     { sp: 'grenaday', at: [64.7, 174.6, PI / 2], do: 'spar', game: 'pocket', owner: 'kidA', name: 'Kaboom' },
@@ -249,8 +306,6 @@ const LIFE = {
       line: 'Brakes rumbles like a cable car on a hill. It leans into your hand. The fur crackles.', say: ['Brakes helps me turn her around. Strongest partner on the line!'] },
     { sp: 'takaptain', at: [96.6, 7.6, -PI / 2], do: 'pose', fid: ['salute', 'helm'], every: [7, 12], owner: 'wfFerryman', name: 'Skipper', line: 'Skipper snaps you a crisp salute. Permission to come aboard: granted.', say: ['Skipper, ring the bell!'] },
     { sp: 'blowhale', at: [101.4, 13.5, 0.6], do: 'pose', clip: 'skirl', fx: ['note', 1.4], owner: 'wfBusker', name: 'Piper', line: 'Piper wheezes a happy chord on its bagpipe blowhole. The busker bows like it was planned.', say: ['♪ Piper on the pipes, everybody! ♪'] },
-    { sp: 'pidgun', at: [36.0, 11.82, PI], y: 1.06, do: 'perch', fid: ['peck', 'puff'] },
-    { sp: 'pidrose', at: [186.0, 11.82, PI], y: 1.06, do: 'perch', fid: ['preen'] },
     { sp: 'barkorious', at: [141.6, 8.1, 2.4], y: -0.62, do: 'nap', pet: false, name: 'Barkorious' },
     { sp: 'weirdfin', at: [176, 10.2, 0], y: -0.95, do: 'swim', c: [176.2, 10.3], r: [2.2, 0.8], spin: 0.5, fid: ['loop', 'bait'], pet: false },
     { sp: 'hawkabunga', at: [186, 6, 0], y: -0.78, do: 'swim', c: [186.0, 6.2], r: [6.0, 2.6], spin: 0.32, clip: 'shred', fid: ['kickflip'], pet: false, t: 'day' },
@@ -284,6 +339,7 @@ export class CityLife {
   constructor(world, city) {
     this.w = world; this.app = world.app; this.c = city; this.nav = city.nav;
     this.res = []; this.games = {}; this.started = false; this.debug = !!(this.app.params && this.app.params.get('lifedebug')); this.hushed = false; this.t = 0; this.phase = null; this.moodT = 0; this.queue = [];
+    this.animals = purge(city, this.app);                       // no animals in this world but Tokonmon (see purge)
   }
   /** spawn everything for this time of day (nearest first, a few per frame); safe to call twice */
   start() {
@@ -297,6 +353,8 @@ export class CityLife {
     // companions for passers-by on the avenues
     const walkers = [...w.actors.values()].filter((a) => a.life && a.life.walker).slice(0, WALKERS.length * 2).filter((_, i) => i % 2 === 0);
     walkers.forEach((a, i) => this.res.push(this.make({ sp: WALKERS[i], at: [a.g.position.x, a.g.position.z, 0], do: 'heel', owner: a.id, off: [0.5, -0.8] }, `lf-walk${i}`, 'avenue')));
+    // Tokonmon where the old voxel animals stood (pigeon flocks, gulls, sea lions, ducks)
+    stand(this).forEach((e, i) => this.res.push(this.make(e, `lf-swap${i}`, e.d)));
     // partner lines for their people
     for (const R of this.res) if (R.e.owner && (R.e.talk || R.e.say)) this.ownerLines(R);
     this.spawnLoop();

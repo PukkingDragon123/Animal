@@ -21,7 +21,7 @@ export function glowInfo(tex, night) {
   if (ud.glow || ud.srGlow) out = whole(tex, ud.glow === true || ud.glow === undefined ? (ud.srGlow ? 0.9 : 1) : +ud.glow, true);
   else if (ud.glowMask) out = masked(tex, () => 1, ud.glowMask);
   else if (night && /^(sign|ct_signH|neon|dt_neon|dt_sign)/.test(user)) out = masked(tex, (r, g, b) => Math.max(0.28, lampPx(r, g, b)), null, 0.8);
-  else if (night && /true|night|_n$|lit$/.test(user)) out = masked(tex, lampPx, null, 1);
+  else if (night && /true|night|_n$|lit$/.test(user)) out = masked(tex, lampPx, null, /^shopwin/.test(user) ? 0.55 : 1);   // a whole lit shop window: softer, or it burns to white up close
   CACHE.set(key, out);
   return out;
 }
