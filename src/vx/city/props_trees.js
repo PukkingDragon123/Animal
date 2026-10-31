@@ -44,10 +44,11 @@ const barkCol = (B, o = {}) => (x, y, z) => {
   return h < 0.6 ? B[0] : B[1];
 };
 /** a leaf colour by 4-voxel chunk: lit on top, shaded below and inside, a few odd chunks (yellowed / flowers) */
-const leafCol = (L, acc, accP = 0.05) => (x, y, z, d, dy) => {
-  const cx = x >> 2, cy = y >> 2, cz = z >> 2, h = h3(cx, cy, cz);
-  if (acc && h3(cz, cx, cy) < accP && d > 0.7) return acc[(h * acc.length) | 0];
-  const v = 0.42 + dy * 0.42 + (d > 0.82 ? 0.14 : d < 0.6 ? -0.2 : 0) + (h - 0.5) * 0.4;
+const leafCol = (L, acc, accP = 0.03) => (x, y, z, d, dy) => {
+  const cx = x >> 2, cy = y >> 2, cz = z >> 2, h = h3(cx, cy, cz), big = h3(x >> 4, y >> 4, z >> 4);
+  if (acc && h3(cz, cx, cy) < accP && d > 0.72) return acc[(h * acc.length) | 0];
+  // light from above dominates; a soft half-metre mottling and a little per-cell jitter on top
+  const v = 0.5 + dy * 0.34 + (d > 0.85 ? 0.08 : d < 0.55 ? -0.1 : 0) + (big - 0.5) * 0.22 + (h - 0.5) * 0.2;
   return L[Math.max(0, Math.min(L.length - 1, Math.floor(v * L.length)))];
 };
 /**
@@ -57,7 +58,7 @@ const leafCol = (L, acc, accP = 0.05) => (x, y, z, d, dy) => {
  */
 function clump(F, cx, cy, cz, r, col, o = {}) {
   const s = o.s || 4, sy = o.sy ?? 0.82, holes = o.holes ?? 0, lobe = o.lobe ?? 0.22, ry = r * sy, fr = o.fringe ?? 0;
-  const lob = (x, y, z) => 1 - lobe * h3((x + 64) >> 3, (y + 64) >> 3, (z + 64) >> 3);
+  const lob = (x, y, z) => { const a = h3((x + 64) >> 3, (y + 64) >> 3, (z + 64) >> 3), b = h3((x + 68) >> 3, (y + 60) >> 3, (z + 66) >> 3); return 1 - lobe * (a + b) * 0.5; };
   for (let y = Math.floor((cy - ry) / s) * s; y <= cy + ry; y += s) for (let z = Math.floor((cz - r) / s) * s; z <= cz + r; z += s) for (let x = Math.floor((cx - r) / s) * s; x <= cx + r; x += s) {
     const dx = x + s / 2 - cx, dy = y + s / 2 - cy, dz = z + s / 2 - cz;
     const d = Math.sqrt(dx * dx + (dy / sy) ** 2 + dz * dz) / r, thr = lob(x, y, z);
@@ -125,26 +126,26 @@ function broadleaf(F, g, lo) {
   }
   // the crown: a central clump over the top of the trunk, then every twig-end clump (a layered canopy)
   const top = spine[H];
-  const opt = { s: lo ? 8 : 4, sy: g.sy, fringe: lo ? 0 : g.fringe ?? 0.18, lobe: g.lobe ?? 0.22 };
+  const opt = { s: lo ? 8 : 4, sy: g.sy, fringe: lo ? 0 : g.fringe ?? 0.24, lobe: g.lobe ?? 0.2 };
   if (g.top) clump(F, top[0], top[1] + g.clumpR * 0.6, top[2], g.clumpR * g.top, col, opt);
   for (const [p, r] of ends) clump(F, p[0], p[1] + r * 0.25, p[2], r, col, opt);
 }
 
 // ---------------------------------------------------------------- species
 const OAK = { // coast live oak: a short stout trunk, wide-spreading crooked limbs, dense dark evergreen domes
-  X: 112, Y: 118, Z: 112, H: 44, R: 4.2, lean: [3, -2], limbs: 6, spread: 30, rise: 22, clumpR: 15, top: 1.15, seed: 11, sy: 0.72, moss: true,
+  X: 112, Y: 118, Z: 112, H: 44, R: 4.2, lean: [3, -2], limbs: 7, spread: 30, rise: 22, clumpR: 13.5, top: 1.15, seed: 11, sy: 0.72, moss: true,
   bark: ['#5a4434', '#6c5240', '#3a2c22', '#6a5a48', '#5e7a3a'],
   leaves: ['#1d4424', '#25522a', '#2e6030', '#386e36', '#43803c', '#529244', '#66a44e'], acc: ['#8ab050', '#a4b85a'],
 };
 const MAPLE = { // a red/orange autumn maple: upright limbs, rounded lobed crown
   X: 96, Y: 124, Z: 96, H: 46, R: 3.2, lean: [-1, 2], limbs: 6, spread: 21, rise: 32, clumpR: 13, top: 1.2, seed: 23, sy: 0.85,
   bark: ['#5c4a3e', '#6e5a4c', '#3e3028', '#5c4a3e', '#4e6a36'],
-  leaves: ['#7a2412', '#962e14', '#b03e18', '#c8521e', '#dc6a26', '#ea8a32', '#f4a840'], acc: ['#f8c84a', '#e8d050', '#a8381a'], accP: 0.08,
+  leaves: ['#9a3216', '#ac3c18', '#c04a1c', '#d05c22', '#de7028', '#ea8a32', '#f4a840'], acc: ['#f8c84a', '#e8d050'], accP: 0.04,
 };
 const BLOSSOM = { // flowering cherry: a dark glossy trunk, low wide limbs, clouds of pink with white flecks
   X: 104, Y: 108, Z: 104, H: 34, R: 3.0, lean: [2, 1], limbs: 7, spread: 25, rise: 22, clumpR: 12.5, top: 1.0, seed: 37, sy: 0.7, holes: 0.38,
   bark: ['#4a3030', '#5a3a38', '#2e1e1e', '#4a3030', '#5a6a3a'],
-  leaves: ['#c45a82', '#d8709a', '#e888aa', '#f2a2bc', '#f8bcd0', '#fcd4e2', '#fff0f4'], acc: ['#ffffff', '#6a9a48', '#f8e070'], accP: 0.09,
+  leaves: ['#d06a92', '#dc7ca2', '#e890b0', '#f2a6c0', '#f8bcd0', '#fcd2e0', '#ffe6ee'], acc: ['#ffffff', '#7aa850'], accP: 0.04,
 };
 const PLANE = { // London plane (SF street tree): mottled cream / olive bark, tall trunk, broad airy crown
   X: 100, Y: 140, Z: 100, H: 60, R: 3.4, lean: [0, 0], limbs: 7, spread: 23, rise: 30, clumpR: 13, top: 1.25, seed: 41, sy: 0.8, mottle: true, holes: 0.34,
@@ -165,8 +166,8 @@ function cypress(F, lo) { // Monterey cypress: a leaning, forked trunk and flat 
   const trunk = (x0, z0, x1, y1, z1, r0, r1) => limb(F, [x0, 0, z0], [x1, y1, z1], r0, r1, barkC);
   trunk(46, 48, 58, 58, 44, 5.2, 2.6); limb(F, [50, 22, 47], [30, 62, 54], 3.4, 1.6, barkC); limb(F, [55, 46, 45], [72, 76, 40], 2.4, 1.2, barkC);
   limb(F, [48, 30, 47], [24, 44, 34], 2.2, 1.0, barkC); limb(F, [57, 52, 45], [44, 92, 46], 2.2, 1.0, barkC);
-  const opt = { s: lo ? 8 : 4, sy: 0.3, fringe: lo ? 0 : 0.18, lobe: 0.3 };
-  for (const [x, y, z, r] of [[30, 66, 54, 18], [72, 80, 40, 17], [24, 48, 34, 13], [50, 70, 44, 20], [44, 96, 46, 15], [62, 60, 60, 13], [56, 88, 32, 12], [38, 84, 58, 12]]) clump(F, x, y, z, r, col, Object.assign({}, opt, { sy: 0.3 + R() * 0.08 }));
+  const opt = { s: lo ? 8 : 4, sy: 0.36, fringe: lo ? 0 : 0.24, lobe: 0.26 };
+  for (const [x, y, z, r] of [[30, 66, 54, 17], [72, 80, 40, 16], [24, 48, 34, 13], [50, 70, 44, 20], [44, 96, 46, 15], [62, 60, 60, 14], [56, 88, 32, 13], [38, 84, 58, 13], [64, 74, 30, 12], [36, 58, 40, 13], [52, 104, 44, 10], [76, 70, 52, 11]]) clump(F, x, y, z, r, col, Object.assign({}, opt, { sy: 0.34 + R() * 0.1 }));
 }
 function palm(F, lo) { // Canary Island date palm: a thick trunk of diamond leaf scars, a skirt of old fronds, a huge arching crown
   const scar = pal(F, ['#8a6a44', '#7a5a38', '#a8845a', '#5e4630']), fr = pal(F, ['#1e5a28', '#2a6c30', '#3a7e38', '#4e9244', '#6aa652']), dead = pal(F, ['#a88a52', '#8a6a3e']), dates = F.c('#e88a2a');
@@ -239,7 +240,7 @@ add('tr_maple', [MAPLE.X, MAPLE.Y, MAPLE.Z], 0.35, (F, r, lo) => broadleaf(F, MA
 add('tr_blossom', [BLOSSOM.X, BLOSSOM.Y, BLOSSOM.Z], 0.35, (F, r, lo) => broadleaf(F, BLOSSOM, lo));
 add('tr_plane', [PLANE.X, PLANE.Y, PLANE.Z], 0.35, (F, r, lo) => broadleaf(F, PLANE, lo));
 add('tr_linden', [LINDEN.X, LINDEN.Y, LINDEN.Z], 0.32, (F, r, lo) => broadleaf(F, LINDEN, lo));
-add('tr_cypress', [96, 116, 96], 0.5, (F, r, lo) => cypress(F, lo));
+add('tr_cypress', [96, 118, 96], 0.5, (F, r, lo) => cypress(F, lo));
 add('tr_palm', [96, 132, 96], 0.45, (F, r, lo) => palm(F, lo));
 // ground cover (flat: no LOD twin, no sway, no shadow, never collides)
 add('gr_tuft', [24, 12, 24], 0, (F, r) => tufts(F, r), { flat: true, noShadow: true });

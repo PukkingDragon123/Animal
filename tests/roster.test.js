@@ -1,5 +1,6 @@
 // San Francisco roster: species/skill data integrity, the new evolution events
 // (burn_faint_bonded, ko_bonded, shield_ally…), team synergies, forms, drip tiers and gear.
+import fs from 'node:fs';
 import { ok, section, done } from './_h.js';
 import { createBattle, step, command, trainerCommand, resolveQte, activeOf, DT } from '../src/battle/sim.js';
 import { createElemon, battleSnapshot, evolutionOptions, condProgress, statsOf, equipGear, modelOf, dripTag, rollDrip, gearSlots } from '../src/game/elemon.js';
@@ -35,7 +36,7 @@ globalThis.localStorage = { getItem: (k) => store.get(k) ?? null, setItem: (k, v
 const NEW = ['pidgun', 'jungeon', 'paradove', 'trashcoon', 'dynacoon', 'hellcoon', 'gradcub', 'bearbreak', 'yeezilla', 'polobruin', 'foopod', 'everpunch', 'barkorious',
   'woodbub', 'hartbox', 'utero', 'grillfin', 'astroshark', 'sandmander', 'justatue', 'creepetal', 'plastree', 'weirdfin', 'snarlpup', 'wonderwoof', 'supernoir', 'coolpillar',
   'pupalace', 'killaqueen', 'bohemonarch', 'zapkit', 'thundersabre', 'zeppra', 'stairgasus', 'rollick', 'neverdecker', 'johnlemon', 'starrfish', 'yokat', 'blackvolt', 'prismoon',
-  'beatlet', 'pepperhorn', 'abbeyhorn', 'walrusk', 'wheezowl', 'mopzart', 'dreadrake', 'barkorious_forced',
+  'beatlet', 'pepperhorn', 'abbeyhorn', 'walrusk', 'wheezowl', 'mopzart', 'dreadrake', 'barkorious_forced', 'kohlossus',
   'metalfang', 'wyvillain', 'doomsdrake', 'blowhale', 'tartanic', 'grenaday', 'armagreddon', 'snoozaque', 'piledrilla', 'fluorescape',
   'kissmet', 'kissmera', 'demonaconda', 'starstrut', 'spaceshell', 'purrcussion', 'talonaka', 'takaptain', 'hawkabunga', 'rainblin', 'roygbot'];
 const COND_KEYS = new Set(['level', 'wins', 'friendship', 'precise', 'healed', 'blocked', 'beats', 'charged', 'teamCombos', 'dojo', 'foods', 'location', 'hours', 'defeat', 'battle', 'activity', 'more', 'weather', 'holding', 'squad']);
@@ -67,6 +68,7 @@ for (const mod of MODS) for (const [id, sp] of Object.entries(mod)) {
 }
 ok('legendaries are strong and rare', ['blackvolt', 'prismoon'].every((id) => SPECIES[id].legendary && Object.values(SPECIES[id].base).reduce((a, b) => a + b, 0) >= 80 && SPECIES[id].catch <= 0.05));
 ok('story cast: wheezowl (gift) and mopzart (NPC) are not catchable, dreadrake is', SPECIES.wheezowl.catch === 0 && SPECIES.mopzart.catch === 0 && SPECIES.dreadrake.catch > 0);
+ok('kohlossus (the garden guardian) is an uncatchable Bio tank with a model', SPECIES.kohlossus.catch === 0 && SPECIES.kohlossus.elem === 'bio' && SPECIES.kohlossus.base.hp >= 16 && fs.existsSync(new URL('../src/vx/mons/kohlossus.js', import.meta.url)));
 { const f = SPECIES.barkorious_forced, sum = (sp) => Object.values(sp.base).reduce((a, b) => a + b, 0);
   ok('barkorious_forced: uncatchable boss, reverts to barkorious, boss-tier stats', f.boss && f.catch === 0 && f.revertsTo === 'barkorious' && !!SPECIES[f.revertsTo] && sum(f) >= 60 && sum(f) > sum(SPECIES.barkorious)); }
 const NEWSK = [...M1, ...M2, ...M3, ...M4, ...M5, ...M6, ...M7, ...M8, ...M9];

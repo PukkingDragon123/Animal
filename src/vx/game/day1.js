@@ -120,14 +120,14 @@ async function jumpTo(X, k) {
 // ------------------------------------------------------------------ 1. the bedroom: sunlight, the owl, a stretch
 async function wake(X) {
   const { app, w, st, cin, say } = X, nm = st.player.name;
-  const ROOM = [56.3, 146.3, 64.2, 153.4];
+  const ROOM = [56.3, 146.3, 64.2, 151.6];
   const hero = w.addPerson('hero', st.look, [57.25, 149.62, 0, 3]);
   seat(hero, 57.25, 149.62, 0, 3.58); face(hero, 'sleepy', 8);
   const owl = await w.addMon('owl', 'wheezowl', [58.35, 150.15, -2.0, 3], { clip: 'sleep' });
   w.setPlayer(hero, null); if (w.city) w.city.L = 1;
   // a shaft of afternoon sun through the west window, dust drifting in it
   const sd = (w.st.mood && w.st.mood.sunDir) || [-0.9, 0.62, 0.3], L = Math.hypot(...sd);
-  X.beam = cin.sunbeam([56.25, 4.55, 150.6], [-sd[0] / L, -sd[1] / L, -sd[2] / L], { len: 4.2, w: 0.85, floor: 3.03, opacity: 0.34 });
+  X.beam = cin.sunbeam([56.25, 4.55, 150.6], [-sd[0] / L, -sd[1] / L, -sd[2] / L], { len: 4.2, w: 0.8, floor: 3.03, opacity: 0.15, patch: 0.35 });
   await cin.begin({ prefer: 50, room: ROOM });
   cin.grade('morning');
   // eyes opening: warm light, a slow dolly in on the sleepy-head
@@ -139,7 +139,7 @@ async function wake(X) {
   await cin.beat('bedroom');
   // the alarm owl, right in your ear
   owl.play('wheeze'); w.emote('owl', 'note', 3); sfx(app, 'coo', { pitch: 0.7 });
-  await cin.push(owl, { dist: 2.0, at: 'chest' });
+  await cin.push(owl, { yaw: 115, dist: 2.3, at: 'chest', pitch: 6 });
   cin.handheld(0.012);
   await say('???', 'Hoo… hoo-WHEEEEZE!');
   await cin.beat('owl');
@@ -273,7 +273,7 @@ async function tram(X) {
   cin.grade('hero');
   const coach = w.addPerson('coach', 'coach', [142.6, 111.3, Math.PI / 2]);
   const kani = await w.addMon('kani', 'kanizumo', [141.8, 112.1, Math.PI / 2], { clip: 'win' });
-  await cin.hero(coach, { yaw: 120, dist: 4.8, low: -9, dur: 0, hold: 7, push: 0.25 });
+  await cin.hero(coach, { yaw: 135, dist: 4.6, low: -9, dur: 0, hold: 7, push: 0.25 });
   const arrive = cin.walk(coach, hero.g.position.x - 1.3, hero.g.position.z - 0.1, { speed: 1.4 }); cin.walk(kani, hero.g.position.x - 2.1, hero.g.position.z + 0.7, { speed: 1.4 });
   await say('???', 'That\'s enough.');
   await cin.beat('tram-coach');

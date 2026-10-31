@@ -174,6 +174,26 @@ export const SPECIES = {
     gimmick: { id: 'dread_crown', name: 'Dread Crown', desc: 'Dreadlocks swing like a crown: +20% physical damage, −10% damage taken, immune to knockback.', mods: { physMul: 1.2, takenMul: 0.9, knockImmune: true } },
     evolve: [], temper: 'aggressive', catch: 0.08, bond: 35, exp: 160, personality: 'A muscle-bound mallard with heavy dreadlocks and iron-grey feathers — the street punk Spike\'s partner. Talks little, hits hard, stays humble.',
   },
+  // ---- the community garden's guardian (garden.js): Farmer Aldo's partner
+  kohlossus: {
+    name: 'Kohlossus', elem: 'bio', family: 'Plant', stage: 2, npc: true, role: 'Garden guardian tank — belly-flops, cabbage barrages, a wall of leaves',
+    base: B(13, 9, 14, 4, 18), radius: 1.15,
+    basic: { type: 'melee', power: 15, range: 2.1, rate: 0.9 },
+    start: ['belly_flop', 'cabbage_barrage'],
+    moves: [
+      { id: 'leaf_wall', how: { level: 10 }, hint: 'Reach Lv.10.' },
+      { id: 'root_stomp', how: { battle: { ev: 'ko', n: 8 } }, hint: 'Knock out 8 foes who came for the cabbages.' },
+      { id: 'compost_cloud', how: { eat: { tag: 'veggie', n: 3 } }, hint: 'Share 3 veggie dishes. It recycles everything.' },
+      { id: 'second_helping', how: { friendship: 150 }, hint: 'Become good friends — there is always room for seconds.' },
+    ],
+    passives: [
+      { id: 'thick_leaves', how: { level: 8 }, hint: 'Reach Lv.8.' },
+      { id: 'well_fed', how: { battle: { ev: 'low_hp_win', n: 1 } }, hint: 'Win a battle from below 40% HP.' },
+    ],
+    ult: 'harvest_quake', ...ULT,
+    gimmick: { id: 'cabbage_cape', name: 'Cabbage Cape', desc: 'Its leafy ruff swells into a cape of armour-hard leaves: a shield, +25% defense, +15% physical damage.', shield: 0.22, mods: { defMul: 1.25, physMul: 1.15 } },
+    evolve: [], temper: 'territorial', catch: 0, bond: 80, exp: 170, personality: 'An enormous, very round rabbit that is mostly cabbage — leaf ears, a leafy ruff, a cabbage heart for a belly. It guards the community garden with its whole weight, and its whole weight is a lot.',
+  },
   barkorious_forced: {
     name: 'Barkorious', elem: ['hydro', 'echo'], family: 'Aquatic', stage: 3, boss: true, revertsTo: 'barkorious', role: 'BOSS — forced-bond rampage: fish cannon, belly-flop quakes',
     base: B(12, 10, 11, 5, 22), radius: 1.4,

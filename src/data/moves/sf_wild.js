@@ -259,6 +259,26 @@ export const DREADRAKE = L('dreadrake', [
   { id: 'pride', kind: 'passive', name: 'PRIDE.', elem: 'ferro', desc: 'Below 40% HP its pride kicks in: +25% damage.', mods: { lowHpDmg: 0.25 } },
 ]);
 
+// ===================================================================== Kohlossus — the community garden's giant cabbage rabbit
+export const KOHLOSSUS = L('kohlossus', [
+  { id: 'belly_flop', name: 'Belly Flop', elem: 'bio', desc: 'Leaps up and lands belly-first: the ground shakes, foes are knocked flat and their guard cracks.', cost: 18, cd: 6, aim: 'point', range: 6, anim: 'special', fx: 'slam', sfx: 'slam', scale: 'phys', windup: 0.4, telegraph: 'circle',
+    eff: [{ t: 'dash', leap: true }, { t: 'aoe', r: 2.4, power: 34, knock: 4, up: 2, aura: 1.2, delay: 0.3, crack: true, status: { s: 'defdown', dur: 3, k: 0.2 } }], tags: ['dash', 'aoe'] },
+  { id: 'cabbage_barrage', name: 'Cabbage Barrage', elem: 'bio', desc: 'Hurls three heavy cabbages in an arc. They burst into leaves where they land.', cost: 15, cd: 4, aim: 'point', range: 9, anim: 'attack', fx: 'vine', sfx: 'bio', windup: 0.3, telegraph: 'circle',
+    eff: [{ t: 'proj', count: 3, spread: 30, power: 18, speed: 11, r: 0.4, aura: 1, arc: true, explode: { r: 1.2, k: 1 } }], tags: ['projectile'] },
+  { id: 'leaf_wall', name: 'Leaf Wall', elem: 'bio', desc: 'Pulls its leafy ruff up like a hood: blocks 70% of frontal damage and slaps back.', cost: 12, cd: 7, aim: 'self', range: 0, anim: 'hurt', fx: 'guard', sfx: 'parry', windup: 0.05,
+    eff: [{ t: 'buff', s: 'guard', k: 0.7, dur: 1.8, counter: 26 }], tags: ['guard'] },
+  { id: 'root_stomp', name: 'Root Stomp', elem: 'geo', desc: 'Two huge stomps: roots burst up around it and hold the foes in place.', cost: 18, cd: 9, aim: 'self', range: 0, anim: 'attack', fx: 'stomp', sfx: 'slam', scale: 'phys', windup: 0.35, telegraph: 'circle',
+    eff: [{ t: 'aoe', at: 'self', r: 2.8, power: 22, knock: 1, aura: 1, count: 2, interval: 0.4 }, { t: 'status', who: 'aoe', r: 3, s: 'root', dur: 1.4 }], tags: ['aoe'] },
+  { id: 'compost_cloud', name: 'Compost Cloud', elem: 'bio', desc: 'Shakes out a cloud of very ripe compost: foes inside are poisoned and slowed.', cost: 18, cd: 10, aim: 'point', range: 7, anim: 'cast', fx: 'spores', sfx: 'bio_poison', telegraph: 'circle',
+    eff: [{ t: 'zone', kind: 'spore', r: 2.4, dur: 4, tick: { power: 5, aura: 0.5, status: { s: 'poison', dur: 3, stacks: 1, k: 0.1 } }, enemy: true }, { t: 'status', who: 'aoe', r: 2.4, s: 'slow', dur: 2, k: 0.3 }], tags: ['zone'] },
+  { id: 'second_helping', name: 'Second Helping', elem: 'bio', desc: 'Munches a whole cabbage from its ruff: cleanses ailments and heals 26% over 4 s.', cost: 18, cd: 13, aim: 'self', range: 0, anim: 'win', fx: 'heal', sfx: 'bio_heal',
+    eff: [{ t: 'buff', s: 'cleanse' }, { t: 'heal', k: 0.26, over: 4 }], tags: ['heal'] },
+  { id: 'harvest_quake', kind: 'ultimate', name: 'Harvest Quake', elem: 'bio', desc: 'ULTIMATE: it stomps the whole garden awake — every stomp a quake, cabbages raining down, the last one a colossal belly-flop.', cost: 0, cd: 0, aim: 'self', range: 0, anim: 'attack', fx: 'ult_start', sfx: 'ult_start', telegraph: 'circle', qte: { type: 'rhythm', beats: 4 },
+    eff: [{ t: 'aoe', at: 'self', r: 4.4, power: 30, knock: 3, aura: 1.5, count: 4, interval: 0.5, lastMul: 2.2, crack: true }, { t: 'status', who: 'aoe', r: 4.5, s: 'root', dur: 1.2 }], tags: ['ult'] },
+  { id: 'thick_leaves', kind: 'passive', name: 'Thick Leaves', elem: 'bio', desc: 'Layer upon layer of waxy leaves: takes 14% less damage.', mods: { takenMul: 0.86 } },
+  { id: 'well_fed', kind: 'passive', name: 'Well Fed', elem: 'bio', desc: 'Below 40% HP it remembers lunch: +25% damage.', mods: { lowHpDmg: 0.25 } },
+]);
+
 // ===================================================================== Barkorious (forced bond) — story boss, reverts to Barkorious
 export const BARKORIOUS_FORCED = L('barkorious_forced', [
   { id: 'fish_cannon', name: 'Fish Cannon', elem: 'hydro', desc: 'The rigged harness cannon fires three whole fish that burst on landing.', cost: 16, cd: 4, aim: 'point', range: 9, anim: 'shoot', fx: 'water_bolt', sfx: 'hydro_splash', windup: 0.35, telegraph: 'circle',
@@ -268,4 +288,4 @@ export const BARKORIOUS_FORCED = L('barkorious_forced', [
   { id: 'forced_bond', kind: 'passive', name: 'Forced Bond', elem: 'ecto', desc: 'Red-eyed fury: +10% damage, immune to sleep and confusion — but it takes 10% more damage.', mods: { dmgMul: 1.1, immune: ['sleep', 'drowsy', 'confuse'], takenMul: 1.1 } },
 ]);
 
-export const MOVES = [...WHEEZOWL, ...MOPZART, ...DREADRAKE, ...BARKORIOUS_FORCED, ...BARKORIOUS, ...SANDMANDER, ...JUSTATUE, ...WEIRDFIN, ...ROLLICK, ...NEVERDECKER, ...JOHNLEMON, ...STARRFISH, ...YOKAT, ...BLACKVOLT, ...PRISMOON];
+export const MOVES = [...WHEEZOWL, ...MOPZART, ...DREADRAKE, ...KOHLOSSUS, ...BARKORIOUS_FORCED, ...BARKORIOUS, ...SANDMANDER, ...JUSTATUE, ...WEIRDFIN, ...ROLLICK, ...NEVERDECKER, ...JOHNLEMON, ...STARRFISH, ...YOKAT, ...BLACKVOLT, ...PRISMOON];

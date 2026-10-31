@@ -12,6 +12,7 @@ export const ITEMS = {
   kushikatsu: { name: 'Kushikatsu', icon: '🍢', kind: 'food', price: 600, desc: 'Deep-fried skewers. No double-dipping!', heal: 0.4, friend: 3 },
   ramen: { name: 'Tonkotsu Ramen', icon: '🍜', kind: 'food', price: 800, desc: 'Rich and filling.', heal: 0.5, friend: 3 },
   ice_cream: { name: 'Soft-Serve', icon: '🍦', kind: 'food', price: 350, desc: 'Yellow Submarine special.', heal: 0.2, friend: 4 },
+  cabbage: { name: 'Garden Cabbage', icon: '🥬', kind: 'food', price: 120, desc: 'Pulled fresh from the Sunset Row community garden (ask the farmer first!). Crunchy; Tokonmon adore it.', heal: 0.2, friend: 3 },
   lemon_tart: { name: 'Lemon Tart', icon: '🍋', kind: 'food', price: 450, desc: 'Sour and sweet.', heal: 0.25, friend: 2 },
   protein_mochi: { name: 'Protein Mochi', icon: '🍡', kind: 'boost', price: 3000, desc: '+1 stat point for one Tokonmon.', sp: 1 },
   star_candy: { name: 'Konpeito Star Candy', icon: '🍬', kind: 'boost', price: 5000, desc: '+1 Astral point for one Tokonmon.', ap: 1 },
