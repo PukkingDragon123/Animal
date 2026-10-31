@@ -361,4 +361,3 @@ export function installTrees(C) {
     }
   });
 }
-export const _dev = { broadleaf, clump, OAK, MAPLE, PLANE, BLOSSOM, LINDEN, leafCol, pal };

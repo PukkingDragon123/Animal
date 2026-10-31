@@ -3,12 +3,28 @@
 //     with normals rebuilt from the depth itself, so creases, corners, the feet of walls and everything
 //     standing on the ground (props, people, creatures) sit in soft contact shadow;
 //  2. a depth-aware blur (horizontal + vertical) that keeps the occlusion from bleeding across edges;
-//  3. the composite: occlusion, aerial haze (thicker with distance and near the ground, tinted to the
-//     sky), an optional whisper of silhouette line, then filmic tone mapping into the canvas;
+//  3. the composite: occlusion, the ink outline (below), aerial haze (thicker with distance and near the
+//     ground, tinted to the sky), then filmic tone mapping into the canvas;
 //  4. for the close third-person camera, a depth of field focused on the player: the shaded frame goes to
 //     an HDR target, a half-resolution disc blur gathers it (each tap weighted by its own blur, so the sharp
 //     player never smears into the soft street behind), and the last pass blends sharp and soft by each
 //     pixel's circle of confusion before the tone mapping.
+// The ink outline (one line style for every asset: buildings, voxel props, furniture, trees, people and the
+// Tokonmon, whose own inverted-hull lines are switched off while this pass draws; see stage.js) is found in the
+// same depth buffer, inside the composite pass: no extra scene render, no extra target, nine depth taps.
+//  - The signed second difference of INVERSE depth along four directions (horizontal, vertical, both
+//    diagonals). 1/z is linear in screen space on any plane, so flat surfaces give exactly zero however
+//    grazing they are: no false lines on the street running to the horizon, and texture detail never draws a
+//    line (depth knows nothing of the paint), so finely textured walls and floors stay clean.
+//  - Silhouettes: a neighbour lies well behind the plane through this pixel (relative jump > uInkP.x); the
+//    line lands on the NEAR side only, so it is one sample wide and hugs the object.
+//  - Creases: the same difference divided by the pixel's angular size measures the change of surface slope
+//    (≈ Δtan of the facing angle), independent of distance; folds sharper than uInkP.y (box corners, a wall
+//    meeting the floor, the edge of a step) get a slightly lighter line; low-poly facets on people stay clean.
+//  - Width: the taps sit uInkW pixels apart (about 1 px at 1080p, more on bigger canvases), so the line keeps
+//    a constant screen width at any distance. It thins out with distance (to uInkP.w) and then the haze,
+//    applied after it, fades it like everything else. The ink is a warm dark colour per mood, picking up a
+//    little of the surface colour underneath (hand-inked, not a black stencil).
 import * as THREE from '../../../vendor/three.module.js';
 
 const VS = 'varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }';
@@ -55,9 +71,26 @@ void main() {
 }`;
 const FINAL_FS = `varying vec2 vUv; uniform sampler2D tColor; uniform sampler2D tAO; uniform float uAO; uniform vec2 uTexel; uniform vec2 uNF;
 uniform mat4 uCamWorld; uniform vec3 uHaze; uniform vec4 uHazeP; uniform float uHazeY;
-uniform vec3 uInk; uniform float uInkA; uniform float uInkK; uniform float uDebug;
+uniform vec3 uInk; uniform float uInkA; uniform float uInkW; uniform vec4 uInkP; uniform vec2 uInkF; uniform float uPixK; uniform float uDebug;
 ${COMMON}
-float lz(vec2 uv) { float d = texture2D(tDepth, uv).x; return d >= 1.0 ? 1e5 : -perspectiveDepthToViewZ(d, uNF.x, uNF.y); }
+// inverse view depth (0 for the sky: infinitely far)
+float iz(vec2 uv) { float d = texture2D(tDepth, uv).x; return d >= 1.0 ? 0.0 : -1.0 / perspectiveDepthToViewZ(d, uNF.x, uNF.y); }
+// ink coverage 0..1 at this pixel (c: its inverse depth)
+float ink(float c) {
+  vec2 o = uTexel * uInkW;
+  vec4 A = vec4(iz(vUv - vec2(o.x, 0.0)), iz(vUv - vec2(0.0, o.y)), iz(vUv - o), iz(vUv + vec2(o.x, -o.y)));
+  vec4 B = vec4(iz(vUv + vec2(o.x, 0.0)), iz(vUv + vec2(0.0, o.y)), iz(vUv + o), iz(vUv + vec2(-o.x, o.y)));
+  vec4 D = (2.0 * c - A - B) / c;                                 // 0 on a plane; > 0: the neighbours fall away behind
+  float hi = max(max(D.x, D.y), max(D.z, D.w)), lo = min(min(D.x, D.y), min(D.z, D.w));
+  // silhouette, near side: a neighbour lies far behind the plane through this pixel
+  float sil = smoothstep(uInkP.x, uInkP.x * 1.6, hi);
+  // the far side of a silhouette (a neighbour far in front): no line here, the near side has it
+  float far = step(uInkP.x, -lo);
+  // crease: the change of slope across this pixel, in units of tan(angle) (diagonals are √2 longer)
+  vec4 C = abs(D) / (uPixK * uInkW * vec4(1.0, 1.0, 1.4142, 1.4142));
+  float crease = smoothstep(uInkP.y, uInkP.y * 1.7, max(max(C.x, C.y), max(C.z, C.w))) * (1.0 - far) * uInkP.z;
+  return max(sil, crease);
+}
 void main() {
   vec3 col = texture2D(tColor, vUv).rgb;
   float d = texture2D(tDepth, vUv).x;
@@ -67,11 +100,11 @@ void main() {
     float ao = texture2D(tAO, vUv).r;
     col *= mix(1.0, ao, uAO);
     if (uDebug > 0.5) col = vec3(ao * 0.6);
-    // a whisper of silhouette line where a surface stands well in front of its neighbour
+    // the ink outline: silhouettes and strong creases, thinning with distance (the haze below fades it further)
     if (uInkA > 0.0) {
-      float c = -vp.z, l = lz(vUv - vec2(uTexel.x, 0.0)), r = lz(vUv + vec2(uTexel.x, 0.0)), u = lz(vUv + vec2(0.0, uTexel.y)), b = lz(vUv - vec2(0.0, uTexel.y));
-      float jump = max(max(l - c, r - c), max(u - c, b - c)) / c;
-      col = mix(col, col * uInk, smoothstep(uInkK, uInkK * 1.8, jump) * uInkA);
+      float k = ink(-1.0 / vp.z) * uInkA * mix(1.0, uInkP.w, smoothstep(uInkF.x, uInkF.y, dist));
+      col = mix(col, uInk + col * 0.12, k);
+      if (uDebug > 1.5) col = vec3(1.0 - k);
     }
     // aerial haze: grows with distance past the start, thicker near the ground
     vec3 wp = (uCamWorld * vec4(vp, 1.0)).xyz;
@@ -133,7 +166,7 @@ export class Composite {
     this.mFinal = sh(FINAL_FS, {
       tColor: { value: null }, tDepth: { value: null }, tAO: { value: null }, uProjInv: projInv, uAO: { value: 0.85 }, uTexel: { value: new THREE.Vector2() }, uNF: { value: new THREE.Vector2() },
       uCamWorld: { value: new THREE.Matrix4() }, uHaze: { value: new THREE.Color() }, uHazeP: { value: new THREE.Vector4(30, 0.02, 0.4, 0.12) }, uHazeY: { value: 0 },
-      uInk: { value: new THREE.Color(0.35, 0.3, 0.42) }, uInkA: { value: 0 }, uInkK: { value: 0.03 }, uDebug: { value: 0 },
+      uInk: { value: new THREE.Color(0.03, 0.018, 0.016) }, uInkA: { value: 0 }, uInkW: { value: 1 }, uInkP: { value: new THREE.Vector4(0.03, 1.1, 0.85, 0.5) }, uInkF: { value: new THREE.Vector2(14, 90) }, uPixK: { value: 0.001 }, uDebug: { value: 0 },
     });
     this.mFinal.toneMapped = true;      // the canvas gets the renderer's filmic tone mapping + sRGB
     this.mShade = this.mFinal.clone(); this.mShade.uniforms = this.mFinal.uniforms; this.mShade.defines = { NO_TONE: '' }; this.mShade.toneMapped = false;
@@ -163,7 +196,9 @@ export class Composite {
       this.rtD = new THREE.WebGLRenderTarget(Math.max(1, W >> 1), Math.max(1, H >> 1), { type: THREE.HalfFloatType, depthBuffer: false, minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter });
     }
   }
-  /** o: { ao (strength 0..1), aoRadius, haze: Color, hazeP: [start, density, max, heightFalloff], hazeY, ink (alpha), inkCol, inkK,
+  /** o: { ao (strength 0..1), aoRadius, haze: Color, hazeP: [start, density, max, heightFalloff], hazeY,
+   *       ink (outline strength 0..1), inkCol (Color, linear), inkW (tap spacing px; default ~1 px per 1080 rows),
+   *       inkP: [silhouette jump, crease Δtan, crease strength, far strength], inkFade: [start m, end m],
    *       dof: { focus (m), k (blur growth), tol (in-focus slack), px (largest blur radius, fraction of the height) } } */
   render(scene, cam, W, H, o = {}) {
     const aoOn = (o.ao ?? 0.85) > 0, aoScale = Math.min(0.5, 720 / Math.max(W, 1));
@@ -185,7 +220,9 @@ export class Composite {
     F.uTexel.value.set(1 / W, 1 / H); F.uNF.value.set(...nf); F.uCamWorld.value.copy(cam.matrixWorld);
     if (o.haze) F.uHaze.value.copy(o.haze);
     if (o.hazeP) F.uHazeP.value.set(...o.hazeP); F.uHazeY.value = o.hazeY || 0;
-    F.uDebug.value = o.debug ? 1 : 0; F.uInkA.value = o.ink || 0; if (o.inkCol) F.uInk.value.set(o.inkCol); F.uInkK.value = o.inkK ?? 0.03;
+    F.uDebug.value = o.debug === 'ink' ? 2 : o.debug ? 1 : 0; F.uInkA.value = o.ink || 0; if (o.inkCol) F.uInk.value.copy(o.inkCol);
+    F.uInkW.value = o.inkW ?? Math.max(1, Math.round(H / 1080 * 1.25)); F.uPixK.value = 2 / (cam.projectionMatrix.elements[5] * H);
+    if (o.inkP) F.uInkP.value.set(...o.inkP); if (o.inkFade) F.uInkF.value.set(...o.inkFade);
     const D = o.dof;
     if (!D || !(D.px > 0)) { this.pass(this.mFinal, null); return; }
     // depth of field: shade into HDR, gather the soft copy at half resolution, blend + tone map

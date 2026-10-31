@@ -122,10 +122,10 @@ async function jumpTo(X, k) {
 // ------------------------------------------------------------------ 1. the bedroom: sunlight, Wheezowl, a stretch
 async function wake(X) {
   const { app, w, st, cin, say } = X, nm = st.player.name;
-  const ROOM = [56.3, 146.3, 64.2, 151.6];
+  const ROOM = [56.3, 146.3, 64.2, 151.68];
   const hero = w.addPerson('hero', st.look, [57.25, 149.62, 0, 3]);
   seat(hero, 57.25, 149.62, 0, 3.58); face(hero, 'sleepy', 8);
-  const owl = await w.addMon('owl', 'wheezowl', [58.35, 150.15, -2.0, 3], { clip: 'sleep' });
+  const owl = await w.addMon('owl', 'wheezowl', [58.25, 150.3, 0.9, 3], { clip: 'sleep' });   // on the rug, facing into the room
   w.setPlayer(hero, null); if (w.city) w.city.L = 1;
   // a shaft of afternoon sun through the west window, dust drifting in it
   const sd = (w.st.mood && w.st.mood.sunDir) || [-0.9, 0.62, 0.3], L = Math.hypot(...sd);
@@ -135,13 +135,13 @@ async function wake(X) {
   // eyes opening: warm light, a slow dolly in on the sleepy-head
   cin.veil.a = 1; cin.veil.color = '#fff0d6';
   app.fade(0, 200);
-  await cin.dolly(hero, { from: 5.2, to: 3.4, yaw: 58, pitch: 14, hold: 9, dur: 0 });
+  await cin.dolly(hero, { from: 2.7, to: 2.0, yaw: 30, pitch: 10, hold: 9, dur: 0 });
   w.emote('hero', 'z', 3);
   await cin.veilTo(0, 1600);
   await cin.beat('bedroom');
   // the Wheezowl alarm, right in your ear
   owl.play('wheeze'); w.emote('owl', 'note', 3); sfx(app, 'coo', { pitch: 0.7 });
-  await cin.push(owl, { yaw: 115, dist: 2.3, at: 'chest', pitch: 6 });
+  await cin.push(owl, { yaw: 62, dist: 2.2, at: 'chest', pitch: 8 });
   cin.handheld(0.012);
   await say('???', 'Hoo… hoo-WHEEEEZE!');
   await cin.beat('owl');
@@ -152,7 +152,7 @@ async function wake(X) {
   // up you get (the cut hides the hop off the mattress)
   hero.place(57.25, 150.05, 0.4, 3); hero.play('stretch', { restart: true }); face(hero, 'sleepy', 2);
   owl.play('idle');
-  await cin.two(hero, owl, { dist: 4.4, angle: 8, dur: 0, pitch: 10 });
+  await cin.frame(hero, { at: 'chest', yaw: 70, dist: 3.4, pitch: 12, dur: 0, push: 0.06, focus: 0.2 });
   await app.wait(900);
   await cin.beat('stretch');
   // Mom, from downstairs: the camera looks toward the door with you

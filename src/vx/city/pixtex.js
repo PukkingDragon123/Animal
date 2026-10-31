@@ -5,10 +5,19 @@
 // Surfaces tile seamlessly (periodic noise, wrap-around strokes) and carry believable wear:
 // per-brick tone, mortar shadow, soot and efflorescence; asphalt aggregate, cracks and tar snakes;
 // paver bevels, gum spots and moss in the joints; rain streaks on stucco; lapped siding with nails.
+// Two densities: painters lay their pixel art out in DESIGN pixels (PXM = 32 per metre: an 8-pixel brick is
+// 25 cm), and the canvas holds HD × that (64 texels per metre). Shapes keep their size; everything that is
+// detail is painted at the full resolution: 1-texel mortar, joints, arrises and bevels (P.fh / P.fv / P.fpx,
+// block()), grain and per-pixel noise (pixels() samples every texel), ordered dithering, specks, cracks and
+// stains, and lettering (rasterised at the full size). The surfaces seen up close (walls, ground, roofs,
+// windows, doors, shopfronts, signs) add their own extra detail on top: clay texture and struck mortar in
+// the bricks, wood grain, glaze glints, fabric weave, finer muntins, grime.
 import * as THREE from '../../../vendor/three.module.js';
 
-export const PXM = 32;                         // texels per metre (walls, floors, props)
+export const PXM = 32;                         // design texels per metre (painters lay out their art in these)
+export const HD = 2;                           // texels per design texel: 64 per metre on the canvas
 const CACHE = new Map();
+let PK = 1, PXX = -1, PXY = -1;                // the scale of the texture being painted; the texel pixels() is filling
 
 // ---------------------------------------------------------------- colour + random
 export const hx = (c) => { const n = parseInt(c.slice(1, 7), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
@@ -23,8 +32,9 @@ export const hex = (s) => { const m = s.match(/\d+/g); return '#' + m.slice(0, 3
 export const rnd = (seed) => { let x = (seed >>> 0) || 1; return () => ((x = (x * 1664525 + 1013904223) >>> 0) / 4294967296); };
 export const hashStr = (s) => { let h = 2166136261; for (const ch of String(s)) h = Math.imul(h ^ ch.charCodeAt(0), 16777619); return h >>> 0; };
 const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
-/** ordered-dither test: true where a pixel at (x, y) should take the second colour for coverage t */
-export const dith = (x, y, t) => t > (BAYER[(y & 3) * 4 + (x & 3)] + 0.5) / 16;
+/** ordered-dither test: true where a pixel at (x, y) should take the second colour for coverage t
+ *  (inside pixels() the threshold comes from the texel being filled, so HD canvases dither at full resolution) */
+export const dith = (x, y, t) => { if (PXX >= 0) { x = PXX; y = PXY; } return t > (BAYER[(y & 3) * 4 + (x & 3)] + 0.5) / 16; };
 /** a ramp of shades of base (k < 0 darker/cooler, k > 0 lighter/warmer) as [r, g, b] arrays */
 export const ramp = (base, ks) => ks.map((k) => rgb(k >= 0 ? light(base, k) : dark(base, -k)));
 /** pick a ramp colour for value v (0..1), dithering between neighbouring steps */
@@ -42,26 +52,35 @@ export function pnoise(r, gw, gh = gw) {
 }
 /** fractal periodic noise: oct octaves starting at a g × gh lattice */
 export function fnoise(r, g, oct = 3, gh = g) { const N = []; for (let i = 0; i < oct; i++) N.push(pnoise(r, g << i, gh << i)); return (u, v) => { let s = 0, a = 1, t = 0; for (const n of N) { s += n(u, v) * a; t += a; a *= 0.5; } return s / t; }; }
-/** fast path for noisy surfaces: every pixel from fn(x, y) → [r, g, b] */
+/** fast path for noisy surfaces: every pixel from fn(x, y) → [r, g, b]. W, H, x, y are design pixels; on an HD
+ *  canvas fn is sampled at every texel (x, y step by 1 / HD), so grain, noise and dithering come out finer */
 export function pixels(g, W, H, fn) {
-  const im = g.createImageData(W, H), d = im.data;
-  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const c = fn(x, y), i = (y * W + x) * 4; d[i] = c[0]; d[i + 1] = c[1]; d[i + 2] = c[2]; d[i + 3] = 255; }
+  const k = PK, RW = Math.round(W * k), RH = Math.round(H * k), im = g.createImageData(RW, RH), d = im.data;
+  try {
+    for (let y = 0; y < RH; y++) for (let x = 0; x < RW; x++) { PXX = x; PXY = y; const c = fn(x / k, y / k), i = (y * RW + x) * 4; d[i] = c[0]; d[i + 1] = c[1]; d[i + 2] = c[2]; d[i + 3] = 255; }
+  } finally { PXX = PXY = -1; }
   g.putImageData(im, 0, 0);
 }
 
 // ---------------------------------------------------------------- texture factory
-/** A cached pixel texture wM × hM metres at ppm texels per metre; paint(g, W, H, r, P) draws it. */
+/**
+ * A cached pixel texture wM × hM metres; paint(g, W, H, r, P) draws it in design pixels (o.ppm per metre, default
+ * PXM) onto a canvas o.hd × finer (default HD; 1 keeps it at the design density). W, H and every Painter / canvas
+ * call take design pixels (the context is scaled); P.k is the scale, P.fh / fv / fpx paint single texels.
+ */
 export function ptex(key, wM, hM, paint, o = {}) {
-  const ppm = o.ppm || PXM, k = key + '|' + wM + '|' + hM + '|' + ppm;
+  const ppm = o.ppm || PXM, hd = Math.max(1, Math.round(o.hd ?? (ppm >= 96 ? 1 : HD))), k = key + '|' + wM + '|' + hM + '|' + ppm + (hd > 1 ? '|hd' + hd : '');
   if (CACHE.has(k)) return CACHE.get(k);
-  const W = Math.max(1, Math.round(wM * ppm)), H = Math.max(1, Math.round(hM * ppm));
-  const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+  const W = Math.max(1, Math.round(wM * ppm)), H = Math.max(1, Math.round(hM * ppm)), RW = W * hd, RH = H * hd;
+  const cv = document.createElement('canvas'); cv.width = RW; cv.height = RH;
   const g = cv.getContext('2d', { willReadFrequently: true }); g.imageSmoothingEnabled = false;
-  const P = new Painter(g, W, H);
-  paint(g, W, H, rnd(hashStr(key)), P);
-  if (o.paint ?? PAINTED.test(key)) despeckle(g, W, H);
+  g.setTransform(hd, 0, 0, hd, 0, 0);
+  const P = new Painter(g, W, H, hd), pk = PK;
+  PK = hd;
+  try { paint(g, W, H, rnd(hashStr(key)), P); } finally { PK = pk; g.setTransform(1, 0, 0, 1, 0, 0); }
+  if (o.paint ?? PAINTED.test(key)) despeckle(g, RW, RH);
   const t = new THREE.CanvasTexture(cv);
-  if (P.glass) t.userData.glass = P.glass;          // glazed panes (texel rects): mirror-smooth in the material (render/surface.js)
+  if (P.glass) t.userData.glass = P.glass.map((q) => q.map((v) => v * hd));   // glazed panes (texel rects): mirror-smooth in the material (render/surface.js)
   t.colorSpace = THREE.SRGBColorSpace; t.magFilter = THREE.NearestFilter; t.minFilter = THREE.NearestMipmapLinearFilter;
   t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 4;
   t.userData.size = [wM, hM]; t.userData.key = k;
@@ -103,9 +122,10 @@ const F35 = {
 /** width in pixels of str in the 3 × 5 font */
 export const tinyW = (str) => String(str).length * 4 - 1;
 
-/** Pixel painting helpers on a canvas (integer rects, wrap-around, dithering). */
+/** Pixel painting helpers on a canvas (integer rects, wrap-around, dithering). Coordinates are design pixels; the
+ *  canvas may hold k texels per design pixel (ptex: HD), and the detail helpers draw single texels. */
 export class Painter {
-  constructor(g, W, H) { this.g = g; this.W = W; this.H = H; }
+  constructor(g, W, H, k = 1) { this.g = g; this.W = W; this.H = H; this.k = k; this.t = 1 / k; }
   fill(c) { this.g.fillStyle = c; this.g.fillRect(0, 0, this.W, this.H); return this; }
   rect(x, y, w, h, c) { if (w <= 0 || h <= 0) return this; this.g.fillStyle = c; this.g.fillRect(Math.round(x), Math.round(y), Math.round(w), Math.round(h)); return this; }
   /** a rect that wraps around the texture edges (for seamless tiles) */
@@ -118,48 +138,78 @@ export class Painter {
   px(x, y, c) { this.g.fillStyle = c; this.g.fillRect(((Math.round(x) % this.W) + this.W) % this.W, ((Math.round(y) % this.H) + this.H) % this.H, 1, 1); return this; }
   hline(x, y, w, c) { return this.rect(x, y, w, 1, c); }
   vline(x, y, h, c) { return this.rect(x, y, 1, h, c); }
-  /** dither c over a rect with coverage t (0..1), or t(x, y) */
-  dither(x0, y0, w, h, c, t) { this.g.fillStyle = c; for (let y = y0; y < y0 + h; y++) for (let x = x0; x < x0 + w; x++) if (dith(x, y, typeof t === 'function' ? t(x, y) : t)) this.g.fillRect(x, y, 1, 1); return this; }
-  /** sprinkle n single pixels in colour c */
-  speck(n, c, r, x0 = 0, y0 = 0, w = this.W, h = this.H) { this.g.fillStyle = c; for (let i = 0; i < n; i++) this.g.fillRect(x0 + Math.floor(r() * w), y0 + Math.floor(r() * h), 1, 1); return this; }
-  /** a dithered elliptic blob (stain, moss, puddle edge) wrapping round the edges; t = peak coverage */
-  blob(cx, cy, rx, ry, c, t = 1) {
-    cx = Math.round(cx); cy = Math.round(cy);
-    for (let y = -ry; y <= ry; y++) for (let x = -rx; x <= rx; x++) { const d = (x / (rx + 0.5)) ** 2 + (y / (ry + 0.5)) ** 2; if (d <= 1 && dith(cx + x + 64, cy + y + 64, t * (1.25 - d))) this.px(cx + x, cy + y, c); }
+  // ---- single texels (on an HD canvas: 1 / k of a design pixel; x, y, w, h in design pixels, may be fractional)
+  /** one texel at (x, y), wrapping round the edges */
+  fpx(x, y, c) {
+    const k = this.k, RW = this.W * k, RH = this.H * k, X = ((Math.floor(x * k + 1e-6) % RW) + RW) % RW, Y = ((Math.floor(y * k + 1e-6) % RH) + RH) % RH;
+    this.g.fillStyle = c; this.g.fillRect(X / k, Y / k, 1 / k, 1 / k); return this;
+  }
+  /** a line one texel tall (fh) or wide (fv) */
+  fh(x, y, w, c) { const k = this.k; if (w <= 0) return this; this.g.fillStyle = c; this.g.fillRect(Math.round(x * k) / k, Math.floor(y * k + 1e-6) / k, Math.round(w * k) / k, 1 / k); return this; }
+  fv(x, y, h, c) { const k = this.k; if (h <= 0) return this; this.g.fillStyle = c; this.g.fillRect(Math.floor(x * k + 1e-6) / k, Math.round(y * k) / k, 1 / k, Math.round(h * k) / k); return this; }
+  /** a wrapping line one texel tall / wide */
+  fwh(x, y, w, c) { const k = this.k; for (let i = 0, n = Math.round(w * k); i < n; i++) this.fpx(x + i / k, y, c); return this; }
+  fwv(x, y, h, c) { const k = this.k; for (let i = 0, n = Math.round(h * k); i < n; i++) this.fpx(x, y + i / k, c); return this; }
+  /** dither c over a rect with coverage t (0..1), or t(x, y); at every texel (t gets design coordinates) */
+  dither(x0, y0, w, h, c, t) {
+    const k = this.k, T = 1 / k, f = typeof t === 'function', X0 = Math.round(x0 * k), Y0 = Math.round(y0 * k), X1 = Math.round((x0 + w) * k), Y1 = Math.round((y0 + h) * k);
+    this.g.fillStyle = c;
+    for (let Y = Y0; Y < Y1; Y++) for (let X = X0; X < X1; X++) if (dith(X, Y, f ? t(X * T, Y * T) : t)) this.g.fillRect(X * T, Y * T, T, T);
     return this;
   }
-  /** a hairline crack: a wandering 1px walk (o.edge: lighter chipped rim, o.branch: chance to fork) */
-  crack(x, y, n, c, r, o = {}) {
-    let a = o.a ?? r() * 6.283;
-    for (let i = 0; i < n; i++) {
-      a += (r() - 0.5) * (o.wob ?? 0.9); x += Math.cos(a); y += Math.sin(a); this.px(x, y, c);
-      if (o.edge && r() < 0.45) this.px(x + 1, y + 1, o.edge);
-      if (o.branch && r() < o.branch) this.crack(x, y, Math.floor(n * 0.35), c, r, { a: a + (r() < 0.5 ? 1.1 : -1.1), wob: o.wob, edge: o.edge });
+  /** sprinkle single texels in colour c (n per design-pixel-sized speck: the same coverage, finer grain) */
+  speck(n, c, r, x0 = 0, y0 = 0, w = this.W, h = this.H) {
+    const k = this.k, T = 1 / k; this.g.fillStyle = c;
+    for (let i = 0, m = Math.round(n * k * k); i < m; i++) this.g.fillRect(Math.floor((x0 + r() * w) * k) * T, Math.floor((y0 + r() * h) * k) * T, T, T);
+    return this;
+  }
+  /** a dithered elliptic blob (stain, moss, puddle edge) wrapping round the edges; t = peak coverage */
+  blob(cx, cy, rx, ry, c, t = 1) {
+    const k = this.k; cx = Math.round(cx); cy = Math.round(cy);
+    const RX = Math.round((rx + 0.5) * k), RY = Math.round((ry + 0.5) * k);
+    for (let Y = -RY; Y < RY; Y++) for (let X = -RX; X < RX; X++) {
+      const x = (X + 0.5) / k, y = (Y + 0.5) / k, d = (x / (rx + 0.5)) ** 2 + (y / (ry + 0.5)) ** 2;
+      if (d <= 1 && dith(cx * k + X + 64, cy * k + Y + 64, t * (1.25 - d))) this.fpx(cx + X / k, cy + Y / k, c);
     }
     return this;
   }
-  /** a 1px outlined, top-lit / bottom-shaded block */
-  block(x, y, w, h, c, o = {}) {
-    this.rect(x, y, w, h, c);
-    if (o.hi !== false) { this.hline(x, y, w, light(c, o.hk || 0.18)); this.vline(x, y, h, light(c, (o.hk || 0.18) * 0.6)); }
-    if (o.lo !== false) { this.hline(x, y + h - 1, w, dark(c, o.lk || 0.22)); this.vline(x + w - 1, y, h, dark(c, (o.lk || 0.22) * 0.7)); }
-    if (o.ink) { this.g.strokeStyle = o.ink; this.g.lineWidth = 1; this.g.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1); }
+  /** a hairline crack: a wandering 1-texel walk (o.edge: lighter chipped rim, o.branch: chance to fork) */
+  crack(x, y, n, c, r, o = {}) {
+    const k = this.k, T = 1 / k, wob = (o.wob ?? 0.9) / Math.sqrt(k);
+    let a = o.a ?? r() * 6.283;
+    for (let i = 0; i < n * k; i++) {
+      a += (r() - 0.5) * wob; x += Math.cos(a) * T; y += Math.sin(a) * T; this.fpx(x, y, c);
+      if (o.edge && r() < 0.45) this.fpx(x + T, y + T, o.edge);
+      if (o.branch && r() < o.branch / k) this.crack(x, y, Math.floor(n * 0.35), c, r, { a: a + (r() < 0.5 ? 1.1 : -1.1), wob: o.wob, edge: o.edge });
+    }
     return this;
   }
-  /** crisp lettering: the font is rasterised off-screen and thresholded, so every glyph edge is a hard pixel */
+  /** a top-lit / bottom-shaded block: lit arris and shadowed edge one texel wide, a softer second step inside
+   *  (o.ink: a dark outline) */
+  block(x, y, w, h, c, o = {}) {
+    const k = this.k, T = 1 / k, hk = o.hk || 0.18, lk = o.lk || 0.22;
+    this.rect(x, y, w, h, c);
+    if (o.hi !== false) { this.fh(x, y, w, light(c, hk)); this.fv(x, y, h, light(c, hk * 0.6)); if (k > 1) { this.fh(x + T, y + T, w - 2 * T, light(c, hk * 0.4)); this.fv(x + T, y + T, h - 2 * T, light(c, hk * 0.25)); } }
+    if (o.lo !== false) { this.fh(x, y + h - T, w, dark(c, lk)); this.fv(x + w - T, y, h, dark(c, lk * 0.7)); if (k > 1) { this.fh(x + T, y + h - 2 * T, w - 2 * T, dark(c, lk * 0.4)); this.fv(x + w - 2 * T, y + T, h - 3 * T, dark(c, lk * 0.25)); } }
+    if (o.ink) { this.g.strokeStyle = o.ink; this.g.lineWidth = T; this.g.strokeRect(x + T / 2, y + T / 2, w - T, h - T); }
+    return this;
+  }
+  /** crisp lettering: the font is rasterised off-screen at the canvas's full resolution and thresholded, so every
+   *  glyph edge is a hard texel (o: align, shadow (one design pixel down-right), outline (one texel), hi, weight, font) */
   text(str, x, y, size, c, o = {}) {
-    const font = `${o.weight || 700} ${size}px ${o.font || '"DotGothic16", "Courier New", monospace'}`;
+    const k = this.k, T = 1 / k, S = Math.max(1, Math.round(size * k));
+    const font = `${o.weight || 700} ${S}px ${o.font || '"DotGothic16", "Courier New", monospace'}`;
     const cv = document.createElement('canvas'), g = cv.getContext('2d', { willReadFrequently: true }); g.font = font;
-    const w = Math.ceil(g.measureText(str).width) + 4, h = Math.ceil(size * 1.5) + 4; cv.width = w; cv.height = h;
+    const w = Math.ceil(g.measureText(str).width) + 4, h = Math.ceil(S * 1.5) + 4; cv.width = w; cv.height = h;
     g.font = font; g.textBaseline = 'middle'; g.textAlign = 'left'; g.fillStyle = '#ffffff'; g.fillText(str, 2, Math.round(h / 2));
     const d = g.getImageData(0, 0, w, h).data, al = o.align || 'center';
-    const x0 = Math.round(al === 'left' ? x : al === 'right' ? x - (w - 4) : x - (w - 4) / 2) - 2, y0 = Math.round(y - h / 2);
+    const X = Math.round(x * k), Y = Math.round(y * k), x0 = Math.round(al === 'left' ? X : al === 'right' ? X - (w - 4) : X - (w - 4) / 2) - 2, y0 = Math.round(Y - h / 2);
     const on = (i, j) => i >= 0 && j >= 0 && i < w && j < h && d[(j * w + i) * 4 + 3] > 118;
-    const draw = (col, ox, oy) => { this.g.fillStyle = col; for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) if (on(i, j)) this.g.fillRect(x0 + i + ox, y0 + j + oy, 1, 1); };
-    if (o.shadow) draw(o.shadow, 1, 1);
-    if (o.outline) for (const [ox, oy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) draw(o.outline, ox, oy);
+    const draw = (col, ox, oy) => { this.g.fillStyle = col; for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) if (on(i, j)) this.g.fillRect((x0 + i + ox) * T, (y0 + j + oy) * T, T, T); };
+    if (o.shadow) draw(o.shadow, k, k);
+    if (o.outline) for (const [ox, oy] of k > 1 ? [[-1, 0], [1, 0], [0, -1], [0, 1], [-1, -1], [1, 1], [-1, 1], [1, -1]] : [[-1, 0], [1, 0], [0, -1], [0, 1]]) draw(o.outline, ox, oy);
     draw(c, 0, 0);
-    if (o.hi) { this.g.fillStyle = o.hi; for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) if (on(i, j) && !on(i, j - 1)) this.g.fillRect(x0 + i, y0 + j, 1, 1); }
+    if (o.hi) { this.g.fillStyle = o.hi; for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) if (on(i, j) && !on(i, j - 1)) this.g.fillRect((x0 + i) * T, (y0 + j) * T, T, T); }
     return this;
   }
   /** small crisp 3 × 5 lettering (left aligned at x, top at y) */

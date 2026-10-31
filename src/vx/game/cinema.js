@@ -528,11 +528,12 @@ export class Cinema {
   /** called by the app loop before the world updates; returns the (slow-motion / hit-stop scaled) dt for the world */
   tick(dt) {
     this.frameN++;
-    this.updateSkip(dt);
+    const rt = now(), rdt = Math.min(0.25, Math.max(0, (rt - (this.rt || rt)) / 1000)); this.rt = rt;   // real time: holding to skip, the skip cover
+    this.updateSkip(rdt);
     const sdt = dt * this.timeScale();
     this.time += sdt;
     this.bars += clampN(this.barsTo - this.bars, -dt * 2.4, dt * 2.4);
-    this.cover += clampN((this.skipping ? 1 : 0) - this.cover, -dt * 2.2, dt * 6);
+    this.cover += clampN((this.skipping ? 1 : 0) - this.cover, -rdt * 2.2, rdt * 6);
     for (const c of this.cards) { c.t += dt; if (c.t > c.dur && c.done) { const d = c.done; c.done = null; d(); } }
     this.cards = this.cards.filter((c) => c.t < c.dur + 0.05);
     for (const f of this.flashes) f.t += dt; this.flashes = this.flashes.filter((f) => f.t < f.dur);

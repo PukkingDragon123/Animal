@@ -27,11 +27,12 @@ installLighting();
 // exposure. Sun colours follow the real thing (near-white at ~50° by day, amber at ~22° for golden hour, deep
 // orange a few degrees above the horizon at dusk, a cool high moon at night), tuned toward the Tokonmon's
 // painted look: saturated sunny skies, warm colourful bounce, bright shadow fill, and a cosy (not murky) night.
+// ink: the outline colour of the HD composite (render/composite.js), a warm dark per mood, never pure black.
 export const MOODS = {
-  day: { sun: 0xfff0d6, sunI: 3.4, sunDir: [-0.55, 0.82, 0.42], hemiSky: 0xa6ccf6, hemiGround: 0xc09468, hemiI: 1.05, fog: 0xbcd8f2, hazeP: [38, 0.014, 0.28, 0.05], bg: 0x9cc4ec, sky: ['#2f74d8', '#6eb2f0', '#cfe8f8'], clouds: 0.4, env: 0.9, glow: 0.18, emissive: 0, pools: 0, ao: 0.85, exposure: 1.04 },
-  golden: { sun: 0xffb46c, sunI: 3.6, sunDir: [-0.9, 0.4, 0.3], hemiSky: 0xa4b4ee, hemiGround: 0xc88a58, hemiI: 1.05, fog: 0xf0c8a4, hazeP: [36, 0.016, 0.3, 0.05], bg: 0xe8b898, sky: ['#3f6ac4', '#d0a8c4', '#ffc488'], clouds: 0.36, env: 0.9, glow: 0.5, emissive: 0.25, pools: 0.05, halo: 0, ao: 0.85, exposure: 1.08 },
-  dusk: { sun: 0xff8650, sunI: 1.8, sunDir: [-0.95, 0.16, 0.3], hemiSky: 0x5e80cc, hemiGround: 0x74503e, hemiI: 1.0, fog: 0x7e82b4, hazeP: [32, 0.02, 0.4, 0.05], bg: 0x5a5a9a, sky: ['#1a2e70', '#6a6cb0', '#ff9a68'], clouds: 0.45, env: 0.85, glow: 1.8, emissive: 0.85, pools: 0.4, halo: 0.35, ao: 0.82, exposure: 1.2 },
-  night: { sun: 0xa4b8ff, sunI: 0.6, sunDir: [0.35, 1, 0.55], hemiSky: 0x4a5ca8, hemiGround: 0x3a2a34, hemiI: 0.7, fog: 0x242c58, hazeP: [32, 0.022, 0.44, 0.06], bg: 0x0c1020, sky: ['#060a1c', '#142048', '#34305a'], clouds: 0.22, env: 0.7, glow: 2.8, emissive: 1.0, pools: 0.55, halo: 0.5, ao: 0.78, exposure: 1.3 },
+  day: { ink: '#2e1c18', sun: 0xfff0d6, sunI: 3.4, sunDir: [-0.55, 0.82, 0.42], hemiSky: 0xa6ccf6, hemiGround: 0xc09468, hemiI: 1.05, fog: 0xbcd8f2, hazeP: [38, 0.014, 0.28, 0.05], bg: 0x9cc4ec, sky: ['#2f74d8', '#6eb2f0', '#cfe8f8'], clouds: 0.4, env: 0.9, glow: 0.18, emissive: 0, pools: 0, ao: 0.85, exposure: 1.04 },
+  golden: { ink: '#3a1c12', sun: 0xffb46c, sunI: 3.6, sunDir: [-0.9, 0.4, 0.3], hemiSky: 0xa4b4ee, hemiGround: 0xc88a58, hemiI: 1.05, fog: 0xf0c8a4, hazeP: [36, 0.016, 0.3, 0.05], bg: 0xe8b898, sky: ['#3f6ac4', '#d0a8c4', '#ffc488'], clouds: 0.36, env: 0.9, glow: 0.5, emissive: 0.25, pools: 0.05, halo: 0, ao: 0.85, exposure: 1.08 },
+  dusk: { ink: '#2a1626', sun: 0xff8650, sunI: 1.8, sunDir: [-0.95, 0.16, 0.3], hemiSky: 0x5e80cc, hemiGround: 0x74503e, hemiI: 1.0, fog: 0x7e82b4, hazeP: [32, 0.02, 0.4, 0.05], bg: 0x5a5a9a, sky: ['#1a2e70', '#6a6cb0', '#ff9a68'], clouds: 0.45, env: 0.85, glow: 1.8, emissive: 0.85, pools: 0.4, halo: 0.35, ao: 0.82, exposure: 1.2 },
+  night: { ink: '#180e16', sun: 0xa4b8ff, sunI: 0.6, sunDir: [0.35, 1, 0.55], hemiSky: 0x4a5ca8, hemiGround: 0x3a2a34, hemiI: 0.7, fog: 0x242c58, hazeP: [32, 0.022, 0.44, 0.06], bg: 0x0c1020, sky: ['#060a1c', '#142048', '#34305a'], clouds: 0.22, env: 0.7, glow: 2.8, emissive: 1.0, pools: 0.55, halo: 0.5, ao: 0.78, exposure: 1.3 },
 };
 
 const _up = new THREE.Vector3(0, 1, 0), _v1 = new THREE.Vector3(), _v2 = new THREE.Vector3(), _v3 = new THREE.Vector3(), _v4 = new THREE.Vector3();
@@ -112,7 +113,7 @@ export class VxStage {
     const m = this.mood = Object.assign({}, MOODS[name] || MOODS.day); this.moodName = name;
     this.sun.color.set(m.sun); this.sun.intensity = m.sunI;
     this.hemi.color.set(m.hemiSky); this.hemi.groundColor.set(m.hemiGround); this.hemi.intensity = m.hemiI;
-    this.haze = new THREE.Color(m.fog);
+    this.haze = new THREE.Color(m.fog); this.inkCol = new THREE.Color(m.ink || '#2e1c18');
     this.scene.fog = this.style.hd ? null : new THREE.Fog(m.fog, 70, 220);
     if (this.style.hd && m.sky) {
       // the painted pixel sky dome, and its reflection environment for glossy surfaces
@@ -162,7 +163,12 @@ export class VxStage {
       // where the HD-2D pass's tilt-shift does the job; hd2d.js reads cv.depthDof to hand over between the two
       const dk = (s.dof ?? 1) * (1 - smoothstep(9, 16, this.view.dist)); this.cv.depthDof = dk;
       const dof = dk > 0.01 ? { focus: this.view.dist, k: 0.9, tol: 0.16, px: 0.0045 * dk } : null;
-      this.comp.render(this.scene, this.cam, this.w, this.h, { ao: (m.ao ?? 0.85) * (s.ao ?? 1), aoRadius: s.aoRadius ?? 1.2, aoK: s.aoK, haze: this.haze, hazeP: [m.hazeP[0] + this.view.dist * 0.15 - 4.5, m.hazeP[1], m.hazeP[2] * (s.haze ?? 1), m.hazeP[3]], ink: s.inkA ?? 0, inkK: s.inkK, debug: s.debug, dof });
+      // one ink line for every asset: the composite finds it in the depth buffer, so the Tokonmon's own hull
+      // outlines (model.js) step aside while it draws
+      const ink = s.inkA ?? 0;
+      if (ink > 0) OUTLINE.show(false);
+      this.comp.render(this.scene, this.cam, this.w, this.h, { ao: (m.ao ?? 0.85) * (s.ao ?? 1), aoRadius: s.aoRadius ?? 1.2, aoK: s.aoK, haze: this.haze, hazeP: [m.hazeP[0] + this.view.dist * 0.15 - 4.5, m.hazeP[1], m.hazeP[2] * (s.haze ?? 1), m.hazeP[3]], ink, inkCol: this.inkCol, inkW: s.inkW, inkP: s.inkP, inkFade: s.inkFade, debug: s.debug, dof });
+      if (ink > 0) OUTLINE.show(true);
       return this.cv;
     }
     this.cv.depthDof = 0;
@@ -181,7 +187,8 @@ export class VxStage {
     this.r.setRenderTarget(null); this.r.render(this.inkScene, this.inkCam);
     return this.cv;
   }
-  // { hd: realistic HDR look (ao, aoRadius, haze, inkA, pools: multipliers) } or the old { ink: outlines, toon: banded cel shading }
+  // { hd: realistic HDR look (ao, aoRadius, haze, pools: multipliers; inkA: outline strength, inkW / inkP / inkFade:
+  //   its width and thresholds, see render/composite.js) } or the old { ink: outlines, toon: banded cel shading }
   setStyle(o = {}) {
     this.style = Object.assign(this.style || {}, o);
     if (o.hd) { if (!this.comp) this.comp = new Composite(this.r); this.style.ink = false; this.style.toon = false; this.scene.fog = null; this.r.toneMapping = THREE.NeutralToneMapping; if (this.moodName) this.setMood(this.moodName); }

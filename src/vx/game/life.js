@@ -20,6 +20,7 @@ import * as THREE from '../../../vendor/three.module.js';
 import { SPECIES } from '../../data/species.js';
 import { ITEMS } from '../../data/items.js';
 import * as S from '../../game/state.js';
+import { OUTLINE } from '../model.js';
 
 // LOD radii (m): animate within ANIM (hysteresis to ANIM2), draw (frozen in their last pose) out to VIS (VIS2)
 const PI = Math.PI, ANIM = 27, ANIM2 = 31, VIS = 48, VIS2 = 54;
@@ -52,7 +53,7 @@ void main() {
   gl_Position = projectionMatrix * modelViewMatrix * vec4(transformed + dd * e, 1.0);
 }`,
   });
-  HULLS.set(src, m); return m;
+  HULLS.set(src, m); OUTLINE.mats.add(m); m.visible = src.visible; return m;      // the stage hides hulls under its ink pass
 }
 /**
  * Merge a Model's cube and outline meshes into skinned meshes (one per material, plus one per expression

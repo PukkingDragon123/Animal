@@ -249,7 +249,13 @@ function hullGeometry(c, pivot) {
   g.setAttribute('bc', new THREE.BufferAttribute(bc, 3));
   return g;
 }
-export const OUTLINE = { uK: { value: 0.001 } };     // world size of one pixel at depth 1 (set by the stage each frame)
+// uK: world size of one pixel at depth 1 (set by the stage each frame). mats: every hull material (these and the
+// skinned twins baked in game/life.js). The stage's HD composite draws one screen-space ink line for everything
+// (render/composite.js), so it hides the hulls while it renders (show(false)): one line style, never two.
+export const OUTLINE = {
+  uK: { value: 0.001 }, mats: new Set(),
+  show(v) { for (const m of this.mats) m.visible = v; },
+};
 const hullMats = new Map();
 function hullMaterial(color, px) {
   const key = color + px; if (hullMats.has(key)) return hullMats.get(key);
@@ -266,7 +272,7 @@ function hullMaterial(color, px) {
       }`,
     fragmentShader: 'uniform vec3 uCol; void main() { gl_FragColor = vec4(uCol, 1.0); }',
   });
-  hullMats.set(key, m); return m;
+  hullMats.set(key, m); OUTLINE.mats.add(m); return m;
 }
 export const rad = (d) => d * D2R;
 
