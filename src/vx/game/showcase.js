@@ -85,7 +85,7 @@ class Diorama {
   // render with the stage's renderer into the corner of its canvas, then copy into the UI as the backdrop
   draw(ui) {
     const st = this.app.stage; if (!st || !st.r) { ui.rect(0, 0, ui.w, ui.h, '#3a2a2e'); return false; }
-    const r = st.r, cv = r.domElement, SS = 2, pw = Math.min(cv.width, ui.w * SS), ph = Math.min(cv.height, ui.h * SS);
+    const r = st.r, cv = r.domElement, SS = ui.k || 2, pw = Math.min(cv.width, Math.round(ui.w * SS)), ph = Math.min(cv.height, Math.round(ui.h * SS));
     this.cam.aspect = ui.w / ui.h; this.cam.updateProjectionMatrix(); this.cam.updateMatrixWorld();
     r.getViewport(_v4); r.getScissor(_s4); const scT = r.getScissorTest(), cc = r.getClearColor(_c).getHex(), ca = r.getClearAlpha(), prevRT = r.getRenderTarget(), ac = r.autoClear;
     r.setRenderTarget(null); const vy = cv.height - ph;

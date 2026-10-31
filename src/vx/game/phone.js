@@ -73,7 +73,7 @@ export class SFPhone {
       for (let yy = sy + 3; yy < sy + sh; yy += 6) for (let xx = sx + 3 + ((yy / 6) & 1) * 3; xx < sx + sw; xx += 6) ui.rect(xx, yy, 1, 1, T.screenL);
       this.statusBar(ui, sx, sy, sw);
       const cy = sy + 15, ch = sh - 17, appK = easeOut(this.appT * 5), ox = R((1 - appK) * 18), g = ui.g;
-      g.save(); g.translate(ox, 0);
+      ui.push(0, 0, 1, 1, ox, 0);
       try {
         if (this.tab === 'home') this.drawHome(ui, sx + 4, cy, sw - 8, ch - 4, dt);
         else {
@@ -82,7 +82,7 @@ export class SFPhone {
           const ax = sx + 6, ay = cy + 20, aw = sw - 12, ah = ch - 24;
           ({ party: () => this.drawParty(ui, ax, ay, aw, ah), dex: () => this.drawDex(ui, ax, ay, aw, ah, dt), bag: () => this.drawBag(ui, ax, ay, aw, ah), map: () => this.drawMap(ui, ax, ay, aw, ah), quests: () => this.drawQuests(ui, ax, ay, aw, ah), settings: () => this.drawSettings(ui, ax, ay, aw, ah) }[this.tab] || (() => {}))();
         }
-      } finally { g.restore(); ui._fs = null; }
+      } finally { ui.pop(); }
     });
     if (ui.ptr.released && ui.inside(dx, dy, dw, dh)) ui.ptr.released = false;
   }
@@ -123,9 +123,9 @@ export class SFPhone {
       const over = ui.inside(cx - cellW / 2, top - 4, cellW, size + 28);
       if (over && (ui.ptr.x !== this._px || ui.ptr.y !== this._py)) this.sel = i;
       const on = i === this.sel, g = ui.g;
-      g.save(); g.translate(cx, top + size); g.scale(pop, pop); g.translate(-cx, -(top + size));
+      ui.push(cx, top + size, pop, pop);
       const b = plinthButton(ui, cx, top, A.icon, { size, sel: on, badge: badges[A.id] || null, modal: true });
-      g.restore(); ui._fs = null;
+      ui.pop();
       // the app's name on a little plate
       const nm = A.label.toUpperCase(), lw = R(ui.tw(nm, { mini: true, bold: true }) + 24);
       frame(ui, cx - R(lw / 2), top + size + 12, lw, 13, { thin: true, r: 1, fill: on ? T.creamL : T.cream, edge: on ? T.brass : null, shadow: false });

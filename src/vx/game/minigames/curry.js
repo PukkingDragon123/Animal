@@ -9,7 +9,7 @@ import * as THREE from '../../../../vendor/three.module.js';
 import { T } from '../../../px/game/ui.js';
 import { V3, clamp, clamp01, lerp, easeOut, boing, fmt, drawScore, keyRow, voxel, GLOW, WHITE, worldText, bigText, vGauge } from './kit.js';
 
-const BPM = 96, BOARD = new V3(60.34, 0.95, 141.66), POT = new V3(59.74, 0.915, 141.69);   // the pot on the front-right burner
+const BPM = 96, BOARD = new V3(60.34, 0.95, 141.66), POT = new V3(59.37, 0.915, 141.7);   // the pot on the free front-left burner (the stove model keeps a pot and a kettle on two others)
 const ING = [
   { id: 'onion', name: 'Onion', key: 'ArrowLeft', glyph: '◀', col: '#e8c8e8' },
   { id: 'carrot', name: 'Carrot', key: 'ArrowUp', glyph: '▲', col: '#f0802a' },
@@ -43,7 +43,7 @@ export default class Curry {
     this.knife = new THREE.Group(); this.knife.position.set(BOARD.x + 0.12, BOARD.y + 0.2, BOARD.z + 0.02); root.add(this.knife);
     this.knife.add(voxel(st, [2, 4, 26], (F) => { const bl = F.c('#e8ecf4'), blD = F.c('#a8acb8'), h = F.c('#3a2a24'), r = F.c('#c8a050'); F.box(0, 0, 0, 1, 3, 15, (x, y) => (y === 0 ? blD : bl)); F.box(0, 2, 16, 1, 3, 16, r); F.box(0, 1, 17, 1, 3, 25, h); }, { vpm: 64, key: 'mg-knife', origin: [1 / 64, 0, 13 / 64] }));
     this.knife.rotation.y = -0.4;
-    this.pot = new THREE.Group(); this.pot.position.copy(POT); root.add(this.pot);
+    this.pot = new THREE.Group(); this.pot.position.copy(POT); this.pot.scale.setScalar(0.85); root.add(this.pot);
     this.pot.add(voxel(st, [26, 15, 26], (F, r, H) => {
       const m = F.c('#c8ccd4'), mD = F.c('#9aa0aa'), mL = F.c('#e8ecf4'), h = F.c('#2a2a32');
       H.ring(F, 12.5, 12.5, 0, 13, 10, 11.6, (x, y, z) => (y === 13 ? mL : (x + y) % 9 === 0 ? mL : x < 10 ? m : mD)); H.disc(F, 12.5, 12.5, 0, 0, 10.5, mD);
@@ -217,7 +217,7 @@ export default class Curry {
     const heat = k === 'simmer' ? this.heat : k === 'stir' ? 0.5 : this.stage >= 1 ? 0.3 : 0;
     this.flame.material.opacity = 0;
     // the gas ring: pixel flames round the burner, taller and orange-tipped as the heat goes up
-    if (heat > 0.02) { this.flT = (this.flT || 0) - dt; if (this.flT <= 0) { this.flT = 0.09; const n = heat > 0.6 ? 2 : 1; for (let i = 0; i < n; i++) { const a = s.rand() * Math.PI * 2, r = 0.15; s.burst(heat > 0.78 ? 'fire' : 'bluefire', [POT.x + Math.cos(a) * r, POT.y + 0.005, POT.z + Math.sin(a) * r], { n: 1, scale: 0.22 + heat * 0.25, speed: 0.15 + heat * 0.25 }); } } }
+    if (heat > 0.02) { this.flT = (this.flT || 0) - dt; if (this.flT <= 0) { this.flT = 0.09; const n = heat > 0.6 ? 2 : 1; for (let i = 0; i < n; i++) { const a = s.rand() * Math.PI * 2, r = 0.13; s.burst(heat > 0.78 ? 'fire' : 'bluefire', [POT.x + Math.cos(a) * r, POT.y + 0.005, POT.z + Math.sin(a) * r], { n: 1, scale: 0.22 + heat * 0.25, speed: 0.15 + heat * 0.25 }); } } }
     if (heat > 0.05 && this.stage >= 1) { this.bubT = (this.bubT || 0) - dt; if (this.bubT <= 0) { this.bubT = 0.65 - heat * 0.4; s.burst('bubble', [POT.x + (s.rand() - 0.5) * 0.14, POT.y + 0.12, POT.z + (s.rand() - 0.5) * 0.14], { n: 1, scale: 0.35, speed: 0.3 }); if (heat > 0.3) s.burst('steam', [POT.x, POT.y + 0.3, POT.z], { n: 1, scale: 0.7 }); } }
     this.soup.position.y = 0.04 + (this.stage >= 1 ? 0.04 : 0) + (k === 'simmer' ? Math.sin(s.t * 14) * 0.004 * this.heat : 0) + this.thick * 0.02;
     this.soupMat.color.set(this.thick > 0 ? lerpHex('#c8a058', '#7a4418', this.thick) : '#c8a058');

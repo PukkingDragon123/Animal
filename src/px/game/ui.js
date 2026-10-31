@@ -1,20 +1,17 @@
-// The game UI, drawn every frame (immediate mode) as true pixel art. The UI canvas IS the art grid
-// (w × h art pixels — about 640×360 on a 1080p screen); the page scales it up by a whole number with
-// nearest-neighbour, so every pixel is crisp. Nothing anti-aliases: panels, buttons, bars, discs and
-// icons are hand-shaded pixel sprites (uikit/frame.js, uikit/icons.js) blitted at integer positions, and
-// text is set in pixel fonts (Tiny5 for body text, Silkscreen for small labels and big titles) rasterised
-// once per glyph with a hard alpha threshold, with the outline / drop shadow baked into the glyph sprite.
-// The look: warm cream parchment panels in chunky copper frames with corner brackets and rivets, glossy
+// The game UI, drawn every frame (immediate mode). Layout works in "units" (a ~640×360 grid: w × h) while
+// the canvas runs at the screen's physical resolution — ui.k device pixels per unit, DPR-aware (3 on a
+// 1080p screen, 6 on a 4K one) — so everything is crisp and detailed, never chunky:
+//  • panels, buttons, bars, discs and icons are pixel art painted at physical resolution (1-px near-black
+//    outlines, multi-tone ramps, hand-placed highlights; uikit/frame.js, uikit/icons.js) and blitted snapped
+//  • text is crisp vector type: Baloo 2 for body text and labels, Silkscreen for big pixel titles (always at
+//    a whole multiple of its 8-px grid, so it stays pixel-perfect)
+// The look: warm cream parchment cards in chunky copper frames with corner brackets and rivets, glossy
 // capsule bars with brass clamps, icon buttons on wooden plinths, cream value pills — and every press
 // squashes and boings back with a tap sound.
-// Primitives (panel, button, bar, banner, icons, toasts), the dialogue box with its portrait slot +
-// choices, roaming-HUD widgets (prompt bubble, keycaps, thumbstick, clock, coin pill, place banner, party
-// medals, radar) and full-screen modal screens (name entry, card picker). Widget bodies live in ./uikit/;
-// this class keeps the state and the public API.
-// Lag: every panel, button face, disc and glyph is cached as a sprite; text widths are memoised; a frame
-// of UI is a few hundred integer drawImage / fillRect calls on a small canvas.
+// Lag: everything detailed is a cached sprite; text widths are memoised; the transform stack (push / pop)
+// allocates nothing; a frame of UI is a few hundred drawImage / fillRect / fillText calls.
 import { T, mx, hash, clamp01, easeOut, easeOutBack, boing, squash, isDark } from './uikit/theme.js';
-import { css, rgba, makeCanvas, CanvasSurf, fillShape, rowIns, sprite, blit, pixelCanvas } from './uikit/gfx.js';
+import { css, rgba, makeCanvas, CanvasSurf, fillShape, rowIns, sprite, blit, pixelCanvas, PX, PY } from './uikit/gfx.js';
 import { drawSmall, drawBig, drawEmblem, ICON_NAMES } from './uikit/icons.js';
 import { frame, knob, pill, tri, gem, sparkle, ball, barShape } from './uikit/frame.js';
 import { drawDialog } from './uikit/dialog.js';
@@ -25,88 +22,54 @@ import { P } from '../surface.js';
 export { T, ICON_NAMES };
 
 // ------------------------------------------------------------------ pixel fonts
-const FONT_FILES = [['Tiny5', 'tiny5.woff2', '400'], ['Silkscreen', 'silkscreen.woff2', '400'], ['Silkscreen', 'silkscreen-bold.woff2', '700']];
+const FONT_FILES = [['TKBaloo', 'baloo2.woff2', '400 800'], ['TKSilkscreen', 'silkscreen.woff2', '400'], ['TKSilkscreen', 'silkscreen-bold.woff2', '700']];
 let fontP = null, fontGen = 0;
 export function loadUIFont() {
   if (fontP) return fontP;
   if (typeof FontFace === 'undefined' || typeof document === 'undefined' || !document.fonts) return (fontP = Promise.resolve());
-  const jobs = FONT_FILES.map(([fam, file, weight]) => new FontFace('TK' + fam, `url(${new URL('../../../assets/fonts/' + file, import.meta.url).href})`, { weight }).load().then((f) => document.fonts.add(f)).catch(() => {}));
-  fontP = Promise.race([Promise.all(jobs), new Promise((r) => setTimeout(r, 3000))]).then(() => { fontGen++; glyphs.clear(); widths.clear(); metrics.clear(); });
+  const jobs = FONT_FILES.map(([fam, file, weight]) => new FontFace(fam, `url(${new URL('../../../assets/fonts/' + file, import.meta.url).href})`, { weight }).load().then((f) => document.fonts.add(f)).catch(() => {}));
+  fontP = Promise.race([Promise.all(jobs), new Promise((r) => setTimeout(r, 3000))]).then(() => { fontGen++; faces.clear(); widths.clear(); });
   return fontP;
 }
-export const FAMILY = '"TKTiny5", "TKSilkscreen", monospace';
-// the faces: body (Tiny5 10 px), label (Silkscreen 8 px), title (Silkscreen Bold, 16 / 24 / 32 px)
-function faceOf(o) {
-  const sc = o.scale || 1;
-  if (sc >= 1.5) { const k = Math.max(2, Math.round(sc)); return { id: 't' + k, css: `700 ${8 * k}px "TKSilkscreen", monospace`, cap: 5 * k, bold: 0, px: 8 * k }; }
-  if (o.mini) return o.bold ? FACES.miniB : FACES.mini;
-  return o.bold || sc > 1.1 ? FACES.bodyB : FACES.body;
-}
-const FACES = {
-  body: { id: 'b', css: '400 10px "TKTiny5", monospace', cap: 7, bold: 0, px: 10 },
-  bodyB: { id: 'B', css: '400 10px "TKTiny5", monospace', cap: 7, bold: 1, px: 10 },
-  mini: { id: 'm', css: '400 8px "TKSilkscreen", monospace', cap: 5, bold: 0, px: 8 },
-  miniB: { id: 'M', css: '700 8px "TKSilkscreen", monospace', cap: 5, bold: 0, px: 8 },
-};
-let gctx = null;
-function rasterCtx() { if (!gctx) { const c = makeCanvas(96, 96); gctx = c ? c.getContext('2d', { willReadFrequently: true }) : null; } return gctx; }
-const metrics = new Map();   // face id → { asc (baseline offset of the cap top), capH }
-function faceMetrics(F) {
-  let M = metrics.get(F.id);
-  if (M) return M;
-  const g = rasterCtx(); M = { asc: F.cap, capH: F.cap };
-  if (g) {
-    g.clearRect(0, 0, 96, 96); g.font = F.css; g.textBaseline = 'top'; g.fillStyle = '#fff'; g.fillText('H', 8, 8);
-    const d = g.getImageData(0, 0, 96, 96).data; let top = -1, bot = -1;
-    for (let y = 0; y < 96; y++) for (let x = 0; x < 96; x++) if (d[(y * 96 + x) * 4 + 3] > 127) { if (top < 0) top = y; bot = y; }
-    if (top >= 0) M = { asc: top - 8, capH: bot - top + 1 };
+export const FAMILY = '"TKBaloo", "Baloo 2", "Trebuchet MS", "Helvetica Neue", Arial, sans-serif';
+const PIXEL = '"TKSilkscreen", monospace';
+let mctx = null;
+function measurer() { if (!mctx) { const c = makeCanvas(4, 4); mctx = c ? c.getContext('2d') : null; } return mctx; }
+// a face for a text style at a ui scale k: { css (size in units), cap (units), id }. Body text and labels are
+// Baloo 2 sized so capitals stand 7 units (5 for mini) tall; big titles (scale ≥ 1.5) are Silkscreen Bold at a
+// whole multiple of its 8-px grid in DEVICE pixels, so the pixel type stays pixel-perfect
+const faces = new Map(), widths = new Map();
+function faceOf(o, k) {
+  const sc = o.scale || 1, mini = !!o.mini, bold = !!o.bold || sc > 1.1;
+  const key = (sc >= 1.5 ? 1000 : 0) + Math.round(sc * 8) * 4 + (mini ? 1 : 0) + (bold ? 2 : 0) + k * 100000;
+  let F = faces.get(key);
+  if (F) return F;
+  if (sc >= 1.5) { const pxSize = 8 * Math.max(2, Math.round((sc * 5 * k) / 5)), u = pxSize / k; F = { id: key, css: `700 ${u.toFixed(3)}px ${PIXEL}`, cap: u * 0.625, pixel: true }; }
+  else {
+    const weight = bold ? 800 : mini ? 700 : 600, m = measurer();
+    let capR = 0.6; if (m) { m.font = `${weight} 100px ${FAMILY}`; const mt = m.measureText('H'); if (mt.actualBoundingBoxAscent > 20) capR = mt.actualBoundingBoxAscent / 100; }
+    const cap = (mini ? 5 : 7) * sc; F = { id: key, css: `${weight} ${(cap / capR).toFixed(3)}px ${FAMILY}`, cap };
   }
-  metrics.set(F.id, M);
-  return M;
+  faces.set(key, F);
+  return F;
 }
-// a glyph sprite: { cv, ox, oy, adv } — the mask is thresholded, outline (1 px all round) and shadow baked in
-const glyphs = new Map(), widths = new Map();
-function glyph(F, ch, color, out, shad) {
-  const key = F.id + ch + '|' + color + '|' + (out || '') + '|' + (shad || '');
-  let G = glyphs.get(key);
-  if (G) return G;
-  const g = rasterCtx(); if (!g) return null;
-  const S = F.px * 2 + 8, base = 4;
-  g.clearRect(0, 0, S, S); g.font = F.css; g.textBaseline = 'top'; g.fillStyle = '#fff'; g.fillText(ch, 4, base);
-  const adv = Math.round(g.measureText(ch).width) + F.bold;
-  const d = g.getImageData(0, 0, S, S).data, m = new Uint8Array(S * S);
-  let x0 = S, y0 = S, x1 = -1, y1 = -1;
-  for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) if (d[(y * S + x) * 4 + 3] > 127) { m[y * S + x] = 1; if (F.bold && x + 1 < S) m[y * S + x + 1] = 1; }
-  for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) if (m[y * S + x]) { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); }
-  if (x1 < 0) { G = { cv: null, ox: 0, oy: 0, adv }; glyphs.set(key, G); return G; }
-  const pad = 2, w = x1 - x0 + 1 + pad * 2, h = y1 - y0 + 1 + pad * 2, C = P(color), O = out ? P(out) : 0, Sh = shad ? P(shad) : 0;
-  const cv = pixelCanvas(w, h, (o) => {
-    const at = (x, y) => { const X = x + x0 - pad, Y = y + y0 - pad; return X >= 0 && Y >= 0 && X < S && Y < S && m[Y * S + X]; };
-    if (Sh) for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (at(x - 1, y - 1) || (O && (at(x - 2, y - 1) || at(x, y - 1) || at(x - 1, y - 2) || at(x - 1, y)))) o[y * w + x] = Sh;
-    if (O) for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (!at(x, y) && (at(x - 1, y) || at(x + 1, y) || at(x, y - 1) || at(x, y + 1) || at(x - 1, y - 1) || at(x + 1, y + 1) || at(x - 1, y + 1) || at(x + 1, y - 1))) o[y * w + x] = O;
-    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (at(x, y)) o[y * w + x] = C;
-  });
-  G = { cv, ox: x0 - pad - 4, oy: y0 - pad - base, adv };   // offsets from the pen at the em-box top
-  if (glyphs.size > 6000) glyphs.clear();
-  glyphs.set(key, G);
-  return G;
-}
-function advance(F, ch) { let A = widths.get(F.id); if (!A) widths.set(F.id, (A = new Map())); let v = A.get(ch); if (v === undefined) { const g = rasterCtx(); if (g) { g.font = F.css; v = Math.round(g.measureText(ch).width) + F.bold; } else v = Math.round(F.px * 0.6); A.set(ch, v); } return v; }
-const strW = new Map();
 function measureStr(F, str, sp) {
-  let M = strW.get(F.id); if (!M) strW.set(F.id, (M = new Map()));
+  let M = widths.get(F.id); if (!M) widths.set(F.id, (M = new Map()));
   let w = M.get(str);
-  if (w === undefined) { w = 0; for (const ch of str) w += advance(F, ch); if (M.size > 4000) M.clear(); M.set(str, w); }
+  if (w === undefined) { const m = measurer(); if (m) { m.font = F.css; w = m.measureText(str).width; } else w = str.length * F.cap * 0.7; if (M.size > 4000) M.clear(); M.set(str, w); }
   return w + (sp ? sp * (str.length - 1) : 0);
 }
 
 export class PixelUI {
-  // w, h: the art grid. o: { canvas (draw onto this canvas) }
+  // w, h: the layout grid in units. o: { canvas (draw onto this canvas), scale (device px per unit when no
+  // physical size is given; default 3) }
   constructor(w, h, o = {}) {
-    this.cv = o.canvas || makeCanvas(w, h);
+    this.k0 = o.scale || 3;
+    this.cv = o.canvas || makeCanvas(w * this.k0, h * this.k0);
     this.g = this.cv ? this.cv.getContext('2d', { alpha: true }) : null;
     this.s = new CanvasSurf(this);
-    this.resize(w, h);
+    this.tstack = new Float64Array(4 * 64); this.tsp = 0;
+    this.resize(w, h, o.pw, o.ph);
     this.ptr = { x: -1, y: -1, down: false, pressed: false, released: false, id: null };
     this.t = 0; this.dt = 1 / 60; this.frameN = 0;
     this.dialog = null; this.toasts = []; this.keys = {}; this.modalLock = 0;
@@ -115,19 +78,36 @@ export class PixelUI {
     this._fg = fontGen;
     loadUIFont();
   }
-  // w, h: the art grid size (the canvas is exactly this many pixels; the page scales it up)
-  resize(w, h) {
-    this.w = Math.max(16, Math.round(w)); this.h = Math.max(16, Math.round(h));
-    if (this.cv && (this.cv.width !== this.w || this.cv.height !== this.h)) { this.cv.width = this.w; this.cv.height = this.h; }
-    this.kx = this.ky = this.k = 1;
+  // w, h: the layout grid (units); pw, ph: the canvas in device pixels (default w·scale × h·scale)
+  resize(w, h, pw, ph) {
+    this.w = w; this.h = h;
+    pw = Math.max(16, Math.round(pw || w * this.k0)); ph = Math.max(16, Math.round(ph || h * this.k0));
+    if (this.cv && (this.cv.width !== pw || this.cv.height !== ph)) { this.cv.width = pw; this.cv.height = ph; }
+    this.pw = pw; this.ph = ph; this.k = Math.round((pw / w) * 1000) / 1000; this.kx = this.ky = this.k;
+    this.ta = this.td = this.k; this.te = this.tf = 0; this.tsp = 0;
     this._fs = null; this._font = null;
+  }
+  // a scale about the unit point (cx, cy) (and a shift dx, dy) for what is drawn until pop(): bounces, squashes, slides
+  push(cx, cy, sx = 1, sy = sx, dx = 0, dy = 0) {
+    const S = this.tstack, i = this.tsp * 4; if (this.tsp >= 63) return;
+    S[i] = this.ta; S[i + 1] = this.td; S[i + 2] = this.te; S[i + 3] = this.tf; this.tsp++;
+    const a = this.ta * sx, d = this.td * sy;
+    this.te = this.ta * (cx + dx) + this.te - a * cx; this.tf = this.td * (cy + dy) + this.tf - d * cy; this.ta = a; this.td = d;
+    if (this.g) this.g.setTransform(this.ta, 0, 0, this.td, this.te, this.tf);
+  }
+  pop() {
+    if (!this.tsp) return;
+    this.tsp--; const S = this.tstack, i = this.tsp * 4;
+    this.ta = S[i]; this.td = S[i + 1]; this.te = S[i + 2]; this.tf = S[i + 3];
+    if (this.g) this.g.setTransform(this.ta, 0, 0, this.td, this.te, this.tf);
   }
   // ------------------------------------------------------------------ frame
   begin(dt) {
     this.dt = dt || 0; this.t += this.dt; this.frameN++;
-    if (this._fg !== fontGen) { this._fg = fontGen; strW.clear(); }
+    if (this._fg !== fontGen) { this._fg = fontGen; }
     const g = this.g;
-    if (g) { g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = 1; g.globalCompositeOperation = 'source-over'; g.clearRect(0, 0, this.w, this.h); g.imageSmoothingEnabled = false; }
+    this.ta = this.td = this.k; this.te = this.tf = 0; this.tsp = 0;
+    if (g) { g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = 1; g.globalCompositeOperation = 'source-over'; g.clearRect(0, 0, this.pw, this.ph); g.setTransform(this.k, 0, 0, this.k, 0, 0); g.imageSmoothingEnabled = false; g.textBaseline = 'alphabetic'; g.textAlign = 'left'; g.lineJoin = 'round'; g.miterLimit = 2; }
     this._fs = null; this._font = null;
     this.hot = null; this.frameButtons = 0;
     if (this.modals.length) {
@@ -188,29 +168,38 @@ export class PixelUI {
   anim(key, init) { let a = this._anim.get(key); if (!a) { a = Object.assign({ t: 0 }, init); this._anim.set(key, a); } a.seen = this.frameN; return a; }
   // ------------------------------------------------------------------ primitives
   fill(c) { if (this._fs !== c) { this.g.fillStyle = css(c); this._fs = c; } return this.g; }
-  px(x, y, c) { this.fill(c).fillRect(Math.floor(x), Math.floor(y), 1, 1); }
-  rect(x, y, w, h, c) { x = Math.round(x); y = Math.round(y); w = Math.round(w); h = Math.round(h); if (w > 0 && h > 0) this.fill(c).fillRect(x, y, w, h); }
-  fade(a, c = '#000000') { if (a <= 0) return; this.g.fillStyle = rgba(c, Math.min(1, a)); this._fs = null; this.g.fillRect(0, 0, this.w, this.h); }
+  px(x, y, c) { this.rect(Math.floor(x), Math.floor(y), 1, 1, c); }
+  // a crisp rect: snapped to device pixels (a unit is k pixels)
+  rect(x, y, w, h, c) {
+    const X = PX(this, x), Y = PY(this, y), W = PX(this, x + w) - X, H = PY(this, y + h) - Y; if (W <= 0 || H <= 0) return;
+    const g = this.g; g.setTransform(1, 0, 0, 1, 0, 0); this.fill(c).fillRect(X, Y, W, H); g.setTransform(this.ta, 0, 0, this.td, this.te, this.tf);
+  }
+  fade(a, c = '#000000') { if (a <= 0) return; const g = this.g; g.setTransform(1, 0, 0, 1, 0, 0); g.fillStyle = rgba(c, Math.min(1, a)); this._fs = null; g.fillRect(0, 0, this.pw, this.ph); g.setTransform(this.ta, 0, 0, this.td, this.te, this.tf); }
   // text: o = { mini, scale, spacing, shadow, outline (true → ink), align, bold, grad: [top, …, bottom] } → width
-  // outlined dark text turns light (white type with a dark outline over the world); shadows sit 1 px down-right
+  // crisp vector type; outlined dark text turns light (white type with a dark outline over the world)
   text(str, x, y, c = T.text, o = {}) {
     str = String(str ?? ''); if (!str) return 0;
-    const F = faceOf(o), M = faceMetrics(F), sp = o.spacing || 0, w = measureStr(F, str, sp);
+    const F = faceOf(o, this.k), g = this.g, sp = o.spacing || 0, w = measureStr(F, str, sp);
     let out = o.outline === true ? T.ink : o.outline || null, shad = o.shadow === true ? T.ink : o.shadow || null;
-    let col = c ?? (o.grad ? o.grad[Math.min(o.grad.length - 1, 1)] : T.text);
+    let col = c ?? (o.grad ? o.grad[o.grad.length - 1] : T.text);
     if (out && isDark(col) && isDark(out)) col = col === T.dim ? T.cream : '#fff8ec';
-    if (shad && isDark(shad) && !out && lum(col) < 170) shad = null;
-    const x0 = Math.round(o.align === 'center' ? x - w / 2 : o.align === 'right' ? x - w : x);
-    const by = Math.round(y) - M.asc + Math.round(((o.mini ? 5 : 7) * (F.cap > 7 ? F.cap / 7 : 1) - M.capH) / 2);   // the em-box top
-    const g = this.g; g.imageSmoothingEnabled = false;
-    const drawRun = (colr) => { let cx = x0; for (const ch of str) { const G = glyph(F, ch, colr, out, shad); if (G && G.cv) g.drawImage(G.cv, cx + G.ox, by + G.oy); cx += advance(F, ch) + sp; } };
-    drawRun(col);
-    // a two-tone title: the upper rows in grad[0] (pixel art has no gradients)
-    const top = o.grad && o.grad.length > 1 ? o.grad[0] : null;
-    if (top && top !== col) { const hh = Math.max(1, Math.round(M.capH * 0.45)); g.save(); g.beginPath(); g.rect(x0 - 4, by + M.asc - 4, w + 8, hh + 4); g.clip(); drawRun(top); g.restore(); this._fs = null; }
+    if (shad && isDark(shad) && !out && luma(col) < 170) shad = null;
+    const x0 = o.align === 'center' ? x - w / 2 : o.align === 'right' ? x - w : x;
+    // the cap top sits at y (centred in the old 7 / 5-unit glyph box); snap the baseline to a device pixel
+    const box = (o.mini ? 5 : 7) * (o.scale || 1), by = Math.round((y + (box + F.cap) / 2) * this.td + this.tf) / this.td - this.tf / this.td;
+    const bx = F.pixel ? Math.round(x0 * this.ta + this.te) / this.ta - this.te / this.ta : x0;
+    if (this._font !== F.css) { g.font = F.css; this._font = F.css; }
+    if (sp && 'letterSpacing' in g) g.letterSpacing = sp + 'px';
+    const k = this.k;
+    if (shad) { const off = Math.max(1, Math.round(k * 0.5)) / k; if (out) { g.strokeStyle = css(shad); g.lineWidth = (o.mini ? 3.2 : 4.2) / k * Math.max(1, k * 0.7); g.strokeText(str, bx + off, by + off); } this.fill(shad).fillText(str, bx + off, by + off); }
+    if (out) { g.strokeStyle = css(out); g.lineWidth = F.pixel ? Math.max(2, Math.round(k * 0.9)) * 2 / k : (o.mini ? 3.2 : 4.2) / k * Math.max(1, k * 0.7); g.strokeText(str, bx, by); }
+    if (o.grad && o.grad.length > 1) { const gr = g.createLinearGradient(0, by - F.cap, 0, by); const n = o.grad.length - 1; o.grad.forEach((cc, i) => gr.addColorStop(n ? i / n : 0, css(cc))); g.fillStyle = gr; this._fs = null; }
+    else this.fill(col);
+    g.fillText(str, bx, by);
+    if (sp && 'letterSpacing' in g) g.letterSpacing = '0px';
     return w;
   }
-  tw(str, o = {}) { str = String(str ?? ''); if (!str) return 0; return measureStr(faceOf(o), str, o.spacing || 0); }
+  tw(str, o = {}) { str = String(str ?? ''); if (!str) return 0; return measureStr(faceOf(o, this.k), str, o.spacing || 0); }
   wrap(str, maxW, o = {}) {
     const out = [];
     for (const para of String(str).split('\n')) {
@@ -279,8 +268,8 @@ export class PixelUI {
     const hk = o.hotkey && this.key(o.hotkey) && !dis && !blk, clicked = (over && this.ptr.released) || hk;
     if (clicked) { a.bt = 0; if (hk) this.click('ui_tap', { vol: 0.7 }); }
     const col = dis ? '#a89a8c' : o.fill || o.color || T.cream, lip = h >= 14 ? 3 : 2, st = dis ? 3 : down ? 2 : over || o.active ? 1 : 0;
-    const sq = squash(a.bt, 0.12), g = this.g, cx = x + w / 2, cy = y + h, xf = Math.abs(sq) > 0.01;
-    if (xf) { g.save(); g.translate(Math.round(cx), cy); g.scale(1 + sq, 1 - sq); g.translate(-Math.round(cx), -cy); }
+    const sq = squash(a.bt, 0.12), cx = x + w / 2, cy = y + h, xf = Math.abs(sq) > 0.01;
+    if (xf) this.push(cx, cy, 1 + sq, 1 - sq);
     knob(this, x, y - (st === 1 && !o.active ? 1 : 0), w, h, { color: col, state: st, lip, active: !!o.active && !dis, frame: o.frame });
     const lift = st === 1 && !o.active ? 1 : 0, fy = y - lift + (down ? lip - 1 : 0), fh = h - lip, mini = !!o.mini;
     const lightFace = !isDark(col) && luma(col) > 150, lc = dis ? '#ece4da' : o.textColor || (lightFace ? T.text : '#ffffff'), ink = lightFace ? null : mx(col, T.ink, 0.7);
@@ -293,17 +282,17 @@ export class PixelUI {
     } else if (label) this.text(label, cx, ty, lc, { align: 'center', outline: ink, mini, bold: !mini });
     if (o.sub) this.text(o.sub, x + w - 4, fy + fh - 8, o.subColor || lc, { align: 'right', mini: true, outline: ink });
     if (o.key) this.text(o.key, x + 4, fy + 3, lc, { mini: true, outline: ink });
-    if (xf) { g.restore(); this._fs = null; }
+    if (xf) this.pop();
     if (clicked) this.ptr.released = false;
     return clicked;
   }
   // run fn with drawing clipped to a rect (fn gets the real coordinates). r: corner radius of the clip
   clip(x, y, w, h, fn, r = 0) {
-    x = Math.round(x); y = Math.round(y); w = Math.round(w); h = Math.round(h);
-    const g = this.g, I = rowIns(Math.max(1, h), Math.min(r, h / 2, w / 2));
-    g.save(); g.beginPath();
-    if (r) { for (let j = 0; j < h; j++) g.rect(x + I[j], y + j, w - I[j] * 2, 1); } else g.rect(x, y, w, h);
-    g.clip();
+    const X = PX(this, x), Y = PY(this, y), W = PX(this, x + w) - X, H = PY(this, y + h) - Y, g = this.g;
+    const I = rowIns(Math.max(1, H), Math.min(r * this.td, H / 2, W / 2));
+    g.save(); g.setTransform(1, 0, 0, 1, 0, 0); g.beginPath();
+    if (r) { let j = 0; while (j < H) { let q = j; while (q + 1 < H && I[q + 1] === I[j]) q++; g.rect(X + I[j], Y + j, W - I[j] * 2, q - j + 1); j = q + 1; } } else g.rect(X, Y, W, H);
+    g.setTransform(this.ta, 0, 0, this.td, this.te, this.tf); g.clip();
     try { fn(); } finally { g.restore(); this._fs = null; this._font = null; }
   }
   // ------------------------------------------------------------------ dialogue

@@ -1,4 +1,4 @@
-Pixel fonts used by the UI (src/px/game/ui.js), bundled so the game works offline:
-- tiny5.woff2: Tiny5 by Stefie Justprince — SIL Open Font License 1.1
-- silkscreen.woff2, silkscreen-bold.woff2: Silkscreen by Jason Kottke — SIL Open Font License 1.1
-Both from Google Fonts (latin subset). OFL text: https://openfontlicense.org
+Fonts used by the UI (src/px/game/ui.js), bundled so the game works offline:
+- baloo2.woff2: Baloo 2 by Ek Type — SIL Open Font License 1.1 (body text, labels)
+- silkscreen.woff2, silkscreen-bold.woff2: Silkscreen by Jason Kottke — SIL Open Font License 1.1 (big pixel titles)
+All from Google Fonts (latin subset). OFL text: https://openfontlicense.org

@@ -281,9 +281,7 @@ export class SearchMode {
     const lens = S.mode === 'lens', R = Math.round(Math.min(W, H) * 0.15), r0 = Math.round;
     // the lens: the world dims outside a round window around the reticle (pixel rows, no soft edges)
     if (lens) {
-      const cx0 = r0(S.lx), cy0 = r0(S.ly), A = discRows(R + 3); g.globalAlpha = 0.55; ui.fill(T.deep);
-      for (let y = 0; y < H; y++) { const j = y - cy0; if (j < -R - 3 || j > R + 3) g.fillRect(0, y, W, 1); else { const hw = A[j + R + 3]; g.fillRect(0, y, cx0 - hw, 1); g.fillRect(cx0 + hw + 1, y, W - cx0 - hw - 1, 1); } }
-      g.globalAlpha = 1;
+      g.globalAlpha = 0.55; g.beginPath(); g.rect(0, 0, W, H); g.arc(S.lx, S.ly, R + 3, 0, Math.PI * 2); ui.fill(T.deep); g.fill('evenodd'); g.globalAlpha = 1; void discRows;
     } else { g.globalAlpha = 0.3; ui.fill(T.deep); for (let y = 0; y < H; y += 1) { const e = Math.abs(y / H - 0.5) * 2, n = r0(Math.max(0, e - 0.5) * W * 0.25); if (n > 0) { g.fillRect(0, y, n, 1); g.fillRect(W - n, y, n, 1); } } g.globalAlpha = 1; }
     // signal: how close the lens is to something still hidden
     let sig = 0, hit = null;

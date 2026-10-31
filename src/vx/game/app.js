@@ -83,11 +83,12 @@ export class VxApp {
     this.rw = Math.max(320, Math.round(W * k)); this.rh = Math.max(180, Math.round(H * k));
     this.view.width = this.rw; this.view.height = this.rh; this.view.style.width = W + 'px'; this.view.style.height = H + 'px';
     this.stage.setSize(this.rw, this.rh);
-    // the UI is pixel art on its own grid (~360 art px tall), scaled up by a whole number so every pixel stays crisp
-    const pw = Math.round(W * (devicePixelRatio || 1)), ph = Math.round(H * (devicePixelRatio || 1)), S_ = Math.max(1, Math.round(W >= H ? ph / 360 : pw / 320));
-    this.vw = Math.ceil(pw / S_); this.vh = Math.ceil(ph / S_); this.scale = S_;
-    this.uiCv.style.width = (this.vw * S_) / (devicePixelRatio || 1) + 'px'; this.uiCv.style.height = (this.vh * S_) / (devicePixelRatio || 1) + 'px'; this.uiCv.style.imageRendering = 'pixelated';
-    this.ui.resize(this.vw, this.vh);
+    // the UI lays out on a ~640×360 grid of units but draws at the real device resolution (DPR-aware, up to
+    // 8.3 MP): k device pixels per unit — 3 on a 1080p screen — so its pixel art is detailed and crisp
+    const dprU = Math.min(devicePixelRatio || 1, Math.sqrt(8.3e6 / Math.max(1, W * H))), pw = Math.round(W * dprU), ph = Math.round(H * dprU), ku = W >= H ? ph / 360 : pw / 320;
+    this.vw = pw / ku; this.vh = ph / ku; this.scale = ku / dprU;
+    this.uiCv.style.width = W + 'px'; this.uiCv.style.height = H + 'px'; this.uiCv.style.imageRendering = 'auto';
+    this.ui.resize(this.vw, this.vh, pw, ph);
   }
   bindInput() {
     const cv = this.uiCv, p = this.ui.ptr;
@@ -150,7 +151,7 @@ export class VxApp {
     if (!a || a.kind !== 'person') return null;
     try { return this.renderPortrait(a); } catch (e) { return null; }
   }
-  renderPortrait(a, S = 50) {
+  renderPortrait(a, S = 128) {
     const st = this.stage, r = st.r, scene = st.scene;
     // the speaker wears the world's ink outline: rendered with depth, then the composite's ink pass (2 px at this 2× size)
     if (!this._pt) { this._pt = { rt: new THREE.WebGLRenderTarget(S * 2, S * 2, { depthTexture: new THREE.DepthTexture(S * 2, S * 2, THREE.UnsignedIntType) }), ink: new THREE.WebGLRenderTarget(S * 2, S * 2), cam: new THREE.PerspectiveCamera(18, 1, 0.05, 30) }; this._pt.rt.texture.colorSpace = this._pt.ink.texture.colorSpace = THREE.SRGBColorSpace; }

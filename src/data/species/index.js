@@ -10,4 +10,5 @@ import { SPECIES as SF_ARCTIC } from './sf_arctic.js';
 import { SPECIES as SF_KISS } from './sf_kiss.js';
 import { SPECIES as SF_TAKANAKA } from './sf_takanaka.js';
 import { SPECIES as SF_GOBLINS } from './sf_goblins.js';
-export const EXTRA_SPECIES = [SF_LINES, SF_WILD, SF_LEGENDS, SF_DOOM, SF_REDBONE, SF_GREENDAY, SF_ARCTIC, SF_KISS, SF_TAKANAKA, SF_GOBLINS];
+import { SPECIES as SF_CAVE } from './sf_cave.js';   // the Deep Cave under Alamo Hill
+export const EXTRA_SPECIES = [SF_LINES, SF_WILD, SF_LEGENDS, SF_DOOM, SF_REDBONE, SF_GREENDAY, SF_ARCTIC, SF_KISS, SF_TAKANAKA, SF_GOBLINS, SF_CAVE];

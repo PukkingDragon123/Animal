@@ -90,11 +90,11 @@ export class Story {
     // the ribbon under it: a raised name plate with diamonds
     const rib = 'SAN FRANCISCO', rw = R(ui.tw(rib, { mini: true, bold: true }) + 30), ry = ly + 5 * sc * 1 + 16, rk = boingT(t * 1.2 - 0.35);
     if (rk > 0.05) {
-      g.save(); g.translate(R(W / 2), ry + 6); g.scale(rk, rk); g.translate(-R(W / 2), -(ry + 6));
+      ui.push(W / 2, ry + 6, rk, rk);
       ui.panel(R(W / 2 - rw / 2), ry, rw, 13, { thin: true, r: 1, fill: T.creamL });
       ui.gem(R(W / 2 - rw / 2) + 5, ry + 6, T.copper, 2); ui.gem(R(W / 2 + rw / 2) - 6, ry + 6, T.copper, 2);
       ui.text(rib, R(W / 2), ry + 4, T.text, { align: 'center', mini: true, bold: true });
-      g.restore(); ui._fs = null;
+      ui.pop();
       ui.sparkle(R(W / 2 + rw / 2) + 3, ry, T.amberL, (Math.sin(t * 3) + 1) / 2);
     }
     // the menu: copper-rimmed buttons along the bottom (Enter / C still work)
@@ -104,9 +104,9 @@ export class Story {
     items.forEach(([label, icon, color, hk, id], i) => {
       const pop = boingT(t * 1.4 - 0.6 - i * 0.12); if (pop < 0.05) return;
       const x = bx0 + i * (bw + gap), cy = by + bh;
-      g.save(); g.translate(x + R(bw / 2), cy); g.scale(pop, pop); g.translate(-(x + R(bw / 2)), -cy);
+      ui.push(x + bw / 2, cy, pop, pop);
       const hit = ui.button(x, by, bw, bh, label, { color, icon, hotkey: hk, active: i === 0, frame: 'copper' });
-      g.restore(); ui._fs = null;
+      ui.pop();
       if (hit && T_.pick && t > 0.8) T_.pick(id);
     });
     ui.text('an original homage to the music of everywhere', R(W / 2), H - 12, '#ffffff', { align: 'center', mini: true, outline: T.ink });

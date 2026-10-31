@@ -94,7 +94,7 @@ export function nameEntryScreen(ui, o, resolve) {
     }
     ui.text('SAN FRANCISCO', fx + fw - 10, fy + fh - 12, T.dim, { mini: true, align: 'right' });
     // the stamp slams down when you confirm
-    if (m.done >= 0) { const k = clamp01(m.done / 0.18), sc2 = 1 + (1 - k) * 1.5, sx = fx + fw - 44, sy = fy + 26; const g = ui.g; g.save(); g.translate(sx, sy); g.scale(sc2, sc2); g.translate(-sx, -sy); g.globalAlpha = Math.min(1, k * 1.5); woodRing(s, sx, sy, 13, { th: 2, fill: '#f6d8d0', color: T.red, shadow: false }); ui.text('OK!', sx, sy - 3, T.red, { bold: true, align: 'center' }); g.restore(); ui._fs = null; }
+    if (m.done >= 0) { const k = clamp01(m.done / 0.18), sc2 = 1 + (1 - k) * 1.5, sx = fx + fw - 44, sy = fy + 26; const g = ui.g; ui.push(sx, sy, sc2, sc2); g.globalAlpha = Math.min(1, k * 1.5); woodRing(s, sx, sy, 13, { th: 2, fill: '#f6d8d0', color: T.red, shadow: false }); ui.text('OK!', sx, sy - 3, T.red, { bold: true, align: 'center' }); g.globalAlpha = 1; ui.pop(); }
     // ---- the keyboard board
     const gw = cols * kw + (cols - 1) * gap, gx = R((W - gw) / 2), gy = fy + fh + 18;
     const rows = lettersU.map((r) => [...r].map((ch) => ({ type: 'ch', ch, w: 1 })));
@@ -180,10 +180,10 @@ export function pickCardsScreen(ui, o, resolve) {
     for (let i = 0; i < n; i++) { m.lift[i] += ((i === m.sel ? 1 : 0) - m.lift[i]) * Math.min(1, dt * 12); m.pt[i] += dt; }
     for (let i = 0; i < cards.length; i++) {
       const x = cx0 + i * (cw + gap), y = R(cy - m.lift[i] * 7), sel = i === m.sel, b = squash(m.pt[i], 0.05), g = ui.g;
-      g.save(); g.translate(R(x + cw / 2), y + ch); g.scale(1 + b, 1 - b); g.translate(-R(x + cw / 2), -(y + ch));
+      ui.push(x + cw / 2, y + ch, 1 + b, 1 - b);
       drawCard(ui, x, y, cw, ch, cards[i], sel, t, m.done >= 0 && sel ? m.done : -1);
       if (!sel) blendRect(s, x - 2, y - 2, cw + 4, ch + 4, T.shade, 0.35);
-      g.restore(); ui._fs = null;
+      ui.pop(); void g;
       if (sel) { tri(s, R(x + cw / 2) - 3, y - 12 + R(Math.abs(Math.sin(t * 5)) * 2), 'down', 3, T.amber); const k = (t * 0.8) % 1; sparkle(s, x + 3 + k * (cw - 6), y + 1, T.amberL, 1 - k); }
     }
     const b = roundButton(ui, R(W / 2), H - 20, 10, 'check', { modal: true, sel: m.done >= 0, color: T.green, disabled: !live && m.done < 0 });

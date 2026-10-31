@@ -78,7 +78,7 @@ export class MonViewer {
     this.yaw += dt * (o.spin ?? 0.5);
     const s = 0.2 + 0.8 * boing(this.pop * 1.4);
     this.holder.scale.setScalar(Math.max(0.05, s)); this.holder.rotation.y = this.yaw;
-    const SS = 2, pw = Math.max(8, Math.min(cv.width, Math.round(w * SS))), ph = Math.max(8, Math.min(cv.height, Math.round(h * SS)));
+    const SS = ui.k || 2, pw = Math.max(8, Math.min(cv.width, Math.round(w * SS))), ph = Math.max(8, Math.min(cv.height, Math.round(h * SS)));
     const H = this.size.y, Wd = Math.max(this.size.x, this.size.z), fov = 24, aspect = pw / ph;
     const fitH = Math.max(H * 1.25, (Wd * 1.35) / aspect) * 0.5, dist = fitH / Math.tan((fov / 2) * Math.PI / 180) + Wd * 0.4;
     const p = 12 * Math.PI / 180;

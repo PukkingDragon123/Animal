@@ -97,7 +97,7 @@ export default class Dash {
     this.lastBeat = -9; this.tapBeat = -9; this.clock = 0; this.msg = null; this.order = []; this.done = false; this.endT = 0; this.ringK = 0;
     for (const r of this.runners) {
       r.p = -0.6; r.v = 0; r.vb = 0; r.jump = -1; r.stun = 0; r.fin = null; r.next = 0; r.leg = 0; r.flip = 0; r.cleared = new Set();
-      r.base = r.me ? V0 : 5.45 + this.s.rand() * 0.7; r.skill = r.me ? 1 : 0.8 + this.s.rand() * 0.15; r.ph = this.s.rand() * 6;
+      r.base = r.me ? V0 : 5.6 + this.s.rand() * 0.7; r.skill = r.me ? 1 : 0.8 + this.s.rand() * 0.15; r.ph = this.s.rand() * 6;
       r.a.place(LANES[this.runners.indexOf(r)], Z0 - 0.6, 0, this.gy); r.a.play('idle', { fade: 0 });
     }
     for (const H of this.hurdles) for (const h of H.row) { h.down = 0; h.fell = false; h.g.rotation.set(0, 0, 0); }

@@ -53,7 +53,7 @@ export function prompt(ui, x, y, keyLabel, str, o = {}) {
   const g = ui.g, label = String(str ?? ''), a = ui.anim('prompt:' + label, {}); a.t += ui.dt;
   const seen = ui._promptSeen || (ui._promptSeen = new Map());
   if (!seen.has(label)) seen.set(label, ui.t);
-  const firstShow = ui.t - seen.get(label) < 1.8, icon = promptIcon(label, o.icon);
+  const icon = promptIcon(label, o.icon);
   const bw = 24, bh = 22, bob = o.bob === false ? 0 : R(Math.sin(ui.t * 3.2));
   const bx = x - bw / 2, by0 = y - 5 - bh;
   const over = !ui.blocked(o) && ui.inside(bx - 2, by0 - 2, bw + 4, bh + 8);
@@ -61,15 +61,15 @@ export function prompt(ui, x, y, keyLabel, str, o = {}) {
   a.pt = (a.pt ?? 9) + ui.dt;
   const pop = boing(a.t * 1.6); if (pop < 0.1) return false;
   const sq = squash(a.pt, 0.14), lift = over ? -2 : 0, by = by0 + bob + lift;
-  g.save(); g.globalAlpha = o.alpha ?? 1;
-  if (pop < 0.98 || Math.abs(sq) > 0.01) { g.translate(x, y); g.scale(Math.max(0.1, pop) + sq, Math.max(0.1, pop) - sq); g.translate(-x, -y); }
+  g.globalAlpha = o.alpha ?? 1;
+  ui.push(x, y, Math.max(0.1, pop) + sq, Math.max(0.1, pop) - sq);
   frame(ui, bx, by, bw, bh, { thin: true, r: 3, edge: over ? T.brass : null, shadowA: 0.3 });
   tri(ui.s, x - 3, by + bh - 1, 'down', 3, T.cream);
   drawBig(ui.s, icon, bx + 4, by + 3, null, { scale: 16 / 12, shadow: false });
   if (keyLabel) keycap(ui, bx + bw - 6, by + bh - 8, keyLabel, { small: true, pressed: over && ui.ptr.down });
-  g.restore(); ui._fs = null;
+  ui.pop(); g.globalAlpha = 1;
   if (a.t < 0.45) sparkle(ui.s, bx + 1, by + 1, T.amberL, 1 - a.t / 0.45);
-  const showLabel = o.label === 'always' || (o.label !== 'never' && (over || firstShow));
+  const showLabel = o.label === 'always' || (o.label !== 'never' && over);   // a single icon bubble; the words only on hover
   a.lk = clamp01((a.lk || 0) + (showLabel ? 1 : -1) * ui.dt * 7);
   if (a.lk > 0.3 && label) {
     const lw = R(ui.tw(label, { mini: true, bold: true }) + 12), lx = R(x - lw / 2), ly = by - 15 + R((1 - easeOut(a.lk)) * 4);
@@ -183,7 +183,7 @@ export function roundButton(ui, cx, cy, r, icon, o = {}) {
   if (clicked) { a.bt = 0; if (hk) ui.click('ui_tap', { vol: 0.7 }); }
   const col = o.disabled ? '#a89a8c' : o.color || T.cream, sq = squash(a.bt, 0.12), dy = down ? 2 : over ? -1 : 0;
   const xf = Math.abs(sq) > 0.01;
-  if (xf) { g.save(); g.translate(cx, cy + Rr); g.scale(1 + sq, 1 - sq); g.translate(-cx, -(cy + Rr)); }
+  if (xf) ui.push(cx, cy + Rr, 1 + sq, 1 - sq);
   if (o.sel) { const p = ((ui.t * 4) | 0) % 2; ringPx(ui.s, cx, cy + dy, Rr + 3, p ? T.brass : '#fff0a0', 1); ringPx(ui.s, cx, cy + dy, Rr + 4, T.ink, 0.6); }
   // the lip below, then the ring and face
   woodRing(ui.s, cx, cy + 2, r, { th: 3, fill: mx(col, T.ink, 0.45), color: T.copperD });
@@ -191,7 +191,7 @@ export function roundButton(ui, cx, cy, r, icon, o = {}) {
   if (!o.disabled) { ui.fill(mx(over ? mx(col, '#ffffff', 0.2) : col, '#ffffff', 0.45)); g.fillRect(cx - R(r * 0.5), cy + dy - r + 1, R(r * 0.6), 1); g.fillRect(cx - r + 1, cy + dy - R(r * 0.4), 1, R(r * 0.5)); }
   const box = r >= 9 ? 16 : 12;
   drawBig(ui.s, icon, cx - box / 2, cy + dy - box / 2, o.tint || null, { scale: box / 12, shadow: true, dim: o.disabled ? 0.5 : 0 });
-  if (xf) { g.restore(); ui._fs = null; }
+  if (xf) ui.pop();
   if (o.sel) { const k = (ui.t * 0.9) % 1; sparkle(ui.s, cx + Math.cos(k * 6.28) * (Rr + 3), cy + Math.sin(k * 6.28) * (Rr + 3), T.amberL, 1 - k); }
   if (o.badge) { const bx = cx + r, by = cy - r; ball(ui.s, bx, by, 4, T.berry); ui.text(String(o.badge), bx + 1, by - 2, '#ffffff', { mini: true, align: 'center', bold: true }); }
   if (clicked) ui.ptr.released = false;
@@ -212,10 +212,10 @@ export function plinthButton(ui, cx, y, icon, o = {}) {
   if (clicked) { a.bt = 0; if (hk) ui.click('ui_tap', { vol: 0.7 }); }
   plinth(ui, cx, y + size - 2, w + (o.sel ? 2 : 0));
   const lift = down ? 1 : -R(a.hov * 2), sq = squash(a.bt, 0.16), g = ui.g, xf = Math.abs(sq) > 0.01;
-  if (xf) { g.save(); g.translate(cx, y + size); g.scale(1 + sq, 1 - sq); g.translate(-cx, -(y + size)); }
+  if (xf) ui.push(cx, y + size, 1 + sq, 1 - sq);
   if (o.sel) { ui.g.globalAlpha = 0.5 + Math.sin(ui.t * 5) * 0.2; fillShape(ui, cx - size / 2 - 2, y - 2 + lift, size + 4, size + 4, '#fff0a0', 3); ui.g.globalAlpha = 1; }
   drawBig(ui.s, icon, cx - size / 2, y + lift, null, { scale: size / 12 });
-  if (xf) { g.restore(); ui._fs = null; }
+  if (xf) ui.pop();
   if (over && ((ui.t * 1.3) % 1) < 0.3) sparkle(ui.s, cx + size / 2 - 1, y + lift, T.amberL, 1 - ((ui.t * 1.3) % 1) / 0.3);
   if (o.badge) { ball(ui.s, cx + size / 2 + 1, y + lift, 4, T.berry); ui.text(String(o.badge), cx + size / 2 + 2, y + lift - 2, '#ffffff', { mini: true, align: 'center', bold: true }); }
   if (o.label && (over || o.sel)) { const lw = R(ui.tw(o.label, { mini: true, bold: true }) + 10); frame(ui, cx - lw / 2, y + size + 8, lw, 11, { thin: true, r: 1, fill: T.ink, edge: T.copperD, shadow: false }); ui.text(o.label, cx, y + size + 11, T.cream, { mini: true, bold: true, align: 'center' }); }

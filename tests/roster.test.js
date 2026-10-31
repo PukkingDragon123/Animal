@@ -29,6 +29,8 @@ import { SPECIES as SF_TAKANAKA } from '../src/data/species/sf_takanaka.js';
 import { SPECIES as SF_GOBLINS } from '../src/data/species/sf_goblins.js';
 import { MOVES as M8 } from '../src/data/moves/sf_takanaka.js';
 import { MOVES as M9 } from '../src/data/moves/sf_goblins.js';
+import { SPECIES as SF_CAVE } from '../src/data/species/sf_cave.js';
+import { MOVES as M10 } from '../src/data/moves/sf_cave.js';
 import * as S from '../src/game/state.js';
 
 const store = new Map();
@@ -38,7 +40,8 @@ const NEW = ['pidgun', 'jungeon', 'paradove', 'trashcoon', 'dynacoon', 'hellcoon
   'pupalace', 'killaqueen', 'bohemonarch', 'zapkit', 'thundersabre', 'zeppra', 'stairgasus', 'rollick', 'neverdecker', 'johnlemon', 'starrfish', 'yokat', 'blackvolt', 'prismoon',
   'beatlet', 'pepperhorn', 'abbeyhorn', 'walrusk', 'wheezowl', 'mopzart', 'dreadrake', 'barkorious_forced', 'kohlossus',
   'metalfang', 'wyvillain', 'doomsdrake', 'blowhale', 'tartanic', 'grenaday', 'armagreddon', 'snoozaque', 'piledrilla', 'fluorescape',
-  'kissmet', 'kissmera', 'demonaconda', 'starstrut', 'spaceshell', 'purrcussion', 'talonaka', 'takaptain', 'hawkabunga', 'rainblin', 'roygbot'];
+  'kissmet', 'kissmera', 'demonaconda', 'starstrut', 'spaceshell', 'purrcussion', 'talonaka', 'takaptain', 'hawkabunga', 'rainblin', 'roygbot',
+  'geodig', 'lumoth', 'stalagrin', 'lumifin', 'tumblock', 'magmander'];
 const COND_KEYS = new Set(['level', 'wins', 'friendship', 'precise', 'healed', 'blocked', 'beats', 'charged', 'teamCombos', 'dojo', 'foods', 'location', 'hours', 'defeat', 'battle', 'activity', 'more', 'weather', 'holding', 'squad']);
 const snap = (sp, lv = 10, extra = {}, opts = {}) => { const m = createElemon(sp, Object.assign({ level: lv, form: 'm', look: 1 }, opts)); Object.assign(m.skills, extra); return battleSnapshot(m); };
 const duel = (a, b, rules = {}, more = {}) => createBattle({ seed: more.seed ?? 5, rules: Object.assign({ orders: false, switchTime: 0, bond: false }, rules),
@@ -47,7 +50,7 @@ const duel = (a, b, rules = {}, more = {}) => createBattle({ seed: more.seed ?? 
 function run(st, maxT, onTick) { const evs = []; while (!st.over && st.t < maxT) { step(st, DT); for (const e of st.events) evs.push(e); if (st.qte) resolveQte(st, st.qte.id, 0.8); onTick && onTick(st); } return evs; }
 
 section('new species data');
-const MODS = [SF_LINES, SF_WILD, SF_LEGENDS, SF_DOOM, SF_REDBONE, SF_GREENDAY, SF_ARCTIC, SF_KISS, SF_TAKANAKA, SF_GOBLINS];
+const MODS = [SF_LINES, SF_WILD, SF_LEGENDS, SF_DOOM, SF_REDBONE, SF_GREENDAY, SF_ARCTIC, SF_KISS, SF_TAKANAKA, SF_GOBLINS, SF_CAVE];
 for (const id of NEW) ok(`${id} is registered`, !!SPECIES[id] && MODS.some((m) => m[id]));
 for (const id of ['lenshorn', 'starrab']) ok(`retired ${id} removed`, !SPECIES[id]);
 for (const id of ['mccarapace', 'harrisun']) ok(`${id} stays (Fab Four)`, !!SPECIES[id] && /Fab Four/.test(SPECIES[id].role));
@@ -68,10 +71,11 @@ for (const mod of MODS) for (const [id, sp] of Object.entries(mod)) {
 }
 ok('legendaries are strong and rare', ['blackvolt', 'prismoon'].every((id) => SPECIES[id].legendary && Object.values(SPECIES[id].base).reduce((a, b) => a + b, 0) >= 80 && SPECIES[id].catch <= 0.05));
 ok('story cast: wheezowl (gift) and mopzart (NPC) are not catchable, dreadrake is', SPECIES.wheezowl.catch === 0 && SPECIES.mopzart.catch === 0 && SPECIES.dreadrake.catch > 0);
+ok('the Deep Cave\'s Tokonmon are catchable cave types with models; magmander is its uncatchable boss', ['geodig', 'lumoth', 'stalagrin', 'lumifin', 'tumblock'].every((id) => SPECIES[id].catch > 0 && SPECIES[id].stage === 1 && fs.existsSync(new URL(`../src/vx/mons/${id}.js`, import.meta.url))) && SPECIES.magmander.catch === 0 && SPECIES.magmander.boss && SPECIES.magmander.base.hp >= 20 && fs.existsSync(new URL('../src/vx/mons/magmander.js', import.meta.url)));
 ok('kohlossus (the garden guardian) is an uncatchable Bio tank with a model', SPECIES.kohlossus.catch === 0 && SPECIES.kohlossus.elem === 'bio' && SPECIES.kohlossus.base.hp >= 16 && fs.existsSync(new URL('../src/vx/mons/kohlossus.js', import.meta.url)));
 { const f = SPECIES.barkorious_forced, sum = (sp) => Object.values(sp.base).reduce((a, b) => a + b, 0);
   ok('barkorious_forced: uncatchable boss, reverts to barkorious, boss-tier stats', f.boss && f.catch === 0 && f.revertsTo === 'barkorious' && !!SPECIES[f.revertsTo] && sum(f) >= 60 && sum(f) > sum(SPECIES.barkorious)); }
-const NEWSK = [...M1, ...M2, ...M3, ...M4, ...M5, ...M6, ...M7, ...M8, ...M9];
+const NEWSK = [...M1, ...M2, ...M3, ...M4, ...M5, ...M6, ...M7, ...M8, ...M9, ...M10];
 ok('signature skills are unique ids', new Set(NEWSK.map((s) => s.id)).size === NEWSK.length);
 for (const s of NEWSK) ok(`${s.id} well-formed`, s.kind === 'passive' ? !!s.mods : Array.isArray(s.eff) && s.eff.length > 0 && (s.kind !== 'ultimate' || !!s.qte));
 
