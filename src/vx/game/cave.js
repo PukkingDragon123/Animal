@@ -100,7 +100,7 @@ export async function enterCave(app, o = {}) {
     cin.focus(null, { band: 0.24, dof: 0.75 });
     sfx(app, 'whoosh', { vol: 0.5, pitch: 0.45 });
     cin.place('The Deep Cave', 'Under Alamo Hill', { wait: false, hold: 4200 });
-    const puff = setInterval(() => { if (w.burst) w.burst('steam', [MOUTH.x + rnd(-0.8, 0.8), my + rnd(0.4, 2.0), MOUTH.z + 0.4], { n: 2, dir: new THREE.Vector3(0, 0.15, -1), speed: 0.6 }); }, 160);
+    const puff = setInterval(() => { if (w.burst) w.burst('steam', [MOUTH.x + rnd(-0.7, 0.7), my + rnd(0.3, 1.8), MOUTH.z + 0.3], { n: 1, dir: new THREE.Vector3(0, 0.1, -1), speed: 0.5, scale: 0.55 }); }, 240);
     const dolly = cin.move(view([MOUTH.x, my + 1.35, MOUTH.z + 0.6], 6.2, 186, 7), { dur: 3.4 });
     me.faceTo(MOUTH.x, MOUTH.z);
     await app.wait(700);

@@ -48,7 +48,7 @@ function rock(F, cx, cy, cz, rx, ry, rz, pal, seed, o = {}) {
     const dx = (x + 0.5 - cx) / rx, dy = (y + 0.5 - cy) / ry, dz = (z + 0.5 - cz) / rz, nz3 = noise3(x * k + seed, y * k * 1.3, z * k - seed);
     if (Math.hypot(dx, dy, dz) + (nz3 - 0.5) * rough > 1) continue;
     const n = nrm(dx / rx, dy / ry, dz / rz), band = Math.floor((y + nz3 * 5 + seed) / bh) % RS.length;
-    let v = 0.12 + 0.72 * lit(n) + (noise3(x * 0.5, y * 0.5, z * 0.5 + seed) - 0.5) * 0.22;
+    let v = 0.3 + 0.56 * lit(n) + (noise3(x * 0.5, y * 0.5, z * 0.5 + seed) - 0.5) * 0.22;     // (gentle: the scene's light shades it too)
     if (Math.abs(noise3(x * 0.22 + seed, y * 0.3, z * 0.22) - 0.5) < 0.022) v -= 0.45;            // cracks
     const cap = n[1] > 0.5 + (nz3 - 0.5) * 0.5;
     F.set(x, y, z, cap && M ? pickD(M, v, x, y, z) : cap && G ? pickD(G, v + 0.1, x, y, z) : pickD(RS[band], v, x, y, z));
