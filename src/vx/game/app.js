@@ -20,6 +20,7 @@ import { LOCATIONS } from './locations.js';
 import { Quests, visit, drawTramSign } from './quests.js';
 import { Hud } from './hud.js';
 import { Cinema } from './cinema.js';     // [cinema] the cutscene director
+import { SearchMode } from './search.js'; // [lens] first-person search + look-closer moments
 
 // fast-travel targets on the city map (phone map / cable car)
 const CITY_SPOTS = { chinatown: 'square', alamo: 'park', pier39: 'pier', dojo: 'dojoDoor', arena: 'arena', apartment: 'frontDoorOut', home: 'frontDoorOut', lab: 'labDoor', city: 'frontDoorOut' };
@@ -58,6 +59,7 @@ export class VxApp {
     this.quests = new Quests(this);
     this.hud = new Hud(this);
     this.cinema = new Cinema(this);                          // [cinema] bars, shots, cards, hold-to-skip
+    this.search = new SearchMode(this);                      // [lens] the TokoLens (the HUD shows its button)
     this.last = performance.now();
     this.loop = this.loop.bind(this); requestAnimationFrame(this.loop);
     window.__app = this;

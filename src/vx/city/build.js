@@ -8,7 +8,7 @@
 import * as THREE from '../../../vendor/three.module.js';
 import { CityNav, CELL } from './nav.js';
 import * as TX from './pixtex.js';
-import { propMeshes, PROPS } from './voxprops.js';
+import { propMeshes, PROPS, geoFor as geoForCached } from './voxprops.js';
 import { glowInfo } from '../render/glow.js';
 import { surfaceMaterial } from '../render/surface.js';
 import { mergeLights } from '../render/pools.js';
@@ -457,15 +457,19 @@ export class CityBuilder {
     // voxel props: instanced per kind and per 32 m tile, so the camera and the sun's shadow box only draw the
     // tiles they see; every prop with glowing voxels (lamps, lanterns, neon, vending machines) throws light
     const P = new THREE.Group(); P.name = 'props'; root.add(P);
-    const tiles = new Map(), halos = [];
-    for (const p of this.props) { const k = Math.floor(p.x / 32) + ',' + Math.floor(p.z / 32); if (!tiles.has(k)) tiles.set(k, []); tiles.get(k).push(p); }
+    const tiles = new Map(), halos = [], TS = 48;
+    for (const p of this.props) { const k = Math.floor(p.x / TS) + ',' + Math.floor(p.z / TS); if (!tiles.has(k)) tiles.set(k, []); tiles.get(k).push(p); }
+    const lod = this.propLod = [];
     for (const list of tiles.values()) {
       const pg = propMeshes(list, stage.mats);
       for (const im of [...pg.children]) {
-        if (im.isInstancedMesh) { im.computeBoundingSphere(); im.frustumCulled = true; if (im.material === stage.mats.glow) propLights(im, list, lights, this.nav, halos); }
-        P.add(im);
+        if (!im.isInstancedMesh) continue;
+        im.computeBoundingSphere(); im.frustumCulled = true;
+        if (im.material === stage.mats.glow) propLights(im, list, lights, this.nav, halos);
+        P.add(im); lod.push(lodEntry(im, P));
       }
     }
+    this.updaters.push(propLodUpdater(lod));
     if (stage && stage.addLights) stage.addLights(mergeLights(lights).concat(halos, this.lights || []));
     // building group handles for the cutaway
     for (const B of this.buildings) {
@@ -484,6 +488,49 @@ export class CityBuilder {
     };
     return city;
   }
+}
+// ---------------------------------------------------------------- prop level of detail
+// Every prop kind is instanced per 48 m tile; every few frames each tile's instances are re-packed by distance from
+// the camera: beyond a kind's draw distance (its size × CULL_K, so a bin goes long before a tree does) an instance is
+// dropped, and kinds with a far twin (the trees) swap to it past LOD_D. One upload per changed tile, no per-frame CPU.
+const LITE = !!globalThis.TOKON_LITE, CULL_K = LITE ? 70 : 115, FLAT_K = LITE ? 30 : 48, LOD_D = LITE ? 18 : 30;
+function lodEntry(im, parent) {
+  const kind = im.userData.prop, P = PROPS[kind], n = im.count, full = im.instanceMatrix.array.slice(), xz = new Float32Array(n * 2);
+  let smax = 0; for (let i = 0; i < n; i++) { xz[i * 2] = full[i * 16 + 12]; xz[i * 2 + 1] = full[i * 16 + 14]; smax = Math.max(smax, Math.hypot(full[i * 16], full[i * 16 + 1], full[i * 16 + 2])); }
+  const parts = geoForCached(kind), rad = Math.max(...['opaque', 'leaves', 'glow'].map((k) => (parts && parts[k] && parts[k].boundingSphere ? parts[k].boundingSphere.radius : 0))) * (smax || 1);
+  const flat = P && !P.tree && P.noShadow && /^gr_/.test(kind), cull = Math.max(flat ? 14 : 22, rad * (flat ? FLAT_K : CULL_K));
+  let lo = null;
+  const loParts = P && P.mesh ? geoForCached(kind, true) : null, lg = loParts && loParts[im.userData.part];
+  if (lg) { lo = new THREE.InstancedMesh(lg, im.material, n); lo.count = 0; lo.castShadow = im.castShadow; lo.receiveShadow = true; lo.userData = { prop: kind, part: im.userData.part, lo: true }; lo.boundingSphere = im.boundingSphere.clone(); lo.frustumCulled = true; parent.add(lo); }
+  const bs = im.boundingSphere;
+  return { im, lo, n, full, xz, cull2: cull * cull, cull, lod2: LOD_D * LOD_D, cx: bs.center.x, cz: bs.center.z, r: bs.radius, sig: -1 };
+}
+function propLodUpdater(lod) {
+  let f = 0, lx = 1e9, lz = 1e9;
+  const q = typeof location !== 'undefined' ? location.search : '', off = /[?&]proplod=0/.test(q);
+  return () => {
+    if (off) return;
+    const app = globalThis.__app, cam = app && app.stage && app.stage.cam; if (!cam) return;
+    const x = cam.position.x, z = cam.position.z;
+    if (++f % 4 && Math.hypot(x - lx, z - lz) < 2) return;
+    lx = x; lz = z;
+    for (const e of lod) {
+      const dx = e.cx - x, dz = e.cz - z, D = e.cull + e.r;
+      if (dx * dx + dz * dz > D * D) { if (e.im.visible) { e.im.visible = false; if (e.lo) e.lo.visible = false; } continue; }
+      e.im.visible = true; if (e.lo) e.lo.visible = true;
+      const A = e.im.instanceMatrix.array, B = e.lo ? e.lo.instanceMatrix.array : null, F = e.full, XZ = e.xz;
+      let k = 0, kl = 0, sig = 0;
+      for (let i = 0; i < e.n; i++) {
+        const ax = XZ[i * 2] - x, az = XZ[i * 2 + 1] - z, d2 = ax * ax + az * az;
+        if (d2 > e.cull2) continue;
+        if (B && d2 > e.lod2) { for (let j = 0; j < 16; j++) B[kl * 16 + j] = F[i * 16 + j]; kl++; sig = (sig * 31 + i * 7 + 3) | 0; }
+        else { for (let j = 0; j < 16; j++) A[k * 16 + j] = F[i * 16 + j]; k++; sig = (sig * 31 + i) | 0; }
+      }
+      if (sig === e.sig && k === e.im.count) continue;
+      e.sig = sig; e.im.count = k; e.im.instanceMatrix.needsUpdate = true;
+      if (e.lo) { e.lo.count = kl; e.lo.instanceMatrix.needsUpdate = true; }
+    }
+  };
 }
 // ---------------------------------------------------------------- shadows
 // one merged, invisible shadow caster per group (instead of one per texture): the sun's shadow pass draws a

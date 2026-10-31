@@ -100,6 +100,8 @@ export function leafTexture() {
     g.strokeStyle = `rgba(60,70,40,0.5)`; g.lineWidth = 1; g.beginPath(); g.moveTo(-len / 2, 0); g.lineTo(len / 2, 0); g.stroke();
     g.restore();
   }
+  // a solid patch in the bottom-left corner (uv ≈ 0.05): the opaque cores of the clusters and palm leaflets sample it
+  g.fillStyle = 'rgb(205,210,180)'; g.fillRect(0, S - 30, 30, 30);
   // a few twigs
   g.strokeStyle = 'rgb(90,72,52)'; g.lineWidth = 2;
   for (let i = 0; i < 6; i++) { const a = r() * TAU; g.beginPath(); g.moveTo(S / 2, S / 2); g.lineTo(S / 2 + Math.cos(a) * S * 0.35, S / 2 + Math.sin(a) * S * 0.35); g.stroke(); }

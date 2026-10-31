@@ -80,12 +80,20 @@ export const PROPS = {
 // tiny kinds whose shadow is a few pixels skip the shadow pass (every kind costs a draw call per tile there)
 for (const k of ['firebox', 'sign', 'bollard', 'cone', 'hydrant']) if (PROPS[k]) PROPS[k].noShadow = true;
 const GEO = new Map();
-function geoFor(kind) {
-  if (GEO.has(kind)) return GEO.get(kind);
-  const P = PROPS[kind], [X, Y, Z] = P.size, F = new Fine(X, Y, Z, V);
-  P.build(F, rnd(kind.length * 7919 + 13));
-  const m = F.mesh(), parts = { opaque: merge(m.opaque, X / V / 2, Z / V / 2), glow: merge(m.glow, X / V / 2, Z / V / 2) };
-  GEO.set(kind, parts);
+/** a kind's geometry parts: { opaque, glow, leaves } (lo: the far twin, for kinds that have one; else null) */
+export function geoFor(kind, lo = false) {
+  const key = kind + (lo ? ':lo' : '');
+  if (GEO.has(key)) return GEO.get(key);
+  const P = PROPS[kind];
+  let parts = null;
+  if (P.mesh) { const m = P.mesh(lo); parts = m ? { opaque: m.opaque || null, glow: m.glow || null, leaves: m.leaves || null } : null; }
+  else if (lo) parts = null;
+  else {
+    const [X, Y, Z] = P.size, F = new Fine(X, Y, Z, V);
+    P.build(F, rnd(kind.length * 7919 + 13));
+    const m = F.mesh(); parts = { opaque: merge(m.opaque, X / V / 2, Z / V / 2), glow: merge(m.glow, X / V / 2, Z / V / 2), leaves: null };
+  }
+  GEO.set(key, parts);
   return parts;
 }
 function merge(geos, ox, oz) {
@@ -122,17 +130,29 @@ function surfMat(base, kind) {
   if (!m) { m = base.clone(); m.roughness = s[0]; m.metalness = s[1]; M.set(k, m); }
   return m;
 }
+/** the material of one part of a kind (mats: the stage's { solid, glow }) */
+export function partMat(kind, part, mats) {
+  const P = PROPS[kind];
+  if (part === 'glow') return mats.glow;
+  if (part === 'leaves') return MESH_MATS.leaves();
+  if (P.mesh) return P.sway ? MESH_MATS.sway() : MESH_MATS.vpbr();
+  return surfMat(mats.solid, kind);
+}
+/** materials for modelled kinds, filled in by props_trees.js / props_real.js (kept out of here to avoid an import cycle) */
+export const MESH_MATS = { vpbr: () => null, sway: () => null, leaves: () => null };
+/** Instanced placement of all props: list [{ kind, x, y, z, yaw, s }] → THREE.Group of InstancedMeshes
+ *  (userData: prop kind, part, the instances' props in order) */
 export function propMeshes(list, mats) {
   const G = new THREE.Group(), byKind = new Map();
   for (const p of list) { if (!PROPS[p.kind]) continue; if (!byKind.has(p.kind)) byKind.set(p.kind, []); byKind.get(p.kind).push(p); }
   const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), s3 = new THREE.Vector3(), v3 = new THREE.Vector3();
   for (const [kind, arr] of byKind) {
-    const geo = geoFor(kind);
-    for (const [part, mat] of [['opaque', surfMat(mats.solid, kind)], ['glow', mats.glow]]) {
+    const geo = geoFor(kind); if (!geo) continue;
+    for (const part of ['opaque', 'leaves', 'glow']) {
       if (!geo[part]) continue;
-      const im = new THREE.InstancedMesh(geo[part], mat, arr.length);
+      const im = new THREE.InstancedMesh(geo[part], partMat(kind, part, mats), arr.length);
       arr.forEach((p, i) => { q.setFromEuler(e.set(0, p.yaw || 0, 0)); s3.setScalar(p.s || 1); m4.compose(v3.set(p.x, p.y || 0, p.z), q, s3); im.setMatrixAt(i, m4); });
-      im.castShadow = part === 'opaque' && !PROPS[kind].noShadow; im.receiveShadow = true; im.frustumCulled = false; im.userData.prop = kind;
+      im.castShadow = part !== 'glow' && !PROPS[kind].noShadow; im.receiveShadow = true; im.frustumCulled = false; im.userData.prop = kind; im.userData.part = part; im.userData.list = arr;
       G.add(im);
     }
   }

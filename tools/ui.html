@@ -16,6 +16,7 @@ import * as S from '../src/game/state.js';
 import { createElemon } from '../src/game/elemon.js';
 import { SPECIES } from '../src/data/species.js';
 import { Hud } from '../src/vx/game/hud.js';
+import { SFPhone } from '../src/vx/game/phone.js';
 
 const q = new URLSearchParams(location.search);
 const screen = q.get('screen') || 'gallery';
@@ -77,9 +78,13 @@ function fakeApp() {
   const ids = Object.keys(SPECIES);
   for (const [sp, lv, hp] of [[ids[0], 7, 0.9], [ids[2], 6, 0.3], [ids[4], 5, 0.15], [ids[6], 4, 0]]) { const m = createElemon(sp, { level: lv }); m.hp = hp; st.party.push(m); }
   st.money = 12480; st.time = { day: 3, hour: 19.6 }; st.bag = { takoyaki: 3, ramune: 2, matcha: 1, revive_onigiri: 1, ramen: 4 };
-  const app = { ui, state: st, t: 0, toast: (s, o) => ui.toast(s, o), save() { ui.toast('Game saved', { icon: 'save', color: T.green }); }, phone: { toggle() { ui.toast('(phone map)', { icon: 'map', color: T.cyan }); } },
+  st.dex.seen = { pidgun: true, lemmo: true, cabbunny: true, zapkit: true }; st.dex.caught = { chilichick: true };
+  st.unlocks.locations.push('alamo', 'chinatown');
+  const app = { ui, state: st, t: 0, toast: (s, o) => ui.toast(s, o), save() { ui.toast('Game saved', { icon: 'save', color: T.green }); },
+    quests: { list: () => [{ id: 'tarts', title: 'Egg tarts for Mom', steps: ['Pick up egg tarts at Lucky Moon', 'Bring them home'], step: 0, active: true, main: true }, { id: 'chess', title: 'Uncle Ho\'s challenge', steps: ['Beat Uncle Ho in Portsmouth Square'], step: 0, active: true }, { id: 'pier', title: 'Seal of approval', active: false }] },
     world: { loc: { name: 'Chinatown' }, zoneName: 'Grant Avenue', drawMinimap: (ui, x, y, w, h) => drawSampleMap(ui, x, y, w, h), city: { active: () => screen === 'hud', pad: null, touch: false } },
-    audio: { sfx() {}, setVolumes() {} }, story: {}, keysDown: {} };
+    search: { near: null, scan() { return screen === 'hud' ? (this.near = { x: 0, z: 0 }) : null; }, enter() {} },
+    audio: { sfx() {}, setVolumes() {} }, story: { run: (f) => f() }, keysDown: {} };
   return app;
 }
 
@@ -167,7 +172,7 @@ async function setup() {
   if (screen === 'cards') ui.pickCards({ title: 'Are you a boy or a girl?', cards: [{ label: 'Boy', sub: 'Messy hair, big dreams', color: '#e8603a', icon: 'star' }, { label: 'Girl', sub: 'Ponytail, bigger dreams', color: '#e05a8a', icon: 'heart' }] }).then((i) => ui.toast('Picked ' + i, { icon: 'check' }));
   if (screen === 'cards3') ui.pickCards({ title: 'Choose your partner', cards: [{ label: 'Kindoru', sub: 'Pyro dragon', color: '#ff6a2b', icon: 'flame' }, { label: 'Takopo', sub: 'Hydro octopus', color: '#2fa8ff', icon: 'drop' }, { label: 'Mochika', sub: 'Bio fawn', color: '#5fd35a', icon: 'leaf' }] });
   if (screen === 'hud' || screen === 'menu' || screen === 'dialog' || screen === 'dialog2') { app = fakeApp(); hud = new Hud(app); }
-  if (screen === 'menu') hud.openMenu(q.get('tab') || 'party');
+  if (screen === 'menu') { app.phone = new SFPhone(app); hud.openMenu(q.get('tab') || 'home'); }
   if (screen === 'dialog') ui.say('Mika', "Ren! You're finally up. Grandma says the cable car is running again — want to ride it down to the bay with me?", { portrait, choices: ['Sure, let\'s go!', 'Maybe later', 'Who are you again?'] });
   if (screen === 'dialog2') ui.say('Grandma', 'The tram bell rings twice at noon. When it does, follow it down the hill and you will find the bakery.', {});
   if (screen === 'hud') { ui.toast('Saved', { icon: 'check', color: T.green, dur: 99 }); ui.toast('McCarapace Lv 8!', { icon: 'star', color: T.amber, dur: 99 }); ui.toast('Takoyaki ×6', { icon: 'bowl', dur: 99 }); hud.showLocation('Grant Avenue', 'Chinatown'); }
@@ -178,7 +183,7 @@ function frame(dt) {
   if (screen === 'gallery') gallery();
   else if (screen === 'icons') iconsSheet();
   else if (screen === 'prompts') promptsSheet();
-  else if (hud) { app.t += dt; hud.draw(ui, dt); }
+  else if (hud) { app.t += dt; hud.draw(ui, dt); if (app.phone && app.phone.open && app.phone.draw) app.phone.draw(ui, dt); }
   ui.end();
 }
 let bgDone = false;
