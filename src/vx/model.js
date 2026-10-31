@@ -107,7 +107,7 @@ export function compile(def) {
   let W = 128; const area = items.reduce((s, it) => s + (it.pw + 2) * (it.ph + 2), 0); while (W * W < area * 1.25) W *= 2;
   let x = 0, y = 0, rowH = 0;
   for (const it of items) { if (x + it.pw + 2 > W) { x = 0; y += rowH + 2; rowH = 0; } it.u = x + 1; it.v = y + 1; x += it.pw + 2; rowH = Math.max(rowH, it.ph); }
-  let H = 64; while (H < y + rowH + 2) H *= 2;
+  const H = Math.max(16, Math.ceil((y + rowH + 2) / 8) * 8);      // as tall as the packed islands (not the next power of two)
   const atlas = newSurf(W, H);
   // 2) paint every face into its island
   let seed = 7;

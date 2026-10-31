@@ -33,6 +33,27 @@ const COMMON = `
 uniform sampler2D tDepth; uniform mat4 uProjInv;
 vec3 viewPos(vec2 uv) { float d = texture2D(tDepth, uv).x; vec4 v = uProjInv * vec4(uv * 2.0 - 1.0, d * 2.0 - 1.0, 1.0); return v.xyz / v.w; }
 `;
+const INK = `
+uniform vec3 uInk; uniform float uInkA; uniform float uInkW; uniform vec4 uInkP; uniform vec2 uInkF; uniform float uPixK;
+// inverse view depth (0 for the sky: infinitely far)
+float iz(vec2 uv) { float d = texture2D(tDepth, uv).x; return d >= 1.0 ? 0.0 : -1.0 / perspectiveDepthToViewZ(d, uNF.x, uNF.y); }
+// ink coverage 0..1 at this pixel (c: its inverse depth)
+float ink(float c) {
+  vec2 o = uTexel * uInkW;
+  vec4 A = vec4(iz(vUv - vec2(o.x, 0.0)), iz(vUv - vec2(0.0, o.y)), iz(vUv - o), iz(vUv + vec2(o.x, -o.y)));
+  vec4 B = vec4(iz(vUv + vec2(o.x, 0.0)), iz(vUv + vec2(0.0, o.y)), iz(vUv + o), iz(vUv + vec2(-o.x, o.y)));
+  vec4 D = (2.0 * c - A - B) / c;                                 // 0 on a plane; > 0: the neighbours fall away behind
+  float hi = max(max(D.x, D.y), max(D.z, D.w)), lo = min(min(D.x, D.y), min(D.z, D.w));
+  // silhouette, near side: a neighbour lies far behind the plane through this pixel
+  float sil = smoothstep(uInkP.x, uInkP.x * 1.6, hi);
+  // the far side of a silhouette (a neighbour far in front): no line here, the near side has it
+  float far = step(uInkP.x, -lo);
+  // crease: the change of slope across this pixel, in units of tan(angle) (diagonals are √2 longer)
+  vec4 C = abs(D) / (uPixK * uInkW * vec4(1.0, 1.0, 1.4142, 1.4142));
+  float crease = smoothstep(uInkP.y, uInkP.y * 1.7, max(max(C.x, C.y), max(C.z, C.w))) * (1.0 - far) * uInkP.z;
+  return max(sil, crease);
+}
+`;
 const AO_FS = `#define SAMPLES 12
 varying vec2 vUv; uniform vec2 uTexel; uniform float uRadius; uniform float uProjY; uniform float uAspect; uniform float uBias; uniform float uPower; uniform float uStrength;
 ${COMMON}
@@ -71,26 +92,9 @@ void main() {
 }`;
 const FINAL_FS = `varying vec2 vUv; uniform sampler2D tColor; uniform sampler2D tAO; uniform float uAO; uniform vec2 uTexel; uniform vec2 uNF;
 uniform mat4 uCamWorld; uniform vec3 uHaze; uniform vec4 uHazeP; uniform float uHazeY;
-uniform vec3 uInk; uniform float uInkA; uniform float uInkW; uniform vec4 uInkP; uniform vec2 uInkF; uniform float uPixK; uniform float uDebug;
+uniform float uDebug;
 ${COMMON}
-// inverse view depth (0 for the sky: infinitely far)
-float iz(vec2 uv) { float d = texture2D(tDepth, uv).x; return d >= 1.0 ? 0.0 : -1.0 / perspectiveDepthToViewZ(d, uNF.x, uNF.y); }
-// ink coverage 0..1 at this pixel (c: its inverse depth)
-float ink(float c) {
-  vec2 o = uTexel * uInkW;
-  vec4 A = vec4(iz(vUv - vec2(o.x, 0.0)), iz(vUv - vec2(0.0, o.y)), iz(vUv - o), iz(vUv + vec2(o.x, -o.y)));
-  vec4 B = vec4(iz(vUv + vec2(o.x, 0.0)), iz(vUv + vec2(0.0, o.y)), iz(vUv + o), iz(vUv + vec2(-o.x, o.y)));
-  vec4 D = (2.0 * c - A - B) / c;                                 // 0 on a plane; > 0: the neighbours fall away behind
-  float hi = max(max(D.x, D.y), max(D.z, D.w)), lo = min(min(D.x, D.y), min(D.z, D.w));
-  // silhouette, near side: a neighbour lies far behind the plane through this pixel
-  float sil = smoothstep(uInkP.x, uInkP.x * 1.6, hi);
-  // the far side of a silhouette (a neighbour far in front): no line here, the near side has it
-  float far = step(uInkP.x, -lo);
-  // crease: the change of slope across this pixel, in units of tan(angle) (diagonals are √2 longer)
-  vec4 C = abs(D) / (uPixK * uInkW * vec4(1.0, 1.0, 1.4142, 1.4142));
-  float crease = smoothstep(uInkP.y, uInkP.y * 1.7, max(max(C.x, C.y), max(C.z, C.w))) * (1.0 - far) * uInkP.z;
-  return max(sil, crease);
-}
+${INK}
 void main() {
   vec3 col = texture2D(tColor, vUv).rgb;
   float d = texture2D(tDepth, vUv).x;
@@ -102,7 +106,8 @@ void main() {
     if (uDebug > 0.5) col = vec3(ao * 0.6);
     // the ink outline: silhouettes and strong creases, thinning with distance (the haze below fades it further)
     if (uInkA > 0.0) {
-      float k = ink(-1.0 / vp.z) * uInkA * mix(1.0, uInkP.w, smoothstep(uInkF.x, uInkF.y, dist));
+      // (alpha = how much of this opaque surface still shows through faded cut-away walls, water, glass: see coverage())
+      float k = ink(-1.0 / vp.z) * uInkA * mix(1.0, uInkP.w, smoothstep(uInkF.x, uInkF.y, dist)) * clamp(texture2D(tColor, vUv).a, 0.0, 1.0);
       col = mix(col, uInk + col * 0.12, k);
       if (uDebug > 1.5) col = vec3(1.0 - k);
     }
@@ -117,6 +122,16 @@ void main() {
   #include <tonemapping_fragment>
   #include <colorspace_fragment>
   #endif
+}`;
+// the ink alone over a finished colour target (dialogue portraits): alpha kept, lines on the subject's own pixels
+const INKONLY_FS = `varying vec2 vUv; uniform sampler2D tColor; uniform vec2 uTexel; uniform vec2 uNF;
+${COMMON}
+${INK}
+void main() {
+  vec4 c = texture2D(tColor, vUv);
+  float d = texture2D(tDepth, vUv).x;
+  if (d < 1.0 && uInkA > 0.0) c.rgb = mix(c.rgb, uInk + c.rgb * 0.12, ink(-1.0 / viewPos(vUv).z) * uInkA);
+  gl_FragColor = c;
 }`;
 // circle of confusion (0..1 of the largest blur) from the view depth: a thin lens focused at uDof.x metres
 const COC = `
@@ -166,8 +181,11 @@ export class Composite {
     this.mFinal = sh(FINAL_FS, {
       tColor: { value: null }, tDepth: { value: null }, tAO: { value: null }, uProjInv: projInv, uAO: { value: 0.85 }, uTexel: { value: new THREE.Vector2() }, uNF: { value: new THREE.Vector2() },
       uCamWorld: { value: new THREE.Matrix4() }, uHaze: { value: new THREE.Color() }, uHazeP: { value: new THREE.Vector4(30, 0.02, 0.4, 0.12) }, uHazeY: { value: 0 },
-      uInk: { value: new THREE.Color(0.03, 0.018, 0.016) }, uInkA: { value: 0 }, uInkW: { value: 1 }, uInkP: { value: new THREE.Vector4(0.03, 1.1, 0.85, 0.5) }, uInkF: { value: new THREE.Vector2(14, 90) }, uPixK: { value: 0.001 }, uDebug: { value: 0 },
+      uDebug: { value: 0 },
     });
+    const inkU = () => ({ uInk: { value: new THREE.Color(0.03, 0.018, 0.016) }, uInkA: { value: 0 }, uInkW: { value: 1 }, uInkP: { value: new THREE.Vector4(0.03, 1.4, 0.85, 0.5) }, uInkF: { value: new THREE.Vector2(14, 90) }, uPixK: { value: 0.001 } });
+    Object.assign(this.mFinal.uniforms, inkU());
+    this.mInk = sh(INKONLY_FS, { tColor: { value: null }, tDepth: { value: null }, uProjInv: { value: new THREE.Matrix4() }, uTexel: { value: new THREE.Vector2() }, uNF: { value: new THREE.Vector2() }, ...inkU() });
     this.mFinal.toneMapped = true;      // the canvas gets the renderer's filmic tone mapping + sRGB
     this.mShade = this.mFinal.clone(); this.mShade.uniforms = this.mFinal.uniforms; this.mShade.defines = { NO_TONE: '' }; this.mShade.toneMapped = false;
     const dofP = { value: new THREE.Vector4(5, 1.4, 0.1, 0) };
@@ -188,6 +206,32 @@ export class Composite {
       this.aoA = new THREE.WebGLRenderTarget(aw, ah, o); this.aoB = new THREE.WebGLRenderTarget(aw, ah, o);
     }
   }
+  inkUniforms(U, cam, H, o) {
+    U.uInkA.value = o.ink || 0; if (o.inkCol) U.uInk.value.copy(o.inkCol);
+    U.uInkW.value = o.inkW ?? Math.max(1, Math.round(H / 1080 * 1.25)); U.uPixK.value = 2 / (cam.projectionMatrix.elements[5] * H);
+    if (o.inkP) U.uInkP.value.set(...o.inkP); if (o.inkFade) U.uInkF.value.set(...o.inkFade);
+  }
+  /** Transparent surfaces (cut-away walls, water, glass) write no depth, so the ink comes from the opaque surface
+   *  behind them. Their alpha is made to blend multiplicatively into the target's alpha (colour blending unchanged):
+   *  after the frame, alpha = how much of that opaque surface is still seen, and the ink is faded by it. */
+  coverage(scene) {
+    const P = this.patched || (this.patched = new Set());
+    for (const m of P) if (!m.transparent) { m.blending = THREE.NormalBlending; P.delete(m); }
+    scene.traverseVisible((o) => {
+      const m = o.material;
+      if (!o.isMesh || !m || Array.isArray(m) || !m.transparent || m.blending !== THREE.NormalBlending || m.premultipliedAlpha) return;
+      m.blending = THREE.CustomBlending; m.blendEquation = m.blendEquationAlpha = THREE.AddEquation;
+      m.blendSrc = THREE.SrcAlphaFactor; m.blendDst = THREE.OneMinusSrcAlphaFactor; m.blendSrcAlpha = THREE.ZeroFactor; m.blendDstAlpha = THREE.OneMinusSrcAlphaFactor;
+      P.add(m);
+    });
+  }
+  /** the ink outline alone: src (a target with a depthTexture, rendered through cam) → dst, alpha kept */
+  inkPass(src, cam, dst, o = {}) {
+    const U = this.mInk.uniforms, W = src.width, H = src.height;
+    U.tColor.value = src.texture; U.tDepth.value = src.depthTexture; U.uProjInv.value.copy(cam.projectionMatrixInverse);
+    U.uTexel.value.set(1 / W, 1 / H); U.uNF.value.set(cam.near, cam.far); this.inkUniforms(U, cam, H, o);
+    const prev = this.r.getRenderTarget(); this.pass(this.mInk, dst); this.r.setRenderTarget(prev);
+  }
   pass(mat, target) { this.quad.material = mat; this.r.setRenderTarget(target); this.r.render(this.scene, this.cam); }
   dofTargets(W, H) {
     if (!this.rtS || this.rtS.width !== W || this.rtS.height !== H) {
@@ -204,6 +248,7 @@ export class Composite {
     const aoOn = (o.ao ?? 0.85) > 0, aoScale = Math.min(0.5, 720 / Math.max(W, 1));
     this.targets(W, H, aoScale);
     const r = this.r;
+    if ((o.ink || 0) > 0) this.coverage(scene);
     r.setRenderTarget(this.rt); r.render(scene, cam);
     this.u.projInv.value.copy(cam.projectionMatrixInverse);
     const depth = this.rt.depthTexture, nf = [cam.near, cam.far];
@@ -220,9 +265,7 @@ export class Composite {
     F.uTexel.value.set(1 / W, 1 / H); F.uNF.value.set(...nf); F.uCamWorld.value.copy(cam.matrixWorld);
     if (o.haze) F.uHaze.value.copy(o.haze);
     if (o.hazeP) F.uHazeP.value.set(...o.hazeP); F.uHazeY.value = o.hazeY || 0;
-    F.uDebug.value = o.debug === 'ink' ? 2 : o.debug ? 1 : 0; F.uInkA.value = o.ink || 0; if (o.inkCol) F.uInk.value.copy(o.inkCol);
-    F.uInkW.value = o.inkW ?? Math.max(1, Math.round(H / 1080 * 1.25)); F.uPixK.value = 2 / (cam.projectionMatrix.elements[5] * H);
-    if (o.inkP) F.uInkP.value.set(...o.inkP); if (o.inkFade) F.uInkF.value.set(...o.inkFade);
+    F.uDebug.value = o.debug === 'ink' ? 2 : o.debug ? 1 : 0; this.inkUniforms(F, cam, H, o);
     const D = o.dof;
     if (!D || !(D.px > 0)) { this.pass(this.mFinal, null); return; }
     // depth of field: shade into HDR, gather the soft copy at half resolution, blend + tone map

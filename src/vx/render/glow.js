@@ -45,16 +45,24 @@ function whole(tex, k, always) {
   for (let i = 0; i < d.length; i += 4) { col[0] += lin(d[i]); col[1] += lin(d[i + 1]); col[2] += lin(d[i + 2]); }
   const n = W * H; return { map: tex, k, col: col.map((c) => c / n), frac: 1, always };
 }
+// The emissive twin of an HD texture (tex.userData.hd texels per design pixel, city/pixtex.js) is kept at the design
+// size: each of its pixels glows with the mean of the texels it covers (the bloom spreads the light anyway), a
+// sixteenth of the memory at HD 2 with mipmaps.
 function masked(tex, fn, mask, k = 1) {
-  const { W, H, d } = pixels(tex), cv = document.createElement('canvas'); cv.width = W; cv.height = H;
-  const g = cv.getContext('2d'), out = g.createImageData(W, H), o = out.data, col = [0, 0, 0];
+  const { W, H, d } = pixels(tex), hd = (tex.userData && tex.userData.hd) || 1, D = !mask && hd > 1 && W % hd === 0 && H % hd === 0 ? hd : 1;
+  const w2 = W / D, h2 = H / D, cv = document.createElement('canvas'); cv.width = w2; cv.height = h2;
+  const g = cv.getContext('2d'), out = g.createImageData(w2, h2), o = out.data, col = [0, 0, 0];
   const md = mask && mask.getContext('2d').getImageData(0, 0, W, H).data;
   let sum = 0;
-  for (let i = 0; i < d.length; i += 4) {
-    const w = md ? md[i] / 255 : fn(d[i], d[i + 1], d[i + 2]);
-    if (w <= 0.01) { o[i + 3] = 255; continue; }
-    o[i] = d[i] * w; o[i + 1] = d[i + 1] * w; o[i + 2] = d[i + 2] * w; o[i + 3] = 255;
-    sum += w; col[0] += lin(d[i]) * w; col[1] += lin(d[i + 1]) * w; col[2] += lin(d[i + 2]) * w;
+  for (let y = 0; y < h2; y++) for (let x = 0; x < w2; x++) {
+    const j = (y * w2 + x) * 4; let R = 0, G = 0, B = 0;
+    for (let v = 0; v < D; v++) for (let u = 0; u < D; u++) {
+      const i = ((y * D + v) * W + x * D + u) * 4, w = md ? md[i] / 255 : fn(d[i], d[i + 1], d[i + 2]);
+      if (w <= 0.01) continue;
+      R += d[i] * w; G += d[i + 1] * w; B += d[i + 2] * w;
+      sum += w; col[0] += lin(d[i]) * w; col[1] += lin(d[i + 1]) * w; col[2] += lin(d[i + 2]) * w;
+    }
+    const n = D * D; o[j] = R / n; o[j + 1] = G / n; o[j + 2] = B / n; o[j + 3] = 255;
   }
   if (sum < 0.5) return null;
   g.putImageData(out, 0, 0);

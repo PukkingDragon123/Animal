@@ -96,7 +96,7 @@ export class Cinema {
   // ================================================================ the cutscene
   /** bars in, the camera taken, a 30° lens (o.fov): o.prefer (deg) — the side shots favour; o.room [x0, z0, x1, z1] — keep the camera inside (interiors) */
   begin(o = {}) {
-    if (!this.active) { this.active = true; this.lastSpeaker = null; this.axis.clear(); }
+    if (!this.active) { this.active = true; this.lastSpeaker = null; this.axis.clear(); this.cards = this.cards.filter((c) => { if (c.kind === 'title') return true; if (c.done) c.done(); return false; }); }
     this.barsTo = o.bars === false ? 0 : 1;
     this.fovTo = o.fov ?? 30;                                   // the cutscene lens (the follow camera's is wider)
     const life = this.w && this.w.life; if (life && life.hush) { this.hushed = o.hush !== false; life.hush(this.hushed); }   // the street's Tokonmon step out of the shot
@@ -266,7 +266,7 @@ export class Cinema {
   /** circle a subject: o.deg over o.time seconds (an orbit reveal) */
   orbit(s, o = {}) {
     const mon = s.kind === 'mon', h = s.g ? this.size(s) : 2;
-    return this.frame(s, Object.assign({ dist: clampN(h * 3.2, 3, 60), pitch: 8, orbit: o.deg ?? 70, hold: o.time ?? 7, push: 0.1, dur: 0.8, lin: false, safe: false, band: 0.2, dof: 0.85, at: mon ? 'chest' : 'face' }, o));
+    return this.frame(s, Object.assign({ dist: clampN(h * 3.2, 3, 60), pitch: 8, orbit: o.deg ?? 70, hold: o.time ?? 7, push: 0.1, dur: 0.8, lin: false, tries: [0, -12, -24, 12, 24, -40], band: 0.2, dof: 0.85, at: mon ? 'chest' : 'face' }, o));
   }
   /** a snap push-in for a surprise: quick and close, a jolt of shake and a whoosh */
   push(s, o = {}) {

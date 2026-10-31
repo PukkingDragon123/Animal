@@ -70,11 +70,13 @@ function glossMap(tex, rough) {
   const img = tex.image, W = img && img.width, H = img && img.height;
   const puddles = /^dress_ground/.test(String(ud.key || ''));
   if (W && H && (ud.glass || puddles)) {
-    const cv = document.createElement('canvas'); cv.width = W; cv.height = H; const g = cv.getContext('2d');
+    // glass panes are whole design pixels: an HD texture's map is drawn at its design size (a quarter of the memory)
+    const D = !puddles && ud.hd > 1 && W % ud.hd === 0 && H % ud.hd === 0 ? ud.hd : 1;
+    const cv = document.createElement('canvas'); cv.width = W / D; cv.height = H / D; const g = cv.getContext('2d');
     const base = Math.round(255 * Math.min(1, rough / Math.max(rough, 1e-3)));     // the map multiplies material.roughness (= the family's)
     g.fillStyle = `rgb(255,${base},0)`; g.fillRect(0, 0, W, H);
     const glass = Math.round(255 * Math.min(1, 0.06 / rough));
-    if (ud.glass) { g.fillStyle = `rgb(255,${glass},0)`; for (const [x, y, w, h] of ud.glass) g.fillRect(x, y, w, h); }
+    if (ud.glass) { g.fillStyle = `rgb(255,${glass},0)`; for (const [x, y, w, h] of ud.glass) g.fillRect(x / D, y / D, w / D, h / D); }
     if (puddles) {
       const s = (img.getContext ? img.getContext('2d') : null); if (s) {
         const d = s.getImageData(0, 0, W, H).data, o = g.getImageData(0, 0, W, H);

@@ -202,7 +202,7 @@ export class Story {
     const app = this.app, M = app.state.map || {}, id = M.id === 'city' || !M.id ? 'city' : M.id, cin = app.cinema;
     await app.fade(1, 300); await app.world.load(id);
     if (id === 'city') { const at = M.x !== undefined ? [M.x, M.z, 0, M.y] : app.world.spot('frontDoorOut'); await this.startRoam(at); }
-    // back in: a short crane down onto where you left off, a place card, then the follow camera takes over
+    // back in: a short crane down onto where you left off, then the follow camera blends in (the HUD shows the place)
     const p = app.world.player;
     if (cin && p) {
       app.world.free = false;

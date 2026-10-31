@@ -38,12 +38,15 @@ export const towerTex = (style = 'blue', night = false) => pt('dt_tower' + style
         if (r() < 0.3) for (let yy = y; yy < y + h * (0.3 + r() * 0.5); yy += 3) P.hline(x, yy, w, night ? dark(S.glass, 0.2) : light(S.glass, 0.25));
       }
       P.vline(x - 2, y0, FH - SP, dark(S.frame, 0.15)); P.vline(x - 1, y0, FH - SP, light(S.frame, 0.2));
+      if (P.t < 1) { P.fv(x - 1 + P.t, y0, FH - SP, light(S.frame, 0.35)); P.fv(x - 2, y0, FH - SP, dark(S.frame, 0.3)); P.fh(x, y, w, dark(S.frame, 0.35)); P.fv(x + w - P.t, y, h, dark(S.frame, 0.2)); }   // mullion caps and gaskets
     }
+    if (P.t < 1) for (let x = 0; x < W; x += 32) { P.fv(x + 1, y0 + FH - SP, SP, dark(S.span, 0.12)); P.fh(0, y0 + FH - SP + 1, W, light(S.span, 0.1)); }   // spandrel panel joints
   }
 });
 /** a stone tower: cream piers and deep-set dark windows (8 × 14 m, 3.5 m storeys) */
 export const stoneTowerTex = (base = '#e0d4bc', night = false) => pt('dt_stone' + base + night, 8, 14, (g, W, H, r, P) => {
   const FH = H / 4; P.fill(base); P.speck(400, dark(base, 0.08), r); P.speck(300, light(base, 0.1), r);
+  if (P.t < 1) for (let y = 6; y < H; y += 12) { P.fh(0, y, W, dark(base, 0.14)); P.fh(0, y + P.t, W, light(base, 0.08)); for (let x = ((y / 12) & 1) * 16; x < W; x += 32) P.fv(x, y - 12 + P.t, 12, dark(base, 0.1)); }   // ashlar courses
   for (let f = 0; f < 4; f++) for (let c = 0; c < 4; c++) {
     const x = c * 64 + 12, y = f * FH + 14, w = 40, h = FH - 34, lit = r() < (night ? 0.55 : 0.12);
     P.rect(x - 2, y - 2, w + 4, h + 4, dark(base, 0.35)); P.rect(x, y, w, h, lit ? '#ffe4a0' : night ? '#1e2a3a' : '#3a4a5e');

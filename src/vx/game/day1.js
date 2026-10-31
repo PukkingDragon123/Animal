@@ -24,7 +24,9 @@ export const playerName = (st) => (st.player && st.player.name) || 'Ren';
 const face = (a, e, hold = 2.5) => { if (a && a.anim && a.anim.face) a.anim.face(e, hold); };
 const sfx = (app, n, o) => { if (app.audio && app.audio.sfx) app.audio.sfx(n, o); };
 // sit an actor on a seat surface at height y (the sit pose lowers the hips onto the root)
-const seat = (a, x, z, yaw, y) => { a.place(x, z, yaw, y); a.g.position.y = y; a.play('sit', { fade: 0 }); return a; };
+// put an actor on a mark, cancelling any walk still under way (its promise resolves)
+const put = (a, x, z, yaw, y) => { if (a.path) { a.path = null; const r = a.arrive; a.arrive = null; if (r) r(); } return a.place(x, z, yaw, y); };
+const seat = (a, x, z, yaw, y) => { put(a, x, z, yaw, y); a.g.position.y = y; a.play('sit', { fade: 0 }); return a; };
 
 /** let the player roam until they reach a spot (within r metres, on storey L if given); shows the objective + marker */
 export async function goalAt(story, spot, o = {}) {
@@ -224,7 +226,7 @@ async function tram(X) {
   const weak = await w.addMon('weak', 'lemmo', [150.95, 111.25, Math.PI - 0.5], { clip: 'hurt' });
   const spike = w.addPerson('spike', 'spike', [150.3, 110.25, 0], { clip: 'angry' }), duck = await w.addMon('duck', 'dreadrake', [151.95, 109.75, -0.5], { clip: 'menace' });
   hero.place(147.3, 110.75, 1.3); hero.play('idle');            // under the shelter: its roof lifts, nothing fades
-  await cin.begin({ prefer: 190 });
+  await cin.begin({ prefer: 190, room: [118, 96, 176, 112.1] });   // the camera stays on the street side of the shelter's glass
   cin.grade('tense');
   app.audio.music && app.audio.music('tension', { fade: 1.2 });
   const est = cin.establish([149.4, 1.0, 110.6], { from: { dist: 58, yaw: 140, pitch: 52 }, to: { dist: 12, yaw: 200, pitch: 18 }, dur: 5 });
@@ -235,7 +237,7 @@ async function tram(X) {
   await say('', 'Ding-ding — the cable car is late again. At the stop, a crowd stares at their phones, pretending not to see what\'s happening on the bench.');
   // the punk, from the old man's eye line: low, tilted, unsteady
   cin.dutch(-7).handheld(0.016);
-  await cin.talk(spike, lau, 'Spike', 'C\'mon, old man. Bench tax is doubled for you today. Pay up, or my Dreadrake sits on your little lemon.', { shot: 'hero', yaw: 14, dist: 3.1, low: -12, clip: 'angry' });
+  await cin.talk(spike, lau, 'Spike', 'C\'mon, old man. Bench tax is doubled for you today. Pay up, or my Dreadrake sits on your little lemon.', { shot: 'hero', yaw: -55, dist: 3.0, low: -12, clip: 'angry' });
   await cin.beat('tram-spike');
   cin.dutch(0);
   await cin.talk(lau, spike, 'Mr. Lau', 'P-please… that\'s my pension money…', { shot: 'close', yaw: 200, dist: 2.3, pitch: 26, face: 'sad', clip: 'sitSad' });
@@ -260,7 +262,7 @@ async function tram(X) {
   await app.wait(350);
   const sp = spike.g.position;
   w.burst('bubble', [sp.x - 2, sp.y + 1.2, sp.z + 0.5], { n: 20, speed: 2.5 }); sfx(app, 'hydro_splash');
-  await cin.frame(spike, { at: 'chest', rel: 28, dist: 6.2, pitch: 12, dur: 0, off: [0.7, 0, -0.3], focus: 0.24 });
+  await cin.frame(spike, { at: 'chest', rel: -50, dist: 6.2, pitch: 12, dur: 0, off: [0.7, 0, -0.3], focus: 0.24 });
   await app.wait(250);
   w.burst('splash', [sp.x, sp.y + 1.2, sp.z], { n: 26 }); w.burst('drop', [duck.g.position.x, duck.g.position.y + 1.2, duck.g.position.z], { n: 18 });
   sfx(app, 'hit_heavy'); cin.flash('#ffffff', 0.35).shake(0.32, 4);
@@ -275,8 +277,9 @@ async function tram(X) {
   cin.grade('hero');
   const coach = w.addPerson('coach', 'coach', [142.6, 111.3, Math.PI / 2]);
   const kani = await w.addMon('kani', 'kanizumo', [141.8, 112.1, Math.PI / 2], { clip: 'win' });
-  await cin.hero(coach, { yaw: 135, dist: 4.6, low: -9, dur: 0, hold: 7, push: 0.25 });
-  const arrive = cin.walk(coach, hero.g.position.x - 1.3, hero.g.position.z - 0.1, { speed: 1.4 }); cin.walk(kani, hero.g.position.x - 2.1, hero.g.position.z + 0.7, { speed: 1.4 });
+  const cx = hero.g.position.x - 1.3, cz = hero.g.position.z - 0.1;
+  await cin.frame([cx, 1.45, cz], { yaw: 200, dist: 5.4, pitch: -7, dur: 0, push: 0.12, hold: 6, focus: 0.18 });   // low, from the street: he walks into it
+  const arrive = cin.walk(coach, cx, cz, { speed: 1.4 }); cin.walk(kani, cx - 0.8, cz + 0.8, { speed: 1.4 });
   await say('???', 'That\'s enough.');
   await cin.beat('tram-coach');
   await arrive; coach.face(spike);
@@ -309,8 +312,8 @@ async function arena(X) {
   Q.next('day1');
   crowd(w, true);
   const hero = w.actor('hero');
-  hero.place(aA[0], aA[1] + 0.2, hero.yaw); if (coach) { coach.place(aA[0] - 1.6, aA[1] + 0.4); coach.face(hero); hero.face(coach); }
-  if (spike) { spike.place(aB[0], aB[1], -Math.PI / 2); if (duck) duck.place(aB[0] + 1, aB[1] - 0.6, -Math.PI / 2); }
+  put(hero, aA[0], aA[1] + 0.2, hero.yaw); if (coach) { put(coach, aA[0] - 1.6, aA[1] + 0.4); coach.face(hero); hero.face(coach); }
+  if (spike) { put(spike, aB[0], aB[1], -Math.PI / 2); if (duck) put(duck, aB[0] + 1, aB[1] - 0.6, -Math.PI / 2); }
   await cin.begin({ prefer: 30 });
   cin.grade('hero');
   app.audio.music && app.audio.music('party', { fade: 1.5 });
@@ -455,7 +458,8 @@ async function pier(X) {
   const B = pierEnd, boss = await w.addMon('boss', 'barkorious_forced', off(B, 0, -1, 0), { clip: 'cry' });
   if (!boss.m.def.name.includes('forced')) { boss.m.group.scale.multiplyScalar(1.7); boss.m.scale *= 1.7; }
   boss._cinH = null;
-  hero.place(B[0], B[1] + 4.6, Math.PI); if (coach) coach.place(B[0] - 1.6, B[1] + 4.2, Math.PI); if (yumi) yumi.place(B[0] + 1.3, B[1] + 4.3, Math.PI);
+  put(hero, B[0], B[1] + 4.6, Math.PI); if (coach) put(coach, B[0] - 1.6, B[1] + 4.2, Math.PI); if (yumi) put(yumi, B[0] + 1.3, B[1] + 4.3, Math.PI);
+  const fl = w.actor('creep'); if (fl) put(fl, B[0] + 2.1, B[1] + 4.8, Math.PI);
   await cin.begin({ prefer: 15 });
   // clouds roll in, the sea goes grey; the camera circles the king
   cin.weather('storm', 2.2);
@@ -463,7 +467,7 @@ async function pier(X) {
   await cin.frame(hero, { at: 'chest', yaw: 10, dist: 6.5, pitch: 12, dur: 0, off: [0, 0.4, -2.4], focus: 'wide', push: 0.1 });
   await app.wait(app.auto ? 200 : 1800);
   boss.play('cry', { restart: true }); sfx(app, 'roar', { pitch: 0.7 }); cin.shake(0.22, 3); cin.lightning();
-  await cin.orbit(boss, { yaw: -28, deg: 56, time: 9, pitch: 5, dist: cin.size(boss) * 2.8, at: 'chest', push: 0.15 });
+  await cin.orbit(boss, { yaw: -10, deg: 40, time: 9, pitch: 6, dist: cin.size(boss) * 2.1, at: 'chest', push: 0.12 });
   cin.place('Pier 39', 'Fisherman\'s Wharf', { wait: false });
   w.emote('boss', 'anger', 2);
   await app.wait(app.auto ? 100 : 1500);
@@ -518,11 +522,11 @@ async function chowder(X) {
   await app.fade(1, 400);
   seat(hero, 157.55, 2.5, Math.PI, BY);
   if (yumi) seat(yumi, 158.45, 2.5, Math.PI, BY);
-  if (coach) coach.place(156.2, 3.2, Math.PI * 0.7);
-  if (w.partner) w.partner.place(159.3, 2.0, Math.PI);
+  if (coach) put(coach, 156.2, 3.2, Math.PI * 0.7);
+  if (w.partner) put(w.partner, 159.3, 2.0, Math.PI);
   await cin.two(hero, yumi || hero, { dist: 4.4, dur: 0, pitch: 13, angle: 10, dy: -0.25 });
   await app.fade(0, 600);
-  const steam = setInterval(() => { w.burst('steam', [157.55, BY + 0.3, 2.05], { n: 1 }); if (yumi) w.burst('steam', [158.45, BY + 0.3, 2.05], { n: 1 }); }, 1100);
+  const steam = setInterval(() => { w.burst('steam', [157.55, BY + 0.12, 2.0], { n: 1, scale: 0.6 }); if (yumi) w.burst('steam', [158.45, BY + 0.12, 2.0], { n: 1, scale: 0.6 }); }, 1100);
   await cin.beat('chowder');
   await X.say('', 'Chowder in sourdough bowls, garlic noodles, and a paper boat of fries a Pidrose keeps eyeing from the railing.');
   if (yumi) { yumi.look = hero; hero.look = yumi; }
@@ -533,7 +537,7 @@ async function chowder(X) {
   if (coach) { coach.face(hero); }
   await cin.talk(coach || hero, hero, 'Coach Gonda', 'Eat up. Then come by my dojo in Chinatown — the Golden Claw, by the square. There\'s something you\'ll need before tomorrow.', { shot: 'hero', low: -4, dist: 3.4 });
   clearInterval(steam);
-  hero.place(157.55, 3.4, Math.PI, PY); hero.play('idle'); if (yumi) { yumi.place(158.6, 3.5, Math.PI, PY); yumi.play('wave', { restart: true }); }
+  put(hero, 157.55, 3.4, Math.PI, PY); hero.play('idle'); if (yumi) { put(yumi, 158.6, 3.5, Math.PI, PY); yumi.play('wave', { restart: true }); }
   if (coach) cin.walk(coach, w.spot('dojoInside')[0], w.spot('dojoInside')[1], { speed: 2.2 });
   if (yumi) cin.walk(yumi, 167, 19, { speed: 2 }).then(() => { w.remove('yumi'); w.remove('creep'); });
   const fl = w.actor('creep'); if (fl) cin.walk(fl, 167.6, 19.4, { speed: 2 });
@@ -547,12 +551,12 @@ async function dojo(X) {
   S.unlockLocation(st, 'dojo');
   const h6 = w.actor('hero'), IN = w.spot('dojoInside');
   let coach6 = w.actor('coach'); if (!coach6) coach6 = w.addPerson('coach', 'coach', off(IN, 0, -2, 0));
-  coach6.path = null; coach6.place(IN[0], IN[1] - 2.2, 0); coach6.play('idle');
+  put(coach6, IN[0], IN[1] - 2.2, 0); coach6.play('idle');
   // the hall from outside: lanterns, the gate, the red doors
   await cin.begin({ prefer: 10 });
   cin.grade('dusk');
   app.audio.music && app.audio.music('senbazuru', { fade: 1.5 });
-  const est = cin.establish([192, 2.2, 50.2], { from: { dist: 46, yaw: -20, pitch: 50 }, to: { dist: 15, yaw: 35, pitch: 24 }, dur: 4.5 });
+  const est = cin.establish([192, 2.2, 50.2], { from: { dist: 46, yaw: -20, pitch: 50 }, to: { dist: 15, yaw: 50, pitch: 24 }, dur: 4.5 });
   await app.wait(1000);
   cin.place('Golden Claw Dojo', 'Chinatown  ·  by the square', { wait: false });
   await est;

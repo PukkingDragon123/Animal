@@ -1,6 +1,7 @@
 // Chinatown + Wharf kit: low-poly helpers on top of CityBuilder (free triangles with metre UVs, beams
 // between two points, flared hip roofs with glazed tiles, pent eaves, balconies, blade signs, lantern
-// strings) and the pixel-art textures they wear (32 px per metre, crisp hard-edged lettering).
+// strings) and the pixel-art textures they wear (laid out at 32 px per metre, painted at 64 by pixtex.js; crisp
+// hard-edged lettering rasterised at the full resolution).
 import { TX } from '../build.js';
 import { ptex, light, dark, hx, css, dith } from '../pixtex.js';
 
@@ -12,37 +13,40 @@ const GCACHE = new Map();
 function rasterize(str, size, font, weight) {
   const k = str + '|' + size + '|' + font + '|' + weight;
   if (GCACHE.has(k)) return GCACHE.get(k);
-  if (!TG) { const c = document.createElement('canvas'); c.width = 1024; c.height = 160; TG = c.getContext('2d', { willReadFrequently: true }); }
+  if (!TG) { const c = document.createElement('canvas'); c.width = 2048; c.height = 320; TG = c.getContext('2d', { willReadFrequently: true }); }
   TG.font = `${weight} ${size}px ${font}`;
   const w = Math.ceil(TG.measureText(str).width) + 4, h = Math.ceil(size * 1.4) + 4;
-  TG.clearRect(0, 0, Math.min(1024, w + 4), Math.min(160, h + 4));
+  TG.clearRect(0, 0, Math.min(2048, w + 4), Math.min(320, h + 4));
   TG.fillStyle = '#fff'; TG.textBaseline = 'middle'; TG.textAlign = 'left';
   TG.fillText(str, 2, Math.round(h / 2));
-  const d = TG.getImageData(0, 0, Math.min(1024, w), Math.min(160, h)).data, W = Math.min(1024, w), pts = [];
+  const d = TG.getImageData(0, 0, Math.min(2048, w), Math.min(320, h)).data, W = Math.min(2048, w), pts = [];
   let minX = 1e9, maxX = -1, minY = 1e9, maxY = -1;
-  for (let j = 0; j < Math.min(160, h); j++) for (let i = 0; i < W; i++) if (d[(j * W + i) * 4 + 3] > 120) { pts.push(i, j); if (i < minX) minX = i; if (i > maxX) maxX = i; if (j < minY) minY = j; if (j > maxY) maxY = j; }
+  for (let j = 0; j < Math.min(320, h); j++) for (let i = 0; i < W; i++) if (d[(j * W + i) * 4 + 3] > 120) { pts.push(i, j); if (i < minX) minX = i; if (i > maxX) maxX = i; if (j < minY) minY = j; if (j > maxY) maxY = j; }
   const R = { pts, minX, maxX, minY, maxY, w: maxX - minX + 1, h: maxY - minY + 1 };
   if (!pts.length) Object.assign(R, { minX: 0, minY: 0, w: 0, h: 0 });
   GCACHE.set(k, R); return R;
 }
-/** crisp pixel text centred at (cx, cy); o: { font, weight, outline, shadow, vertical, gap, fit (max width px) } → width */
+/** crisp pixel text centred at (cx, cy); o: { font, weight, outline, shadow, vertical, gap, fit (max width px) } → width.
+ *  Sizes and positions are design pixels; on an HD canvas (P.k texels per design pixel) the glyphs are rasterised at
+ *  the full resolution, so the strokes are finer while the outline and drop shadow keep their design-pixel weight. */
 export function crisp(P, str, cx, cy, size, col, o = {}) {
-  const font = o.font || PIXFONT, weight = o.weight || 400;
+  const font = o.font || PIXFONT, weight = o.weight || 400, k = P.k || 1;
   if (o.vertical) {
-    const chars = [...str], gap = o.gap ?? Math.round(size * 0.12), Rs = chars.map((ch) => rasterize(ch, size, font, weight));
-    const tot = Rs.reduce((a, R) => a + Math.max(R.h, size * 0.8) + gap, -gap); let y = cy - tot / 2;
-    for (const R of Rs) { const hh = Math.max(R.h, size * 0.8); blit(P, R, Math.round(cx - R.w / 2), Math.round(y + (hh - R.h) / 2), col, o); y += hh + gap; }
+    const chars = [...str], gap = o.gap ?? Math.round(size * 0.12), Rs = chars.map((ch) => rasterize(ch, size * k, font, weight));
+    const tot = Rs.reduce((a, R) => a + Math.max(R.h / k, size * 0.8) + gap, -gap); let y = cy - tot / 2;
+    for (const R of Rs) { const hh = Math.max(R.h / k, size * 0.8); blit(P, R, Math.round((cx - R.w / k / 2) * k), Math.round((y + (hh - R.h / k) / 2) * k), col, o, k); y += hh + gap; }
     return size;
   }
-  const R = rasterize(str, size, font, weight);
-  blit(P, R, Math.round(cx - R.w / 2), Math.round(cy - R.h / 2), col, o);
-  return R.w;
+  const R = rasterize(str, size * k, font, weight);
+  blit(P, R, Math.round(cx * k - R.w / 2), Math.round(cy * k - R.h / 2), col, o, k);
+  return R.w / k;
 }
 export const textW = (str, size, o = {}) => rasterize(str, size, o.font || PIXFONT, o.weight || 400).w;
-function blit(P, R, x0, y0, col, o) {
-  const g = P.g, put = (dx, dy, c) => { g.fillStyle = c; for (let k = 0; k < R.pts.length; k += 2) g.fillRect(x0 + R.pts[k] - R.minX + dx, y0 + R.pts[k + 1] - R.minY + dy, 1, 1); };
-  if (o.outline) for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1], [-1, -1], [1, 1], [-1, 1], [1, -1]]) put(dx, dy, o.outline);
-  if (o.shadow) put(1, 1, o.shadow);
+// x0, y0 in texels; outline and shadow offsets are one design pixel (k texels)
+function blit(P, R, x0, y0, col, o, k = 1) {
+  const g = P.g, T = 1 / k, put = (dx, dy, c) => { g.fillStyle = c; for (let i = 0; i < R.pts.length; i += 2) g.fillRect((x0 + R.pts[i] - R.minX + dx) * T, (y0 + R.pts[i + 1] - R.minY + dy) * T, T, T); };
+  if (o.outline) for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1], [-1, -1], [1, 1], [-1, 1], [1, -1]]) { put(dx * k, dy * k, o.outline); if (k > 1) put(dx, dy, o.outline); }
+  if (o.shadow) put(k, k, o.shadow);
   put(0, 0, col);
 }
 
@@ -259,6 +263,7 @@ export const tiles = (base = '#3f8a5a') => ptex('ct_tiles' + base, 2, 2, (g, W, 
       const k = (r() - 0.5) * 0.12, c = k > 0 ? light(base, k) : dark(base, -k);
       P.rect(x + 1, y, 4, 8, c); P.vline(x + 2, y + 1, 6, light(c, 0.28)); P.vline(x + 1, y, 8, dark(c, 0.12)); P.vline(x + 4, y, 8, dark(c, 0.25));
       P.hline(x + 1, y, 4, dark(c, 0.35)); P.px(x + 2, y + 1, light(c, 0.5));
+      if (P.t < 1) { const T = P.t; P.fv(x + 2, y + 1, 6, light(c, 0.4)); P.fv(x + 3 + T, y + 1, 6, dark(c, 0.06)); P.fv(x + 5 - T, y, 8, dark(c, 0.38)); P.fh(x + 1, y + 1, 4, dark(c, 0.18)); P.fh(x + 1, y + 8 - T, 4, light(c, 0.08)); P.fpx(x + 2, y + 1, '#ffffff'); }   // glaze: a sharper glint, the trough's shadow
     }
     P.vline(x + 5, 0, H, dark(base, 0.55)); P.vline(x, 0, H, dark(base, 0.35));
   }
@@ -269,7 +274,11 @@ export const eaveTiles = (base = '#2e6a44') => ptex('ct_eave' + base, 1, 0.2, (g
   for (let x = 0; x < W; x += 6) { P.rect(x + 1, 1, 4, H - 2, base); P.px(x + 2, 2, light(base, 0.4)); P.hline(x + 1, H - 2, 4, dark(base, 0.2)); P.px(x + 3, 3, light(base, 0.15)); }
   P.hline(0, 0, W, dark(base, 0.5));
 });
-export const lacquer = (c = '#b8282a') => ptex('ct_lac' + c, 1, 1, (g, W, H, r, P) => { P.fill(c); for (let x = 0; x < W; x += 3 + Math.floor(r() * 3)) P.vline(x, 0, H, r() < 0.5 ? light(c, 0.06) : dark(c, 0.08)); P.speck(14, light(c, 0.25), r); });
+export const lacquer = (c = '#b8282a') => ptex('ct_lac' + c, 1, 1, (g, W, H, r, P) => {
+  P.fill(c); for (let x = 0; x < W; x += 3 + Math.floor(r() * 3)) P.vline(x, 0, H, r() < 0.5 ? light(c, 0.06) : dark(c, 0.08));
+  if (P.t < 1) for (let i = 0; i < 40; i++) P.fv(r() * W, r() * H, 2 + r() * 10, r() < 0.5 ? light(c, 0.1) : dark(c, 0.1));   // brush marks in the lacquer
+  P.speck(14, light(c, 0.25), r);
+});
 export const lattice = (frame = '#c8322a', bg = '#3a2a2a') => ptex('ct_lat' + frame + bg, 1, 1, (g, W, H, r, P) => {
   P.fill(bg);
   for (let y = 0; y < H; y += 8) for (let x = 0; x < W; x += 8) { P.rect(x, y, 8, 1, frame); P.rect(x, y, 1, 8, frame); P.rect(x + 3, y + 3, 3, 1, frame); P.rect(x + 3, y + 3, 1, 3, frame); P.px(x + 1, y + 1, light(frame, 0.25)); }
@@ -364,8 +373,8 @@ export const basket = (base = '#b0604a') => ptex('ct_basket' + base, 1, 1, (g, W
     const hor = ((bx + by) / 8) & 1;
     for (let k = 0; k < 2; k++) {
       const j = (r() - 0.5) * 0.22, c = j > 0 ? light(base, j) : dark(base, -j);
-      if (hor) { P.rect(bx, by + k * 4, 7, 3, c); P.hline(bx, by + k * 4, 7, light(c, 0.12)); }
-      else { P.rect(bx + k * 4, by, 3, 7, c); P.vline(bx + k * 4, by, 7, light(c, 0.12)); }
+      if (hor) { P.rect(bx, by + k * 4, 7, 3, c); P.hline(bx, by + k * 4, 7, light(c, 0.12)); if (P.t < 1) { P.fh(bx, by + k * 4 + 1.5, 7, dark(c, 0.08)); P.fh(bx, by + k * 4 + 3 - P.t, 7, dark(c, 0.2)); } }
+      else { P.rect(bx + k * 4, by, 3, 7, c); P.vline(bx + k * 4, by, 7, light(c, 0.12)); if (P.t < 1) { P.fv(bx + k * 4 + 1.5, by, 7, dark(c, 0.08)); P.fv(bx + k * 4 + 3 - P.t, by, 7, dark(c, 0.2)); } }
     }
   }
   P.speck(30, dark(base, 0.3), r);
@@ -373,19 +382,25 @@ export const basket = (base = '#b0604a') => ptex('ct_basket' + base, 1, 1, (g, W
 /** granite slabs (the gate plaza, pavilion platform, stone tables) */
 export const granite = (base = '#b8b4ac') => ptex('ct_gran' + base, 2, 2, (g, W, H, r, P) => {
   P.fill(dark(base, 0.3));
-  for (let y = 0; y < H; y += 16) for (let x = (y / 16) & 1 ? 12 : 0; x < W + 24; x += 24) { const j = (r() - 0.5) * 0.1, c = j > 0 ? light(base, j) : dark(base, -j); P.block(x, y, 23, 15, c, { hk: 0.1, lk: 0.12 }); P.speck(16, dark(c, 0.15), r, x, y, 23, 15); P.speck(10, light(c, 0.15), r, x, y, 23, 15); }
+  for (let y = 0; y < H; y += 16) for (let x = (y / 16) & 1 ? 12 : 0; x < W + 24; x += 24) { const j = (r() - 0.5) * 0.1, c = j > 0 ? light(base, j) : dark(base, -j); P.block(x, y, 23, 15, c, { hk: 0.1, lk: 0.12 }); P.speck(16, dark(c, 0.15), r, x, y, 23, 15); P.speck(10, light(c, 0.15), r, x, y, 23, 15); if (P.t < 1) for (let i = 0; i < 10; i++) { const cx = x + 1 + r() * 21, cy = y + 1 + r() * 13, cc = r() < 0.5 ? '#3a3634' : '#f4f0ea'; P.fpx(cx, cy, cc); P.fpx(cx + P.t, cy, dark(cc, 0.2)); } }
 });
 /** white plaster with dark timber posts and rails (the dojo) */
 export const timberWall = (plaster = '#ece4d4', wood = '#4a3020') => ptex('ct_timber' + plaster + wood, 2, 3, (g, W, H, r, P) => {
   P.fill(plaster); P.speck(120, dark(plaster, 0.06), r); P.speck(60, light(plaster, 0.05), r);
   P.rect(0, 0, 4, H, wood); P.vline(1, 0, H, light(wood, 0.15)); P.rect(0, H - 14, W, 3, wood); P.rect(0, 10, W, 3, wood); P.hline(0, 10, W, light(wood, 0.15));
   P.rect(0, H - 11, W, 11, '#6a6460'); for (let x = 0; x < W; x += 10) P.vline(x, H - 11, 11, '#4a4642'); P.hline(0, H - 11, W, '#8a8480');
+  if (P.t < 1) {                                                                            // grain in the timbers, pitting in the stone base
+    const T = P.t; for (let i = 0; i < 10; i++) P.fv(0.5 + r() * 3, r() * H, 4 + r() * 16, r() < 0.6 ? dark(wood, 0.18) : light(wood, 0.1));
+    for (const y0 of [10, H - 14]) { for (let i = 0; i < 14; i++) P.fh(r() * W, y0 + 0.5 + Math.floor(r() * 4) * T, 3 + r() * 12, r() < 0.6 ? dark(wood, 0.18) : light(wood, 0.1)); P.fh(0, y0 + 3 - T, W, dark(wood, 0.3)); }
+    P.speck(20, '#5a5450', r, 0, H - 10, W, 10); P.fh(0, H - 11 + T, W, '#7a746e');
+  }
 });
 /** tatami mats: two 0.9 × 1.8 m mats side by side with black cloth borders */
 export const tatami = () => ptex('ct_tatami', 1.8, 1.8, (g, W, H, r, P) => {
   const straw = '#aaa466', edge = '#2a2a24';
   P.fill(straw);
   for (let y = 0; y < H; y += 2) P.hline(0, y, W, dark(straw, 0.08));
+  if (P.t < 1) { for (let y = 0; y < H; y += 2) P.fh(0, y + 1, W, light(straw, 0.05)); P.dither(0, 0, W, H, dark(straw, 0.14), (x, y) => (Math.floor(x / P.t) % 6 === 0 ? 0.5 : 0)); }   // the rush weave and its warp threads
   P.speck(80, light(straw, 0.12), r);
   P.rect(0, 0, W, 2, edge); P.rect(0, H - 2, W, 2, edge); P.rect(Math.floor(W / 2) - 1, 0, 2, H, edge); P.rect(0, 0, 1, H, edge); P.rect(W - 1, 0, 1, H, edge);
   for (const x of [0, Math.floor(W / 2) + 1]) for (let y = 4; y < H; y += 9) P.px(x + 1, y, '#e8d8a0');

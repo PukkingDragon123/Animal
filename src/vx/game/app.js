@@ -135,7 +135,8 @@ export class VxApp {
   }
   renderPortrait(a, S = 50) {
     const st = this.stage, r = st.r, scene = st.scene;
-    if (!this._pt) { this._pt = { rt: new THREE.WebGLRenderTarget(S * 2, S * 2), cam: new THREE.PerspectiveCamera(18, 1, 0.05, 30) }; this._pt.rt.texture.colorSpace = THREE.SRGBColorSpace; }
+    // the speaker wears the world's ink outline: rendered with depth, then the composite's ink pass (2 px at this 2× size)
+    if (!this._pt) { this._pt = { rt: new THREE.WebGLRenderTarget(S * 2, S * 2, { depthTexture: new THREE.DepthTexture(S * 2, S * 2, THREE.UnsignedIntType) }), ink: new THREE.WebGLRenderTarget(S * 2, S * 2), cam: new THREE.PerspectiveCamera(18, 1, 0.05, 30) }; this._pt.rt.texture.colorSpace = this._pt.ink.texture.colorSpace = THREE.SRGBColorSpace; }
     const { rt, cam } = this._pt, head = a.headPos(new THREE.Vector3()); head.y -= 0.22;
     const yaw = a.yaw, d = 1.7;
     cam.position.set(head.x + Math.sin(yaw + 0.35) * d, head.y + 0.1, head.z + Math.cos(yaw + 0.35) * d); cam.lookAt(head.x, head.y - 0.06, head.z); cam.updateMatrixWorld();
@@ -146,7 +147,8 @@ export class VxApp {
     scene.background = null; scene.fog = null;
     const prevRT = r.getRenderTarget(), prevClear = r.getClearAlpha();
     r.setRenderTarget(rt); r.setClearAlpha(0); r.clear(); r.render(scene, cam);
-    const buf = new Uint8Array(S * S * 16); r.readRenderTargetPixels(rt, 0, 0, S * 2, S * 2, buf);
+    const inked = st.comp && (st.style.inkA ?? 0) > 0; if (inked) st.comp.inkPass(rt, cam, this._pt.ink, { ink: st.style.inkA, inkCol: st.inkCol, inkW: 2, inkP: [0.03, 2.2, 0.35, 1] });   // silhouette + only the sharpest folds (a 50 px face stays clean)
+    const buf = new Uint8Array(S * S * 16); r.readRenderTargetPixels(inked ? this._pt.ink : rt, 0, 0, S * 2, S * 2, buf);
     r.setRenderTarget(prevRT); r.setClearAlpha(prevClear);
     scene.background = bg; scene.fog = fog; for (const [c, v] of vis) c.visible = v;
     // 2× supersampled → S×S, flipped (GL rows run bottom-up)

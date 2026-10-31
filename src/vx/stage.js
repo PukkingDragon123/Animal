@@ -167,8 +167,9 @@ export class VxStage {
       // outlines (model.js) step aside while it draws
       const ink = s.inkA ?? 0;
       if (ink > 0) OUTLINE.show(false);
-      this.comp.render(this.scene, this.cam, this.w, this.h, { ao: (m.ao ?? 0.85) * (s.ao ?? 1), aoRadius: s.aoRadius ?? 1.2, aoK: s.aoK, haze: this.haze, hazeP: [m.hazeP[0] + this.view.dist * 0.15 - 4.5, m.hazeP[1], m.hazeP[2] * (s.haze ?? 1), m.hazeP[3]], ink, inkCol: this.inkCol, inkW: s.inkW, inkP: s.inkP, inkFade: s.inkFade, debug: s.debug, dof });
-      if (ink > 0) OUTLINE.show(true);
+      try {
+        this.comp.render(this.scene, this.cam, this.w, this.h, { ao: (m.ao ?? 0.85) * (s.ao ?? 1), aoRadius: s.aoRadius ?? 1.2, aoK: s.aoK, haze: this.haze, hazeP: [m.hazeP[0] + this.view.dist * 0.15 - 4.5, m.hazeP[1], m.hazeP[2] * (s.haze ?? 1), m.hazeP[3]], ink, inkCol: this.inkCol, inkW: s.inkW, inkP: s.inkP, inkFade: s.inkFade, debug: s.debug, dof });
+      } finally { if (ink > 0) OUTLINE.show(true); }
       return this.cv;
     }
     this.cv.depthDof = 0;

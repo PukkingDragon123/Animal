@@ -114,7 +114,7 @@ export const atticWin = (frame = '#f6f0e2', glassC = '#4a6a8a') => ptex('sr_atti
     const inner = (x - cx + 0.5) ** 2 + (y < cx ? (cx - y) ** 2 : 0) <= (cx - 3) ** 2 && x > 2 && x < W - 3 && y < H - 3;
     P.px(x, y, inner ? glassC : frame);
   }
-  P.dither(3, 3, W - 6, H - 6, '#9ac0e0', (x, y) => ((x + y) % 9 < 2 ? 0.8 : 0) * (g.getImageData(x, y, 1, 1).data[2] > 120 ? 1 : 0));
+  P.dither(3, 3, W - 6, H - 6, '#9ac0e0', (x, y) => ((x + y) % 9 < 2 ? 0.8 : 0) * (g.getImageData(Math.floor(x * (P.k || 1)), Math.floor(y * (P.k || 1)), 1, 1).data[2] > 120 ? 1 : 0));
   P.vline(Math.floor(cx), 3, H - 6, frame); P.hline(3, Math.floor(H * 0.55), W - 6, frame); P.hline(1, H - 2, W - 2, dk(frame, 0.3));
 });
 export const doorFancy = (col = '#b04a64', wM = 1.25, glassy = false) => ptex('sr_door' + col + wM + glassy, wM, 2.2, (g, W, H, r, P) => {
