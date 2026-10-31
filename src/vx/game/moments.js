@@ -158,10 +158,9 @@ export class Moments {
     if (zn === this.lastZone || !this.free()) return;
     this.lastZone = zn;
     if (!z || !DISTRICTS[zn] || w.city.inside >= 0) return;
-    const seen = st.flags.vig || (st.flags.vig = {});
-    if (seen[z.name]) return;
-    const Q = app.quests; if (Q && Q.has && (Q.has('day1') || Q.done('day1')) && OPENING_SHOWS.has(z.name)) { seen[z.name] = 1; return; }
-    seen[z.name] = 1;
+    const Q = app.quests; if (Q && Q.has && (Q.has('day1') || Q.done('day1')) && OPENING_SHOWS.has(z.name)) return;   // the opening shows these itself
+    if (st.flags.vig && st.flags.vig[z.name]) return;
+    (st.flags.vig || (st.flags.vig = {}))[z.name] = 1;
     this.vignette(DISTRICTS[z.name]);
   }
   vignette(D) {

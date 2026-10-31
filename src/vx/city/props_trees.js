@@ -7,14 +7,15 @@
 // clumps read as foliage up close while their faces still merge.
 //
 // Cost control:
-//  - each kind also has a low-detail twin (4-voxel leaf cells, no twigs) that far tiles switch to (LOD);
+//  - each tree also has a far twin (12-voxel leaf cells, no twigs, no fringe): the prop LOD in build.js swaps each
+//    instance to it past ~22 m and drops it past ~95 m; the near twin's fringe of leaf tips is kept light;
 //  - the canopy sways in the wind in the vertex shader (one shared material patch, no per-frame CPU work);
 //  - ground cover (tufts, wildflowers, leaf litter) skips the shadow pass.
-// installTrees(C) remaps the stock 'tree' / 'treeB' / 'palm' props city-wide and adds the LOD + wind updater.
+// installTrees(C) remaps the stock 'tree' / 'treeB' / 'palm' props city-wide and drives the wind.
 import * as THREE from '../../../vendor/three.module.js';
 import { PROPS, MESH_MATS } from './voxprops.js';
 import { Fine } from '../fine.js';
-import { Geo, VPBR, leafTexture } from './meshkit.js';
+import { VPBR } from './meshkit.js';
 
 const V = 16;
 const TAU = Math.PI * 2;
@@ -82,93 +83,112 @@ function clump(F, cx, cy, cz, r, col, o = {}) {
   }
 }
 
-// ---------------------------------------------------------------- modelled trees (the city's street and park trees)
-// A real-looking tree for a close camera at a few thousand triangles: a tapered, slightly crooked trunk with a
-// flared base and limbs that fork toward the crown (VPBR bark), and a crown of leaf clusters. Each cluster is a
-// dark, lumpy core (so the crown reads dense, never see-through) dressed with alpha-tested leaf cards that break
-// the silhouette into foliage. Foliage normals point out from the crown's centre, so the whole canopy shades as
-// one soft volume (sunlit top and sun side, cool shaded underside) instead of as faceted blobs; colour varies per
-// cluster and darkens toward the inside and the bottom (baked occlusion). The far twin is a few big cards.
-const LEAF_UV = [0.14, 0.86];
-function crown(G, sp, lo, R) {
-  const [cx, cy, cz] = sp.crownC, [rx, ry, rz] = sp.crownR, pal = sp.leaves.map((c) => new THREE.Color(c));
-  const n = lo ? Math.max(5, Math.round(sp.clusters * 0.3)) : sp.clusters, out = new THREE.Vector3(), q = new THREE.Quaternion(), e = new THREE.Euler();
-  const centers = [];
-  for (let i = 0; i < n; i++) {
-    // spread over the crown ellipsoid, biased outward (the inside is dark and unseen)
-    let x, y, z; do { x = R() * 2 - 1; y = R() * 2 - 1; z = R() * 2 - 1; } while (x * x + y * y + z * z > 1);
-    const k = 0.45 + 0.55 * Math.cbrt(R()); const L = Math.hypot(x, y, z) || 1;
-    x = (x / L) * k; y = (y / L) * k * (sp.flat ? 0.6 : 1); z = (z / L) * k;
-    centers.push([cx + x * rx, cy + y * ry, cz + z * rz, sp.clusterR * (lo ? 1.5 : 0.8 + R() * 0.45)]);
+// ---------------------------------------------------------------- the generic broadleaf generator
+/**
+ * g: { X, Y, Z size, H trunk height (vox), R trunk radius, lean [dx, dz], limbs, spread, rise, clumpR, crownY,
+ *      bark [5 colours: base, light, furrow, mottle a, mottle b / moss], leaves [ramp], acc [accent colours], seed,
+ *      fork (twigs per limb), sy, holes, top (central crown clump scale), mottle, moss, droop }
+ * lo: the far twin (12-voxel leaf cells, no roots, no twigs, no fringe)
+ */
+function broadleaf(F, g, lo) {
+  // (the far twin's bark is one colour, so its faces merge into a handful of quads)
+  const R = rng(g.seed), bark = pal(F, g.bark), barkC = lo ? bark[0] : barkCol(bark, { mottle: g.mottle, moss: g.moss ? 22 : 0, cz: g.Z / 2 });
+  const L = pal(F, g.leaves), acc = g.acc ? pal(F, g.acc) : null, col = leafCol(L, acc, g.accP ?? 0.05);
+  const cx = g.X / 2, cz = g.Z / 2, H = g.H, R0 = g.R;
+  // root collar: the trunk flares into the ground, buttress roots run out over it
+  for (let y = 0; y < 8; y++) disc(F, cx, cz, y, y, R0 + ((8 - y) ** 2 / 64) * R0 * 0.9, barkC);
+  const nr = lo ? 0 : g.roots ?? 5;   // (the far twin: no roots, no twigs, 12-voxel leaf cells)
+  for (let i = 0; i < nr; i++) {
+    const a = (i / nr) * TAU + R() * 0.6, len = R0 + 6 + R() * 7;
+    limb(F, [cx + Math.cos(a) * R0 * 0.8, 4, cz + Math.sin(a) * R0 * 0.8], [cx + Math.cos(a) * len, 0.6, cz + Math.sin(a) * len], 2.4, 0.9, bark[i & 1]);
   }
-  if (sp.tiers) for (const t of sp.tiers) centers.push([cx + t[0], cy + t[1], cz + t[2], t[3] * (lo ? 1.2 : 1)]);
-  for (const [x, y, z, r] of centers) {
-    const base = pal[Math.floor(R() * pal.length)].clone();
-    const shade = (p) => {   // occlusion: darker inside and underneath, lighter on top
-      out.set((p.x - cx) / rx, (p.y - cy) / ry, (p.z - cz) / rz); const d = Math.min(1, out.length()), up = out.y;
-      const k = 0.5 + 0.38 * d + 0.18 * up; return [base.r * k, base.g * k, base.b * k];
-    };
-    const nrm = (p, nn) => { out.set(p.x - cx, (p.y - cy) * 0.8, p.z - cz).normalize(); return out.lerp(nn, 0.25).normalize(); };
-    if (!lo) {
-      // the core: a lumpy, flattened icosphere (uv on the solid corner of the leaf texture)
-      const g = new THREE.IcosahedronGeometry(r * 0.78, 1), pa = g.attributes.position;
-      for (let i = 0; i < pa.count; i++) { const v = new THREE.Vector3().fromBufferAttribute(pa, i), j = 0.82 + 0.3 * h3(Math.round(v.x * 40 + x * 7), Math.round(v.y * 40 + y * 7), Math.round(v.z * 40 + z * 7)); pa.setXYZ(i, v.x * j, v.y * j * 0.8, v.z * j); }
-      g.computeVertexNormals();
-      const uv = new Float32Array(pa.count * 2).fill(0.05); g.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
-      const base0 = G.P.length / 3;
-      G.add(g, new THREE.Matrix4().makeTranslation(x, y, z), (p) => shade(p).map((c) => c * 0.7));
-      for (let i = base0; i < G.P.length / 3; i++) { const p = new THREE.Vector3(G.P[i * 3], G.P[i * 3 + 1], G.P[i * 3 + 2]), nn = new THREE.Vector3(G.N[i * 3], G.N[i * 3 + 1], G.N[i * 3 + 2]), m = nrm(p, nn); G.N[i * 3] = m.x; G.N[i * 3 + 1] = m.y; G.N[i * 3 + 2] = m.z; }
-    }
-    // leaf cards around it
-    const nc = lo ? 3 : sp.cards;
-    for (let j = 0; j < nc; j++) {
-      const u = R() * 2 - 1, a = R() * Math.PI * 2, s = Math.sqrt(1 - u * u), dx = s * Math.cos(a), dy = u * 0.8 + 0.15, dz = s * Math.sin(a);
-      const px = x + dx * r * 0.55, py = y + dy * r * 0.5, pz = z + dz * r * 0.55, w = r * (lo ? 2.4 : 1.25 + R() * 0.5);
-      q.setFromEuler(e.set((R() - 0.5) * 1.2, Math.atan2(dx, dz) + (R() - 0.5) * 0.8, (R() - 0.5) * 1.2));
-      const corners = [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([cu, cv]) => new THREE.Vector3(cu * w / 2, cv * w / 2, 0).applyQuaternion(q).add(new THREE.Vector3(px, py, pz)));
-      const fn = new THREE.Vector3(0, 0, 1).applyQuaternion(q);
-      const b0 = G.P.length / 3, tint = 0.9 + R() * 0.2;
-      corners.forEach((p, ci) => { const m = nrm(p, fn), c = shade(p).map((v) => v * tint); G.v([p.x, p.y, p.z], [m.x, m.y, m.z], c, [ci === 0 || ci === 3 ? LEAF_UV[0] : LEAF_UV[1], ci < 2 ? LEAF_UV[0] : LEAF_UV[1]]); });
-      G.tri(b0, b0 + 1, b0 + 2).tri(b0, b0 + 2, b0 + 3);
+  // trunk: tapers, leans, wanders a little
+  let tx = cx, tz = cz;
+  const spine = [];
+  for (let y = 0; y <= H; y++) {
+    const ys = Math.floor(y / 6) * 6, k = ys / H; tx = Math.round(cx + g.lean[0] * k * k + Math.sin(ys * 0.11 + g.seed) * 0.6); tz = Math.round(cz + g.lean[1] * k * k + Math.cos(ys * 0.09 + g.seed) * 0.6);
+    disc(F, tx, tz, y, y, Math.round(R0 * (1 - 0.32 * k) * 2) / 2, barkC); spine.push([tx, y, tz]);
+  }
+  // limbs fork into twigs; clumps at the twig ends
+  const ends = [];
+  for (let i = 0; i < g.limbs; i++) {
+    const a = (i / g.limbs) * TAU + R() * 0.7, y0 = Math.round(H * (0.55 + 0.45 * (i % 3) / 2) - R() * 4), base = spine[Math.min(H, Math.max(0, y0))];
+    const len = g.spread * (0.75 + R() * 0.4), rise = g.rise * (0.7 + R() * 0.6);
+    const end = [base[0] + Math.cos(a) * len, base[1] + rise, base[2] + Math.sin(a) * len];
+    const mid = [base[0] + Math.cos(a) * len * 0.5, base[1] + rise * 0.62 + (g.droop ? -3 : 2), base[2] + Math.sin(a) * len * 0.5];
+    const lc = bark[i & 1]; limb(F, base, mid, R0 * 0.5, R0 * 0.32, lc); if (!lo) limb(F, mid, end, R0 * 0.32, 0.9, lc);
+    ends.push([end, g.clumpR * (0.85 + R() * 0.3)]);
+    for (let j = 0; j < (g.fork ?? 2); j++) {
+      const b = a + (j ? 0.75 : -0.75) * (0.6 + R() * 0.5), l2 = len * (0.42 + R() * 0.2), r2 = rise * (0.35 + R() * 0.5);
+      const tw = [mid[0] + Math.cos(b) * l2, mid[1] + r2, mid[2] + Math.sin(b) * l2];
+      if (!lo) limb(F, mid, tw, R0 * 0.22, 0.6, bark[(i + j + 1) & 1]);
+      ends.push([tw, g.clumpR * (0.7 + R() * 0.25)]);
     }
   }
+  // the crown: a central clump over the top of the trunk, then every twig-end clump (a layered canopy). Near: 4-voxel
+  // (25 cm) leaf cells with a light fringe of 2-voxel leaf tips; far: 8-voxel cells
+  const top = spine[H];
+  const opt = { s: lo ? 12 : 4, sy: g.sy, fringe: lo ? 0 : (g.fringe ?? 0.24) * 0.5, lobe: g.lobe ?? 0.2, holes: lo ? 0 : g.holes };
+  if (g.top) clump(F, top[0], top[1] + g.clumpR * 0.6, top[2], g.clumpR * g.top, col, opt);
+  for (const [p, r] of ends) clump(F, p[0], p[1] + r * 0.25, p[2], r, col, opt);
 }
-function trunk(G, sp, lo, R) {
-  const bark = new THREE.Color(sp.bark), H = sp.trunkH, r0 = sp.trunkR;
-  G.mat(bark, 'bark');
-  // a crooked trunk in a few segments, flared at the base
-  const pts = []; let x = 0, z = 0;
-  for (let i = 0; i <= 4; i++) { const t = i / 4; pts.push([x, t * H, z]); x += (R() - 0.5) * 0.18 + sp.lean[0] * 0.05; z += (R() - 0.5) * 0.18 + sp.lean[1] * 0.05; }
-  const sides = lo ? 5 : 9;
-  G.cyl([0, 0, 0], [0, 0.35, 0], r0 * 1.7, r0 * 1.05, sides);
-  for (let i = 0; i < 4; i++) G.cyl(pts[i], pts[i + 1], r0 * (1 - i * 0.16), r0 * (1 - (i + 1) * 0.16), sides);
-  if (lo) return pts[4];
-  // limbs: from the upper trunk out toward the crown, each with a fork
-  for (let i = 0; i < sp.limbs; i++) {
-    const a = (i / sp.limbs) * Math.PI * 2 + R() * 0.6, t = 0.55 + R() * 0.4, b = pts[Math.min(4, Math.round(t * 4))];
-    const len = sp.crownR[0] * (0.55 + R() * 0.3), rise = sp.crownR[1] * (0.35 + R() * 0.5);
-    const e = [b[0] + Math.cos(a) * len, b[1] + rise, b[2] + Math.sin(a) * len], m = [(b[0] + e[0]) / 2, (b[1] + e[1]) / 2 + 0.2, (b[2] + e[2]) / 2];
-    G.cyl(b, m, r0 * 0.45, r0 * 0.3, 6); G.cyl(m, e, r0 * 0.3, r0 * 0.12, 5);
-    const f = [m[0] + Math.cos(a + 0.9) * len * 0.45, m[1] + rise * 0.5, m[2] + Math.sin(a + 0.9) * len * 0.45]; G.cyl(m, f, r0 * 0.2, r0 * 0.08, 4);
-  }
-  return pts[4];
-}
-function broadleafMesh(sp, lo) {
-  const R = rng(sp.seed), wood = new Geo(), leaves = new Geo();
-  trunk(wood, sp, lo, R);
-  leaves.mat('#ffffff', 'leaf'); crown(leaves, sp, lo, R);
-  return { opaque: wood.geometry(), leaves: leaves.geometry() };
-}
-// species (metres at scale 1; the city scales them 0.72–0.9)
-const SPECIES = {
-  tr_oak: { seed: 11, trunkH: 3.0, trunkR: 0.3, lean: [1, -0.5], limbs: 6, crownC: [0, 4.6, 0], crownR: [3.3, 2.2, 3.3], clusters: 26, clusterR: 1.25, cards: 7, bark: '#5b4d40', leaves: ['#4f6a2f', '#5a7434', '#46612c', '#62803a', '#55702f'] },
-  tr_plane: { seed: 41, trunkH: 4.4, trunkR: 0.27, lean: [0, 0], limbs: 6, crownC: [0, 6.0, 0], crownR: [2.9, 2.5, 2.9], clusters: 24, clusterR: 1.2, cards: 7, bark: '#8a8470', leaves: ['#5b7a34', '#66843a', '#527030', '#718e40', '#5f7d36'] },
-  tr_linden: { seed: 53, trunkH: 2.6, trunkR: 0.22, lean: [0.5, -0.5], limbs: 5, crownC: [0, 4.4, 0], crownR: [2.4, 2.6, 2.4], clusters: 20, clusterR: 1.1, cards: 7, bark: '#5e544a', leaves: ['#62853a', '#6e9040', '#577a34', '#7a9a46'] },
-  tr_maple: { seed: 23, trunkH: 2.8, trunkR: 0.22, lean: [-0.3, 0.6], limbs: 5, crownC: [0, 4.8, 0], crownR: [2.8, 2.6, 2.8], clusters: 22, clusterR: 1.15, cards: 7, bark: '#5c4e44', leaves: ['#b8532a', '#c7652e', '#a8472a', '#d07a34', '#c25e2a', '#b86f2e'] },
-  tr_blossom: { seed: 37, trunkH: 2.0, trunkR: 0.2, lean: [0.6, 0.3], limbs: 6, crownC: [0, 3.9, 0], crownR: [3.0, 1.9, 3.0], clusters: 22, clusterR: 1.05, cards: 7, bark: '#4a3634', leaves: ['#e8b8c8', '#f0c6d4', '#e2a8bc', '#f4d2dc', '#dca0b4'] },
-  tr_cypress: { seed: 71, trunkH: 3.2, trunkR: 0.33, lean: [2, -0.6], limbs: 6, flat: true, crownC: [0.6, 4.8, 0], crownR: [3.0, 1.9, 2.8], clusters: 18, clusterR: 1.3, cards: 8, bark: '#5a4636', leaves: ['#2f4a2c', '#36532f', '#2a4428', '#3d5b34'],
-    tiers: [[-1.2, 1.4, 0.6, 1.4], [1.6, 2.2, -0.4, 1.3], [0.2, 2.6, 0.2, 1.2]] },
+// ---------------------------------------------------------------- species (painted ramps: dark undersides → sunlit tops)
+const OAK = { // coast live oak: a short stout trunk, wide-spreading crooked limbs, dense dark evergreen domes
+  X: 112, Y: 118, Z: 112, H: 44, R: 4.2, lean: [3, -2], limbs: 7, spread: 30, rise: 22, clumpR: 13.5, top: 1.15, seed: 11, sy: 0.72, moss: true,
+  bark: ['#5a4434', '#6c5240', '#3a2c22', '#6a5a48', '#5e7a3a'],
+  leaves: ['#1e4a34', '#245a36', '#2e6e3a', '#3a8240', '#4c9a44', '#68b24a', '#8cc85a'], acc: ['#b8d860', '#e8d070'],
 };
+const MAPLE = { // a red/orange autumn maple: upright limbs, rounded lobed crown
+  X: 96, Y: 124, Z: 96, H: 46, R: 3.2, lean: [-1, 2], limbs: 6, spread: 21, rise: 32, clumpR: 13, top: 1.2, seed: 23, sy: 0.85,
+  bark: ['#5c4a3e', '#6e5a4c', '#3e3028', '#5c4a3e', '#4e6a36'],
+  leaves: ['#9a3216', '#ac3c18', '#c04a1c', '#d05c22', '#de7028', '#ea8a32', '#f4a840'], acc: ['#f8c84a', '#e8d050'], accP: 0.04,
+};
+const BLOSSOM = { // flowering cherry: a dark glossy trunk, low wide limbs, clouds of pink with white flecks
+  X: 104, Y: 108, Z: 104, H: 34, R: 3.0, lean: [2, 1], limbs: 7, spread: 25, rise: 22, clumpR: 12.5, top: 1.0, seed: 37, sy: 0.7, holes: 0.38,
+  bark: ['#4a3030', '#5a3a38', '#2e1e1e', '#4a3030', '#5a6a3a'],
+  leaves: ['#d06a92', '#dc7ca2', '#e890b0', '#f2a6c0', '#f8bcd0', '#fcd2e0', '#ffe6ee'], acc: ['#ffffff', '#7aa850'], accP: 0.04,
+};
+const PLANE = { // London plane (SF street tree): mottled cream / olive bark, tall trunk, broad airy crown
+  X: 100, Y: 140, Z: 100, H: 60, R: 3.4, lean: [0, 0], limbs: 7, spread: 23, rise: 30, clumpR: 13, top: 1.25, seed: 41, sy: 0.8, mottle: true, holes: 0.34,
+  bark: ['#8a8466', '#a8a284', '#5a5440', '#d8d2b0', '#7a8a5a'],
+  leaves: ['#245a34', '#2e6c38', '#3a8040', '#4a9446', '#5ea84c', '#7cbc56', '#a2d066'], acc: ['#c8d870', '#f0d878'],
+};
+const LINDEN = { // a small rounded street linden
+  X: 84, Y: 112, Z: 84, H: 40, R: 2.8, lean: [1, -1], limbs: 5, spread: 16, rise: 26, clumpR: 12.5, top: 1.35, seed: 53, sy: 0.9,
+  bark: ['#5e5048', '#706054', '#3e342e', '#5e5048', '#5a6e3a'],
+  leaves: ['#2a6038', '#327440', '#3e8846', '#4e9c4a', '#66b250', '#86c45c', '#a8d86e'], acc: ['#f0e890'],
+};
+function cypress(F, lo) { // Monterey cypress: a leaning, forked trunk and flat wind-swept pads in tiers
+  const R = rng(71), bark = pal(F, ['#5a3e2a', '#6c4c34', '#3a281c', '#5a3e2a', '#4e5e30']), barkC = lo ? bark[0] : barkCol(bark, { moss: 20, cz: 48 });
+  const col = leafCol(pal(F, ['#16341e', '#1c4024', '#224c2a', '#2a5a32', '#34683a', '#40784a']), pal(F, ['#5a7a3a']), 0.03);
+  for (let y = 0; y < 8; y++) disc(F, 46, 48, y, y, 5 + ((8 - y) ** 2 / 64) * 4, barkC);
+  for (let i = 0; i < 5; i++) { const a = i * 1.3 + 0.3; limb(F, [46 + Math.cos(a) * 4, 4, 48 + Math.sin(a) * 4], [46 + Math.cos(a) * 13, 0.6, 48 + Math.sin(a) * 13], 2.4, 0.9, barkC); }
+  const trunk = (x0, z0, x1, y1, z1, r0, r1) => limb(F, [x0, 0, z0], [x1, y1, z1], r0, r1, barkC);
+  trunk(46, 48, 58, 58, 44, 5.2, 2.6); limb(F, [50, 22, 47], [30, 62, 54], 3.4, 1.6, barkC); limb(F, [55, 46, 45], [72, 76, 40], 2.4, 1.2, barkC);
+  limb(F, [48, 30, 47], [24, 44, 34], 2.2, 1.0, barkC); limb(F, [57, 52, 45], [44, 92, 46], 2.2, 1.0, barkC);
+  const opt = { s: lo ? 12 : 4, sy: 0.36, fringe: lo ? 0 : 0.12, lobe: 0.26 };
+  for (const [x, y, z, r] of [[30, 66, 54, 17], [72, 80, 40, 16], [24, 48, 34, 13], [50, 70, 44, 20], [44, 96, 46, 15], [62, 60, 60, 14], [56, 88, 32, 13], [38, 84, 58, 13], [64, 74, 30, 12], [36, 58, 40, 13], [52, 104, 44, 10], [76, 70, 52, 11]]) clump(F, x, y, z, r, col, Object.assign({}, opt, { sy: 0.34 + R() * 0.1 }));
+}
+function palm(F, lo) { // Canary Island date palm: a thick trunk of diamond leaf scars, a skirt of old fronds, a huge arching crown
+  const scar = pal(F, ['#8a6a44', '#7a5a38', '#a8845a', '#5e4630']), fr = pal(F, ['#1e5a28', '#2a6c30', '#3a7e38', '#4e9244', '#6aa652']), dead = pal(F, ['#a88a52', '#8a6a3e']), dates = F.c('#e88a2a');
+  const cx = 48, cz = 48;
+  for (let y = 0; y < 98; y++) { const r = 6.4 - y / 60 + (y < 6 ? (6 - y) * 0.5 : 0); disc(F, cx, cz, y, y, r, (x, yy, z) => { const a = Math.atan2(z - cz, x - cx), k = ((a / TAU) * 12 + (yy >> 2) * 0.5) % 1; return (yy & 3) === 0 || k < 0.12 ? scar[3] : k < 0.5 ? scar[0] : k < 0.8 ? scar[1] : scar[2]; }); }
+  const n = lo ? 12 : 16;
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * TAU + (i & 1) * 0.12, up = i % 3 === 0 ? 0.55 : i % 3 === 1 ? 0.25 : -0.05, len = 38 + (i % 4) * 3, y0 = 100;
+    for (let t = 0; t <= len; t += lo ? 2 : 1) {
+      const k = t / len, px = cx + Math.cos(a) * t, pz = cz + Math.sin(a) * t, py = y0 + Math.sin(k * 2.2) * 18 * (up + 0.5) - k * k * 26;
+      F.set(Math.round(px), Math.round(py), Math.round(pz), fr[Math.min(4, (k * 3 + (i % 2)) | 0)]);
+      if (lo) continue;
+      const w = (1 - k) * 6 + 1;
+      if (t % 3 > 0.5) continue;
+      for (let s = 1; s < w; s += 1) { const droop = Math.round(s * 0.4 + k * 2); for (const sd of [-1, 1]) F.set(Math.round(px - Math.sin(a) * s * sd), Math.round(py) - droop, Math.round(pz + Math.cos(a) * s * sd), fr[Math.min(4, ((s / w) * 2 + k * 2) | 0)]); }
+    }
+  }
+  for (let i = 0; i < (lo ? 0 : 18); i++) { const a = (i / 18) * TAU; for (let t = 4; t < 14; t++) F.set(Math.round(cx + Math.cos(a) * (6 + t * 0.5)), 98 - t, Math.round(cz + Math.sin(a) * (6 + t * 0.5)), dead[i & 1]); }
+  for (let i = 0; i < 10; i++) { const a = i * 0.63; sph(F, cx + Math.cos(a) * 7, 94 - (i % 3) * 2, cz + Math.sin(a) * 7, 1.2, dates); }
+}
+
 // ---------------------------------------------------------------- ground cover
 /** grass tufts: a 1.5 m patch of single-voxel blades, some bent over at the tip (no shadow) */
 function tufts(F, r, o = {}) {
@@ -211,44 +231,18 @@ function under(F, r) {
   }
 }
 
-// ---------------------------------------------------------------- the Canary Island date palm (modelled)
-function palmMesh(lo) {
-  const R = rng(71), wood = new Geo(), fr = new Geo(), H = 7.2, cx = 0, cz = 0;
-  // the trunk: stacked diamond-scarred rings, thick and slightly swollen at the base
-  const sides = lo ? 6 : 10, n = lo ? 4 : 14;
-  for (let i = 0; i < n; i++) {
-    const t0 = i / n, t1 = (i + 1) / n, r0 = 0.42 - t0 * 0.12 + (t0 < 0.08 ? 0.12 : 0), r1 = 0.42 - t1 * 0.12;
-    wood.mat(i % 2 ? '#7d6648' : '#6e5a40', 'bark').cyl([cx + Math.sin(t0 * 2) * 0.15, t0 * H, cz], [cx + Math.sin(t1 * 2) * 0.15, t1 * H, cz], r0, r1 * 1.04, sides);
-  }
-  const top = [cx + Math.sin(2) * 0.15, H, cz];
-  wood.mat('#6a5432', 'bark').sphere([top[0], H + 0.1, top[2]], [0.55, 0.45, 0.55]);
-  // fronds: arching midribs with paired leaflets (tapering triangles), lit green above, a few dead hanging ones
-  const nf = lo ? 10 : 18;
-  for (let i = 0; i < nf; i++) {
-    const a = (i / nf) * Math.PI * 2 + R() * 0.2, up = i % 3 === 0 ? 0.9 : i % 3 === 1 ? 0.5 : 0.15, len = 3.0 + R() * 0.6, dead = !lo && i % 7 === 6;
-    const col = new THREE.Color(dead ? '#9a7f52' : ['#3f6a2c', '#4a7632', '#3a6228'][i % 3]); fr.mat(col, 'leaf');
-    const seg = lo ? 4 : 9, pts = [];
-    for (let k = 0; k <= seg; k++) { const t = k / seg, d = t * len; pts.push([top[0] + Math.cos(a) * d, H + 0.2 + Math.sin(t * 2.2) * up * 1.4 - t * t * (dead ? 3.5 : 1.8), top[2] + Math.sin(a) * d]); }
-    const side = [-Math.sin(a), 0, Math.cos(a)];
-    for (let k = 0; k < seg; k++) {
-      const p = pts[k], q = pts[k + 1], t = k / seg, w = (1 - t) * 0.55 + 0.12;
-      for (const sd of [-1, 1]) {
-        const tip = [ (p[0] + q[0]) / 2 + side[0] * sd * w, (p[1] + q[1]) / 2 - w * 0.35, (p[2] + q[2]) / 2 + side[2] * sd * w ];
-        const nn = [side[2] * 0, 1, 0], b0 = fr.P.length / 3, c = [col.r * (0.85 + t * 0.2), col.g * (0.85 + t * 0.2), col.b * (0.85 + t * 0.2)];
-        fr.v(p, nn, c, [0.05, 0.05]); fr.v(q, nn, c, [0.05, 0.05]); fr.v(tip, nn, c.map((v) => v * 0.85), [0.05, 0.05]); fr.tri(b0, b0 + 1, b0 + 2);
-      }
-    }
-  }
-  return { opaque: wood.geometry(), leaves: fr.geometry() };
-}
-
 // ---------------------------------------------------------------- registry
 const T = {};   // kind → { build(F, r, lo) } (voxel kinds with a low-detail twin)
 const add = (kind, size, r, build, o = {}) => { T[kind] = { build }; PROPS[kind] = Object.assign({ size, r, build: (F, rr) => build(F, rr, false), tree: !o.flat }, o); };
-const MESHES = new Map();
-const addMesh = (kind, r, make) => { PROPS[kind] = { size: [1, 1, 1], r, tree: true, sway: true, mesh: (lo) => { const k = kind + (lo ? ':lo' : ''); if (!MESHES.has(k)) MESHES.set(k, make(lo)); return MESHES.get(k); } }; };
-for (const [kind, sp] of Object.entries(SPECIES)) addMesh(kind, kind === 'tr_cypress' ? 0.5 : kind === 'tr_oak' ? 0.4 : 0.35, (lo) => broadleafMesh(sp, lo));
-addMesh('tr_palm', 0.45, (lo) => palmMesh(lo));
+// the trees sway (the material's vertex patch) and have a far twin (buildLo) that the prop LOD swaps to past ~16 m
+const tree = (kind, size, r, gen) => { T[kind] = { build: (F, rr, lo) => gen(F, lo) }; PROPS[kind] = { size, r, tree: true, sway: true, build: (F) => gen(F, false), buildLo: (F) => gen(F, true) }; };
+tree('tr_oak', [OAK.X, OAK.Y, OAK.Z], 0.4, (F, lo) => broadleaf(F, OAK, lo));
+tree('tr_maple', [MAPLE.X, MAPLE.Y, MAPLE.Z], 0.35, (F, lo) => broadleaf(F, MAPLE, lo));
+tree('tr_blossom', [BLOSSOM.X, BLOSSOM.Y, BLOSSOM.Z], 0.35, (F, lo) => broadleaf(F, BLOSSOM, lo));
+tree('tr_plane', [PLANE.X, PLANE.Y, PLANE.Z], 0.35, (F, lo) => broadleaf(F, PLANE, lo));
+tree('tr_linden', [LINDEN.X, LINDEN.Y, LINDEN.Z], 0.32, (F, lo) => broadleaf(F, LINDEN, lo));
+tree('tr_cypress', [96, 118, 96], 0.5, (F, lo) => cypress(F, lo));
+tree('tr_palm', [96, 132, 96], 0.45, (F, lo) => palm(F, lo));
 // ground cover (flat: no LOD twin, no sway, no shadow, never collides)
 add('gr_tuft', [24, 12, 24], 0, (F, r) => tufts(F, r), { flat: true, noShadow: true });
 add('gr_tuftDry', [24, 12, 24], 0, (F, r) => tufts(F, r, { cols: ['#8a9a48', '#9aa452', '#6a8a3a', '#b0a860', '#7a9440'], seed: true, h: 7 }), { flat: true, noShadow: true });
@@ -320,19 +314,12 @@ export function swayMat(m) {
   swayCache.set(m, s);
   return s;
 }
-/** the foliage material: leaf cards (alpha-tested) tinted by vertex colour, swaying */
-let LEAFMAT = null;
-export function leafMat() {
-  if (!LEAFMAT) LEAFMAT = swayMat(new THREE.MeshStandardMaterial({ map: leafTexture(), vertexColors: true, alphaTest: 0.42, side: THREE.DoubleSide, roughness: 0.72, metalness: 0 }));
-  return LEAFMAT;
-}
-export const barkMat = () => swayMat(VPBR);
-MESH_MATS.vpbr = () => VPBR; MESH_MATS.sway = barkMat; MESH_MATS.leaves = leafMat;
+MESH_MATS.vpbr = () => VPBR; MESH_MATS.sway = () => swayMat(VPBR); MESH_MATS.swayOf = (m) => swayMat(m);
 
 // ---------------------------------------------------------------- the city hook
 const REMAP = { tree: ['tr_plane', 'tr_oak', 'tr_plane', 'tr_linden'], treeB: ['tr_linden', 'tr_maple', 'tr_linden'], palm: ['tr_palm'] };
 /**
- * Swap the stock trees for the modelled species (street trees, Sunset Row, the wharf palms) and drive the wind.
+ * Swap the stock trees for the detailed voxel species (street trees, Sunset Row, the wharf palms) and drive the wind.
  * Call after the districts are built, before C.finalize. `?oldtrees=1` keeps the stock ones, `?nosway=1` turns
  * the wind off. (Distance LOD and culling of every prop, trees included, is in build.js.)
  */
@@ -341,7 +328,7 @@ export function installTrees(C) {
   if (!/[?&]oldtrees=1/.test(q)) for (const p of C.props) {
     const list = REMAP[p.kind]; if (!list) continue;
     const k = list[Math.floor(h3(Math.round(p.x * 4), 7, Math.round(p.z * 4)) * list.length)];
-    p.kind = k; p.s = (p.s || 1) * (k === 'tr_palm' ? 0.85 : k === 'tr_oak' ? 0.72 : 0.82) * (0.92 + h3(Math.round(p.x), 5, Math.round(p.z)) * 0.16); p.yaw = (p.yaw || 0) + h3(Math.round(p.x), 3, Math.round(p.z)) * TAU;
+    p.kind = k; p.s = (p.s || 1) * (k === 'tr_palm' ? 0.85 : k === 'tr_oak' ? 0.72 : 0.82); p.yaw = (p.yaw || 0) + h3(Math.round(p.x), 3, Math.round(p.z)) * TAU;
   }
   let t = 0;
   C.updaters.push((dt) => { t += dt; WIND.uTime.value = t; });

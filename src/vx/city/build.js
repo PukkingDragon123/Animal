@@ -308,6 +308,10 @@ export class CityBuilder {
     if (sd === 'n') this.box(gk, TX.solid('#e8e0d0'), cx - ww / 2 - 0.08, y - 0.08, cz - so, cx + ww / 2 + 0.08, y, cz);
     if (sd === 'e') this.box(gk, TX.solid('#e8e0d0'), cx, y - 0.08, cz - ww / 2 - 0.08, cx + so, y, cz + ww / 2 + 0.08);
     if (sd === 'w') this.box(gk, TX.solid('#e8e0d0'), cx - so, y - 0.08, cz - ww / 2 - 0.08, cx, y, cz + ww / 2 + 0.08);
+    // the lintel: a moulded head over the opening with a keystone (sculpted detail, outlined like everything else)
+    const lc = TX.solid(win.lintel || (B && B.o && B.o.trim) || '#e8e0d0'), lo = 0.07, yh = y + wh;
+    const L2 = (a0, a1, y0, y1, o2) => { if (sd === 's') this.box(gk, lc, cx + a0, y0, cz, cx + a1, y1, cz + o2); if (sd === 'n') this.box(gk, lc, cx + a0, y0, cz - o2, cx + a1, y1, cz); if (sd === 'e') this.box(gk, lc, cx, y0, cz + a0, cx + o2, y1, cz + a1); if (sd === 'w') this.box(gk, lc, cx - o2, y0, cz + a0, cx, y1, cz + a1); };
+    L2(-ww / 2 - 0.1, ww / 2 + 0.1, yh, yh + 0.12, lo); L2(-0.08, 0.08, yh - 0.04, yh + 0.18, lo + 0.03);
     if (B && B.enter) this.decal(gk.replace(/:back$/, ':in'), TX.windowTex('#f2ead8', '#e8e0d0', false), cx, y, cz, { s: 'n', n: 's', e: 'w', w: 'e' }[sd], ww, wh, { off: 0.22 });
   }
   shopfront(B, S, sides) {
@@ -344,6 +348,12 @@ export class CityBuilder {
     if (type === 'flat') {
       this.box(gk, tex, x, H, z, x + w, H + 0.05, z + d, { skip: { n: true, s: true, e: true, w: true } });
       const p = TX.solid(B.o.trim || '#f4ece0'), ph = R.parapet ?? 0.5, t = 0.2;
+      // a cornice under the parapet on the street sides (south, east): a projecting band on a row of dentils
+      const cy = H - 0.32, dn = TX.solid(B.o.trim || '#f4ece0');
+      this.box(gk, p, x - 0.16, cy + 0.12, z + d - 0.02, x + w + 0.16, cy + 0.3, z + d + 0.2, { skip: { n: true } });
+      this.box(gk, p, x + w - 0.02, cy + 0.12, z - 0.16, x + w + 0.2, cy + 0.3, z + d + 0.16, { skip: { w: true } });
+      for (let u = x + 0.15; u < x + w - 0.1; u += 0.34) this.box(gk, dn, u, cy, z + d - 0.02, u + 0.14, cy + 0.12, z + d + 0.1, { skip: { n: true, top: true } });
+      for (let u = z + 0.15; u < z + d - 0.1; u += 0.34) this.box(gk, dn, x + w - 0.02, cy, u, x + w + 0.1, cy + 0.12, u + 0.14, { skip: { w: true, top: true } });
       this.box(gk, p, x - 0.05, H, z - 0.05, x + w + 0.05, H + ph, z + t); this.box(gk, p, x - 0.05, H, z + d - t, x + w + 0.05, H + ph, z + d + 0.05);
       this.box(gk, p, x - 0.05, H, z, x + t, H + ph, z + d); this.box(gk, p, x + w - t, H, z, x + w + 0.05, H + ph, z + d);
       if (R.tank) this.box(gk, TX.metalRoof('#8a9aa8'), x + w * 0.6, H, z + d * 0.2, x + w * 0.6 + 1.4, H + 1.6, z + d * 0.2 + 1.4);
@@ -467,8 +477,8 @@ export class CityBuilder {
     // tiles they see; every prop with glowing voxels (lamps, lanterns, neon, vending machines) throws light
     remapProps(this);   // the stock voxel street furniture and cars → modelled ones (props_real.js)
     const tiles = new Map(), halos = [], TS = 80;
-    // (the swaying trees are one instanced set per species for the whole map: their per-instance LOD does the culling)
-    for (const p of this.props) { const K = PROPS[p.kind], k = K && K.sway ? 'trees' : Math.floor(p.x / TS) + ',' + Math.floor(p.z / TS); if (!tiles.has(k)) tiles.set(k, []); tiles.get(k).push(p); }
+    // (the swaying trees: one instanced set per species and 64 m tile, so the shadow cameras skip whole tiles)
+    for (const p of this.props) { const K = PROPS[p.kind], k = K && K.sway ? 't' + Math.floor(p.x / 64) + ',' + Math.floor(p.z / 64) : Math.floor(p.x / TS) + ',' + Math.floor(p.z / TS); if (!tiles.has(k)) tiles.set(k, []); tiles.get(k).push(p); }
     // trees and modelled props stay instanced with a per-instance distance LOD; every other (voxel) prop is baked into
     // static meshes per tile and size class (statics), each dropped as a whole past its class's draw distance; kinds
     // other code drives instance by instance (the voxel animals life.js hides, the garden's cabbages) stay as they were
@@ -518,14 +528,14 @@ export class CityBuilder {
 // Every prop kind is instanced per 48 m tile; every few frames each tile's instances are re-packed by distance from
 // the camera: beyond a kind's draw distance (its size × CULL_K, so a bin goes long before a tree does) an instance is
 // dropped, and kinds with a far twin (the trees) swap to it past LOD_D. One upload per changed tile, no per-frame CPU.
-const LITE = !!globalThis.TOKON_LITE, CULL_K = LITE ? 70 : 115, FLAT_K = LITE ? 30 : 48, LOD_D = LITE ? 18 : 30;
+const LITE = !!globalThis.TOKON_LITE, CULL_K = LITE ? 70 : 115, FLAT_K = LITE ? 30 : 48, LOD_D = LITE ? 12 : 16;
 function lodEntry(im, parent) {
   const kind = im.userData.prop, P = PROPS[kind], n = im.count, full = im.instanceMatrix.array.slice(), xz = new Float32Array(n * 2);
   let smax = 0; for (let i = 0; i < n; i++) { xz[i * 2] = full[i * 16 + 12]; xz[i * 2 + 1] = full[i * 16 + 14]; smax = Math.max(smax, Math.hypot(full[i * 16], full[i * 16 + 1], full[i * 16 + 2])); }
   const parts = geoForCached(kind), rad = Math.max(...['opaque', 'leaves', 'glow'].map((k) => (parts && parts[k] && parts[k].boundingSphere ? parts[k].boundingSphere.radius : 0))) * (smax || 1);
-  const flat = P && !P.tree && P.noShadow && /^gr_/.test(kind), cull = Math.max(flat ? 14 : 22, rad * (flat ? FLAT_K : CULL_K));
+  const flat = P && !P.tree && P.noShadow && /^gr_/.test(kind), cull = Math.min(LITE ? 60 : 95, Math.max(flat ? 14 : 22, rad * (flat ? FLAT_K : CULL_K)));
   let lo = null;
-  const loParts = P && P.mesh ? geoForCached(kind, true) : null, lg = loParts && loParts[im.userData.part];
+  const loParts = P && (P.mesh || P.buildLo) ? geoForCached(kind, true) : null, lg = loParts && loParts[im.userData.part];
   if (lg) { lo = new THREE.InstancedMesh(lg, im.material, n); lo.count = 0; lo.castShadow = im.castShadow; lo.receiveShadow = true; lo.userData = { prop: kind, part: im.userData.part, lo: true }; lo.boundingSphere = im.boundingSphere.clone(); lo.frustumCulled = true; parent.add(lo); }
   const bs = im.boundingSphere;
   return { im, lo, n, full, xz, cull2: cull * cull, cull, lod2: LOD_D * LOD_D, cx: bs.center.x, cz: bs.center.z, r: bs.radius, sig: -1 };
@@ -533,19 +543,26 @@ function lodEntry(im, parent) {
 const KEEP_IM = new Set(['wf_gull', 'wf_sealion', 'pk_pigeons', 'pk_duck', 'gd_cabbage']);
 const EMPTY_GEO = new THREE.BufferGeometry(); EMPTY_GEO.setAttribute('position', new THREE.Float32BufferAttribute([], 3));
 // size classes of the baked statics: [largest radius (m), tile (m), draw distance (m), lite draw distance]
-const CLASSES = [[0.9, 32, 34, 24], [2.6, 48, 64, 44], [1e9, 96, 170, 120]];
+const CLASSES = [[0.9, 32, 28, 20], [2.6, 48, 50, 36], [1e9, 96, 130, 95]];
 class PropStatics {
   constructor(parent, mats, stage) { this.parent = parent; this.mats = mats; this.stage = stage; this.B = new Map(); this.meshes = []; if (stage && stage.farHide) stage.farHide.length = 0; }
   add(im) {
-    const kind = im.userData.prop, part = im.userData.part, geo = im.geometry, P = PROPS[kind], rm = SURF[kind] || [0.78, 0];
+    // the near bake, and for the medium and large classes a far bake from the half-resolution twin (geoFor lo)
+    this.bake(im, im.geometry, 0);
+    const lo = geoForCached(im.userData.prop, true), lg = lo && lo[im.userData.part];
+    if (lg) this.bake(im, lg, 1, im.geometry);
+  }
+  bake(im, geo, lod, ref) {
+    const kind = im.userData.prop, part = im.userData.part, P = PROPS[kind], rm = SURF[kind] || [0.78, 0];
     if (!geo.boundingSphere) geo.computeBoundingSphere();
     const m4 = new THREE.Matrix4(), n3 = new THREE.Matrix3(), v = new THREE.Vector3();
     const pos = geo.attributes.position, nor = geo.attributes.normal, colA = geo.attributes.color, idx = geo.index, rmA = geo.attributes.aRM;
     for (let i = 0; i < im.count; i++) {
-      im.getMatrixAt(i, m4); const sc = m4.getMaxScaleOnAxis(), r = geo.boundingSphere.radius * sc;
+      im.getMatrixAt(i, m4); const sc = m4.getMaxScaleOnAxis(), r = (ref || geo).boundingSphere.radius * sc;
       const ci = CLASSES.findIndex((c) => r <= c[0]), C = CLASSES[ci], x = m4.elements[12], z = m4.elements[14];
-      const shadow = part !== 'glow' && !P.noShadow, key = Math.floor(x / C[1]) + ',' + Math.floor(z / C[1]) + '|' + ci + '|' + part + '|' + (shadow ? 1 : 0);
-      let b = this.B.get(key); if (!b) this.B.set(key, (b = { ci, part, shadow, P: [], N: [], C: [], R: [], I: [] }));
+      if (lod && ci === 0) return;     // small things just drop out; no far bake
+      const shadow = part !== 'glow' && !P.noShadow, key = Math.floor(x / C[1]) + ',' + Math.floor(z / C[1]) + '|' + ci + '|' + part + '|' + (shadow ? 1 : 0) + '|' + lod;
+      let b = this.B.get(key); if (!b) this.B.set(key, (b = { ci, lod, part, shadow, P: [], N: [], C: [], R: [], I: [] }));
       n3.getNormalMatrix(m4); const base = b.P.length / 3;
       for (let k = 0; k < pos.count; k++) {
         v.fromBufferAttribute(pos, k).applyMatrix4(m4); b.P.push(v.x, v.y, v.z);
@@ -562,8 +579,11 @@ class PropStatics {
       g.setAttribute('position', new THREE.Float32BufferAttribute(b.P, 3)); g.setAttribute('normal', new THREE.Float32BufferAttribute(b.N, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(b.C, 3));
       if (b.part !== 'glow') g.setAttribute('aRM', new THREE.Float32BufferAttribute(b.R, 2));
       g.setIndex(b.P.length / 3 > 65535 ? new THREE.Uint32BufferAttribute(b.I, 1) : new THREE.Uint16BufferAttribute(b.I, 1)); g.computeBoundingSphere();
-      const m = new THREE.Mesh(g, b.part === 'glow' ? this.mats.glow : VPBR); m.castShadow = b.shadow; m.receiveShadow = b.part !== 'glow'; m.userData.statics = b.ci; m.name = 'statics';
-      const C = CLASSES[b.ci], d = (LITE ? C[3] : C[2]) + g.boundingSphere.radius; m.userData.cull2 = d * d;
+      // (the far bake of the medium class casts no shadow: it stands outside the near cascade, and the far one skips it)
+      const m = new THREE.Mesh(g, b.part === 'glow' ? this.mats.glow : VPBR); m.castShadow = b.shadow && !(b.lod && b.ci === 1); m.receiveShadow = b.part !== 'glow'; m.userData.statics = b.ci; m.name = 'statics';
+      const C = CLASSES[b.ci], d = (LITE ? C[3] : C[2]) + g.boundingSphere.radius * 0.5; m.userData.cull2 = d * d;   // (to the tile's middle, give or take)
+      // near / far bake hand-over (the small class has only the near bake)
+      const hd = b.ci === 0 ? 1e9 : (LITE ? 14 : 20) + g.boundingSphere.radius * 0.5; m.userData.lod = b.lod; m.userData.hi2 = b.ci === 0 ? 1e18 : hd * hd;
       this.parent.add(m); this.meshes.push(m);
       if (b.ci < 2 && this.stage && this.stage.farHide) this.stage.farHide.push(m);
     }
@@ -579,7 +599,7 @@ function propLodUpdater(lod, statics) {
     const x = cam.position.x, z = cam.position.z;
     if (++f % 4 && Math.hypot(x - lx, z - lz) < 2) return;
     lx = x; lz = z;
-    for (const m of statics.meshes) { const c = m.geometry.boundingSphere.center, dx = c.x - x, dz = c.z - z; m.visible = dx * dx + dz * dz < m.userData.cull2; }
+    for (const m of statics.meshes) { const c = m.geometry.boundingSphere.center, dx = c.x - x, dz = c.z - z, d2 = dx * dx + dz * dz, U = m.userData; m.visible = d2 < U.cull2 && (U.lod ? d2 >= U.hi2 : d2 < U.hi2); }
     for (const e of lod) {
       const dx = e.cx - x, dz = e.cz - z, D = e.cull + e.r;
       if (dx * dx + dz * dz > D * D) { if (e.im.visible || (e.lo && e.lo.visible)) { e.im.visible = false; if (e.lo) e.lo.visible = false; e.sig = -1; } continue; }

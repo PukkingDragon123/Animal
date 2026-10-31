@@ -63,8 +63,15 @@ export class Hud {
     if (obj && !busy) ui.objective(6, rowY + 30, obj, { maxW: narrow ? W - 12 : Math.min(260, W - 200) });
     // top-centre: the place plate
     const w = this.where();
-    const signW = w.name ? ui.hudLocation(W / 2, narrow ? 120 : 2, w.name, w.sub, { align: 'center', hold: 3.2, id: 'zone' + this.locN }) : 0;
-    ui.toastY = signW && !narrow ? 36 : null;
+    // the place plate goes in the free space between the party card and the pills (else low in the middle)
+    let lx = W / 2, ly = 2;
+    if (w.name) {
+      const nmW = Math.max(ui.tw(String(w.name).toUpperCase(), { mini: true, bold: true }) + 34, ui.tw(String(w.sub || '').toUpperCase(), { mini: true }) + 20);
+      const left = 6 + (narrow ? 168 : 200) + 8, right = W - 116;
+      if (lx - nmW / 2 < left || lx + nmW / 2 > right) { if (right - left >= nmW) lx = R((left + right) / 2); else { lx = R(W / 2); ly = H - 74; } }
+    }
+    const signW = w.name ? ui.hudLocation(lx, ly, w.name, w.sub, { align: 'center', hold: 3.2, id: 'zone' + this.locN }) : 0;
+    ui.toastY = signW && ly < 10 ? 36 : null;
     // top-right: value pills (coins, gems, clock)
     const px = W - 84 + off;
     hudMoney(ui, px, 6, st.money || 0, { id: 'hud' });

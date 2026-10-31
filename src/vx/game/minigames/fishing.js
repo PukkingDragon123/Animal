@@ -6,7 +6,7 @@
 // release, logged in the TokoDex); junk and the odd treasure come up too. Landing catches in a row builds a combo.
 import * as THREE from '../../../../vendor/three.module.js';
 import { T } from '../../../px/game/ui.js';
-import { V3, clamp, clamp01, lerp, smooth, easeOut, boing, weighted, fmt, drawTimer, drawScore, drawCombo, keyRow, vGauge, boxes, ball, cyl } from './kit.js';
+import { V3, clamp, clamp01, lerp, smooth, easeOut, boing, weighted, fmt, drawTimer, drawScore, drawCombo, keyRow, vGauge, voxel, GLOW, WHITE, worldText, bigText, canvasTex } from './kit.js';
 
 const HX = 166.6, HZ = 1.95, WY = -0.8, ROUND = 75;
 const ZONE = { x0: 159.5, x1: 173.5, z0: -14, z1: -1.4 };
@@ -28,12 +28,25 @@ const JUNK = [
   { id: 'quartz', name: 'Quartz Gem', w: 2.5, pts: 120, look: 'gem', item: 'quartz', treasure: true },
   { id: 'sapphire', name: 'Sapphire Gem', w: 1, pts: 220, look: 'gem2', item: 'sapphire', treasure: true },
 ];
+// the junk and treasure that come up on the line, sculpted in voxels
+const JUNK_VOX = {
+  boot: { size: [7, 12, 14], build(F) { const l = F.c('#6a4a2e'), lD = F.c('#4a3220'), sole = F.c('#2a2a30'), lace = F.c('#e8e0c8'), kelp = F.c('#3a7a3a');
+    F.box(0, 0, 0, 6, 1, 13, sole); F.box(0, 2, 0, 6, 5, 13, (x, y, z) => ((x + z) % 4 === 0 ? lD : l)); F.box(0, 6, 0, 6, 11, 6, (x, y) => (y % 3 === 0 ? lD : l)); F.box(1, 7, 7, 5, 7, 9, lD);
+    for (let y = 6; y < 11; y += 2) F.box(2, y, 7, 4, y, 7, lace); F.box(0, 11, 2, 0, 11, 5, kelp); F.box(6, 4, 9, 6, 9, 9, kelp); } },
+  can: { size: [6, 9, 6], build(F, r, H) { const m = F.c('#c8ccd4'), red = F.c('#e8283a'), w = F.c('#f4f0e6'), d = F.c('#8a8e98'); H.disc(F, 2.5, 2.5, 0, 8, 2.8, (x, y) => (y === 0 || y === 8 ? d : y > 2 && y < 6 ? (x === 0 && y === 4 ? w : red) : m)); } },
+  kelp: { size: [12, 6, 12], build(F, r) { const k = [F.c('#2a6a2a'), F.c('#3a7a3a'), F.c('#5a9a4a')]; for (let i = 0; i < 26; i++) { const x = Math.floor(r() * 11), z = Math.floor(r() * 11), h = 1 + Math.floor(r() * 5); F.box(x, 0, z, x, h, z, k[i % 3]); } F.box(2, 0, 2, 9, 0, 9, k[0]); } },
+  tire: { size: [16, 16, 5], build(F) { const t = F.c('#1e1e22'), t2 = F.c('#34343a'), rim = F.c('#c8ccd4'); for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) { const d = Math.hypot(x - 7.5, y - 7.5); if (d < 8 && d > 5) F.box(x, y, 0, x, y, 4, (Math.atan2(y - 7.5, x - 7.5) * 4 | 0) % 2 ? t : t2); else if (d <= 5 && d > 4) F.box(x, y, 1, x, y, 3, rim); } } },
+  bottle: { size: [5, 12, 5], build(F, r, H) { const g = F.c('#6ab88a'), gD = F.c('#4a986a'), p = F.c('#f4ecd8'), cork = F.c('#a87a42'); H.disc(F, 2, 2, 0, 7, 2.3, (x, y) => (x === 0 ? gD : g)); H.disc(F, 2, 2, 8, 10, 1.2, g); F.set(2, 11, 2, cork); F.box(1, 2, 1, 3, 5, 3, p); } },
+  bottle2: { size: [5, 12, 5], build(F, r, H) { const g = F.c('#5ac8e8'), gD = F.c('#3a98c8'), w = F.c('#ffffff'), m = F.c('#c8ccd4'), marble = F.c('#bfeaf6', GLOW); H.disc(F, 2, 2, 0, 7, 2.3, (x, y) => (y === 3 || y === 4 ? w : x === 0 ? gD : g)); H.disc(F, 2, 2, 8, 9, 1.2, g); F.set(2, 9, 2, marble); H.disc(F, 2, 2, 10, 11, 1.5, m); } },
+  gem: { size: [9, 10, 9], vpm: 48, build(F) { const a = F.c('#ffffff', GLOW), b = F.c('#e8e4f4'), c = F.c('#b8b0d8'); for (let y = 0; y < 10; y++) { const r = y < 6 ? y * 0.75 : (9 - y) * 1.2; for (let z = 0; z < 9; z++) for (let x = 0; x < 9; x++) if (Math.abs(x - 4) + Math.abs(z - 4) <= r) F.set(x, y, z, y > 6 ? a : (x + y) % 3 ? b : c); } } },
+  gem2: { size: [9, 10, 9], vpm: 48, build(F) { const a = F.c('#8ab8ff', GLOW), b = F.c('#2a6ae8'), c = F.c('#1a4ab0'); for (let y = 0; y < 10; y++) { const r = y < 6 ? y * 0.75 : (9 - y) * 1.2; for (let z = 0; z < 9; z++) for (let x = 0; x < 9; x++) if (Math.abs(x - 4) + Math.abs(z - 4) <= r) F.set(x, y, z, y > 6 ? a : (x + y) % 3 ? b : c); } } },
+};
 const NOTES = ['"Whoever finds this: the big one lives under the pier. — S."', '"Day 41 on Gull Rock. The Thrashark still owes me a lure."', '"Dear diary, I am a bottle."'];
 
 export default class Fishing {
   static howto = 'Aim and cast near a shadow. Strike when the bobber plunges, then hold to reel — let go when the line surges!';
   static keys = [['◀ ▶', 'Aim'], ['SPACE', 'Cast · Strike · Reel']];
-  static ranks = [2400, 1500, 750];
+  static ranks = [1700, 1050, 500];
   static rewards(res, o) {
     const items = res.treasure ? Object.entries(res.treasure) : [];
     if (o.first) items.push(['takoyaki', 1]);
@@ -50,26 +63,41 @@ export default class Fishing {
     this.host = w.actor('wfFisher');
     // rod (base + bendy tip), line, bobber, aim ring, ripples, the shadows of the fish
     this.rod = new THREE.Group(); root.add(this.rod);
-    const rb = cyl(0.012, 0.022, 1.05, '#5a3a24', 6); rb.rotation.x = Math.PI / 2; rb.position.z = 0.52; this.rod.add(rb);
-    this.reel = cyl(0.045, 0.045, 0.05, '#c8ccd4', 10); this.reel.rotation.z = Math.PI / 2; this.reel.position.set(0.04, -0.04, 0.22); this.rod.add(this.reel);
+    // the rod: a cork grip, a reel seat, guides along a varnished blank (voxels, 40 per metre)
+    const st = s.st;
+    this.rod.add(voxel(st, [3, 3, 42], (F) => {
+      const cork = F.c('#c89a5a'), corkD = F.c('#a87a42'), blank = F.c('#5a2a1e'), wrap = F.c('#e8c040'), seat = F.c('#3a3a44');
+      F.box(0, 0, 0, 2, 2, 9, (x, y, z) => ((z + x + y) % 3 ? cork : corkD)); F.box(0, 0, 10, 2, 2, 12, seat);
+      F.box(1, 1, 13, 1, 1, 41, (x, y, z) => (z % 9 === 0 ? wrap : blank)); for (const z of [20, 30, 40]) F.box(1, 2, z, 1, 2, z, wrap);
+    }, { vpm: 40, key: 'mg-rod', origin: [1.5 / 40, 1.5 / 40, 0] }));
+    this.reel = new THREE.Group(); this.reel.position.set(0.0, -0.05, 0.27); this.rod.add(this.reel);
+    this.reel.add(voxel(st, [4, 7, 7], (F, r, H) => { const m = F.c('#c8ccd4'), d = F.c('#6a6e7a'), h = F.c('#e8283a'); for (let z = 0; z < 7; z++) for (let y = 0; y < 7; y++) if ((y - 3) ** 2 + (z - 3) ** 2 <= 10) F.box(0, y, z, 2, y, z, (y + z) % 3 ? m : d); F.box(3, 3, 3, 3, 3, 5, h); }, { vpm: 40, key: 'mg-reel', origin: [1.5 / 40, 3.5 / 40, 3.5 / 40] }));
     this.tip = new THREE.Group(); this.tip.position.z = 1.04; this.rod.add(this.tip);
-    const rt = cyl(0.004, 0.012, 0.75, '#e8e0c8', 5); rt.rotation.x = Math.PI / 2; rt.position.z = 0.37; this.tip.add(rt);
+    this.tip.add(voxel(st, [1, 2, 30], (F) => { const b = F.c('#e8e0c8'), w = F.c('#e8283a'); F.box(0, 0, 0, 0, 0, 29, (x, y, z) => (z > 26 ? w : b)); for (const z of [8, 18, 28]) F.set(0, 1, z, F.c('#e8c040')); }, { vpm: 40, key: 'mg-rodtip', origin: [0.5 / 40, 0.5 / 40, 0] }));
     this.tipEnd = new THREE.Object3D(); this.tipEnd.position.z = 0.75; this.tip.add(this.tipEnd);
     const N = 20; this.lineN = N; this.lineGeo = new THREE.BufferGeometry(); this.lineGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(N * 3), 3));
     this.line = new THREE.Line(this.lineGeo, new THREE.LineBasicMaterial({ color: '#f4f4f0' })); this.line.frustumCulled = false; root.add(this.line);
     this.bob = new THREE.Group(); root.add(this.bob);
-    const top = ball(0.07, '#e8283a'); top.scale.y = 0.8; top.position.y = 0.04; this.bob.add(top);
-    const bot = ball(0.07, '#f4f4f0'); bot.scale.y = 0.6; bot.position.y = -0.02; this.bob.add(bot);
-    const stick = cyl(0.008, 0.008, 0.12, '#1c1838', 4); stick.position.y = 0.13; this.bob.add(stick);
-    this.ring = new THREE.Mesh(new THREE.RingGeometry(0.42, 0.55, 28), new THREE.MeshBasicMaterial({ color: '#ffe066', transparent: true, opacity: 0.8, depthWrite: false, side: THREE.DoubleSide }));
+    this.bob.add(voxel(st, [9, 14, 9], (F, r, H) => {
+      const red = F.c('#e8283a'), redL = F.c('#ff6a5a'), wh = F.c('#f4f0e6'), whD = F.c('#c8c4bc'), band = F.c('#2b1a17'), ant = F.c('#1c1838'), tipC = F.c('#ffe066', GLOW);
+      H.ball(F, 4, 4, 4, 4.2, 4.2, 4.2, (x, y, z) => (y > 4 ? (x < 4 && y > 6 ? redL : red) : y === 4 ? band : (x + z) % 5 === 0 ? whD : wh));
+      F.box(4, 9, 4, 4, 12, 4, ant); F.set(4, 13, 4, tipC);
+    }, { vpm: 64, key: 'mg-bobber', origin: [4.5 / 64, 4 / 64, 4.5 / 64] }));
+    // the aim reticle and the ripples: pixel-art rings on the water
+    const ringTex = (n, th, dots) => canvasTex(n, n, (c) => { const r0 = n / 2 - 0.5; for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) { const d = Math.hypot(x - r0, y - r0); if (d <= n / 2 - 0.6 && d >= n / 2 - 0.6 - th && (!dots || ((Math.atan2(y - r0, x - r0) * 8 / Math.PI + 16) | 0) % 2)) { c.fillStyle = '#ffffff'; c.fillRect(x, y, 1, 1); } } });
+    this.ring = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 1.1), new THREE.MeshBasicMaterial({ map: ringTex(24, 2, true), color: '#ffe066', transparent: true, opacity: 0.9, depthWrite: false, toneMapped: false }));
     this.ring.rotation.x = -Math.PI / 2; root.add(this.ring);
-    this.rips = []; for (let i = 0; i < 10; i++) { const m = new THREE.Mesh(new THREE.RingGeometry(0.8, 1, 24), new THREE.MeshBasicMaterial({ color: '#e8f6ff', transparent: true, opacity: 0, depthWrite: false })); m.rotation.x = -Math.PI / 2; m.visible = false; root.add(m); this.rips.push({ m, t: 9, dur: 1 }); }
+    const ripT = ringTex(32, 1.2, false);
+    this.rips = []; for (let i = 0; i < 10; i++) { const m = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.MeshBasicMaterial({ map: ripT, color: '#e8f6ff', transparent: true, opacity: 0, depthWrite: false })); m.rotation.x = -Math.PI / 2; m.visible = false; root.add(m); this.rips.push({ m, t: 9, dur: 1 }); }
     this.shadows = [];
-    const shMat = new THREE.MeshBasicMaterial({ color: '#06202e', transparent: true, opacity: 0.42, depthWrite: false });
+    // the shadows: a pixel-art silhouette (body + a tail that wags) on the surface
+    const sil = canvasTex(16, 24, (c) => { c.fillStyle = '#06202e'; for (let y = 0; y < 20; y++) { const hw = Math.round(Math.sin((y / 19) * Math.PI) * 6.5 + (y < 8 ? 0.5 : 0)); c.fillRect(8 - hw, y, hw * 2, 1); } c.fillRect(5, 3, 2, 1); c.fillRect(9, 3, 2, 1); c.clearRect(6, 5, 1, 1); c.clearRect(10, 5, 1, 1); });
+    const tailT = canvasTex(12, 8, (c) => { c.fillStyle = '#06202e'; for (let y = 0; y < 8; y++) { const hw = Math.round(1 + y * 0.7); c.fillRect(6 - hw, y, hw * 2, 1); } c.clearRect(5, 6, 2, 2); });
+    const shMat = new THREE.MeshBasicMaterial({ map: sil, transparent: true, opacity: 0.45, depthWrite: false }), tlMat = new THREE.MeshBasicMaterial({ map: tailT, transparent: true, opacity: 0.45, depthWrite: false });
     for (let i = 0; i < 5; i++) {
-      const g = new THREE.Group(), body = new THREE.Mesh(new THREE.CircleGeometry(0.5, 16), shMat); body.scale.set(0.42, 1, 1); body.rotation.x = -Math.PI / 2; g.add(body);
-      const tail = new THREE.Mesh(new THREE.CircleGeometry(0.22, 3), shMat); tail.rotation.x = -Math.PI / 2; tail.position.z = 0.5; g.add(tail);
-      g.position.y = WY + 0.02; root.add(g); this.shadows.push({ g, tail, i });
+      const g = new THREE.Group(), body = new THREE.Mesh(new THREE.PlaneGeometry(0.42, 0.65), shMat); body.rotation.x = -Math.PI / 2; g.add(body);
+      const tp = new THREE.Group(); tp.position.z = 0.3; g.add(tp); const tail = new THREE.Mesh(new THREE.PlaneGeometry(0.3, 0.2), tlMat); tail.rotation.x = -Math.PI / 2; tail.position.z = 0.09; tp.add(tail);
+      g.position.y = WY + 0.02; root.add(g); this.shadows.push({ g, tail: tp, i });
     }
     this.junkMeshes = {};
   }
@@ -115,10 +143,10 @@ export default class Fishing {
         if (p.x < ZONE.x0) sh.vx = Math.abs(sh.vx); if (p.x > ZONE.x1) sh.vx = -Math.abs(sh.vx); if (p.z < ZONE.z0) sh.vz = Math.abs(sh.vz); if (p.z > ZONE.z1) sh.vz = -Math.abs(sh.vz);
         p.x += sh.vx * dt; p.z += sh.vz * dt;
       }
-      sh.fade = Math.min(1, sh.fade + dt); sh.g.children[0].material.opacity = 0.42;
+      sh.fade = Math.min(1, sh.fade + dt);
       sh.g.visible = sh.fade > 0.05;
       if (Math.hypot(sh.vx, sh.vz) > 0.05) sh.g.rotation.y = Math.atan2(-sh.vx, -sh.vz);
-      sh.tail.rotation.z = Math.sin(this.s.t * 9 + sh.i) * 0.5;
+      sh.tail.rotation.y = Math.sin(this.s.t * 9 + sh.i) * 0.5;
     }
   }
   // ================================================================ per frame
@@ -126,7 +154,8 @@ export default class Fishing {
     const s = this.s;
     this.updateShadows(dt);
     this.updateRips(dt);
-    for (const a of this.anims) { a.t += dt; a.fn(clamp01(a.t / a.dur), dt); } this.anims = this.anims.filter((a) => { if (a.t >= a.dur) { if (a.done) a.done(); return false; } return true; });
+    for (const a of this.anims) { a.t += dt; a.fn(clamp01(a.t / a.dur), dt); }
+    const fin = this.anims.filter((a) => a.t >= a.dur); this.anims = this.anims.filter((a) => a.t < a.dur); for (const a of fin) if (a.done) a.done();
     this.shown += (this.score - this.shown) * Math.min(1, dt * 8); if (Math.abs(this.score - this.shown) < 1) this.shown = this.score;
     this.comboT += dt; if (this.msg) { this.msg.t += dt; if (this.msg.t > this.msg.dur) this.msg = null; }
     if (live) {
@@ -158,12 +187,12 @@ export default class Fishing {
     const tgt = this.castTarget(this.aim, this.power);
     this.ring.position.set(tgt.x, WY + 0.03, tgt.z); this.ring.scale.setScalar(0.8 + Math.sin(s.t * 8) * 0.08 + (this.power > 0.86 ? 0.25 : 0));
     this.ring.material.color.set(this.power > 0.86 ? '#ffe066' : '#ffffff');
-    if (inp.tap && this.st > 0.25) {
+    if (inp.tap && !inp.edgeTap && this.st > 0.25) {
       const perfect = this.power > 0.86;
       this.cast = { from: this.tipWorld(new V3()), to: tgt, t: 0, perfect };
       this.state = 'fly'; this.st = 0; this.ring.visible = false; this.bob.visible = true;
       s.audio.sfx('whoosh', { pitch: perfect ? 1.2 : 1 }); s.punch(perfect ? 3 : 1.5);
-      if (perfect) { s.pop('PERFECT CAST!', [s.app.ui.w / 2, s.app.ui.h * 0.62], { grad: ['#ffffff', '#fff3b8', T.amber] }); s.audio.sfx('qte_perfect'); }
+      if (perfect) { s.pop('PERFECT CAST!', [s.app.ui.w / 2, s.app.ui.h * 0.62], { grad: [WHITE, T.amber] }); s.audio.sfx('qte_perfect'); }
       if (s.hero) s.hero.play('throw', { restart: true });
     }
   }
@@ -210,7 +239,7 @@ export default class Fishing {
   hook(perfect) {
     const s = this.s, B = this.bite, k = B.kind, r = s.rand;
     s.audio.sfx(perfect ? 'qte_perfect' : 'qte_good'); s.shake(perfect ? 0.12 : 0.07); s.punch(perfect ? 5 : 3); s.hitstop(perfect ? 110 : 60);
-    s.pop(perfect ? 'PERFECT HOOK!' : 'HOOKED!', [s.app.ui.w / 2, s.app.ui.h * 0.36], { scale: 2, grad: perfect ? ['#ffffff', '#fff3b8', T.amber] : ['#ffffff', '#c8f6ff', T.cyan] });
+    s.pop(perfect ? 'PERFECT HOOK!' : 'HOOKED!', [s.app.ui.w / 2, s.app.ui.h * 0.36], { scale: 2, grad: perfect ? [WHITE, T.amber] : [WHITE, T.cyan] });
     if (s.hero) s.hero.play('jump', { restart: true });
     const dist = Math.hypot(this.bobPos.x - HX, this.bobPos.z - HZ);
     const kg = B.junk ? 0.5 + r() * 2 : lerp(k.kg[0], k.kg[1], r() * r() + r() * 0.3);
@@ -224,7 +253,7 @@ export default class Fishing {
   miss(text, sh) {
     const s = this.s;
     this.combo = 0; s.audio.sfx('qte_miss'); this.say(text, 1.6);
-    s.pop(text, [s.app.ui.w / 2, s.app.ui.h * 0.38], { scale: 1.6, color: '#ffd2dc', dur: 1.1 });
+    s.pop(text, [s.app.ui.w / 2, s.app.ui.h * 0.38], { scale: 2, color: '#ffd2dc', dur: 1.1 });
     if (sh) { sh.seek = null; sh.gone = true; sh.vx = (sh.g.position.x - HX) * 0.3; sh.vz = -1; }
     if (s.hero) s.hero.play('facepalm', { restart: true });
     this.state = 'aim'; this.st = 0; this.bob.visible = false; this.tension = 0; this.fish = null;
@@ -241,7 +270,7 @@ export default class Fishing {
     const surging = this.surge > this.warn, power = F.pull * (0.55 + 0.45 * F.stam);
     if (inp.hold) {
       this.tension += (0.36 + power * 0.5 + (surging ? 1.7 * power : 0)) * dt;
-      const zone = this.tension > 0.28 && this.tension < 0.8, sp = (zone ? 2.7 : 1.6) * (1 - F.pull * 0.3);
+      const zone = this.tension > 0.28 && this.tension < 0.8, sp = (zone ? 3.1 : 1.9) * (1 - F.pull * 0.3);
       if (!surging || !zone) F.dist -= sp * dt; else F.dist -= sp * 0.25 * dt;
       if (zone) F.stam = Math.max(0, F.stam - dt * (0.12 + (surging ? 0.25 : 0)));
       if (this.reel) this.reel.rotation.x += dt * 22;
@@ -266,7 +295,7 @@ export default class Fishing {
   }
   lost(text) {
     const F = this.fish; this.combo = 0; this.s.audio.sfx('qte_miss');
-    this.s.pop(text, [this.s.app.ui.w / 2, this.s.app.ui.h * 0.38], { scale: 1.5, color: '#ffd2dc', dur: 1.3 });
+    this.s.pop(text, [this.s.app.ui.w / 2, this.s.app.ui.h * 0.38], { scale: 2, color: '#ffd2dc', dur: 1.3 });
     if (F && F.sh) { F.sh.g.visible = true; F.sh.gone = true; F.sh.g.position.set(this.bobPos.x, WY + 0.02, this.bobPos.z); F.sh.vx = 0; F.sh.vz = -1.5; }
     this.ready && this.ready.then((a) => a && this.s.drop(a)); this.ready = null;
     this.state = 'aim'; this.st = 0; this.bob.visible = false; this.tension = 0; this.fish = null;
@@ -294,7 +323,7 @@ export default class Fishing {
         if (!F.junk) { s.burst('heart', [to.x, to.y + 0.9, to.z], { n: 5 }); obj.play('win', { restart: true }); }
         if (k.treasure) { s.audio.stinger('reward'); s.confettiBurst(30, s.app.ui.w / 2, s.app.ui.h * 0.3); }
         s.pop('+' + fmt(pts), new V3(to.x, to.y + 1.3, to.z), { scale: 2.2, dur: 1.2, rise: 24 });
-        if (this.combo >= 2) s.pop('×' + this.combo + ' COMBO', new V3(to.x, to.y + 1.75, to.z), { scale: 1.3, grad: ['#ffffff', '#c8f6ff', T.cyan], dur: 1.1, rise: 20 });
+        if (this.combo >= 2) s.pop('×' + this.combo + ' COMBO', new V3(to.x, to.y + 1.75, to.z), { grad: [WHITE, T.cyan], dur: 1.1, rise: 20 });
         if (s.partner) s.partner.play('win', { restart: true });
         if (s.hero) s.hero.play(k.legend ? 'flex' : 'cheer', { restart: true });
         if (k.legend) { s.audio.sfx('crowd_cheer'); s.shake(0.2); s.flash('#fff4d0', 0.4, 0.6); }
@@ -323,18 +352,8 @@ export default class Fishing {
   }
   next(early) { if (this.state === 'land') { this.state = 'aim'; this.st = early ? -0.3 : 0; this.catchCard = null; } }
   junkMesh(look) {
-    const L = {
-      boot: [[-0.12, 0, -0.18, 0.12, 0.12, 0.2, '#5a3a24'], [-0.12, 0.12, -0.18, 0.12, 0.38, 0.0, '#6a4a2e'], [-0.13, 0, 0.12, 0.13, 0.05, 0.22, '#2a2a30']],
-      can: [[-0.08, 0, -0.08, 0.08, 0.22, 0.08, '#c8ccd4'], [-0.085, 0.06, -0.085, 0.085, 0.16, 0.085, '#e8283a']],
-      kelp: [[-0.2, 0, -0.05, 0.2, 0.06, 0.05, '#3a7a3a'], [-0.05, 0, -0.2, 0.05, 0.08, 0.2, '#4a8a3a'], [-0.14, 0.04, -0.14, 0.0, 0.1, 0.0, '#2a6a2a']],
-      tire: [[-0.3, 0, -0.06, -0.2, 0.5, 0.06, '#1e1e22'], [0.2, 0, -0.06, 0.3, 0.5, 0.06, '#1e1e22'], [-0.3, 0.4, -0.06, 0.3, 0.5, 0.06, '#1e1e22'], [-0.3, 0, -0.06, 0.3, 0.1, 0.06, '#1e1e22']],
-      bottle: [[-0.06, 0, -0.06, 0.06, 0.24, 0.06, '#6ab88a'], [-0.025, 0.24, -0.025, 0.025, 0.32, 0.025, '#6ab88a'], [-0.03, 0.06, -0.03, 0.03, 0.18, 0.03, '#f4ecd8']],
-      bottle2: [[-0.06, 0, -0.06, 0.06, 0.24, 0.06, '#5ac8e8'], [-0.03, 0.24, -0.03, 0.03, 0.32, 0.03, '#5ac8e8'], [-0.065, 0.08, -0.065, 0.065, 0.14, 0.065, '#ffffff']],
-      gem: [[-0.1, 0, -0.1, 0.1, 0.16, 0.1, '#e8e4f4'], [-0.06, 0.16, -0.06, 0.06, 0.24, 0.06, '#ffffff']],
-      gem2: [[-0.1, 0, -0.1, 0.1, 0.16, 0.1, '#2a6ae8'], [-0.06, 0.16, -0.06, 0.06, 0.24, 0.06, '#8ab8ff']],
-    }[look] || [[-0.1, 0, -0.1, 0.1, 0.2, 0.1, '#8a8478']];
-    const m = boxes(L); if (look.startsWith('gem')) m.material = new THREE.MeshLambertMaterial({ vertexColors: true, emissive: '#303050' });
-    return m;
+    const st = this.s.st, B = JUNK_VOX[look] || JUNK_VOX.can;
+    return voxel(st, B.size, B.build, { vpm: B.vpm || 40, key: 'mg-junk-' + look });
   }
   s_land() { /* the catch animation runs; the derby clock waits */ }
   // ================================================================ visuals
@@ -369,7 +388,7 @@ export default class Fishing {
   setCam(snap) {
     const s = this.s, st = this.state;
     if (st === 'land' && this.catchCard) { const p = (this.land && this.land.g.position) || new V3(HX + 0.95, this.deck, HZ); s.look(new V3(p.x, p.y + 0.7, p.z), 4.6, 200, 12, 36, { rate: 4 }); return; }
-    if (st === 'reel' && this.fish) { const mx = (HX + this.bobPos.x) / 2, mz = (HZ + this.bobPos.z) / 2; s.look(new V3(mx, 0.2, mz - 1), 8 + this.fish.dist * 0.25, -8 + (this.bobPos.x - HX) * 1.5, 22, 42, { rate: 3 }); return; }
+    if (st === 'reel' && this.fish) { const mx = lerp(HX, this.bobPos.x, 0.38), mz = lerp(HZ, this.bobPos.z, 0.42); s.look(new V3(mx, 0.3, mz), 7.5 + this.fish.dist * 0.3, -4 + (this.bobPos.x - HX) * 0.8, 22, 42, { rate: 3 }); return; }
     const ax = HX + this.aim * 1.2; s.look(new V3(ax, 0.1, HZ - 5.2), 9.5, -10 + this.aim * 8, 24, 42, { rate: 3, snap });
   }
   // ================================================================ HUD
@@ -377,45 +396,45 @@ export default class Fishing {
     const s = this.s, W = ui.w, H = ui.h, narrow = W < 360;
     drawScore(ui, 6, 6, this.shown, { best: s.mg.best('fishing') });
     drawTimer(ui, W / 2, 6, Math.max(0, this.t), ROUND, s.t);
-    // the catch log (top right): little badges, gold for treasure
-    const n = this.catches.length; ui.panel(W - 64, 6, 58, 18, { r: 9, thin: true }); ui.icon('drop', W - 58, 11.5, T.cyan); ui.text('×' + n, W - 47, 11, '#ffffff', { bold: true });
-    drawCombo(ui, narrow ? 8 : 10, 42, this.combo, this.comboT);
+    // the catch count (top right)
+    ui.panel(W - 60, 6, 54, 18, { thin: true }); ui.icon('drop', W - 54, 11.5, T.cyan2); ui.text('×' + this.catches.length, W - 43, 12, T.text);
+    drawCombo(ui, 10, 48, this.combo, this.comboT);
     const st = this.state, by = H - 30;
-    if (st === 'aim' && this.s.live) {
-      // the power meter: a swinging needle over a bar, the gold perfect zone at the end
-      const bw = Math.min(200, W - 40), bx = (W - bw) / 2;
-      ui.panel(bx - 6, by - 18, bw + 12, 26, { r: 6 });
-      ui.bar(bx, by - 11, bw, 7, this.power, { color: this.power > 0.86 ? T.amber : T.cyan, shine: false, trail: false, id: 'mg-fish-power' });
-      ui.rect(bx + bw * 0.86, by - 12, 1, 9, '#ffffff'); ui.text('POWER', bx, by - 16, '#ffffff', { mini: true, bold: true });
-      keyRow(ui, W / 2, by + 10, narrow ? [['SPACE', 'Cast']] : [['◀ ▶', 'Aim'], ['SPACE', 'Cast']]);
-    } else if (st === 'wait') {
-      const bite = this.bitT >= 0, k = bite ? 1 + Math.sin(s.t * 30) * 0.1 : 1;
-      const g = ui.g; g.save(); g.translate(W / 2, by); g.scale(k, k); g.translate(-W / 2, -by);
-      ui.text(bite ? 'STRIKE!' : 'Wait for the bite…', W / 2, by - 8, bite ? T.amber : '#ffffff', { align: 'center', bold: true, scale: bite ? 2 : 1, outline: T.ink });
-      g.restore(); ui._fs = null; ui._font = null;
+    if (st === 'aim' && s.live) {
+      // the power meter: the needle swings; the gold end is a perfect cast
+      const bw = Math.min(200, W - 40), bx = Math.round((W - bw) / 2);
+      ui.panel(bx - 8, by - 22, bw + 16, 30, {});
+      ui.text('POWER', bx, by - 15, T.dim, { mini: true });
+      ui.bar(bx, by - 7, bw, 6, this.power, { color: this.power > 0.86 ? 'yellow' : 'cyan', shine: false, trail: false, id: 'mg-fish-power' });
+      ui.rect(bx + Math.round(bw * 0.86), by - 9, 1, 10, T.amber2);
+      keyRow(ui, W / 2, by + 12, narrow ? [['SPACE', 'Cast']] : [['◀ ▶', 'Aim'], ['SPACE', 'Cast']]);
+    } else if (st === 'wait' && s.live) {
+      const bite = this.bitT >= 0;
+      if (bite) bigText(ui, 'STRIKE!', W / 2 + (((s.t * 30) | 0) % 2), by - 6, 3, { grad: [WHITE, T.amber] });
+      else worldText(ui, 'Wait for the bite...', W / 2, by - 4, { align: 'center' });
     } else if (st === 'reel' && this.fish) {
-      const gx = W - 26, gy = Math.max(48, H * 0.26), gh = Math.min(120, H * 0.45);
-      vGauge(ui, gx, gy, 10, gh, this.tension, [[0, 0.28, '#3a6ac8'], [0.28, 0.8, '#3fbf5a'], [0.8, 1, '#e8283a']], { needle: this.surge > (this.warn || 0) ? T.red : '#ffffff' });
-      ui.text('LINE', gx + 5, gy + gh + 6, '#ffffff', { mini: true, bold: true, align: 'center', outline: T.ink });
-      if (this.surge && this.surge <= (this.warn || 0) + 0.6) { const blink = ((s.t * 12) | 0) % 2; if (blink) ui.text('!!', gx - 10, gy - 2, T.red, { scale: 2, bold: true, outline: T.ink, align: 'right' }); }
-      const F = this.fish, bw = Math.min(180, W - 80), bx = (W - bw) / 2;
-      ui.panel(bx - 6, by - 14, bw + 12, 20, { r: 6 });
-      ui.bar(bx, by - 8, bw, 6, 1 - clamp01((F.dist - 1.4) / Math.max(1, F.d0 - 1.4)), { color: T.green, shine: true, id: 'mg-fish-dist' });
-      ui.text(`${Math.max(0, F.dist - 1.4).toFixed(1)} m`, bx + bw, by - 20, '#ffffff', { mini: true, bold: true, align: 'right', outline: T.ink });
-      ui.text(this.surge > (this.warn || 0) ? 'LET GO!' : 'HOLD TO REEL', bx, by - 20, this.surge > (this.warn || 0) ? T.red : '#ffffff', { mini: true, bold: true, outline: T.ink });
+      const gx = W - 24, gy = Math.round(Math.max(48, H * 0.26)), gh = Math.round(Math.min(120, H * 0.45)), surging = this.surge > (this.warn || 0);
+      vGauge(ui, gx, gy, 10, gh, this.tension, [[0, 0.28, '#3e8ee8'], [0.28, 0.8, '#5cc24a'], [0.8, 1, '#e2403a']], { needle: surging ? T.red : WHITE });
+      worldText(ui, 'LINE', gx + 5, gy + gh + 8, { mini: true, align: 'center' });
+      if (this.surge && this.surge <= (this.warn || 0) + 0.6 && ((s.t * 12) | 0) % 2) worldText(ui, '!!', gx - 8, gy - 4, { scale: 2, color: '#ff9a7a', align: 'right' });
+      const F = this.fish, bw = Math.min(180, W - 80), bx = Math.round((W - bw) / 2);
+      ui.panel(bx - 8, by - 18, bw + 16, 26, {});
+      ui.text(surging ? 'LET GO!' : 'HOLD TO REEL', bx, by - 11, surging ? T.red : T.text, { mini: true });
+      ui.text(`${Math.max(0, F.dist - 1.4).toFixed(1)} m`, bx + bw, by - 11, T.dim, { mini: true, align: 'right' });
+      ui.bar(bx, by - 3, bw, 5, 1 - clamp01((F.dist - 1.4) / Math.max(1, F.d0 - 1.4)), { color: 'green', id: 'mg-fish-dist' });
     }
-    if (this.msg && st !== 'reel') { const a = Math.min(1, (this.msg.dur - this.msg.t) * 3); ui.g.globalAlpha = a; ui.text(this.msg.text, W / 2, H * 0.27, '#ffffff', { align: 'center', bold: true, outline: T.ink }); ui.g.globalAlpha = 1; }
+    if (this.msg && st !== 'reel') { ui.g.globalAlpha = Math.min(1, (this.msg.dur - this.msg.t) * 3); worldText(ui, this.msg.text, W / 2, Math.round(H * 0.27), { align: 'center' }); ui.g.globalAlpha = 1; }
     // the catch card
     const C = this.catchCard;
     if (C) {
-      C.t += dt; const k = boing(C.t * 2.2), w = 170, x = W / 2 - w / 2, y = H * 0.14, g = ui.g;
-      g.save(); g.translate(W / 2, y + 18); g.scale(k, k); g.translate(-W / 2, -(y + 18));
-      ui.panel(x, y, w, 36, { paper: true, edge: C.legend ? T.amber : C.treasure ? T.cyan : undefined });
-      ui.text(C.rec.junk ? (C.treasure ? 'TREASURE!' : 'JUNK…') : C.legend ? 'LEGENDARY!' : C.k.rare ? 'RARE CATCH!' : 'CAUGHT!', W / 2, y + 5, C.rec.junk && !C.treasure ? (T.paperDim || '#7a72a0') : '#d8365a', { align: 'center', mini: true, bold: true });
-      ui.text(C.rec.name.toUpperCase(), W / 2, y + 13, T.paperText, { align: 'center', bold: true, scale: 1.3 });
-      ui.text(C.rec.junk ? `+${C.rec.pts}` : `${C.rec.kg.toFixed(1)} kg  ·  +${fmt(C.rec.pts)}`, W / 2, y + 26, T.paperText, { align: 'center', mini: true, bold: true });
-      g.restore(); ui._fs = null; ui._font = null;
-      if (C.k.note && C.t > 0.6 && C.t < 1.5) ui.text(NOTES[this.catches.length % NOTES.length], W / 2, y + 42, '#ffffff', { align: 'center', mini: true, bold: true, outline: T.ink });
+      C.t += dt; const k = boing(C.t * 2.2), w = 176, x = Math.round(W / 2 - w / 2), y = Math.round(H * 0.13), g = ui.g, xf = Math.abs(k - 1) > 0.02;
+      if (xf) { g.save(); g.translate(W / 2, y + 20); g.scale(Math.max(0.01, k), Math.max(0.01, k)); g.translate(-W / 2, -(y + 20)); }
+      ui.panel(x, y, w, 42, { edge: C.legend ? '#e8b84a' : C.treasure ? '#3ab8d8' : undefined });
+      ui.text(C.rec.junk ? (C.treasure ? 'TREASURE!' : 'JUNK...') : C.legend ? 'LEGENDARY!' : C.k.rare ? 'RARE CATCH!' : 'CAUGHT!', W / 2, y + 7, C.rec.junk && !C.treasure ? T.dim : T.red, { align: 'center', mini: true });
+      ui.text(C.rec.name.toUpperCase(), W / 2, y + 15, T.text, { align: 'center', scale: 2 });
+      ui.text(C.rec.junk ? `+${C.rec.pts}` : `${C.rec.kg.toFixed(1)} KG  +${fmt(C.rec.pts)}`, W / 2, y + 29, T.amber2, { align: 'center', mini: true });
+      if (xf) { g.restore(); ui._fs = null; ui._font = null; }
+      if (C.k.note && C.t > 0.6 && C.t < 1.8) worldText(ui, NOTES[this.catches.length % NOTES.length], W / 2, y + 48, { align: 'center', mini: true });
     }
   }
   // ================================================================ the dev autoplayer

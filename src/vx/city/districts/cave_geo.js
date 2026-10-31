@@ -9,8 +9,9 @@
 //  - wallLoop(): a loop lofted into a rock wall from below the floor to above the roof, every vertex pushed by
 //    3D noise (so neighbouring strips meet exactly), undercut at the foot, vaulting in at the top. Faces point
 //    into the cave only: seen from outside (the follow camera above a tunnel roof) walls and roof vanish.
-//  - dripstones, crystals (hexagonal prisms with points), glowcap mushrooms, boulders, oriented boxes (timber,
-//    rails) — each with an optional mirror image under the lake's surface (the water shows a reflection).
+//  - oriented boxes (ropes, sign boards) and an accumulator for meshes of their own (the lake surface); the
+//    emitter can lay everything twice, the second time reflected under the lake's surface.
+//  (the props — crystals, glowcaps, dripstones, rocks, the mine — are voxel sculpts: cave_props.js)
 import * as THREE from '../../../../vendor/three.module.js';
 
 const TAU = Math.PI * 2;
@@ -231,82 +232,8 @@ export function wallLoop(E, loop, o) {
   return cols;
 }
 
-// ---------------------------------------------------------------- dripstones
-/** a stalactite (dir -1, hanging from y0) or stalagmite (dir 1, standing on y0): a few rings narrowing to a tip */
-export function dripstone(E, gk, tex, x, y0, z, len, r, dir, seed = 1) {
-  const R = rng(seed), sides = 6, rings = [[0, 1], [0.35, 0.62 + R() * 0.1], [0.7, 0.3 + R() * 0.1]];
-  const lx = (R() - 0.5) * 0.25 * len, lz = (R() - 0.5) * 0.25 * len, a0 = R() * TAU;
-  const ring = ([t, k]) => { const out = []; for (let i = 0; i < sides; i++) { const a = a0 + (i / sides) * TAU, rr = r * k * (0.85 + h2(i + seed * 7, Math.round(t * 10)) * 0.3); out.push([x + lx * t + Math.cos(a) * rr, y0 + dir * len * t, z + lz * t + Math.sin(a) * rr]); } return out; };
-  const RS = rings.map(ring), tip = [x + lx, y0 + dir * len, z + lz];
-  for (let k = 0; k < RS.length - 1; k++) {
-    const A = RS[k], B = RS[k + 1], c = [x + lx * (rings[k][0] + rings[k + 1][0]) / 2, y0 + dir * len * (rings[k][0] + rings[k + 1][0]) / 2, z + lz * (rings[k][0] + rings[k + 1][0]) / 2];
-    for (let i = 0; i < sides; i++) { const i2 = (i + 1) % sides; E.quadOut(gk, tex, A[i], A[i2], B[i2], B[i], c, { u0: i * 0.3, v0: y0 }); }
-  }
-  const L = RS[RS.length - 1], ct = [x + lx * 0.85, y0 + dir * len * 0.85, z + lz * 0.85];
-  for (let i = 0; i < sides; i++) E.triOut(gk, tex, L[i], L[(i + 1) % sides], tip, ct);
-  if (dir > 0) for (let i = 0; i < sides; i++) E.triOut(gk, tex, RS[0][i], RS[0][(i + 1) % sides], [x, y0 - 0.05, z], [x, y0 + 0.5, z]);   // the base skirt (hidden under the floor)
-}
-
-// ---------------------------------------------------------------- crystals
-const _m = new THREE.Matrix4(), _v = new THREE.Vector3();
-/** a hexagonal crystal standing at base (x, y, z), height h, radius r, tilted (tx, tz radians) and turned (yaw) */
-export function crystal(E, gk, tex, x, y, z, h, r, tx = 0, tz = 0, yaw = 0, tipK = 0.32) {
-  _m.makeRotationFromEuler(new THREE.Euler(tx, yaw, tz, 'YXZ'));
-  const T = (lx, ly, lz) => { _v.set(lx, ly, lz).applyMatrix4(_m); return [x + _v.x, y + _v.y, z + _v.z]; };
-  const body = h * (1 - tipK), bot = [], top = [];
-  for (let i = 0; i < 6; i++) { const a = (i / 6) * TAU; bot.push(T(Math.cos(a) * r, -r * 0.6, Math.sin(a) * r)); top.push(T(Math.cos(a) * r * 0.92, body, Math.sin(a) * r * 0.92)); }
-  const tip = T(0, h, 0), mid = T(0, body * 0.5, 0), tipC = T(0, body + (h - body) * 0.3, 0);
-  for (let i = 0; i < 6; i++) { const i2 = (i + 1) % 6; E.quadOut(gk, tex, bot[i], bot[i2], top[i2], top[i], mid, { fit: true }); E.triOut(gk, tex, top[i], top[i2], tip, tipC); }
-  return tip;
-}
-/** a cluster of crystals bursting from a point; returns the footprint radius */
-export function crystalCluster(E, gk, tex, x, y, z, size = 1, seed = 1, o = {}) {
-  const R = rng(seed), n = o.n ?? (4 + Math.floor(R() * 5)), up = o.up ?? 1;
-  crystal(E, gk, tex, x, y, z, size * (1.6 + R() * 0.8) * up, size * 0.24, (R() - 0.5) * 0.25, (R() - 0.5) * 0.25, R() * TAU);
-  for (let i = 0; i < n; i++) {
-    const a = R() * TAU, d = size * (0.2 + R() * 0.45), lean = 0.35 + R() * 0.55, s = 0.45 + R() * 0.55;
-    crystal(E, gk, tex, x + Math.cos(a) * d, y, z + Math.sin(a) * d, size * (0.7 + R() * 1.1) * s * up, size * (0.1 + R() * 0.1), Math.sin(a) * lean, -Math.cos(a) * lean, R() * TAU);
-  }
-  return size * 0.8;
-}
-
-// ---------------------------------------------------------------- glowcap mushrooms
-/** a mushroom: a slightly curved stem and a domed cap; returns the cap centre */
-export function mushroom(E, gk, T, x, y, z, h, capR, seed = 1) {
-  const R = rng(seed), sides = 7, rs = Math.max(0.05, capR * 0.18), bend = [(R() - 0.5) * h * 0.25, (R() - 0.5) * h * 0.25];
-  const ring = (cx, cy, cz, r, k = 0) => { const out = []; for (let i = 0; i < sides; i++) { const a = (i / sides) * TAU + k; out.push([cx + Math.cos(a) * r, cy, cz + Math.sin(a) * r]); } return out; };
-  const S0 = ring(x, y - 0.1, z, rs * 1.25), S1 = ring(x + bend[0] * 0.4, y + h * 0.5, z + bend[1] * 0.4, rs), S2 = ring(x + bend[0], y + h, z + bend[1], rs * 0.9);
-  for (const [A, B] of [[S0, S1], [S1, S2]]) for (let i = 0; i < sides; i++) { const i2 = (i + 1) % sides; const c = [(A[i][0] + B[i2][0]) / 2 - (B[i2][0] - A[i][0]) * 0, (A[0][1] + B[0][1]) / 2, (A[i][2] + B[i2][2]) / 2]; E.quadOut(gk, T.stem, A[i], A[i2], B[i2], B[i], [x + bend[0] * 0.5, c[1], z + bend[1] * 0.5], { fit: true }); }
-  const cx = x + bend[0], cz = z + bend[1], cy = y + h, capH = capR * (0.45 + R() * 0.3), tilt = [(R() - 0.5) * 0.25, (R() - 0.5) * 0.25];
-  const rim = ring(cx, cy - capH * 0.1, cz, capR, 0.2).map((p) => [p[0], p[1] + (p[0] - cx) * tilt[0] + (p[2] - cz) * tilt[1], p[2]]);
-  const mid = ring(cx, cy + capH * 0.62, cz, capR * 0.78, 0.2).map((p) => [p[0], p[1] + (p[0] - cx) * tilt[0] + (p[2] - cz) * tilt[1], p[2]]);
-  const lip = ring(cx, cy - capH * 0.18, cz, capR * 0.9, 0.2).map((p) => [p[0], p[1] + (p[0] - cx) * tilt[0] + (p[2] - cz) * tilt[1], p[2]]);
-  const apex = [cx, cy + capH, cz], cen = [cx, cy + capH * 0.2, cz];
-  for (let i = 0; i < sides; i++) {
-    const i2 = (i + 1) % sides;
-    E.quadOut(gk, T.cap, rim[i], rim[i2], mid[i2], mid[i], cen, { fit: true });
-    E.triOut(gk, T.cap, mid[i], mid[i2], apex, cen);
-    E.quadOut(gk, T.cap, lip[i], lip[i2], rim[i2], rim[i], [cx, cy + capH * 0.5, cz], { fit: true });     // the rolled lip
-    E.triOut(gk, T.gill, lip[i], lip[i2], [cx, cy - capH * 0.05, cz], [cx, cy + capH, cz]);                  // gills, facing down
-  }
-  return [cx, cy, cz];
-}
-
-// ---------------------------------------------------------------- boulders
-const ICO = (() => { const g = new THREE.IcosahedronGeometry(1, 1), p = g.attributes.position, out = []; for (let i = 0; i < p.count; i += 3) out.push([[p.getX(i), p.getY(i), p.getZ(i)], [p.getX(i + 1), p.getY(i + 1), p.getZ(i + 1)], [p.getX(i + 2), p.getY(i + 2), p.getZ(i + 2)]]); g.dispose(); return out; })();
-/** a faceted boulder (an icosphere pushed about by noise), sunk into the ground a little */
-export function boulder(E, gk, tex, x, y, z, rx, ry, rz, seed = 1, o = {}) {
-  const k = seed * 3.7, sink = o.sink ?? 0.3, top = o.top;
-  const P = (v) => { const n = 0.78 + noise3(v[0] * 1.3 + k, v[1] * 1.3, v[2] * 1.3 - k) * 0.45; return [x + v[0] * rx * n, y + v[1] * ry * n - ry * sink, z + v[2] * rz * n]; };
-  const c = [x, y - ry * sink, z];
-  for (const [a, b, d] of ICO) {
-    if (a[1] < -0.4 && b[1] < -0.4 && d[1] < -0.4 && !o.bottom) continue;     // buried
-    const A = P(a), B = P(b), D = P(d), up = (a[1] + b[1] + d[1]) / 3 > 0.55;
-    E.triOut(gk, up && top ? top : tex, A, B, D, c);
-  }
-}
-
 // ---------------------------------------------------------------- boxes at any angle
+const _m = new THREE.Matrix4(), _v = new THREE.Vector3();
 /** an oriented box: centre, size [sx (along the local x), sy, sz], yaw (about y), roll (about local x), pitch (about local z).
  *  tex for the sides; o.end for the end caps; uv lengths run along the box's long axis */
 export function obox(E, gk, tex, c, s, yaw = 0, o = {}) {

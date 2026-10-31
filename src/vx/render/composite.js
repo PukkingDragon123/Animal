@@ -4,11 +4,11 @@
 //     normals rebuilt from the depth, then a depth-aware blur — contact shadow in creases, at the feet of walls
 //     and under everything that stands on the ground;
 //  3. bloom: a soft-knee bright pass at quarter resolution and a wider eighth-resolution level (four small blurs);
-//  4. the final pass: occlusion, aerial perspective (distance haze tinted to the sky, thicker near the ground),
+//  4. the final pass: occlusion, the ink outline (below), aerial perspective (distance haze tinted to the sky, thicker near the ground),
 //     bloom, exposure, AgX filmic tone mapping, a neutral grade (white balance, saturation, gentle contrast,
 //     a light vignette) and the sRGB transfer;
 //  5. FXAA when the HDR target has no MSAA (lite / phones).
-// The old screen-space ink outline is kept only for the dialogue portraits (inkPass); the world wears none.
+// Every asset wears one crisp near-black ink outline (silhouettes + main creases), found in the depth buffer in step 4.
 import * as THREE from '../../../vendor/three.module.js';
 
 const VS = 'varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }';
@@ -52,6 +52,29 @@ void main() {
   }
   gl_FragColor = vec4(vec3(w > 0.0 ? s / w : 1.0), 1.0);
 }`;
+// The ink outline: one black line style for every asset, found in the depth buffer inside the final pass (nine
+// depth taps, no extra render). The signed second difference of INVERSE depth along four directions is exactly zero
+// on any plane (1/z is linear in screen space), so flat surfaces never draw lines however grazing, and texture detail
+// never does either. Silhouettes: a neighbour lies well behind the plane through this pixel (the line sits on the
+// near object, one tap wide). Creases: the same difference over the pixel's angular size measures the change of
+// slope; folds sharper than uInkP.y get a slightly lighter line. Taps sit uInkW pixels apart (≈ 1.25 px per 1080
+// rows), so the line keeps one crisp screen width; it thins with distance (to uInkP.w) and the haze fades it.
+const INK = `
+uniform vec3 uInk; uniform float uInkA; uniform float uInkW; uniform vec4 uInkP; uniform vec2 uInkF; uniform float uPixK; uniform vec2 uTexel;
+float iz(vec2 uv) { float d = texture2D(tDepth, uv).x; return d >= 1.0 ? 0.0 : -1.0 / perspectiveDepthToViewZ(d, uNF.x, uNF.y); }
+float ink(float c) {
+  vec2 o = uTexel * uInkW;
+  vec4 A = vec4(iz(vUv - vec2(o.x, 0.0)), iz(vUv - vec2(0.0, o.y)), iz(vUv - o), iz(vUv + vec2(o.x, -o.y)));
+  vec4 B = vec4(iz(vUv + vec2(o.x, 0.0)), iz(vUv + vec2(0.0, o.y)), iz(vUv + o), iz(vUv + vec2(-o.x, o.y)));
+  vec4 D = (2.0 * c - A - B) / c;
+  float hi = max(max(D.x, D.y), max(D.z, D.w)), lo = min(min(D.x, D.y), min(D.z, D.w));
+  float sil = smoothstep(uInkP.x, uInkP.x * 1.6, hi);
+  float far = step(uInkP.x, -lo);
+  vec4 C = abs(D) / (uPixK * uInkW * vec4(1.0, 1.0, 1.4142, 1.4142));
+  float crease = smoothstep(uInkP.y, uInkP.y * 1.7, max(max(C.x, C.y), max(C.z, C.w))) * (1.0 - far) * uInkP.z;
+  return max(sil, crease);
+}
+`;
 // bright pass with a 4-tap box downsample (the source is linear-filtered: 16 texels per output texel at 1/4)
 const BRIGHT_FS = `varying vec2 vUv; uniform sampler2D tColor; uniform vec2 uTexel; uniform float uTh; uniform float uKnee; uniform float uExp;
 void main() {
@@ -74,6 +97,7 @@ const FINAL_FS = `varying vec2 vUv; uniform sampler2D tColor; uniform sampler2D 
 uniform mat4 uCamWorld; uniform vec3 uHaze; uniform vec4 uHazeP; uniform float uHazeY;
 uniform float uBloom; uniform float uSat; uniform float uCon; uniform float uVig; uniform vec3 uWB; uniform float uLift; uniform vec2 uAspect; uniform float uTime; uniform float uDebug;
 ${COMMON}
+${INK}
 ${TONE}
 float h12(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
 void main() {
@@ -84,6 +108,11 @@ void main() {
     float ao = texture2D(tAO, vUv).r;
     col *= mix(1.0, ao, uAO);
     if (uDebug > 0.5) col = vec3(ao * 0.5);
+    // the ink outline (alpha: how much of this opaque surface still shows through faded walls, water, glass)
+    if (uInkA > 0.0) {
+      float k = ink(-1.0 / vp.z) * uInkA * mix(1.0, uInkP.w, smoothstep(uInkF.x, uInkF.y, dist)) * clamp(texture2D(tColor, vUv).a, 0.0, 1.0);
+      col = mix(col, uInk + col * 0.04, k);
+    }
     // aerial perspective: in-scatter toward the sky's horizon colour with distance, more near the ground
     vec3 wp = (uCamWorld * vec4(vp, 1.0)).xyz;
     float hz = 1.0 - exp(-max(dist - uHazeP.x, 0.0) * uHazeP.y);
@@ -183,6 +212,7 @@ export class Composite {
     const fu = () => ({
       tColor: { value: null }, tDepth: { value: null }, tAO: { value: null }, tB4: { value: null }, tB8: { value: null }, uProjInv: projInv, uAO: { value: 0.85 }, uNF: { value: new THREE.Vector2() },
       uCamWorld: { value: new THREE.Matrix4() }, uHaze: { value: new THREE.Color() }, uHazeP: { value: new THREE.Vector4(30, 0.02, 0.4, 0.12) }, uHazeY: { value: 0 },
+      uInk: { value: new THREE.Color(0.003, 0.002, 0.0025) }, uInkA: { value: 0 }, uInkW: { value: 1 }, uInkP: { value: new THREE.Vector4(0.03, 1.4, 0.85, 0.55) }, uInkF: { value: new THREE.Vector2(16, 110) }, uPixK: { value: 0.001 }, uTexel: { value: new THREE.Vector2() },
       uExposure: { value: 1 }, uBloom: { value: 0.2 }, uSat: { value: 1 }, uCon: { value: 0.1 }, uVig: { value: 0.2 }, uWB: { value: new THREE.Vector3(1, 1, 1) }, uLift: { value: 0 }, uAspect: { value: new THREE.Vector2(1, 1) }, uTime: { value: 0 }, uDebug: { value: 0 },
     });
     this.finals = new Map(); this.fu = fu; this.sh = sh;
@@ -219,6 +249,20 @@ export class Composite {
     }
     if (fxaa && (!this.ldr || this.ldr.width !== W || this.ldr.height !== H)) { if (this.ldr) this.ldr.dispose(); this.ldr = new THREE.WebGLRenderTarget(W, H, this.rtOpts()); }
   }
+  /** Transparent surfaces (cut-away walls, water, glass) write no depth, so the ink comes from the opaque surface
+   *  behind them. Their alpha is made to blend multiplicatively into the target's alpha (colour blending unchanged):
+   *  after the frame, alpha = how much of that opaque surface is still seen, and the ink is faded by it. */
+  coverage(scene) {
+    const P = this.patched || (this.patched = new Set());
+    for (const m of P) if (!m.transparent) { m.blending = THREE.NormalBlending; P.delete(m); }
+    scene.traverseVisible((o) => {
+      const m = o.material;
+      if (!o.isMesh || !m || Array.isArray(m) || !m.transparent || m.blending !== THREE.NormalBlending || m.premultipliedAlpha) return;
+      m.blending = THREE.CustomBlending; m.blendEquation = m.blendEquationAlpha = THREE.AddEquation;
+      m.blendSrc = THREE.SrcAlphaFactor; m.blendDst = THREE.OneMinusSrcAlphaFactor; m.blendSrcAlpha = THREE.ZeroFactor; m.blendDstAlpha = THREE.OneMinusSrcAlphaFactor;
+      P.add(m);
+    });
+  }
   /** the portrait ink outline alone: src (a target with a depthTexture, rendered through cam) → dst, alpha kept */
   inkPass(src, cam, dst, o = {}) {
     const U = this.mInk.uniforms, W = src.width, H = src.height;
@@ -229,11 +273,13 @@ export class Composite {
   }
   pass(mat, target) { this.quad.material = mat; this.r.setRenderTarget(target); this.r.render(this.scene, this.cam); }
   /** o: { ao (0..1), aoRadius, aoK, haze: Color, hazeP: [start, density, max, heightFalloff], hazeY, exposure, tone ('agx' | 'aces' | 'neutral'),
-   *       bloom, threshold, sat, contrast, vig, wb: [r, g, b], lift, msaa (samples), fxaa, aoScale, time } */
+   *       bloom, threshold, sat, contrast, vig, wb: [r, g, b], lift, msaa (samples), fxaa, aoScale, time,
+   *       ink (0..1), inkCol (Color, linear), inkW (tap spacing px), inkP: [silhouette jump, crease Δtan, crease strength, far strength], inkFade: [start m, end m] } */
   render(scene, cam, W, H, o = {}) {
     const aoOn = (o.ao ?? 0.85) > 0, aoScale = o.aoScale ?? Math.min(0.5, 960 / Math.max(W, 1)), fxaa = !!o.fxaa, samples = o.msaa || 0;
     this.targets(W, H, aoScale, samples, fxaa);
     const r = this.r;
+    if ((o.ink || 0) > 0 && (this.covN = (this.covN || 0) + 1) % 4 === 1) this.coverage(scene);
     r.setRenderTarget(this.rt); r.render(scene, cam);
     this.u.projInv.value.copy(cam.projectionMatrixInverse);
     const depth = this.rt.depthTexture, nf = [cam.near, cam.far];
@@ -264,6 +310,9 @@ export class Composite {
     if (o.hazeP) F.uHazeP.value.set(...o.hazeP); F.uHazeY.value = o.hazeY || 0;
     F.uExposure.value = o.exposure ?? 1; F.uSat.value = o.sat ?? 1; F.uCon.value = o.contrast ?? 0.1; F.uVig.value = o.vig ?? 0.2; F.uLift.value = o.lift || 0;
     const wb = o.wb || [1, 1, 1]; F.uWB.value.set(wb[0], wb[1], wb[2]);
+    F.uInkA.value = o.ink || 0; if (o.inkCol) F.uInk.value.copy(o.inkCol); F.uTexel.value.set(1 / W, 1 / H);
+    F.uInkW.value = o.inkW ?? Math.max(1, Math.round((H / 1080) * 1.25)); F.uPixK.value = 2 / (cam.projectionMatrix.elements[5] * H);
+    if (o.inkP) F.uInkP.value.set(...o.inkP); if (o.inkFade) F.uInkF.value.set(...o.inkFade);
     F.uAspect.value.set(W / H, 1); F.uTime.value = (o.time || 0) % 100; F.uDebug.value = o.debug ? 1 : 0;
     if (!fxaa) { this.pass(M, null); return; }
     this.pass(M, this.ldr);

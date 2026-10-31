@@ -79,7 +79,7 @@ export function skirt(C, o = {}) {
       for (const [p, q] of split(x0, x1, NS.map(([c, d]) => [c - 2, d + 2]))) { side(p, a, q, a + 2); side(p, b - 2, q, b); }
       const zc = (a + b) / 2; for (let x = x0 + 1; x < x1 - 2; x += 6) if (!NS.some(([c, d]) => x + 3 > c && x < d)) C.quad(gk, dash, [x, 0.014, zc + 0.08], [x + 3, 0.014, zc + 0.08], [x + 3, 0.014, zc - 0.08], [x, 0.014, zc - 0.08], { fit: true });
       // street lamps down the vista (the near 120 m)
-      for (let x = x0 + 7; x < x1; x += 16) if (Math.min(Math.abs(x), Math.abs(x - W)) < 120 && !NS.some(([c, d]) => x > c - 3 && x < d + 3)) for (const z of [a + 1.2, b - 1.2]) C.props.push({ kind: 'lamp', x, y: 0.12, z, yaw: z < (a + b) / 2 ? Math.PI : 0, s: 1, nolight: !night || Math.min(Math.abs(x), Math.abs(x - W)) > 70 });
+      for (let x = x0 + 7; x < x1; x += 22) if (Math.min(Math.abs(x), Math.abs(x - W)) < 100 && !NS.some(([c, d]) => x > c - 3 && x < d + 3)) for (const z of [a + 1.2, b - 1.2]) C.props.push({ kind: 'lamp', x, y: 0.12, z, yaw: z < (a + b) / 2 ? Math.PI : 0, s: 1, nolight: !night || Math.min(Math.abs(x), Math.abs(x - W)) > 70 });
     }
   }
   // the land under it all (pavement where no street runs)

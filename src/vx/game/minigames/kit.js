@@ -16,6 +16,8 @@
 // and the game calls sess.end({ score, ... }) when its round is over.
 import * as THREE from '../../../../vendor/three.module.js';
 import { T } from '../../../px/game/ui.js';
+import { Fine, GLOW } from '../../fine.js';
+import { SPECIES } from '../../../data/species.js';
 
 export const V3 = THREE.Vector3;
 export const D2R = Math.PI / 180;
@@ -61,7 +63,7 @@ export class Input {
   constructor(app) { this.app = app; this.padPrev = {}; this.clear(); }
   clear() {
     this.tap = false; this.hold = false; this.left = this.right = this.up = this.down = false; this.L = this.R = this.U = this.D = false;
-    this.esc = false; this.pressed = new Set(); this.ptr = null; this.ptrDown = false; this.ptrUp = false; this.release = false;
+    this.esc = false; this.pressed = new Set(); this.ptr = null; this.ptrDown = false; this.ptrUp = false; this.ptrHeld = false; this.release = false; this.side = 0; this.edgeTap = 0;
     return this;
   }
   /** a synthetic, empty input (bots and the simulator fill it) */
@@ -72,7 +74,9 @@ export class Input {
     const was = this.hold;
     this.clear();
     for (const k of Object.keys(ui.keys)) if (ui.keys[k] === 'pressed') this.pressed.add(k);
-    const P = ui.ptr; this.ptr = { x: P.x, y: P.y }; this.ptrDown = !!P.pressed; this.ptrUp = !!P.released;
+    const P = ui.ptr; this.ptr = { x: P.x, y: P.y }; this.ptrDown = !!P.pressed; this.ptrUp = !!P.released; this.ptrHeld = !!P.down; this.uw = ui.w;
+    // touch steering: holding the left / right third of the screen steers; a tap in the middle is the action
+    const side = this.ptrHeld && this.uw ? (P.x < this.uw * 0.28 ? -1 : P.x > this.uw * 0.72 ? 1 : 0) : 0; this.side = side;
     // the gamepad: A / B (either face button) tap and hold, the d-pad / stick steer
     let padA = false, padX = 0, padY = 0, padHit = false;
     try {
@@ -90,11 +94,80 @@ export class Input {
     this.right = this.pressed.has('ArrowRight') || this.pressed.has('d');
     this.up = this.pressed.has('ArrowUp') || this.pressed.has('w');
     this.down = this.pressed.has('ArrowDown') || this.pressed.has('s');
-    this.L = held('ArrowLeft') || held('a') || padX < -0.4; this.R = held('ArrowRight') || held('d') || padX > 0.4;
+    this.L = held('ArrowLeft') || held('a') || padX < -0.4 || side < 0; this.R = held('ArrowRight') || held('d') || padX > 0.4 || side > 0;
+    if (this.ptrDown && P.x != null && this.uw && (P.x < this.uw * 0.28 || P.x > this.uw * 0.72)) this.edgeTap = P.x < this.uw * 0.28 ? -1 : 1; else this.edgeTap = 0;
     this.U = held('ArrowUp') || held('w') || padY < -0.4; this.D = held('ArrowDown') || held('s') || padY > 0.4;
     this.esc = this.pressed.has('Escape') || this.pressed.has('p');
     return this;
   }
+}
+
+// ================================================================== voxel art (the city's own look)
+// Every set piece is sculpted in fine voxels (the Fine volume the city props use), meshed with the greedy AO
+// mesher (vertex colours, soft corner shading, glowing palette entries) and drawn with the stage's voxel
+// materials; the stage's ink pass outlines it like everything else. Small things get finer voxels (vpm).
+export { GLOW };
+const VCACHE = new Map();
+/** sculpt → THREE.Group, origin at the bottom centre of the volume. size [X, Y, Z] voxels; build(F, rand, H) with
+ *  H = shape helpers; o: { vpm (voxels per metre, default 16), key (cache the geometry), shadow, origin: [ox, oy, oz] m } */
+export function voxel(st, size, build, o = {}) {
+  const vpm = o.vpm || 16, [X, Y, Z] = size, ox = o.origin ? o.origin[0] : X / vpm / 2, oy = o.origin ? o.origin[1] : 0, oz = o.origin ? o.origin[2] : Z / vpm / 2;
+  let parts = o.key && VCACHE.get(o.key);
+  if (!parts) {
+    const F = new Fine(X, Y, Z, vpm); build(F, rng(o.seed || X * 131 + Y * 7 + Z), VH);
+    const m = F.mesh(); parts = { opaque: mergeGeos(m.opaque, ox, oy, oz), glow: mergeGeos(m.glow, ox, oy, oz) };
+    if (parts.opaque) parts.opaque.userData.keep = !!o.key; if (parts.glow) parts.glow.userData.keep = !!o.key;
+    if (o.key) VCACHE.set(o.key, parts);
+  }
+  const g = new THREE.Group(), mats = st.mats || {};
+  if (parts.opaque) { const m = new THREE.Mesh(parts.opaque, mats.solid || LAMBERT); m.castShadow = o.shadow !== false; m.receiveShadow = true; g.add(m); }
+  if (parts.glow) g.add(new THREE.Mesh(parts.glow, mats.glow || LAMBERT));
+  return g;
+}
+function mergeGeos(geos, ox, oy, oz) {
+  if (!geos.length) return null;
+  const P = [], N = [], C = [], I = []; let base = 0;
+  for (const g of geos) {
+    const p = g.attributes.position.array, n = g.attributes.normal.array, c = g.attributes.color.array, ix = g.index ? g.index.array : null;
+    for (let i = 0; i < p.length; i += 3) P.push(p[i] - ox, p[i + 1] - oy, p[i + 2] - oz);
+    for (let i = 0; i < n.length; i++) N.push(n[i]); for (let i = 0; i < c.length; i++) C.push(c[i]);
+    if (ix) for (let i = 0; i < ix.length; i++) I.push(ix[i] + base); else for (let i = 0; i < p.length / 3; i++) I.push(base + i);
+    base += p.length / 3; g.dispose();
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); g.setAttribute('normal', new THREE.Float32BufferAttribute(N, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(C, 3));
+  g.setIndex(I); g.computeBoundingSphere(); return g;
+}
+/** voxel shape helpers: discs, balls, rings, lines, painted patterns */
+export const VH = {
+  disc(F, cx, cz, y0, y1, r, c) { for (let y = y0; y <= y1; y++) for (let z = Math.floor(cz - r); z <= cz + r; z++) for (let x = Math.floor(cx - r); x <= cx + r; x++) if ((x - cx) ** 2 + (z - cz) ** 2 <= r * r) F.set(x, y, z, typeof c === 'function' ? c(x, y, z) : c); },
+  ring(F, cx, cz, y0, y1, r0, r1, c) { for (let y = y0; y <= y1; y++) for (let z = Math.floor(cz - r1); z <= cz + r1; z++) for (let x = Math.floor(cx - r1); x <= cx + r1; x++) { const d = (x - cx) ** 2 + (z - cz) ** 2; if (d <= r1 * r1 && d >= r0 * r0) F.set(x, y, z, typeof c === 'function' ? c(x, y, z) : c); } },
+  ball(F, cx, cy, cz, rx, ry, rz, c) { ry = ry ?? rx; rz = rz ?? rx; for (let y = Math.floor(cy - ry); y <= cy + ry; y++) for (let z = Math.floor(cz - rz); z <= cz + rz; z++) for (let x = Math.floor(cx - rx); x <= cx + rx; x++) if (((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2 + ((z - cz) / rz) ** 2 <= 1) F.set(x, y, z, typeof c === 'function' ? c(x, y, z) : c); },
+  /** a line of voxels from a to b, t thick */
+  line(F, a, b, c, t = 0) { const n = Math.ceil(Math.max(Math.abs(b[0] - a[0]), Math.abs(b[1] - a[1]), Math.abs(b[2] - a[2]))) + 1; for (let i = 0; i <= n; i++) { const k = i / n, x = Math.round(a[0] + (b[0] - a[0]) * k), y = Math.round(a[1] + (b[1] - a[1]) * k), z = Math.round(a[2] + (b[2] - a[2]) * k); F.box(x - t, y - t, z - t, x + t, y + t, z + t, c); } },
+  /** a shaded colour ramp picker: dither between neighbours for a hand-painted look */
+  ramp(F, hexes) { const ids = hexes.map((h) => F.c(h)); return (v, x = 0, y = 0, z = 0) => { const f = Math.max(0, Math.min(0.999, v)) * ids.length, i = Math.floor(f), fr = f - i, d = ((x * 7 + y * 13 + z * 5) % 4) / 4; return ids[Math.min(ids.length - 1, fr > 0.5 + (d - 0.375) * 0.5 ? i + 1 : i)]; }; },
+};
+/** a pixel-art sign texture: the game's pixel font on a painted board with a copper frame and rivets */
+export function pixelSign(text, o = {}) {
+  const fs = o.fs || 8, font = `${fs}px "TKSilkscreen", "TKTiny5", monospace`, sub = o.sub || '';
+  let W = o.w, H = o.h;
+  const meas = document.createElement('canvas').getContext('2d'); meas.font = font;
+  if (!W) W = Math.ceil(Math.max(meas.measureText(text).width, sub ? meas.measureText(sub).width * 0.75 : 0)) + 16;
+  if (!H) H = fs + 12 + (sub ? fs : 0);
+  return canvasTex(W, H, (g) => {
+    const fr = o.frame || '#a35d3c', frL = '#d48c5c', frD = '#6b3a28', ink = '#2b1a17';
+    g.fillStyle = ink; g.fillRect(0, 0, W, H); g.fillStyle = frD; g.fillRect(1, 1, W - 2, H - 2); g.fillStyle = fr; g.fillRect(1, 1, W - 3, H - 3); g.fillStyle = frL; g.fillRect(1, 1, W - 3, 1); g.fillRect(1, 1, 1, H - 3);
+    g.fillStyle = ink; g.fillRect(3, 3, W - 6, H - 6); g.fillStyle = o.bg || '#f3e6cf'; g.fillRect(4, 4, W - 8, H - 8);
+    if (o.bg2) { g.fillStyle = o.bg2; for (let y = 4; y < H - 4; y += 2) g.fillRect(4, y, W - 8, 1); }
+    for (const [x, y] of [[2, 2], [W - 4, 2], [2, H - 4], [W - 4, H - 4]]) { g.fillStyle = '#f2b98a'; g.fillRect(x, y, 2, 2); g.fillStyle = frD; g.fillRect(x + 1, y + 1, 1, 1); }
+    g.font = font; g.textAlign = 'center'; g.textBaseline = 'top';
+    const ty = sub ? 6 : Math.round((H - fs) / 2);
+    g.fillStyle = o.shadow || 'rgba(43,26,23,0.45)'; g.fillText(text, W / 2 + 1, ty + 1);
+    g.fillStyle = o.fg || '#4a2c22'; g.fillText(text, W / 2, ty);
+    if (sub) { g.font = `${Math.max(5, Math.round(fs * 0.75))}px "TKTiny5", "TKSilkscreen", monospace`; g.fillStyle = o.fg2 || o.fg || '#8c6650'; g.fillText(sub, W / 2, ty + fs + 2); }
+    thresholdAlpha(g, W, H);
+  });
 }
 
 // ================================================================== meshes and textures
@@ -165,21 +238,25 @@ export function signTex(text, o = {}) {
 }
 // keep the canvas text crisp: every pixel fully opaque or fully clear (pixel-art look)
 function thresholdAlpha(g, W, H) { try { const d = g.getImageData(0, 0, W, H); for (let i = 3; i < d.data.length; i += 4) d.data[i] = d.data[i] > 100 ? 255 : 0; g.putImageData(d, 0, 0); } catch (e) { /* tainted / headless */ } }
-/** a sign on two posts: a board (w × h m) facing yaw, standing at (x, y, z) */
-export function signPost(tex, w, h, x, y, z, yaw = 0, o = {}) {
+/** a sign on two voxel posts: a pixel board (w × h m) facing yaw, standing at (x, y, z) */
+export function signPost(st, tex, w, h, x, y, z, yaw = 0, o = {}) {
   const g = new THREE.Group(); g.position.set(x, y, z); g.rotation.y = yaw;
-  const post = o.post || '#5a3a24', top = o.top ?? 1.5;
-  g.add(boxes([[-w / 2 + 0.04, 0, -0.04, -w / 2 + 0.12, top + h, 0.04, post], [w / 2 - 0.12, 0, -0.04, w / 2 - 0.04, top + h, 0.04, post], [-w / 2 - 0.04, top - 0.04, -0.06, w / 2 + 0.04, top + h + 0.04, -0.01, o.back || '#2a2240']]));
-  const front = picture(tex, w, h, { lit: true }); front.position.set(0, top + h / 2, 0.0); g.add(front);
-  const back = picture(tex, w, h, { lit: true }); back.position.set(0, top + h / 2, -0.07); back.rotation.y = Math.PI; g.add(back);
+  const top = o.top ?? 1.3, V = 32, X = Math.round((w + 0.12) * V), Y = Math.round((top + h + 0.1) * V);
+  g.add(voxel(st, [X, Y, 4], (F) => {
+    const wd = F.c('#6b3a28'), wd2 = F.c('#8a5434'), wdL = F.c('#b87a4c'), cap = F.c('#2b1a17');
+    for (const x0 of [0, X - 3]) { F.box(x0, 0, 0, x0 + 2, Y - 2, 3, (xx, yy) => (yy % 9 === 0 ? wd : xx === x0 ? wdL : wd2)); F.box(x0, Y - 2, 0, x0 + 2, Y - 1, 3, cap); }
+    F.box(0, Math.round(top * V) - 2, 1, X - 1, Math.round(top * V) - 1, 2, wd);
+  }, { vpm: V, key: 'mg-signpost:' + X + 'x' + Y }));
+  for (const sg of [1, -1]) { const p = picture(tex, w, h, { lit: true }); p.position.set(0, top + h / 2 + 0.02, sg * 0.068); if (sg < 0) p.rotation.y = Math.PI; g.add(p); }
+  g.add(boxes([[-w / 2, top + 0.02, -0.06, w / 2, top + h + 0.02, 0.06, '#2b1a17']]));
   return g;
 }
 /** dispose every geometry / material / texture under an object */
-export function disposeTree(o) {
+export function disposeTree(o, keep = new Set()) {
   o.traverse((m) => {
-    if (m.geometry) m.geometry.dispose();
+    if (m.geometry && !m.geometry.userData.keep) m.geometry.dispose();
     const mats = Array.isArray(m.material) ? m.material : m.material ? [m.material] : [];
-    for (const mt of mats) { if (mt === LAMBERT) continue; for (const k of ['map', 'emissiveMap', 'alphaMap']) if (mt[k] && mt[k].dispose) mt[k].dispose(); mt.dispose(); }
+    for (const mt of mats) { if (mt === LAMBERT || keep.has(mt) || mt.userData.keep) continue; for (const k of ['map', 'emissiveMap', 'alphaMap']) if (mt[k] && mt[k].dispose && !mt[k].userData.keep) mt[k].dispose(); mt.dispose(); }
   });
 }
 
@@ -224,9 +301,9 @@ export function drawClock(ui, cx, y, sec) {
 export function drawScore(ui, x, y, shown, o = {}) {
   const str = fmt(shown), bestS = o.best != null ? 'BEST ' + fmt(o.best) : '', w = Math.max(78, ui.tw(str, { scale: 2 }) + 18, ui.tw(bestS, { mini: true }) + ui.tw(o.label || 'SCORE', { mini: true }) + 24);
   ui.panel(x, y, w, 34, {});
-  ui.text(o.label || 'SCORE', x + 8, y + 7, T.dim, { mini: true });
-  ui.text(str, x + 8, y + 16, T.text, { scale: 2 });
-  if (bestS) ui.text(bestS, x + w - 8, y + 7, T.amber2, { mini: true, align: 'right' });
+  ui.text(o.label || 'SCORE', x + 8, y + 6, T.dim, { mini: true });
+  ui.text(str, x + 8, y + 14, T.text, { scale: 2 });
+  if (bestS) ui.text(bestS, x + w - 8, y + 6, T.amber2, { mini: true, align: 'right' });
   return w;
 }
 /** the combo counter over the world: "×N COMBO", bouncing when it grows */
@@ -304,6 +381,7 @@ export class Session {
         await Promise.all([mv, app.wait(this.bot ? 900 : 2300)]);
         this.phase = 'howto'; this.pt = 0;
         await this.waitTap(this.bot || o.auto ? 0.8 : 60);
+        if (this.backOut) { this.audio.sfx('ui_back'); return true; }   // Esc on the how-to card: not now (teardown runs)
         this.audio.sfx('ui_confirm');
         if (cin) await cin.begin({ bars: false });       // bars out; the director stays on duty (no roaming HUD) but lets go of the camera
         this.hush(true);
@@ -332,7 +410,7 @@ export class Session {
   /** the game's round is over: res = { score, …game stats } */
   end(res) { if (this.finish) { const f = this.finish; this.finish = null; f(res || { score: 0 }); } }
   waitTap(maxS = 60) {
-    return new Promise((r) => { const t0 = this.t; this.tapWait = () => { if (this.input.tap || this.t - t0 > maxS || (this.cin && this.cin.skipping && this.t - t0 > 0.3)) { this.tapWait = null; r(); } }; });
+    return new Promise((r) => { const t0 = this.t; this.tapWait = () => { if (this.input.esc && !this.bot) this.backOut = true; if (this.backOut || this.input.tap || this.t - t0 > maxS || (this.cin && this.cin.skipping && this.t - t0 > 0.3)) { this.tapWait = null; r(); } }; });
   }
   async countdown() {
     const A = this.audio;
@@ -352,7 +430,7 @@ export class Session {
     try { this.game.dispose && this.game.dispose(); } catch (e) { console.error(e); }
     for (const a of this.actors) this.w.remove(a.id);
     this.actors = [];
-    this.st.scene.remove(this.root); disposeTree(this.root);
+    this.st.scene.remove(this.root); disposeTree(this.root, new Set(Object.values(this.st.mats || {})));
     this.st.hooks = this.st.hooks.filter((h) => h !== this.hook);
     const i = app.overlays.indexOf(this.ov); if (i >= 0) app.overlays.splice(i, 1);
     this.restore();
@@ -486,10 +564,11 @@ export class Session {
   /** fast-forward the round (dev / tests): the bot plays for `seconds` of game time in fixed steps */
   async sim(seconds = 5, step = 1 / 30) {
     const inp = Input.empty(), sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    this.simmed = true;   // from now on the games keep their own beat clock (sim time and the music's clock would drift apart)
     let n = 0, waits = 0;
     for (let t = 0; t < seconds && this.phase === 'play';) {
       if (this.game.waiting && this.game.waiting() && waits < 400) { waits++; await sleep(15); continue; }   // an actor is loading
-        this.simulating = true; inp.clear(); if (this.game.bot) this.game.bot(inp, step); this.game.update(step, inp, true); this.tickFx(step, step); t += step; this.simulating = false;
+        this.simulating = true; inp.clear(); if (this.game.bot) this.game.bot(inp, step); this.game.update(step, inp, true); this.tickFx(step, step); this.applyCam(step); t += step; this.simulating = false;
       if (++n % 8 === 0) await sleep(0);
     }
     return this.game.debug ? this.game.debug() : null;
@@ -507,7 +586,7 @@ export class Session {
     if (G.keys) { keyRow(ui, W / 2, yy, G.keys, { paper: true }); yy += 18; }
     const best = this.mg.best(d.id);
     if (best != null) ui.text('BEST ' + (d.lowerBetter ? fmtTime(best) : fmt(best)), x + 10, y + h - 15, T.dim, { mini: true });
-    if (Math.sin(this.t * 6) > -0.4) ui.text(touchy() ? 'TAP TO START' : 'PRESS SPACE TO START', x + w - 10, y + h - 15, T.amber2, { mini: true, align: 'right' });
+    if (Math.sin(this.t * 6) > -0.4) ui.text(touchy() ? 'TAP TO START' : 'SPACE: START   ESC: BACK', x + w - 10, y + h - 15, T.amber2, { mini: true, align: 'right' });
     if (xf) { g.restore(); ui._fs = null; ui._font = null; }
   }
   // ---------------------------------------------------------------- pause
@@ -592,5 +671,5 @@ export class Session {
     });
   }
 }
-function speciesName(id) { return id ? id[0].toUpperCase() + id.slice(1) : 'Partner'; }
+function speciesName(id) { return (SPECIES[id] && SPECIES[id].name) || (id ? id[0].toUpperCase() + id.slice(1) : 'Partner'); }
 function touchy() { return typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches; }

@@ -14,6 +14,8 @@ import { Sky } from './render/sky.js';
 
 installLighting();
 const LITE = !!globalThis.TOKON_LITE;
+// the outline ink: near-black for every mood (a hair of warmth, never pure black)
+const INK = new THREE.Color('#0a0608');
 
 // per mood: sun (colour, intensity, direction toward the sun: its elevation sets the shadow length), sky / ground
 // fill (hemisphere: the sky's own colour, the ground colour is light bounced off sunlit streets), haze (aerial
@@ -101,10 +103,10 @@ export class VxStage {
    *  the far cascade; the near one (sharp, ±shadowNear m) is aimed at the player every frame in render(). */
   followShadow(t, R = 34) {
     this.shadowFollow = true;
-    if (this.lite) { this.sunFar.visible = false; return; }
-    if (!this.sunFar.visible) { this.sunFar.visible = true; this.sun.shadow.normalBias = 0.02; this.sun.shadow.bias = -0.0002; }
     const d = this.mood.sunDir, L = Math.hypot(...d);
     this.sunDirN = (this.sunDirN || new THREE.Vector3()).set(d[0] / L, d[1] / L, d[2] / L);
+    if (this.lite) { this.sunFar.visible = false; this.sun.shadow.normalBias = 0.03; this.sun.shadow.bias = -0.0003; return; }
+    if (!this.sunFar.visible) { this.sunFar.visible = true; this.sun.shadow.normalBias = 0.02; this.sun.shadow.bias = -0.0002; }
     aimShadow(this.sunFar, t, R, this.sunDirN);
   }
   /** the near cascade: a tight box around what the camera looks at, pushed a little ahead along the view */
@@ -117,7 +119,7 @@ export class VxStage {
     const m = this.mood = Object.assign({}, MOODS[name] || MOODS.day); this.moodName = name;
     this.sun.color.set(m.sun); this.sun.intensity = m.sunI;
     this.hemi.color.set(m.hemiSky); this.hemi.groundColor.set(m.hemiGround); this.hemi.intensity = m.hemiI;
-    this.haze = new THREE.Color(m.fog); this.inkCol = new THREE.Color(m.ink || '#2e1c18');
+    this.haze = new THREE.Color(m.fog); this.inkCol = INK.clone();
     this.scene.fog = this.style.hd ? null : new THREE.Fog(m.fog, 70, 220);
     if (this.style.hd) {
       // the scattering sky dome (drawn in the HDR frame) and its reflection environment for glossy surfaces
@@ -185,15 +187,17 @@ export class VxStage {
       }
       this.sky.u.uTime.value = this.time = (this.time || 0) + 1 / 60;
       this.cv.depthDof = 0;
-      // no outlines in the realistic look: the Tokonmon's own inverted-hull lines step aside too
+      // one ink line for every asset (the composite finds it in the depth buffer): the Tokonmon's own inverted-hull
+      // outlines (model.js) step aside while it draws
       OUTLINE.show(false);
-      const px = this.w * this.h, msaa = s.msaa ?? (this.lite || px > 2.5e6 ? 0 : 4);
+      const px = this.w * this.h, msaa = s.msaa ?? (this.lite || px > 3.7e6 ? 0 : 4);   // MSAA up to 1440p, FXAA above (and on lite)
       try {
         this.comp.render(this.scene, this.cam, this.w, this.h, {
           ao: (m.ao ?? 0.8) * (s.ao ?? 1), aoRadius: s.aoRadius ?? 0.9, aoK: s.aoK, aoScale: this.lite ? 0.33 : undefined,
           haze: this.haze, hazeP: [m.hazeP[0], m.hazeP[1], m.hazeP[2] * (s.haze ?? 1), m.hazeP[3]], exposure: this.r.toneMappingExposure, tone: s.tone || 'agx',
           bloom: P.bloom ?? 0.12, threshold: P.threshold ?? 1.4, sat: P.sat ?? 1, contrast: P.contrast ?? 0.12, vig: P.vig ?? 0.18, wb: P.wb, lift: P.lift || 0,
           msaa, fxaa: s.fxaa ?? !msaa, debug: s.debug, time: this.time,
+          ink: s.inkA ?? 1, inkCol: INK, inkW: s.inkW, inkP: s.inkP, inkFade: s.inkFade,
         });
       } finally { OUTLINE.show(true); }
       return this.cv;

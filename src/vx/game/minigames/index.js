@@ -17,7 +17,7 @@ import { addFriendship, gainExp } from '../../../game/elemon.js';
 import { ITEMS } from '../../../data/items.js';
 import { SPECIES } from '../../../data/species.js';
 import { T } from '../../../px/game/ui.js';
-import { Session, fmt, fmtTime, signTex, signPost, boxes, picture, canvasTex } from './kit.js';
+import { Session, fmt, fmtTime, pixelSign, signPost } from './kit.js';
 import { buildCabinet } from './cabinet.js';
 
 export const GAMES = {
@@ -108,7 +108,7 @@ export class Minigames {
           if (it) {
             const orig = it.act;
             it.label = v.label; it.icon = def.icon; it.mm = true; it.mg = def.id;
-            it.act = v.keepOrig ? async (app, i) => { const k = await app.choose(def.ask ? def.ask[1] : 'Play?', [v.label, 'Just look']); if (k === 0) return this.launch(def.id, { asked: true }); return orig(app, i); } : act;
+            it.act = v.keepOrig ? async (app, i) => { const k = await app.choose(def.ask ? def.ask[1] : 'Play?', [v.label, 'Just look'], { name: def.ask ? def.ask[0] : '' }); if (k === 0) return this.launch(def.id, { asked: true }); return orig(app, i); } : act;
             continue;
           }
         }
@@ -119,8 +119,8 @@ export class Minigames {
         } else city.inter.push({ x: v.x, z: v.z, L: v.L || 0, r: v.r || 1.4, y: nav.ground(v.x, v.z, v.L || 0) + 1.2, label: v.label, icon: def.icon, mm: true, mg: def.id, act });
         // signs and set pieces
         const add = (o) => { scene.add(o); this.venueObjs.push(o); };
-        if (v.cabinet) { const cab = buildCabinet(); cab.position.set(v.cabinet[0], nav.ground(v.cabinet[0], v.cabinet[1], 0), v.cabinet[1]); cab.rotation.y = Math.PI / 2; add(cab); this.cabinet = cab; nav.block(v.cabinet[0] - 0.35, v.cabinet[1] - 0.42, v.cabinet[0] + 0.4, v.cabinet[1] + 0.42, 0); }
-        const sign = SIGNS[def.id]; if (sign) { const [x, z, yaw, w, h, o] = sign; add(signPost(signTex(o.text, o), w, h, x, nav.ground(x, z, 0), z, yaw, { top: o.top ?? 1.3 })); nav.block(x - 0.15, z - 0.15, x + 0.15, z + 0.15, 0); }
+        if (v.cabinet) { const cab = buildCabinet(world.st); cab.position.set(v.cabinet[0], nav.ground(v.cabinet[0], v.cabinet[1], 0), v.cabinet[1]); cab.rotation.y = Math.PI / 2; add(cab); this.cabinet = cab; nav.block(v.cabinet[0] - 0.35, v.cabinet[1] - 0.42, v.cabinet[0] + 0.4, v.cabinet[1] + 0.42, 0); }
+        const sign = SIGNS[def.id]; if (sign) { const [x, z, yaw, w, h, o] = sign; add(signPost(world.st, pixelSign(o.text, o), w, h, x, nav.ground(x, z, 0), z, yaw, { top: o.top ?? 1.3 })); nav.block(x - 0.15, z - 0.15, x + 0.15, z + 0.15, 0); }
       } catch (e) { console.warn('[mg] venue', def.id, e); }
     }
   }
@@ -129,7 +129,7 @@ export class Minigames {
     if (this.cur) return;
     const def = GAMES[id], app = this.app; if (!def) return;
     if (def.ask && !o.dev && !o.asked && !app.auto) {
-      const k = await app.choose(def.ask[0] + ': ' + def.ask[1], ["Let's go!", 'Not now']);
+      const k = await app.choose(def.ask[1], ["Let's go!", 'Not now'], { name: def.ask[0] });
       if (k !== 0) return;
     }
     let mod; try { mod = await def.load(); } catch (e) { console.error('[mg] load', id, e); app.toast('That game is closed for now', { icon: 'close' }); return; }
@@ -194,9 +194,8 @@ function rankOf(score, ranks) { if (!ranks) return null; const [s, a, b] = ranks
 
 // little signs at the venues: [x, z, yaw, w, h, { text, sub, bg, fg }]
 const SIGNS = {
-  dash: [16.9, 41.8, Math.PI / 2, 1.3, 0.62, { text: 'TOKON DASH', sub: 'HURDLE RACE · TODAY', bg: '#4cc04a', fg: '#ffffff', shadow: '#1c5a1a', fs: 16 }],
-  dumplings: [146.3, 87.9, -Math.PI / 2, 1.1, 0.55, { text: 'HELP WANTED', sub: 'DUMPLING RUSH', bg: '#e8603a', fg: '#fff4d8', shadow: '#7a2410', fs: 16 }],
-  rhythm: [123.6, 154.4, 0, 1.2, 0.6, { text: 'BEAT CLASH', sub: 'DJ BOOTH · OPEN', bg: '#ff4a8a', fg: '#ffffff', shadow: '#6a1a3a', fs: 16, top: 0.9 }],
-  fishing: [169.2, 5.6, Math.PI / 2, 1.1, 0.55, { text: 'FISHING DERBY', sub: '75 SECONDS · PRIZES', bg: '#2f9ad8', fg: '#ffffff', shadow: '#123a5a', fs: 14 }],
+  dash: [17.8, 42.6, Math.PI / 2, 1.3, 0.62, { text: 'TOKON DASH', sub: 'HURDLE RACE TODAY', bg: '#f3e6cf', fg: '#2e7a2e', fg2: '#8c6650' }],
+  dumplings: [146.6, 83.2, -Math.PI / 2, 1.1, 0.55, { text: 'HELP WANTED', sub: 'DUMPLING RUSH', bg: '#f3e6cf', fg: '#a8481e', fg2: '#8c6650' }],
+  rhythm: [123.6, 154.4, 0, 1.2, 0.6, { text: 'BEAT CLASH', sub: 'DJ BOOTH OPEN', bg: '#2e2a3a', fg: '#e86a9a', fg2: '#bfeaf6', top: 0.9 }],
+  fishing: [169.2, 5.6, Math.PI / 2, 1.1, 0.55, { text: 'FISHING DERBY', sub: '75 SECONDS PRIZES', bg: '#f3e6cf', fg: '#1f7a9e', fg2: '#8c6650' }],
 };
-void boxes; void picture; void canvasTex;

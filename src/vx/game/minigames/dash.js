@@ -1,16 +1,18 @@
 // TOKON DASH — your partner races three Tokonmon down Steiner Walk (the cobbled lane in front of the Painted
-// Ladies), round the cones and back: 100 m, five rows of hurdles each way.
-// One button. Tap on the beat (the rings close on the centre mark) and your partner strides faster; miss the
+// Ladies), round the cones and back, twice: 200 m, five rows of hurdles each way.
+// Two laps: 200 m with four turns' worth of hurdles. One button. Tap on the beat (the rings close on the centre mark) and your partner strides faster; miss the
 // beat and it stumbles. When a hurdle's marker reaches the jump zone, tap to jump — the gold window is a
 // perfect jump with a burst of speed; no jump means a crash. Fill the FEVER meter with an on-beat streak.
 import * as THREE from '../../../../vendor/three.module.js';
 import { T } from '../../../px/game/ui.js';
 import { SPECIES } from '../../../data/species.js';
-import { V3, clamp, clamp01, lerp, easeOut, boing, fmtTime, drawClock, drawCombo, keyRow, boxes, canvasTex, picture, cyl, WHITE, worldText } from './kit.js';
+import { V3, clamp, clamp01, lerp, easeOut, boing, fmtTime, drawClock, drawCombo, keyRow, boxes, picture, voxel, pixelSign, WHITE, worldText } from './kit.js';
 
-const LANES = [16.35, 15.45, 14.55, 13.65], Z0 = 40.0, LEG = 50, RACE = 100, HURDLES = [9, 17, 25, 33, 41];
+const LANES = [16.35, 15.45, 14.55, 13.65], Z0 = 40.0, LEG = 50, LEGS = 4, RACE = LEG * LEGS, HURDLES = [9, 17, 25, 33, 41];
+/** leg (0..), metres into it, z on the walk and the running direction (+1 south, −1 north) for race position p */
+const where = (p) => { const leg = Math.max(0, Math.min(LEGS - 1, Math.floor(p / LEG))), m = p - leg * LEG; return { leg, m, z: leg % 2 ? Z0 + LEG - m : Z0 + m, dir: leg % 2 ? -1 : 1 }; };
 const V0 = 4.6, VMAX = 8.4, BPM = 120, JUMP = [0.45, 2.1], PERFECT = [0.85, 1.5];
-const RIVALS = ['pidgun', 'cabbunny', 'lemmo', 'zapanda', 'trashcoon', 'strawbaa', 'kappachi', 'zapkit', 'gradcub'];
+const RIVALS = ['pidgun', 'cabbunny', 'lemmo', 'zapanda', 'trashcoon', 'strawbaa', 'kappachi', 'zapkit', 'woodbub'];
 const PLACE = ['1st', '2nd', '3rd', '4th'];
 
 export default class Dash {
@@ -31,29 +33,35 @@ export default class Dash {
     this.gy = gy;
     const lines = [], zA = Z0 - 1.2, zB = Z0 + LEG + 1.5;
     for (const x of [16.82, 15.92, 15.02, 14.12, 13.22]) lines.push([x - 0.03, gy + 0.005, zA, x + 0.03, gy + 0.025, zB, '#f4f0e6']);
-    // start / finish: a checkered strip; the turn: a painted line
-    for (let i = 0; i < 18; i++) for (let j = 0; j < 2; j++) lines.push([13.22 + i * 0.2, gy + 0.006, Z0 + j * 0.2 - 0.2, 13.42 + i * 0.2, gy + 0.03, Z0 + j * 0.2, (i + j) % 2 ? '#1c1838' : '#f4f0e6']);
-    lines.push([13.22, gy + 0.005, Z0 + LEG - 0.05, 16.82, gy + 0.028, Z0 + LEG + 0.05, '#ffc93a']);
+    // start / finish: a painted checkered strip; the turn: a painted line
+    for (let i = 0; i < 18; i++) for (let j = 0; j < 2; j++) lines.push([13.22 + i * 0.2, gy + 0.006, Z0 + j * 0.2 - 0.2, 13.42 + i * 0.2, gy + 0.03, Z0 + j * 0.2, (i + j) % 2 ? '#2b1a17' : '#f4f0e6']);
+    lines.push([13.22, gy + 0.005, Z0 + LEG - 0.05, 16.82, gy + 0.028, Z0 + LEG + 0.05, '#f0c040']);
     root.add(boxes(lines, { shadow: false }));
-    // the arch over the start line
-    const banner = canvasTex(128, 24, (g, w, h) => {
-      g.fillStyle = '#2b1a17'; g.fillRect(0, 0, w, h); g.fillStyle = '#4cc04a'; g.fillRect(2, 2, w - 4, h - 4);
-      for (let x = 2; x < w - 2; x += 8) { g.fillStyle = (x / 8) % 2 ? '#f4f0e6' : '#2b1a17'; g.fillRect(x, h - 6, 4, 2); g.fillRect(x + 4, h - 4, 4, 2); }
-      g.font = 'bold 13px "Trebuchet MS", Arial, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = '#1c5a1a'; g.fillText('TOKON DASH', w / 2 + 1, 10); g.fillStyle = '#ffffff'; g.fillText('TOKON DASH', w / 2, 9);
-    });
+    // the banner removed from the old arch
+    // the arch over the start line: voxel posts with flags, a pixel banner
+    const st = s.st, banner = pixelSign('TOKON DASH', { sub: 'STEINER WALK', bg: '#4cc04a', bg2: '#5cc24a', fg: '#fbf3e3', fg2: '#1c5a1a', fs: 16, w: 128, h: 40 });
     const arch = new THREE.Group(); arch.position.set(15.0, gy, Z0 - 0.4);
-    arch.add(boxes([[-2.2, 0, -0.08, -2.05, 2.6, 0.08, '#e8e4dc'], [2.05, 0, -0.08, 2.2, 2.6, 0.08, '#e8e4dc'], [-2.25, 2.55, -0.1, 2.25, 2.62, 0.1, '#2b1a17']]));
-    for (const sgn of [1, -1]) { const p = picture(banner, 4.2, 0.78, { lit: true }); p.position.set(0, 2.2, sgn * 0.09); if (sgn < 0) p.rotation.y = Math.PI; arch.add(p); }
+    arch.add(voxel(st, [72, 46, 4], (F) => {
+      const w = F.c('#e8e4dc'), wD = F.c('#b8b4ac'), red = F.c('#e2403a'), ink = F.c('#2b1a17'), y = F.c('#f0c040');
+      for (const x0 of [0, 69]) { F.box(x0, 0, 0, x0 + 2, 43, 3, (x, yy) => ((yy >> 2) % 2 ? w : wD)); F.box(x0 - 0, 0, 0, x0 + 2, 1, 3, ink); F.box(x0, 44, 0, x0 + 2, 45, 3, y); }
+      F.box(0, 41, 1, 71, 42, 2, ink);
+      for (let x = 4; x < 68; x += 6) F.box(x, 36 - ((x / 6) % 2), 1, x + 3, 40, 2, (xx) => ((x / 6) % 3 === 0 ? red : (x / 6) % 3 === 1 ? y : F.c('#3e8ee8')));
+    }, { vpm: 16, key: 'mg-dash-arch' }));
+    for (const sgn of [1, -1]) { const p = picture(banner, 3.6, 1.12, { lit: true }); p.position.set(0, 1.85, sgn * 0.13); if (sgn < 0) p.rotation.y = Math.PI; arch.add(p); }
     root.add(arch);
-    // cones at the turn, hurdles across the lanes
-    for (const x of LANES) { const c = cyl(0.02, 0.13, 0.42, '#f0702a', 8); c.position.set(x, gy + 0.21, Z0 + LEG + 0.9); root.add(c); const band = cyl(0.07, 0.09, 0.08, '#f4f0e6', 8); band.position.set(x, gy + 0.24, Z0 + LEG + 0.9); root.add(band); }
+    // cones at the turn, hurdles across the lanes (voxels)
+    for (const x of LANES) { const c = voxel(st, [10, 15, 10], (F, r, H) => { const o = F.c('#f0702a'), oD = F.c('#c8501a'), w = F.c('#f4f0e6'), b = F.c('#2a2a30'); F.box(0, 0, 0, 9, 1, 9, b); for (let y = 2; y < 15; y++) H.disc(F, 4.5, 4.5, y, y, 4.4 - y * 0.27, (xx) => (y > 6 && y < 9 ? w : xx < 4 ? o : oD)); }, { vpm: 32, key: 'mg-cone' }); c.position.set(x, gy, Z0 + LEG + 0.9); root.add(c); const c2 = c.clone(); c2.position.z = Z0 - 1.6; root.add(c2); }
     this.hurdles = [];
     for (const d of HURDLES) {
       const row = [];
       for (let i = 0; i < 4; i++) {
         const g = new THREE.Group(); g.position.set(LANES[i], gy, Z0 + d);
-        const bar = []; for (let k = 0; k < 6; k++) bar.push([-0.38 + k * 0.127, 0.3, -0.03, -0.38 + (k + 1) * 0.127, 0.38, 0.03, k % 2 ? '#e8283a' : '#f4f0e6']);
-        g.add(boxes([[-0.42, 0, -0.03, -0.37, 0.4, 0.03, '#d8d4cc'], [0.37, 0, -0.03, 0.42, 0.4, 0.03, '#d8d4cc'], [-0.44, 0, -0.18, -0.35, 0.03, 0.18, '#3a3a40'], [0.35, 0, -0.18, 0.44, 0.03, 0.18, '#3a3a40'], ...bar]));
+        g.add(voxel(st, [28, 13, 7], (F) => {
+          const w = F.c('#f4f0e6'), wD = F.c('#c8c4bc'), red = F.c('#e2403a'), redD = F.c('#b02a2a'), m = F.c('#3a3a44'), y = F.c('#f0c040');
+          for (const x0 of [0, 26]) { F.box(x0, 0, 0, x0 + 1, 0, 6, m); F.box(x0, 1, 3, x0 + 1, 12, 3, (x, yy) => (yy % 4 === 0 ? wD : w)); }
+          F.box(2, 9, 3, 25, 12, 3, (x, yy) => (((x - 2) >> 2) % 2 ? (yy === 9 ? redD : red) : (yy === 9 ? wD : w)));
+          F.box(12, 10, 4, 15, 11, 4, y);
+        }, { vpm: 32, key: 'mg-hurdle' }));
         root.add(g); row.push({ g, down: 0, fell: false });
       }
       this.hurdles.push({ d, row });
@@ -68,8 +76,10 @@ export default class Dash {
     for (let i = 0; i < 3; i++) { const a = await s.mon(pool[i], [LANES[i + 1], Z0 - 0.6, 0, gy]); this.runners.push({ a, me: false, name: SPECIES[pool[i]].name }); }
     if (!P) { const a = await s.mon(partnerSp, [LANES[0], Z0 - 0.6, 0, gy]); this.runners.unshift({ a, me: true, name: s.partnerName }); }
     this.me = this.runners[0];
-    if (s.hero) { s.hero.place(18.3, Z0 + 1.2, -Math.PI / 2, gy); s.hero.play('cheer'); }
+    // you cheer from behind the start line (out of the camera's way); the marshal waves the flag on the far kerb
+    if (s.hero) { s.hero.place(15.6, Z0 - 2.7, 0, gy); s.hero.play('cheer'); }
     this.marshal = s.w.actor('mgMarshal');
+    if (this.marshal) { const p = this.marshal.g.position; this.marshalWas = [p.x, p.z, this.marshal.yaw, p.y]; this.marshal.place(13.0, Z0 - 1.2, Math.PI * 0.6, gy); }
   }
   async intro(cin) {
     const s = this.s, V = (x, y, z) => new V3(x, y, z), gy = this.gy;
@@ -87,7 +97,7 @@ export default class Dash {
     this.lastBeat = -9; this.tapBeat = -9; this.clock = 0; this.msg = null; this.order = []; this.done = false; this.endT = 0; this.ringK = 0;
     for (const r of this.runners) {
       r.p = -0.6; r.v = 0; r.vb = 0; r.jump = -1; r.stun = 0; r.fin = null; r.next = 0; r.leg = 0; r.flip = 0; r.cleared = new Set();
-      r.base = r.me ? V0 : 5.1 + this.s.rand() * 0.75; r.skill = r.me ? 1 : 0.8 + this.s.rand() * 0.15; r.ph = this.s.rand() * 6;
+      r.base = r.me ? V0 : 5.45 + this.s.rand() * 0.7; r.skill = r.me ? 1 : 0.8 + this.s.rand() * 0.15; r.ph = this.s.rand() * 6;
       r.a.place(LANES[this.runners.indexOf(r)], Z0 - 0.6, 0, this.gy); r.a.play('idle', { fade: 0 });
     }
     for (const H of this.hurdles) for (const h of H.row) { h.down = 0; h.fell = false; h.g.rotation.set(0, 0, 0); }
@@ -100,7 +110,7 @@ export default class Dash {
     this.t0 = this.s.t;
   }
   /** the beat clock: the music's own when it's playing, else our metronome */
-  beat() { const c = this.s.simulating ? null : this.s.audio.clock('league'); if (c) { this.synced = true; return c.beat; } this.synced = false; return (this.clock || 0) * BPM / 60; }
+  beat() { const c = this.s.simmed ? null : this.s.audio.clock('league'); if (c) { this.synced = true; return c.beat; } this.synced = false; return (this.clock || 0) * BPM / 60; }
   // ================================================================ per frame
   update(dt, inp, live) {
     const s = this.s;
@@ -117,7 +127,7 @@ export default class Dash {
     this.fever = Math.max(0, this.fever - dt * (this.feverT > 0 ? 0.25 : 0.02)); this.feverT = Math.max(0, this.feverT - dt);
     // the finish: the race ends 4 s after your partner crosses (or when everyone has)
     if (this.me.fin != null && !this.done) { this.endT += dt; if (this.endT > 3.5 || this.runners.every((r) => r.fin != null)) this.finish(); }
-    if (live && this.time > 75 && !this.done) { this.me.fin = null; this.finish(); }
+    if (live && this.time > 90 && !this.done) { this.me.fin = null; this.finish(); }
     this.cam(false);
   }
   onBeat(n) {
@@ -155,8 +165,8 @@ export default class Dash {
   nextHurdle(r) {
     const i = this.runners.indexOf(r);
     for (const H of this.hurdles) {
-      for (const leg of [0, 1]) {
-        const at = leg === 0 ? H.d : RACE - H.d, gap = at - r.p;
+      for (let leg = 0; leg < LEGS; leg++) {
+        const at = leg * LEG + (leg % 2 ? LEG - H.d : H.d), gap = at - r.p;
         if (gap > -0.1 && gap < 6 && !H.row[i].fell && !(r.cleared || new Set()).has(H.d + ':' + leg)) return { H, h: H.row[i], gap, key: H.d + ':' + leg, leg };
       }
     }
@@ -184,7 +194,7 @@ export default class Dash {
     if (r.fin != null) want = Math.max(1.5, want * 0.5);
     if (r.stun > 0) { r.stun -= dt; want *= 0.3; if (r.stun <= 0) r.a.play('walk', { restart: true }); }
     // the turn round the cone
-    const turning = Math.abs(r.p - LEG) < 1.0; if (turning) want *= 0.55;
+    const turnAt = Math.round(r.p / LEG) * LEG, turning = turnAt > 0 && turnAt < RACE && Math.abs(r.p - turnAt) < 1.0; if (turning) want *= 0.55;
     r.v += (want - r.v) * Math.min(1, dt * (want > r.v ? 2.2 : 4));
     r.p += r.v * dt;
     // hurdles: rivals jump (mostly), you must tap
@@ -195,11 +205,11 @@ export default class Dash {
     }
     if (r.jump >= 0) { r.jump += dt / 0.42; if (r.jump >= 1) { r.jump = -1; r.a.play('walk', { restart: true }); const p = r.a.g.position; s.burst('dust', [p.x, p.y + 0.1, p.z], { n: r.me ? 5 : 2 }); if (r.me) s.audio.sfx('thud', { vol: 0.35, pitch: 1.4 }); } }
     // place it
-    const z = r.p <= LEG ? Z0 + r.p : Z0 + LEG - (r.p - LEG), i = this.runners.indexOf(r), g = r.a.g;
+    const wh = where(r.p), z = r.p < 0 ? Z0 + r.p : wh.z, i = this.runners.indexOf(r), g = r.a.g;
     const hop = r.jump >= 0 ? Math.sin(r.jump * Math.PI) * r.jumpH : Math.abs(Math.sin(r.p * 2.2)) * 0.05 * Math.min(1, r.v / 4);
-    g.position.set(LANES[i], this.gy + hop, Math.min(Z0 + LEG + 0.6, z));
-    const back = r.p > LEG; r.flip += ((back ? 1 : 0) - r.flip) * Math.min(1, dt * 6);
-    r.a.yaw = r.a.targetYaw = Math.PI * r.flip * (i % 2 ? 1 : -1) + (turning ? Math.sin((r.p - LEG + 1) * Math.PI / 2) * 0.6 : 0);
+    g.position.set(LANES[i], this.gy + hop, clamp(z, Z0 - 3, Z0 + LEG + 0.6));
+    const back = wh.dir < 0 && r.p >= 0; r.flip += ((back ? 1 : 0) - r.flip) * Math.min(1, dt * 6);
+    r.a.yaw = r.a.targetYaw = Math.PI * r.flip * (i % 2 ? 1 : -1) + (turning ? Math.sin((r.p - turnAt + 1) * Math.PI / 2) * 0.6 : 0);
     if (r.a.anim && r.a.anim.cur && r.jump < 0 && r.stun <= 0) r.a.anim.cur.speed = clamp(r.v / 2.2, 0.8, 3.6);
     if (r.me && r.v > 6.6) { this.dustT = (this.dustT || 0) - dt; if (this.dustT <= 0) { this.dustT = 0.12; s.burst('dust', [g.position.x, this.gy + 0.08, g.position.z], { n: 1, scale: 0.7 }); } }
     // the line
@@ -231,7 +241,8 @@ export default class Dash {
   popAt3(r, h) { const p = r.a.g.position; return [p.x, p.y + h, p.z]; }
   cam(snap) {
     const s = this.s, r = this.me; if (!r) return;
-    const g = r.a.g.position, dir = r.p > LEG ? -1 : 1, lead = clamp(r.v * 0.25, 0, 2) * dir;
+    const g = r.a.g.position, dir = where(Math.max(0, r.p)).dir, lead = clamp(r.v * 0.25, 0, 2) * dir;
+    if (r.fin != null && this.endT > 0.6) { s.look(new V3(g.x, g.y + 0.55, g.z), 4.2, 205, 10, 38, { rate: 2.5 }); return; }   // the finish: a front shot of the winner's grin
     const fast = this.feverT > 0 ? 6 : r.v > 6.6 ? 3 : 0;
     s.look(new V3(15.2, this.gy + 0.7, clamp(g.z + lead, Z0 - 2, Z0 + LEG + 1)), this.done ? 6.5 : 8.6, 90 + dir * 8, 11, 40 + fast, { rate: 4, snap });
   }
@@ -244,9 +255,9 @@ export default class Dash {
     ui.panel(6, 6, 64, 34, {}); ui.text(PLACE[place - 1], 14, 14, place === 1 ? T.amber2 : T.text, { scale: 2 }); ui.text('/4', 52, 19, T.dim, { mini: true });
     const bx = 78, bw = Math.min(W - bx - 70, 240), byy = 14;
     ui.panel(bx - 6, 6, bw + 12, 22, { thin: true });
-    ui.rect(bx, byy + 2, bw, 4, T.track || '#3a2a2e'); ui.rect(bx + bw / 2 - 1, byy, 2, 8, '#ffc93a');
+    ui.rect(bx, byy + 2, bw, 4, T.track || '#3a2a2e'); for (let k = 1; k < LEGS; k++) ui.rect(bx + Math.round((bw * k) / LEGS) - 1, byy, 2, 8, k % 2 ? '#ffc93a' : '#f4f0e6');
     this.runners.slice().reverse().forEach((q) => { const x = bx + clamp01(q.p / RACE) * bw; ui.rrect(x - 3, byy + 1, 6, 6, q.me ? T.red : '#a89a8c', 3); if (q.me) ui.rect(x - 1, byy - 2, 2, 2, T.red); });
-    ui.text('GOAL', bx + bw - 1, byy + 10, T.dim, { mini: true, align: 'right' }); ui.text('TURN', bx + bw / 2, byy + 10, T.dim, { mini: true, align: 'center' });
+    ui.text('GOAL', bx + bw - 1, byy + 10, T.dim, { mini: true, align: 'right' }); ui.text('LAP 2', bx + bw / 2, byy + 10, T.dim, { mini: true, align: 'center' });
     drawClock(ui, W - 40, 6, this.time);
     drawCombo(ui, 10, 48, this.combo, this.comboT, { hot: 12, label: 'STREAK' });
     // the beat bar: rings close on the centre on every beat; hurdle markers slide in to the jump zone
@@ -284,6 +295,6 @@ export default class Dash {
     if (off < 0.05 && Math.round(b) !== this.tapBeat) inp.tap = true;
   }
   debug() { const r = this.me; return { t: +this.time.toFixed(1), p: r && +r.p.toFixed(1), v: r && +r.v.toFixed(2), place: this.placeOf(r), perfects: this.perfects, combo: this.combo, others: this.runners.slice(1).map((q) => +q.p.toFixed(1)) }; }
-  dispose() { if (this.marshal) this.marshal.play('idle'); }
+  dispose() { if (this.marshal) { if (this.marshalWas) { const [x, z, yaw, y] = this.marshalWas; this.marshal.place(x, z, yaw, y); } this.marshal.play('idle'); } }
 }
 void lerp; void boing;

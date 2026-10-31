@@ -1,6 +1,7 @@
-// A small kit for modelled (not voxel) props: primitives appended into one vertex-coloured geometry that also
-// carries a per-vertex roughness / metalness (aRM), so a car's paint, glass, rubber and chrome, or a lamp's cast
-// iron and glass, are one mesh and one draw call with one shared material (VPBR).
+// A small sculpting kit: primitives (lathes, tubes, bevelled boxes, extruded profiles) appended into one vertex-
+// coloured geometry. props_real.js sculpts its street furniture and cars with it and then voxelises them; the geometry
+// can also carry a per-vertex roughness / metalness (aRM) for the shared VPBR material, which the baked prop statics
+// (build.js) use.
 import * as THREE from '../../../vendor/three.module.js';
 
 const TAU = Math.PI * 2;
@@ -89,31 +90,3 @@ export function vpbr(m) {
   return m;
 }
 export const VPBR = vpbr(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1, metalness: 1 }));
-
-// ---------------------------------------------------------------- foliage
-/** a leaf-cluster texture, hand-painted pixel art: dozens of little leaves on transparent (alpha-tested), each
- *  shaded with a four-step ramp (lit edge up-left, a dark rim down-right, a midrib), in near-greys so the vertex
- *  colours tint them per species; nearest-filtered like the city's other pixel textures */
-let LEAF = null;
-export function leafTexture() {
-  if (LEAF) return LEAF;
-  const S = 128, cv = document.createElement('canvas'); cv.width = cv.height = S; const g = cv.getContext('2d'), r = rng(9127);
-  const im = g.createImageData(S, S), d = im.data, RAMP = [[96, 104, 70], [150, 160, 112], [196, 206, 150], [236, 242, 196]];
-  const put = (x, y, c) => { if (x < 0 || y < 0 || x >= S || y >= S) return; const i = (y * S + x) * 4; d[i] = c[0]; d[i + 1] = c[1]; d[i + 2] = c[2]; d[i + 3] = 255; };
-  // twigs first, leaves over them
-  for (let i = 0; i < 7; i++) { const a = r() * Math.PI * 2; for (let t = 0; t < S * 0.36; t++) put(Math.round(S / 2 + Math.cos(a) * t), Math.round(S / 2 + Math.sin(a) * t + t * t * 0.004), [88, 72, 54]); }
-  for (let i = 0; i < 120; i++) {
-    const a = r() * Math.PI * 2, rr = Math.sqrt(r()) * S * 0.42, cx = S / 2 + Math.cos(a) * rr, cy = S / 2 + Math.sin(a) * rr, L = 4 + r() * 4, Wd = L * (0.45 + r() * 0.2), rot = r() * Math.PI, ca = Math.cos(rot), sa = Math.sin(rot), tone = r() < 0.2 ? -1 : r() < 0.25 ? 1 : 0;
-    for (let y = Math.floor(cy - L - 1); y <= cy + L + 1; y++) for (let x = Math.floor(cx - L - 1); x <= cx + L + 1; x++) {
-      const u = ((x - cx) * ca + (y - cy) * sa) / L, v = (-(x - cx) * sa + (y - cy) * ca) / Wd, q = u * u + v * v * (1 + u * 0.6);
-      if (q > 1) continue;
-      let k = q > 0.7 ? 0 : 2; if (Math.abs(v) < 0.14) k = 1; else if ((x - cx) + (y - cy) < -L * 0.4 && q < 0.7) k = 3; else if (q > 0.45 && (x - cx) + (y - cy) > 0) k = 1;
-      put(x, y, RAMP[Math.max(0, Math.min(3, k + tone))]);
-    }
-  }
-  // a solid patch in the bottom-left corner (uv ≈ 0.05): the opaque cores of the clusters and palm leaflets sample it
-  for (let y = S - 15; y < S; y++) for (let x = 0; x < 15; x++) put(x, y, RAMP[(x + y) % 5 === 0 ? 1 : 2]);
-  g.putImageData(im, 0, 0);
-  const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; t.minFilter = THREE.NearestMipmapLinearFilter; t.magFilter = THREE.NearestFilter; t.anisotropy = 4;
-  LEAF = t; return t;
-}

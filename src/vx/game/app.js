@@ -103,7 +103,7 @@ export class VxApp {
   // ------------------------------------------------------------------ loop
   loop(now) {
     requestAnimationFrame(this.loop);
-    const dt = Math.min(0.05, Math.max(0, (now - this.last) / 1000)); this.last = now; this.t += dt;
+    const dt = Math.min(this.dtCap || (this.dtCap = +(this.params.get('dtcap') || 0.05)), Math.max(0, (now - this.last) / 1000)); this.last = now; this.t += dt;   // ?dtcap=: headless tests at ~1 fps
     // safety floor only: average the frame time over 3 s; if it stays under ~22 fps twice running, step the resolution
     // down 10% (never below 70%); above ~50 fps step back up. (Headless / ?res=… runs never adapt.)
     if (!this.params.get('res') && !navigator.webdriver) { const P = this.perf || (this.perf = { n: 0, sum: 0, slow: 0 }); P.n++; P.sum += (now - (P.prev || now)) / 1000; P.prev = now;
@@ -154,7 +154,7 @@ export class VxApp {
     const st = this.stage, r = st.r, scene = st.scene;
     // the speaker wears the world's ink outline: rendered with depth, then the composite's ink pass (2 px at this 2× size)
     if (!this._pt) { this._pt = { rt: new THREE.WebGLRenderTarget(S * 2, S * 2, { depthTexture: new THREE.DepthTexture(S * 2, S * 2, THREE.UnsignedIntType) }), ink: new THREE.WebGLRenderTarget(S * 2, S * 2), cam: new THREE.PerspectiveCamera(18, 1, 0.05, 30) }; this._pt.rt.texture.colorSpace = this._pt.ink.texture.colorSpace = THREE.SRGBColorSpace; }
-    const { rt, cam } = this._pt, head = a.headPos(new THREE.Vector3()); head.y -= 0.22;
+    const { rt, cam } = this._pt, head = a.headPos(new THREE.Vector3()); head.y -= a.kind === "person" ? 0.02 : 0.22;   // [ui] frame the face
     const yaw = a.yaw, d = 1.7;
     cam.position.set(head.x + Math.sin(yaw + 0.35) * d, head.y + 0.1, head.z + Math.cos(yaw + 0.35) * d); cam.lookAt(head.x, head.y - 0.06, head.z); cam.updateMatrixWorld();
     // render only the speaker, on a transparent background

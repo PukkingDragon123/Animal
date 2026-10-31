@@ -178,7 +178,7 @@ export function pickHero(app, o = {}) {
           peds[i].ring.material.color.setHex(on ? (i ? 0xff9ac8 : 0xffc060) : 0x6a4a40);
           const b = on && S.selT < 0.6 ? Math.sin(S.selT * 18) * Math.exp(-S.selT * 6) * 0.06 : 0; p.m.group.scale.set(1 + b, 1 - b, 1 + b);
         }
-        D.posGoal.set(S.sel ? 0.35 : -0.35, 1.55, 7.2); D.atGoal.set(S.sel ? 0.3 : -0.3, 1.02, 0);
+        D.posGoal.set(S.sel ? 0.35 : -0.35, 1.5, 6.4); D.atGoal.set(S.sel ? 0.3 : -0.3, 1.04, 0);
         D.update(dt);
         D.draw(u);
         // ---- the pixel overlay

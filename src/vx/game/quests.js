@@ -57,6 +57,8 @@ export class Quests {
     this.app.toast((Q.main ? 'Chapter complete: ' : 'Quest complete: ') + Q.title + (Q.reward && Q.reward.money ? `  +${Q.reward.money}` : ''), { icon: 'check', color: T.green, dur: 3 });
     this.app.audio.sfx && this.app.audio.sfx('reward');
     if (!Q.main) this.celebrate(Q);
+    // [moments] the opening is over: the city's clock starts in the late afternoon (moments.js runs it from here)
+    if (id === 'day1') { const st = this.app.state, f = st.flags || (st.flags = {}); if (st.time && !f.todOn) { f.todOn = 1; if (st.time.hour < 15) st.time.hour = 16.5; } }
     this.app.save();
   }
   /** a side quest done: a QUEST COMPLETE card, the jingle, you pump a fist and your partner cheers */

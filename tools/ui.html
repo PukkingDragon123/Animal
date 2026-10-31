@@ -92,65 +92,49 @@ function fakeApp() {
 let hud = null, app = null;
 function hoverAt(x, y, down = false) { ui.ptr.x = x; ui.ptr.y = y; ui.ptr.down = down; }
 function gallery() {
-  const s = ui.s;
-  // panels
-  ui.panel(6, 6, 118, 70, { dots: true });
-  ui.banner(12, 12, 'PANELS', { icon: 'star', color: T.cyan });
-  ui.text('Carved oak with', 14, 32, T.text, { shadow: T.woodDD });
-  ui.text('a soft bevel', 14, 42, T.dim, { shadow: T.woodDD });
-  ui.panel(14, 54, 50, 15, {}); ui.text('small', 20, 58, T.text, { shadow: T.woodDD });
-  ui.panel(68, 54, 50, 15, { paper: true }); ui.text('paper', 74, 58, T.paperText);
-  ui.panel(130, 6, 96, 70, { paper: true, leaves: true });
-  ui.text('PARCHMENT', 178, 14, null, { align: 'center', bold: true, grad: [T.amber, T.amber2], outline: T.ink });
-  for (let i = 0; i < 5; i++) ui.bigIcon(['heart', 'star', 'coin', 'bag', 'party'][i], 138 + i * 17, 30);
-  ui.text('Dark-brown ink', 140, 50, T.paperText, { bold: true });
-  ui.text('MINI LABELS 0123', 140, 62, T.paperDim, { mini: true });
+  // a sheet of the pixel GUI on the 640×360 art grid
+  // party card (portrait slot with a stand-in emblem: the game puts the live 3D render there)
+  ui.panel(8, 8, 214, 76, {});
+  ui.panel(14, 16, 54, 54, { thin: true, r: 1, fill: T.creamD, shadow: false }); ui.emblem('party', 41, 43, 2);
+  ui.panel(74, 14, 116, 13, { thin: true, r: 1, fill: T.creamL, shadow: false }); ui.gem(79, 20, T.copperL, 2); ui.gem(184, 20, T.copperL, 2);
+  ui.text('REN', 132, 18, T.text, { mini: true, bold: true, align: 'center' });
+  ui.panel(192, 13, 22, 15, { thin: true, r: 1, fill: T.copperL, shadow: false }); ui.text('32', 203, 17, '#ffffff', { mini: true, bold: true, align: 'center', outline: T.copperD });
+  ui.text('ROOKIE TAMER', 144, 31, T.dim, { mini: true, align: 'center' });
+  [['HP', 1, 'green', '43/43'], ['BOND', 0.86, 'blue', '54/61'], ['EXP', 0.62, 'orange', '196/225']].forEach(([l, v, c, t], i) => { const y = 41 + i * 12; ui.bar(76, y, 136, 3, v, { color: c, id: 'gc' + i, shine: false }); ui.text(l, 75, y + 5, T.dim, { mini: true }); ui.text(t, 213, y + 5, T.dim, { mini: true, align: 'right' }); });
+  // icon buttons on plinths
+  ['bag', 'battle', 'quest', 'map', 'shelf'].forEach((ic, i) => ui.plinthButton(26 + i * 42, 94, ic, { size: 32 }));
+  // thick capsule bars with brass clamps
+  ['dark', 'red', 'blue', 'green'].forEach((c, i) => ui.bar(14, 150 + i * 20, 170, 10, [0.75, 0.82, 0.64, 0.9][i], { color: c, id: 'gt' + i, trail: false }));
+  // value pills
+  ui.valuePill(200, 148, 92, 'coin', '2183', { color: T.amber });
+  ui.valuePill(200, 170, 92, 'sparkle', '52', { color: T.blue });
+  ui.valuePill(200, 192, 92, 'clock', '10:45', { color: T.red });
   // buttons in all states
-  ui.panel(232, 6, 118, 116, {});
-  ui.text('BUTTONS', 240, 12, T.amber, { mini: true, shadow: T.woodDD });
-  ui.button(240, 20, 102, 18, 'Normal', { icon: 'play', color: T.amber });
-  hoverAt(250, 50); ui.button(240, 42, 102, 18, 'Hover', { icon: 'star', color: T.cyan }); hoverAt(-1, -1);
-  hoverAt(250, 72, true); ui.button(240, 64, 102, 18, 'Pressed', { icon: 'check', color: T.green }); hoverAt(-1, -1);
-  ui.button(240, 86, 50, 16, 'Active', { active: true, color: T.pink });
-  ui.button(294, 86, 48, 16, 'Off', { disabled: true });
-  ui.button(240, 105, 30, 12, 'mini', { mini: true, color: T.amber }); ui.iconButton(274, 103, 18, 'menu', { color: T.cyan }); ui.iconButton(296, 103, 18, 'gear', { color: T.amber }); ui.iconButton(318, 103, 18, 'save', { color: T.green, badge: 2 });
-  // bars
-  ui.panel(356, 6, 118, 70, {});
-  ui.text('BARS', 364, 12, T.amber, { mini: true, shadow: T.woodDD });
-  ui.bar(364, 21, 100, 5, 0.82, { seg: 5, id: 'g1' });
-  ui.bar(364, 31, 100, 5, frameN < 40 ? 0.9 : 0.38, { seg: 5, id: 'g2' });
-  ui.bar(364, 41, 100, 5, 0.16, { seg: 5, id: 'g3' });
-  ui.bar(364, 51, 64, 3, 0.7, { color: T.cyan, id: 'g4' }); ui.bar(432, 51, 32, 3, 0.4, { color: T.amber, id: 'g5' });
-  ui.bar(364, 59, 100, 2, 0.55, { color: T.pink, id: 'g6' });
-  ui.text('HP  ENERGY  ULT', 364, 66, T.dim, { mini: true, shadow: T.woodDD });
-  // keycaps + prompt + joystick
-  ui.panel(356, 80, 118, 42, {});
-  let kx = 362; for (const k of ['E', 'Esc', 'Tab', '↑', '←', '↓', '→']) kx += ui.keycap(kx, 86, k) + 2;
-  ui.keycap(362, 103, 'Space'); ui.keycap(396, 103, 'Enter', { pressed: true }); ui.bigIcon('dpad', 432, 102); ui.bigIcon('hand', 448, 102);
-  // icon sheet (small + big)
-  ui.panel(6, 80, 222, 96, {});
-  const names = Object.keys(BIG);
-  names.forEach((n, i) => ui.bigIcon(n, 12 + (i % 15) * 14, 86 + Math.floor(i / 15) * 15));
-  const sm = Object.keys(SMALL);
-  sm.forEach((n, i) => ui.icon(n, 12 + (i % 24) * 9, 148 + Math.floor(i / 24) * 9, [T.text, T.amber, T.cyan, T.pink, T.green][i % 5]));
-  // banner + toasts
-  ui.banner(234, 128, 'QUEST LOG', { icon: 'book', color: T.moss });
-  // prompts over the "world": icon bubbles (the words show on hover / the first time)
-  ui.prompt(268, 178, 'E', 'Talk to Mika', { label: 'never' });
-  ui.prompt(304, 178, 'E', 'Enter the bakery', { label: 'never' });
-  ui.prompt(340, 178, 'E', 'Watch TV', { icon: 'tv', label: 'never' });
-  hoverAt(410, 165); ui.prompt(410, 178, 'E', 'Pick up the leaf', {}); hoverAt(-1, -1);
-  // joystick
-  ui.joystick(30, 222, 22, 0.55, -0.45, true);
-  ui.joystick(80, 230, 16, 0, 0, false, { ghost: true });
-  // hud bits
-  ui.hudClock(108, 182, { day: 3, time: 7.5, weather: 'clear' });
-  ui.hudClock(108, 212, { day: 4, time: 22.2, weather: 'storm' });
-  ui.hudMoney(108, 244, frameN < 30 ? 1200 : 1500);
-  ui.hudLocation(198, 186, 'Chinatown', 'San Francisco');
-  ui.partyBar(198, 216, party, { maxW: 200, full: 2 });
-  ui.minimap(404, 186, 70, 64, drawSampleMap, { label: 'Grant Ave' });
-  ui.objective(198, 250, 'Find Grandma at the bakery', { maxW: 200 });
+  ui.panel(232, 8, 132, 132, {});
+  ui.button(244, 18, 108, 22, 'Normal', { icon: 'play' });
+  hoverAt(260, 52); ui.button(244, 46, 108, 22, 'Hover', { icon: 'star', color: T.amber }); hoverAt(-1, -1);
+  hoverAt(260, 80, true); ui.button(244, 74, 108, 22, 'Pressed', { icon: 'check', color: T.green }); hoverAt(-1, -1);
+  ui.button(244, 102, 52, 18, 'Active', { active: true, color: T.blue, frame: 'copper' });
+  ui.button(300, 102, 52, 18, 'Off', { disabled: true });
+  ui.roundButton(256, 128, 7, 'menu', { color: T.cream }); ui.roundButton(282, 128, 7, 'gear', { color: T.cream }); ui.roundButton(308, 128, 7, 'save', { color: T.green, badge: 2 }); ui.roundButton(336, 128, 7, 'lens', { color: T.amber, sel: true });
+  // name plate banner, keycaps, a prompt bubble
+  ui.banner(376, 12, 'QUEST LOG', { icon: 'book' });
+  let kx = 376; for (const k of ['E', 'Esc', 'Tab', 'R']) kx += ui.keycap(kx, 32, k) + 3;
+  ui.prompt(400, 96, 'E', 'Talk', { label: 'never' }); ui.prompt(430, 96, 'E', 'Door', { label: 'never' }); hoverAt(462, 80); ui.prompt(462, 96, 'E', 'Open the fridge', { icon: 'fridge' }); hoverAt(-1, -1);
+  // panels: plain, a dark tag, a pill
+  ui.panel(376, 108, 150, 40, {}); ui.text('Dark-brown ink on cream', 384, 118, T.text); ui.text('SMALL PIXEL LABELS 0123', 384, 130, T.dim, { mini: true });
+  // icon sheet
+  ui.panel(310, 214, 322, 138, {});
+  const names = ['phone', 'party', 'book', 'bag', 'map', 'quest', 'gear', 'lens', 'save', 'coin', 'star', 'heart', 'home', 'close', 'check', 'radar', 'fridge', 'shelf', 'soda', 'onigiri', 'candy', 'bun', 'potion', 'trophy', 'talk', 'pin', 'egg', 'music', 'battle', 'sparkle'];
+  names.forEach((n, i) => ui.bigIcon(n, 318 + (i % 15) * 20, 222 + Math.floor(i / 15) * 22, null, { scale: 16 / 12 }));
+  Object.keys(BIG).slice(0, 26).forEach((n, i) => ui.bigIcon(n, 318 + (i % 13) * 23, 270 + Math.floor(i / 13) * 16));
+  ui.text('Detailed 16 px and classic 12 px pixel icons', 318, 334, T.dim, {});
+  // HUD bits over the world
+  ui.hudLocation(520, 160, 'Chinatown', 'San Francisco');
+  ui.minimap(552, 8, 80, 80, drawSampleMap, { label: 'Grant Ave' });
+  ui.joystick(40, 300, 20, 0.55, -0.45, true);
+  ui.objective(14, 238, 'Find Grandma at the bakery', { maxW: 260 });
+  ui.partyBar(84, 280, party, { maxW: 220 });
 }
 function promptsSheet() {
   ui.panel(4, 4, W - 8, 30, {}); ui.text('Prompts: an icon bubble + the key. Words only on hover (or briefly, the first time).', 12, 15, T.text, { shadow: T.woodDD });

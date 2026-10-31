@@ -9,7 +9,7 @@ import { mix, shift, pack, bayer } from '../../color.js';
 
 export const T = {
   // --- core tokens (imported all over the game)
-  ink: '#2b1a17',                        // the dark outline
+  ink: '#120e10',                        // the outline: a crisp 1-px near-black around every panel, button, bar, disc, glyph and icon
   panel: '#f3e6cf', panel2: '#e5d2b4',   // cream card / its shade (dark-brown text sits on these)
   edge: '#a35d3c', edgeL: '#d48c5c', hi: '#f6c99a',                     // copper frame + its lit rim
   text: '#4a2c22', dim: '#8c6650',       // dark-brown ink, its softer tone (outlined text over the world turns light)
@@ -20,7 +20,7 @@ export const T = {
   // --- extended
   deep: '#1e1416', night: '#2a2030', plum: '#6a4a68', plum2: '#3e2a3e', plumL: '#9a7a98',
   coral: '#e8743a', coral2: '#a8481e', coralL: '#ffbc94', amberL: '#ffe8a0', gold: '#ffd860', brass: '#e8b84a', brassD: '#9a6a1a',
-  cyanL: '#bfeaf6', violet: '#8a62d0', mint: '#8fe0b0', blue: '#3e8ee8', shade: '#1a0f0c', glass: '#5a3a2a',
+  cyanL: '#bfeaf6', violet: '#8a62d0', mint: '#8fe0b0', blue: '#3e8ee8', shade: '#0c0809', glass: '#5a3a2a',
   textD: '#b08a70', key: '#fbf3e3', keyD: '#e5d2b4', keySide: '#b8906c',
   // --- materials
   wood: '#a35d3c', woodL: '#d48c5c', woodD: '#6b3a28', woodDD: '#3e2218', grain: '#8a4e32',

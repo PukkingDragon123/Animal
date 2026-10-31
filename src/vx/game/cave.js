@@ -26,10 +26,9 @@ import { view } from './cinema.js';
 import { MOODS } from '../stage.js';
 import { POST } from '../render/look.js';
 import { visit } from './quests.js';
-import { SPOT, RAIL, WATER, pieceMat, lantern as lanternGeo } from '../city/districts/cave_build.js';
+import { SPOT, RAIL, WATER } from '../city/districts/cave_build.js';
 import { MOUTH, MOUTH_OUT, rumble } from '../city/districts/cave_mouth.js';
-import { Piece } from '../city/districts/cave_geo.js';
-import * as K from '../city/districts/cave_tex.js';
+import { voxMesh } from '../city/districts/cave_props.js';
 
 const PI = Math.PI;
 const sfx = (app, n, o) => { if (app.audio && app.audio.sfx) app.audio.sfx(n, o); };
@@ -50,7 +49,7 @@ export function CS(app) {
 // ==================================================================== the look: a dark, cold, glowing mood
 /** registers the 'cave' mood (stage.js MOODS) and its grade (look.js POST) — no sun, a dim cold fill, deep haze */
 export function registerMood() {
-  if (!MOODS.cave) MOODS.cave = { ink: '#100c12', sun: 0x9ab4d8, sunI: 0.0, sunDir: [0.2, 1, 0.15], hemiSky: 0x3e4c66, hemiGround: 0x221a16, hemiI: 0.4, fog: 0x06090d, hazeP: [6, 0.05, 0.86, 0.02], skyP: { night: 1, sunElev: -0.4, turbidity: 2, rayleigh: 1, scale: 0.15 }, clouds: 0, env: 0.2, glow: 2.6, emissive: 1, pools: 1.05, halo: 0.6, ao: 0.95, exposure: 1.6 };
+  if (!MOODS.cave) MOODS.cave = { ink: '#100c12', sun: 0x9ab4d8, sunI: 0.0, sunDir: [0.2, 1, 0.15], hemiSky: 0x52648a, hemiGround: 0x2a2018, hemiI: 0.95, fog: 0x070b10, hazeP: [9, 0.035, 0.78, 0.02], skyP: { night: 1, sunElev: -0.4, turbidity: 2, rayleigh: 1, scale: 0.15 }, clouds: 0, env: 0.2, glow: 2.6, emissive: 1, pools: 1.05, halo: 0.6, ao: 0.95, exposure: 1.75 };
   if (!POST.cave) POST.cave = { bloom: 0.36, threshold: 0.8, sat: 1.1, contrast: 0.13, wb: [0.97, 1.0, 1.05], vig: 0.36, lift: 0.004 };
 }
 
@@ -110,7 +109,7 @@ export async function enterCave(app, o = {}) {
     me.play('idle');
     await app.say('', 'Something deep inside the hill rumbles — low, slow, like breathing.');
     rumble(app, 0.16);
-    await cin.move(view([MOUTH.x, my + 1.2, MOUTH.z + 3.4], 1.4, 180, 3), { dur: 2.4, ease: (t) => t * t });
+    await cin.move(view([MOUTH.x, my + 1.2, MOUTH.z + 1.75], 1.3, 180, 3), { dur: 2.4, ease: (t) => t * t });
     clearInterval(puff);
     await cin.veilTo(1, 600, '#000000');
     await cin.end({ release: false });
@@ -216,11 +215,16 @@ export function tick(R, dt) {
 // ---- the lantern in your hand
 function lanternTick(R, dt) {
   const app = R.app, w = app.world, me = w.player;
-  if (!R.lan) { const P = new Piece(); lanternGeo(P, '', 0, 0, 0, K.rustTex(), K.lanternTex()); R.lan = P.build(pieceMat); R.lan.scale.setScalar(0.85); R.root.add(R.lan); R.lanP = new THREE.Vector3(); R.sw = { x: 0, z: 0, vx: 0, vz: 0 }; }
+  if (!R.lan) {
+    // the voxel lantern hangs from its bail under a pivot at the hand (so it swings from the top)
+    R.lan = new THREE.Group(); const v = voxMesh('cv_lantern', app.stage.mats, { ownGlow: true }); v.scale.setScalar(0.85); v.position.y = -0.62; R.lan.add(v); R.root.add(R.lan);
+    R.lanGlow = []; v.traverse((o) => { if (o.userData.part === 'glow') R.lanGlow.push(o.material); });
+    R.lanP = new THREE.Vector3(); R.sw = { x: 0, z: 0, vx: 0, vz: 0 };
+  }
   if (!me) { R.lan.visible = false; R.lamp.intensity = 0; return; }
   const b = me.m && me.m.h && me.m.h.b && (me.m.h.b.handL || me.m.h.b.handR);
-  if (b) { b.updateWorldMatrix(true, false); _v.setFromMatrixPosition(b.matrixWorld); _v.y -= 0.2; }
-  else _v.set(me.g.position.x + Math.sin(me.yaw + 1.4) * 0.32, me.g.position.y + 0.82, me.g.position.z + Math.cos(me.yaw + 1.4) * 0.32);
+  if (b) { b.updateWorldMatrix(true, false); _v.setFromMatrixPosition(b.matrixWorld); _v.y -= 0.04; }
+  else _v.set(me.g.position.x + Math.sin(me.yaw + 1.4) * 0.32, me.g.position.y + 0.95, me.g.position.z + Math.cos(me.yaw + 1.4) * 0.32);
   // a pendulum: the lantern lags behind the hand and swings back
   const L = R.lan, sw = R.sw, ax = (_v.x - R.lanP.x) / Math.max(dt, 1e-3), az = (_v.z - R.lanP.z) / Math.max(dt, 1e-3);
   R.lanP.copy(_v);
@@ -233,8 +237,8 @@ function lanternTick(R, dt) {
   const fl = 0.9 + 0.06 * Math.sin(R.t * 13.1) + 0.04 * Math.sin(R.t * 7.3 + 1.2) + (Math.random() - 0.5) * 0.03;
   const bt = app.battle && app.battle.active;
   if (bt && app.battle.cx !== undefined) { R.lamp.position.set(app.battle.cx, (app.battle.gy || 0) + 3.4, app.battle.cz); R.lamp.intensity = 22 * R.lk; R.lamp.distance = 16; }
-  else { R.lamp.position.set(_v.x, _v.y + 0.12, _v.z); R.lamp.intensity = 11 * R.lk * fl; R.lamp.distance = 14; }
-  L.traverse((o) => { if (o.material && o.material.emissiveMap) o.material.emissiveIntensity = 2.4 * Math.max(0.15, R.lk) * fl; });
+  else { R.lamp.position.set(_v.x, _v.y - 0.3, _v.z); R.lamp.intensity = 16 * R.lk * fl; R.lamp.distance = 16; }
+  const g0 = (app.stage.mood && app.stage.mood.glow) || 1; for (const m of R.lanGlow) m.color.setScalar(g0 * Math.max(0.12, R.lk) * fl);
 }
 // ---- two accent lights hop to the nearest big glows (crystals, glowcaps, mine lamps, daylight)
 function accentTick(R, dt) {
@@ -262,10 +266,11 @@ function fxTick(R, dt) {
     else if (m.isMesh && mt.blending === THREE.AdditiveBlending) mt.opacity = (mt.userData.o0 ?? (mt.userData.o0 = mt.opacity)) * (0.85 + 0.15 * Math.sin(t * 0.7 + m.position.x));
   }
   // the Geode breathes (and flares on cue)
+  const g0 = (R.app.stage.mood && R.app.stage.mood.glow) || 1;
   for (const g of b.geodeMats || []) {
     const i = g.group === 'cv_geode' ? 3 : +g.group.slice(-1), want = (i < 3 ? R.flare[i] : (R.flare[0] + R.flare[1] + R.flare[2]) / 3) * (1 + 0.12 * Math.sin(t * 1.3 + i));
     g.k = (g.k ?? 1) + (want - (g.k ?? 1)) * (1 - Math.exp(-dt * 4));
-    g.m.emissiveIntensity = g.m.userData.glow0 * g.k;
+    if (g.basic) g.m.color.setScalar(g0 * g.k); else g.m.emissiveIntensity = g.m.userData.glow0 * g.k;
   }
   for (const h of b.heroes) if (h.x > 74 && h.x < 98 && h.z > 66 && h.z < 92) h.glowK = (R.flare[0] + R.flare[1] + R.flare[2]) / 3;
   for (const bm of R.beams) if (bm.material) bm.material.opacity = bm.userData.o * (0.8 + 0.2 * Math.sin(t * 6 + bm.userData.k));
@@ -504,7 +509,7 @@ async function mineOre(app, o) {
   sfx(app, 'hit_light', { pitch: 1.5 }); await app.wait(380);
   sfx(app, 'destroy_glass', { vol: 0.5, pitch: 1.3 }); echo(app, 'sparkle', 0.4, 1.2);
   w.burst('shard', [o.x, o.y + 0.45, o.z], { n: 10 }); w.burst('sparkle', [o.x, o.y + 0.5, o.z], { n: 16 });
-  const m = o.mesh; if (m) { const s0 = m.scale.x; await anim(280, (k) => { m.scale.setScalar(s0 * (1 - k * 0.92)); m.position.y = o.y - k * 0.1; }); m.visible = false; }
+  const m = o.mesh; if (m) { const s0 = m.scale.x; await anim(280, (k) => { m.scale.setScalar(s0 * (1 - k * 0.92)); m.rotation.y += 0.08; }); m.visible = false; }
   s.ore[o.id] = 1; S.addItem(app.state, 'lumen_ore', 1);
   const n = Object.keys(s.ore).length, tot = CUR ? CUR.built.dyn.ores.length : 10;
   app.toast(`+1 Lumen Ore  (${n}/${tot})`, { icon: 'star', color: T.cyan, dur: 2.2 });
@@ -618,8 +623,8 @@ async function openGate(app) {
   if (cin) { await cin.begin({ prefer: 270 }); await cin.cut(view([g.x, g.y + 1.8, g.z], 8, 255, 12)); cin.focus([g.x, g.y + 1.5, g.z], { band: 0.2 }); }
   // the light floods the crystal until it rings… and shatters
   sfx(app, 'charge', { vol: 0.6, pitch: 0.8 }); echo(app, 'furin', 0.5, 0.9);
-  const mats = []; g.mesh.traverse((o) => { if (o.material && o.material.emissiveMap) mats.push([o.material, o.material.emissiveIntensity]); });
-  await anim(1600, (k) => { for (const [m, e0] of mats) m.emissiveIntensity = e0 * (1 + k * 5); g.mesh.position.x = Math.sin(k * 90) * 0.02 * k; });
+  const mats = [], g0 = (app.stage.mood && app.stage.mood.glow) || 1, x0 = g.mesh.position.x; g.mesh.traverse((o) => { if (o.userData.part === 'glow') mats.push(o.material); });
+  await anim(1600, (k) => { for (const m of mats) m.color.setScalar(g0 * (1 + k * 4)); g.mesh.position.x = x0 + Math.sin(k * 90) * 0.02 * k; });
   sfx(app, 'destroy_glass', { vol: 1 }); sfx(app, 'cryo', { vol: 0.7 }); echo(app, 'gong', 0.35, 1.4);
   if (cin) { cin.shake(0.45); cin.flash('#e8d0ff', 0.35); }
   g.mesh.visible = false; g.open();
@@ -649,7 +654,7 @@ const cartEnd = () => railLen() - 1.25;
 function placeCart(R, sv, tipped = false) {
   const m = R.built.dyn.cart.mesh; if (!m) return;
   const f = railFrame(sv), y = R.built.floorAt(f.x, f.z) + 0.04;
-  m.position.set(f.x, y, f.z); m.rotation.set(0, Math.atan2(-f.dz, f.dx), tipped ? 0.32 : 0);
+  m.position.set(f.x, y, f.z); m.rotation.set(0, Math.atan2(f.dx, f.dz), tipped ? 0.32 : 0);
   R.cartS = sv;
 }
 function unblockCartStart(R) {
@@ -699,7 +704,7 @@ function cartTick(R, dt) {
   if (R.cartS >= A.end) { R.cartAnim = null; A.res(); }
 }
 function flyPlank(R, x, y, z) {
-  const g = new THREE.Mesh(new THREE.BoxGeometry(rnd(0.8, 1.6), 0.06, 0.25), pieceMat(K.deckTex()));
+  const g = voxMesh('cv_board', R.app.stage.mats); g.scale.setScalar(rnd(0.5, 0.95));
   g.position.set(x, y, z); g.rotation.set(rnd(0, 6), rnd(0, 6), rnd(0, 6)); R.root.add(g);
   R.debris.push({ m: g, vx: rnd(-2.5, 2.5), vy: rnd(2, 5), vz: rnd(0.5, 4), sx: rnd(-6, 6), sz: rnd(-6, 6), life: 2.2 });
 }

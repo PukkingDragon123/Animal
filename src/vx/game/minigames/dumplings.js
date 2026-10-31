@@ -7,7 +7,7 @@
 import * as THREE from '../../../../vendor/three.module.js';
 import { T } from '../../../px/game/ui.js';
 import { SPECIES } from '../../../data/species.js';
-import { V3, clamp, clamp01, lerp, easeOut, boing, fmt, drawTimer, drawScore, drawCombo, keyRow, boxes, cyl, ball, WHITE, worldText } from './kit.js';
+import { V3, clamp, clamp01, lerp, easeOut, boing, fmt, drawTimer, drawScore, drawCombo, keyRow, voxel, WHITE, worldText } from './kit.js';
 
 const ROUND = 75, COOK = 4.2, PERF = [1.0, 1.42], BURN = 2.05;
 const TYPES = [
@@ -19,7 +19,7 @@ const STEAM_KEYS = ['j', 'k', 'l'];
 const TX0 = 145.45, TX1 = 146.15, TZ0 = 84.2, TZ1 = 86.3, TY = 0.92;          // the folding counter
 const SLOTS = [84.55, 85.2, 85.85];                                              // steamer z positions
 const QUEUE = [[147.35, 84.45], [147.35, 85.35], [147.35, 86.25]];
-const CUSTOMERS = ['pidgun', 'cabbunny', 'lemmo', 'zapanda', 'trashcoon', 'kappachi', 'strawbaa', 'gradcub', 'zapkit', 'woodbub', 'beatlet', 'pepperhorn'];
+const CUSTOMERS = ['pidgun', 'cabbunny', 'lemmo', 'zapanda', 'trashcoon', 'kappachi', 'strawbaa', 'mopzart', 'zapkit', 'woodbub', 'beatlet', 'pepperhorn'];
 
 export default class Dumplings {
   static howto = 'Fold the dough each Tokonmon wants, steam it, and pull the steamer while it glows gold. Burnt bottoms make Auntie sad!';
@@ -35,24 +35,26 @@ export default class Dumplings {
   async setup() {
     const s = this.s, root = s.root, gy = s.ground(146, 85.2, 0);
     this.gy = gy; const ty = gy + TY;
-    // the counter: legs, top, a red cloth skirt with gold trim, a dough board at the south end
-    root.add(boxes([
-      [TX0, gy, TZ0, TX0 + 0.06, ty, TZ0 + 0.06, '#5a3a24'], [TX1 - 0.06, gy, TZ0, TX1, ty, TZ0 + 0.06, '#5a3a24'], [TX0, gy, TZ1 - 0.06, TX0 + 0.06, ty, TZ1, '#5a3a24'], [TX1 - 0.06, gy, TZ1 - 0.06, TX1, ty, TZ1, '#5a3a24'],
-      [TX0 - 0.02, ty - 0.05, TZ0 - 0.02, TX1 + 0.02, ty, TZ1 + 0.02, '#a8804a'],
-      [TX1 + 0.0, gy + 0.3, TZ0, TX1 + 0.02, ty - 0.05, TZ1, '#c8282a'], [TX1 + 0.021, gy + 0.62, TZ0, TX1 + 0.03, gy + 0.7, TZ1, '#f0c040'],
-      [TX0 + 0.08, ty, 85.95, TX1 - 0.08, ty + 0.025, 86.25, '#d8b080'],
-    ]));
-    // three steamer stacks, each with a lid that lifts
+    // the folding counter: a wooden table with a red cloth skirt and gold trim, a dough board (voxels, 32 per metre)
+    const st = s.st, VX = 32, CW = Math.round((TX1 - TX0) * VX), CD = Math.round((TZ1 - TZ0) * VX), CH = Math.round(TY * VX);
+    const table = voxel(st, [CW + 2, CH + 2, CD], (F) => {
+      const wd = F.c('#a8804a'), wdD = F.c('#8a6038'), wdL = F.c('#c89a5a'), leg = F.c('#5a3a24'), cl = F.c('#c8282a'), clD = F.c('#9a1e22'), gold = F.c('#f0c040'), board = F.c('#d8b080'), boardD = F.c('#b8905a'), flour = F.c('#fbf3e3');
+      for (const [x, z] of [[1, 1], [CW - 2, 1], [1, CD - 2], [CW - 2, CD - 2]]) F.box(x, 0, z, x + 1, CH - 2, z + 1, leg);
+      F.box(0, CH - 1, 0, CW, CH, CD - 1, (x, y, z) => (y === CH ? ((x + (z >> 3)) % 5 === 0 ? wdD : z % 11 === 0 ? wdL : wd) : wdD));
+      F.box(CW + 1, 8, 0, CW + 1, CH - 1, CD - 1, (x, y, z) => (y < 10 ? gold : y > CH - 3 ? gold : ((z >> 2) + (y >> 2)) % 7 === 0 ? gold : (y + z) % 9 === 0 ? clD : cl));
+      F.box(4, CH + 1, CD - 11, CW - 4, CH + 1, CD - 2, (x, y, z) => ((x + z) % 6 === 0 ? flour : (z % 4 === 0 ? boardD : board)));
+    }, { vpm: VX, key: 'mg-dump-table', origin: [0, 0, 0] });
+    table.position.set(TX0, gy, TZ0); root.add(table);
+    // three bamboo steamer stacks (woven sides, a lid that lifts), 40 voxels per metre
+    const basket = (F, H, h0, h1, r) => { const b1 = F.c('#c8a060'), b2 = F.c('#a8804a'), b3 = F.c('#e0c080'), rim = F.c('#8a6038'); H.ring(F, 8, 8, h0, h1, r - 1.2, r, (x, y, z) => (y === h1 || y === h0 ? rim : ((Math.atan2(z - 8, x - 8) * 6 | 0) + y) % 2 ? b1 : y % 3 === 0 ? b3 : b2)); };
     this.slots = SLOTS.map((z, i) => {
       const g = new THREE.Group(); g.position.set((TX0 + TX1) / 2, ty, z); root.add(g);
-      const b1 = cyl(0.2, 0.2, 0.11, '#c8a060', 14); b1.position.y = 0.055; g.add(b1);
-      const b2 = cyl(0.205, 0.205, 0.02, '#a8804a', 14); b2.position.y = 0.11; g.add(b2);
-      const lid = new THREE.Group(); lid.position.y = 0.12; g.add(lid);
-      const l1 = cyl(0.19, 0.21, 0.07, '#d4b070', 14); l1.position.y = 0.035; lid.add(l1);
-      const knob = cyl(0.03, 0.03, 0.04, '#8a6a3a', 6); knob.position.y = 0.09; lid.add(knob);
-      const glow = new THREE.Mesh(new THREE.CylinderGeometry(0.23, 0.23, 0.2, 16, 1, true), new THREE.MeshBasicMaterial({ color: '#ffd860', transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide }));
-      glow.position.y = 0.1; g.add(glow);
-      return { i, g, lid, glow, b1, food: null, cook: 0, q: 1, type: null, puffT: 0, dinged: false, shake: 0 };
+      g.add(voxel(st, [17, 6, 17], (F, r, H) => { basket(F, H, 0, 5, 8); H.disc(F, 8, 8, 0, 0, 7, F.c('#8a6038')); }, { vpm: 40, key: 'mg-steamer' }));
+      const lid = new THREE.Group(); lid.position.y = 0.15; g.add(lid);
+      lid.add(voxel(st, [17, 5, 17], (F, r, H) => { const t = F.c('#d4b070'), tD = F.c('#b8905a'), k = F.c('#8a6038'); H.ring(F, 8, 8, 0, 1, 7, 8.2, F.c('#a8804a')); for (let y = 2; y < 4; y++) H.disc(F, 8, 8, y, y, 8 - (y - 1) * 1.4, (x, yy, zz) => ((x + zz) % 4 === 0 ? tD : t)); F.box(7, 4, 7, 9, 4, 9, k); }, { vpm: 40, key: 'mg-lid' }));
+      const glow = new THREE.Mesh(new THREE.CylinderGeometry(0.23, 0.23, 0.22, 16, 1, true), new THREE.MeshBasicMaterial({ color: '#ffd860', transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide }));
+      glow.position.y = 0.11; g.add(glow);
+      return { i, g, lid, glow, food: null, cook: 0, q: 1, type: null, puffT: 0, dinged: false, shake: 0 };
     });
     this.boardAt = new V3((TX0 + TX1) / 2, ty + 0.03, 86.1);
     // people: you behind the counter, Auntie at her cart, your partner minding the queue
@@ -63,7 +65,7 @@ export default class Dumplings {
   }
   async intro(cin) {
     const s = this.s, V = (x, y, z) => new V3(x, y, z), gy = this.gy;
-    await cin.cut({ target: V(146, gy + 1.5, 80), dist: 30, yaw: 10, pitch: 30 });
+    await cin.cut({ target: V(145.8, gy + 1, 84), dist: 24, yaw: 20, pitch: 64 });     // straight down onto Grant Lane, clear of the roofs
     cin.move({ target: V(145.6, gy + 1.0, 85.3), dist: 6.2, yaw: 24, pitch: 30 }, { dur: 3.2 });
     if (this.auntie) this.auntie.play('wave');
     if (s.hero) s.hero.play('cheer');
@@ -88,28 +90,35 @@ export default class Dumplings {
     const a = await s.mon(sp, [qx + 0.6, fromN ? 78 : 92, fromN ? 0 : Math.PI]).catch(() => null);
     if (!a) { this.queue[qi] = null; return; }
     c.a = a; this.allCust.push(c);
-    a.walkTo([[qx + 0.5, qz], [qx, qz]], { speed: 2.4 }).then(() => { c.arrived = true; a.faceTo(TX1, qz); a.play('idle'); s.audio.sfx('notification', { vol: 0.3, pitch: 1.3 + qi * 0.1 }); });
+    this.walk(c, [[qx + 0.5, qz], [qx, qz]], 2.4, () => { c.arrived = true; a.faceTo(TX1, qz); a.play('idle'); s.audio.sfx('notification', { vol: 0.3, pitch: 1.3 + qi * 0.1 }); });
   }
   leave(c, happy) {
     const s = this.s, a = c.a; this.queue[c.qi] = null; if (!a) return;
     if (happy) { a.play('win', { restart: true }); s.burst('heart', this.head(a), { n: 4 }); }
     else { a.play('cry', { restart: true }); s.burst('anger', this.head(a), { n: 1 }); }
-    setTimeout(() => { if (this.over || !a.g.parent) return; const z = a.g.position.z < 85.3 ? 76 : 94; a.walkTo([[a.g.position.x + 0.6, a.g.position.z], [a.g.position.x + 0.8, z]], { speed: 2.6 }).then(() => s.drop(a)); }, happy ? 900 : 700);
+    c.leaveIn = happy ? 0.9 : 0.7; c.leaving = true; this.leaving.push(c);
   }
   head(a) { const p = a.g.position; return [p.x, p.y + 0.9, p.z]; }
+  /** walk a customer along points (driven by the game clock, so it pauses and fast-forwards with the round) */
+  walk(c, pts, speed, done) { c.path = pts.slice(); c.speed = speed; c.done = done; c.a.play('walk', { restart: true }); }
+  stepWalk(c, dt) {
+    const a = c.a; if (!a || !c.path || !c.path.length) return;
+    const p = a.g.position, [tx, tz] = c.path[0], dx = tx - p.x, dz = tz - p.z, d = Math.hypot(dx, dz), st = c.speed * dt;
+    a.yaw = a.targetYaw = Math.atan2(dx, dz);
+    if (d <= st) { p.x = tx; p.z = tz; c.path.shift(); if (!c.path.length) { const f = c.done; c.done = null; c.path = null; if (f) f(); } }
+    else { p.x += (dx / d) * st; p.z += (dz / d) * st; }
+  }
   // ================================================================ steamers
-  clearSlot(sl) { if (sl.food) sl.g.remove(sl.food); sl.food = null; sl.type = null; sl.cook = 0; sl.dinged = false; sl.q = 1; sl.burnt = false; sl.lid.position.y = 0.12; sl.glow.material.opacity = 0; }
+  clearSlot(sl) { if (sl.food) sl.g.remove(sl.food); sl.food = null; sl.type = null; sl.cook = 0; sl.dinged = false; sl.q = 1; sl.burnt = false; sl.lid.position.y = 0.15; sl.glow.material.opacity = 0; }
+  /** a batch of dumplings (voxels, 80 per metre): bao (puffy, a red dot), har gow (pleated crescents), siu mai (open cups) */
   dumplingMesh(type, n = 3) {
-    const T0 = TYPES[type], g = new THREE.Group();
-    for (let i = 0; i < n; i++) {
-      const a = (i / n) * Math.PI * 2, x = Math.cos(a) * 0.08, z = Math.sin(a) * 0.08;
-      let m;
-      if (type === 0) { m = ball(0.065, T0.col, { seg: 10, seg2: 7 }); m.scale.y = 0.75; }
-      else if (type === 1) { m = ball(0.06, T0.col, { seg: 8, seg2: 6 }); m.scale.set(1.2, 0.65, 0.8); }
-      else { m = cyl(0.055, 0.05, 0.08, T0.col, 8); }
-      m.position.set(x, 0.05, z); g.add(m);
-      const dot = ball(0.018, T0.dot, { seg: 6, seg2: 4 }); dot.position.set(x, type === 2 ? 0.095 : 0.098, z); g.add(dot);
-    }
+    const st = this.s.st, g = new THREE.Group();
+    const one = voxel(st, [12, 9, 12], (F, r, H) => {
+      if (type === 0) { const w = F.c('#fbf3e3'), wD = F.c('#e5d2b4'), red = F.c('#e2403a'); H.ball(F, 5.5, 3.5, 5.5, 5.3, 4, 5.3, (x, y, z) => (y < 2 ? wD : (x + z) % 7 === 0 && y > 4 ? wD : w)); F.box(5, 7, 5, 6, 7, 6, red); }
+      else if (type === 1) { const p = F.c('#f8d0c8'), pD = F.c('#e8a898'), o = F.c('#e8743a'); H.ball(F, 5.5, 3, 5.5, 5.5, 3.6, 3.8, (x, y, z) => (y > 3 && x % 2 === 0 ? pD : p)); for (let x = 1; x < 11; x += 2) F.set(x, 6, 5, pD); F.box(5, 4, 3, 6, 5, 3, o); }
+      else { const y = F.c('#f0c040'), yD = F.c('#c89a2a'), o = F.c('#e8743a'), gr = F.c('#5cc24a'); H.disc(F, 5.5, 5.5, 0, 5, 4.6, (x, yy, z) => ((x + z + yy) % 5 === 0 ? yD : y)); H.disc(F, 5.5, 5.5, 6, 6, 3.6, o); F.set(5, 7, 5, gr); F.set(6, 7, 6, gr); }
+    }, { vpm: 80, key: 'mg-dumpling' + type });
+    for (let i = 0; i < n; i++) { const m = one.clone(); const a = (i / n) * Math.PI * 2; if (n > 1) m.position.set(Math.cos(a) * 0.075, 0, Math.sin(a) * 0.075); m.rotation.y = a; g.add(m); }
     return g;
   }
   /** a folded batch into the first free steamer */
@@ -117,8 +126,8 @@ export default class Dumplings {
     const s = this.s, sl = this.slots.find((x) => !x.type && x.type !== 0);
     if (!sl) { this.say('All steamers busy!', 1.2); s.audio.sfx('ui_error'); return false; }
     sl.type = type; sl.q = q; sl.cook = 0; sl.dinged = false; sl.burnt = false;
-    sl.food = this.dumplingMesh(type); sl.food.position.y = 0.11; sl.g.add(sl.food);
-    sl.lid.position.y = 0.42; sl.shake = 0.3;
+    sl.food = this.dumplingMesh(type); sl.food.position.y = 0.03; sl.g.add(sl.food);
+    sl.lid.position.y = 0.45; sl.shake = 0.3;
     s.audio.sfx('plop', { pitch: 1.2 }); s.burst('steam', [sl.g.position.x, sl.g.position.y + 0.3, sl.g.position.z], { n: 6 });
     return true;
   }
@@ -158,6 +167,9 @@ export default class Dumplings {
     for (const f of this.flying) { f.t += dt; const k = clamp01(f.t / f.dur); f.obj.position.lerpVectors(f.from, f.to, k); f.obj.position.y += Math.sin(k * Math.PI) * 0.6; f.obj.rotation.y += dt * 9; if (k >= 1) { f.done(); f.fin = true; } }
     this.flying = this.flying.filter((f) => !f.fin);
     for (const sl of this.slots) this.tickSlot(sl, dt, live);
+    if (live || this.over) for (const c of this.allCust) this.stepWalk(c, dt);
+    for (const c of this.leaving) { if (c.leaveIn > 0) { c.leaveIn -= dt; if (c.leaveIn <= 0 && c.a) { const a = c.a, z = a.g.position.z < 85.3 ? 76 : 94; this.walk(c, [[a.g.position.x + 0.6, a.g.position.z], [a.g.position.x + 0.8, z]], 2.6, () => { this.s.drop(a); c.gone = true; }); } } }
+    this.leaving = this.leaving.filter((c) => !c.gone);
     if (live) {
       this.t -= dt;
       if (this.t <= 5 && Math.ceil(this.t) !== Math.ceil(this.t + dt) && this.t > 0) s.audio.sfx('ui_tap', { pitch: 1.6, vol: 0.8 });
@@ -209,16 +221,17 @@ export default class Dumplings {
   tickSlot(sl, dt, live) {
     const s = this.s, p = sl.g.position;
     sl.shake = Math.max(0, sl.shake - dt); sl.g.rotation.z = Math.sin(s.t * 40) * sl.shake * 0.15;
-    if (sl.type === null || sl.type === undefined) { sl.lid.position.y += (0.12 - sl.lid.position.y) * Math.min(1, dt * 10); return; }
-    sl.lid.position.y += (0.12 - sl.lid.position.y) * Math.min(1, dt * 6);
+    if (sl.type === null || sl.type === undefined) { sl.lid.position.y += (0.15 - sl.lid.position.y) * Math.min(1, dt * 10); return; }
+    sl.lid.position.y += (0.15 - sl.lid.position.y) * Math.min(1, dt * 6) + (sl.cook >= PERF[0] && sl.cook < BURN ? Math.max(0, Math.sin(s.t * 18)) * 0.004 : 0);
     if (live) sl.cook += dt / COOK;
     const k = sl.cook;
     sl.puffT -= dt; if (sl.puffT <= 0 && k > 0.2) { sl.puffT = k >= PERF[0] && k <= PERF[1] ? 0.12 : 0.35; s.burst(k > PERF[1] ? 'smoke' : 'steam', [p.x + (s.rand() - 0.5) * 0.2, p.y + 0.3, p.z], { n: 1 }); }
     if (k >= PERF[0] && !sl.dinged) { sl.dinged = true; s.audio.sfx('notification', { pitch: 1.5 + sl.i * 0.15, vol: 0.7 }); sl.shake = 0.25; }
     sl.glow.material.opacity = k >= PERF[0] && k <= PERF[1] ? 0.25 + Math.sin(s.t * 12) * 0.12 : 0;
     if (k > PERF[1] && k < BURN) sl.shake = Math.max(sl.shake, 0.08);
-    if (k >= BURN && !sl.burnt) { sl.burnt = true; this.burnt++; this.combo = 0; s.audio.sfx('fire', { vol: 0.6 }); s.burst('smoke', [p.x, p.y + 0.3, p.z], { n: 16, scale: 1.4 }); s.shake(0.06); this.say('BURNT! Toss it (' + STEAM_KEYS[sl.i].toUpperCase() + ')', 1.6); if (this.auntie) this.auntie.play('angry', { restart: true }); sl.food.traverse((m) => { if (m.material && m.material.color) m.material.color.set('#3a2a22'); }); this.score = Math.max(0, this.score - 30); }
+    if (k >= BURN && !sl.burnt) { sl.burnt = true; this.burnt++; this.combo = 0; s.audio.sfx('fire', { vol: 0.6 }); s.burst('smoke', [p.x, p.y + 0.3, p.z], { n: 16, scale: 1.4 }); s.shake(0.06); this.say('BURNT! Toss it (' + STEAM_KEYS[sl.i].toUpperCase() + ')', 1.6); if (this.auntie) this.auntie.play('angry', { restart: true }); this.burnFood(sl); this.score = Math.max(0, this.score - 30); }
   }
+  burnFood(sl) { const f = sl.food; if (!f) return; const cl = (m) => { if (m.isMesh) { m.material = m.material.clone(); m.material.vertexColors = false; m.material.color = new THREE.Color('#3a2a22'); } }; f.traverse(cl); }
   finish() {
     if (this.over) return; this.over = true;
     this.s.end({ score: this.score, served: this.served, perfect: this.perfect, lines: [`Served ${this.served}  ·  perfect ${this.perfect}`, `Walked out ${this.lost}  ·  burnt ${this.burnt}`, `Best streak ×${this.bestCombo}`] });

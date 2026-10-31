@@ -79,6 +79,25 @@ export const PROPS = {
 
 // tiny kinds whose shadow is a few pixels skip the shadow pass (every kind costs a draw call per tile there)
 for (const k of ['firebox', 'sign', 'bollard', 'cone', 'hydrant']) if (PROPS[k]) PROPS[k].noShadow = true;
+// Painted light for the voxel sculpts: every voxel open to the sky above is a step lighter (and a touch warmer),
+// every voxel with air below a step darker (and cooler), so flat colours read as hand-painted ramps; the mesher's
+// ambient occlusion darkens the crevices on top of that. (Kinds that paint their own ramps set P.painted.)
+function paintRamps(F) {
+  const { X, Y, Z, d } = F, cache = new Map(), flags = F.flag, pal = F.pal;
+  const shade = (v, k) => {
+    const key = v * 4 + k; let n = cache.get(key); if (n !== undefined) return n;
+    const [r, g, b] = pal[v], f = k === 1 ? 1.12 : 0.8, wr = k === 1 ? 6 : -4, wb = k === 1 ? -4 : 6;
+    const c = (x) => Math.max(0, Math.min(255, Math.round(x))).toString(16).padStart(2, '0');
+    n = F.c('#' + c(r * f + wr) + c(g * f) + c(b * f + wb), flags[v]); cache.set(key, n); return n;
+  };
+  const out = new Uint8Array(d);
+  for (let y = 0; y < Y; y++) for (let z = 0; z < Z; z++) for (let x = 0; x < X; x++) {
+    const i = (y * Z + z) * X + x, v = d[i]; if (!v || flags[v]) continue;
+    const up = y + 1 >= Y || !d[i + Z * X], down = y > 0 && !d[i - Z * X];
+    if (up && !down) out[i] = shade(v, 1); else if (down && !up) out[i] = shade(v, 2);
+  }
+  F.d = out;
+}
 const GEO = new Map();
 /** a kind's geometry parts: { opaque, glow, leaves } (lo: the far twin, for kinds that have one; else null) */
 export function geoFor(kind, lo = false) {
@@ -87,11 +106,25 @@ export function geoFor(kind, lo = false) {
   const P = PROPS[kind];
   let parts = null;
   if (P.mesh) { const m = P.mesh(lo); parts = m ? { opaque: m.opaque || null, glow: m.glow || null, leaves: m.leaves || null } : null; }
-  else if (lo) parts = null;
-  else {
-    const [X, Y, Z] = P.size, F = new Fine(X, Y, Z, V);
-    P.build(F, rnd(kind.length * 7919 + 13));
-    const m = F.mesh(); parts = { opaque: merge(m.opaque, X / V / 2, Z / V / 2), glow: merge(m.glow, X / V / 2, Z / V / 2), leaves: null };
+  else if (lo && !P.buildLo) {
+    // the far twin of any other voxel sculpt: the same volume at half the resolution (a block is solid if any of its
+    // eight voxels is, and takes the colour of its top-most one, so thin poles survive and the painted tops stay)
+    const [X, Y, Z] = P.size, vpm = P.vpm || V, F = new Fine(X, Y, Z, vpm);
+    P.build(F, rnd(kind.length * 7919 + 13)); if (!P.painted && !P.tree) paintRamps(F);
+    const X2 = Math.ceil(X / 2), Y2 = Math.ceil(Y / 2), Z2 = Math.ceil(Z / 2), H = new Fine(X2, Y2, Z2, vpm / 2);
+    H.pal = F.pal; H.flag = F.flag; H.idx = F.idx;
+    for (let y = 0; y < Y2; y++) for (let z = 0; z < Z2; z++) for (let x = 0; x < X2; x++) {
+      let v = 0;
+      for (let dy = 1; dy >= 0 && !v; dy--) for (let dz = 0; dz < 2 && !v; dz++) for (let dx = 0; dx < 2 && !v; dx++) v = F.get(x * 2 + dx, y * 2 + dy, z * 2 + dz);
+      if (v) H.set(x, y, z, v);
+    }
+    const m = H.mesh(); parts = { opaque: merge(m.opaque, X2 / (vpm / 2) / 2, Z2 / (vpm / 2) / 2), glow: merge(m.glow, X2 / (vpm / 2) / 2, Z2 / (vpm / 2) / 2), leaves: null };
+  } else {
+    // P.vpm: voxels per metre (default 16); P.buildLo: the far twin's sculpt
+    const [X, Y, Z] = P.size, vpm = P.vpm || V, F = new Fine(X, Y, Z, vpm);
+    (lo ? P.buildLo : P.build)(F, rnd(kind.length * 7919 + 13));
+    if (!P.painted && !P.tree) paintRamps(F);
+    const m = F.mesh(); parts = { opaque: merge(m.opaque, X / vpm / 2, Z / vpm / 2), glow: merge(m.glow, X / vpm / 2, Z / vpm / 2), leaves: null };
   }
   GEO.set(key, parts);
   return parts;
@@ -136,10 +169,11 @@ export function partMat(kind, part, mats) {
   if (part === 'glow') return mats.glow;
   if (part === 'leaves') return MESH_MATS.leaves();
   if (P.mesh) return P.sway ? MESH_MATS.sway() : MESH_MATS.vpbr();
+  if (P.sway) return MESH_MATS.swayOf(mats.solid);
   return surfMat(mats.solid, kind);
 }
 /** materials for modelled kinds, filled in by props_trees.js / props_real.js (kept out of here to avoid an import cycle) */
-export const MESH_MATS = { vpbr: () => null, sway: () => null, leaves: () => null };
+export const MESH_MATS = { vpbr: () => null, sway: () => null, leaves: () => null, swayOf: (m) => m };
 /** Instanced placement of all props: list [{ kind, x, y, z, yaw, s }] → THREE.Group of InstancedMeshes
  *  (userData: prop kind, part, the instances' props in order) */
 export function propMeshes(list, mats) {
