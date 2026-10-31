@@ -107,6 +107,7 @@ export class Hud {
     if (this.app.keysDown) this.app.keysDown = {};          // stop walking
     this.sfx('phone_open');
     this.modal = ui.openModal({ capture: true, draw: (u, dt, live) => this.drawPauseMenu(u, dt, live), onClose: () => { this.menu = null; this.modal = null; } });
+    ui.keys = {};                                            // the key that opened the menu must not also close it this frame
   }
   closeMenu(ui = this.ui || this.app.ui) { if (!this.menu) return; this.sfx('phone_close'); if (ui && this.modal) ui.closeModal(this.modal); else this.menu = null; }
   sfx(id) { const a = this.app.audio; if (a && a.sfx) a.sfx(id); }
