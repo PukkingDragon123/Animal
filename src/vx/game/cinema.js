@@ -94,10 +94,11 @@ export class Cinema {
   wait(ms) { return this.skipping ? Promise.resolve() : this.app.wait(ms * this.k); }
 
   // ================================================================ the cutscene
-  /** bars in, the camera taken: o.prefer (deg) — the side shots favour; o.room [x0, z0, x1, z1] — keep the camera inside (interiors) */
+  /** bars in, the camera taken, a 30° lens (o.fov): o.prefer (deg) — the side shots favour; o.room [x0, z0, x1, z1] — keep the camera inside (interiors) */
   begin(o = {}) {
     if (!this.active) { this.active = true; this.lastSpeaker = null; this.axis.clear(); }
     this.barsTo = o.bars === false ? 0 : 1;
+    this.fovTo = o.fov ?? 30;                                   // the cutscene lens (the follow camera's is wider)
     this.set(o);
     this.take();
     return o.wait ? this.app.wait(450 * this.k) : Promise.resolve();

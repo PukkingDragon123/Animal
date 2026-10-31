@@ -1,6 +1,6 @@
 // The look: how the stage is styled and how the HD-2D pass finishes each mood. The realistic HD look is
 // the default; ?look=toon brings back the old cel shading with ink outlines for comparison, ?ao=0 turns
-// the ambient occlusion off, ?ink=0.2 adds a faint silhouette line.
+// the ambient occlusion off, ?dof=0 the close camera's depth of field, ?ink=0.2 adds a faint silhouette line.
 // POST (per mood) feeds src/px/hd2d.js: tilt-shift focus band / blur, bloom (strength, threshold, wide
 // share), god rays, vignette, and the grade: saturation, contrast, split toning (shadow / highlight tints),
 // warmth, a night blue shift and the lift of the blacks; vibrance lifts muted colours without pushing vivid ones.
@@ -15,6 +15,6 @@ export const POST = {
 export function setupStage(stage, params = new URLSearchParams()) {
   if (params.get('look') === 'toon') { stage.setStyle({ ink: true, toon: true, inkCrease: 0.03 }); return stage; }
   const num = (k, d) => (params.get(k) === null ? d : +params.get(k));
-  stage.setStyle({ hd: true, ao: num('ao', 1), inkA: num('ink', 0), haze: num('haze', 1), pools: num('pools', 1) });
+  stage.setStyle({ hd: true, ao: num('ao', 1), inkA: num('ink', 0), haze: num('haze', 1), pools: num('pools', 1), dof: num('dof', 1) });
   return stage;
 }

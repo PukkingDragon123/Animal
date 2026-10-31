@@ -146,6 +146,14 @@ After the districts, `scenes/city.js` runs `dress(C, record)`: drainpipes, windo
 
 New prop kinds: `treeB` (rounder canopy), `sandwich` (A-board), `bags`, `dumpster`, `boxes`, `pot`, `upole` (utility pole), `scooter`, `barrier`, `firebox`. A kind with `noShadow: true` skips the shadow pass. `canopy.cball` / `canopy.leafCol` (voxprops.js) build cheap blocky foliage in 25 cm cells coloured in chunks (~3k triangles per tree instead of ~10k).
 
+## The look up close
+The city is seen from a close third-person camera, so the stage renders it for street level:
+- **Sky:** `src/vx/render/sky.js` paints a pixel sky dome per mood (gradient bands, the sun's glow, chunky clouds, stars at night). It is the background and, prefiltered, the environment that glossy surfaces reflect. It adds reflections only: diffuse sky light still comes from the hemisphere light.
+- **Sun shadows:** two cascades (`src/vx/render/shadows.js`). The sun carries a tight box of about ±11 m around the player (sharp contact shadows), and a black twin carries the wide box that `followShadow` aims down the street. Materials blend between the two maps near the rim of the tight box.
+- **Materials:** city surfaces are `MeshStandardMaterial`s made by `surfaceMaterial()` (`src/vx/render/surface.js`). Roughness, metalness and relief come from the texture's family, found from its key prefix (`brick`, `siding`, `rooftile`, `win`…). Relief is a per-texel normal taken from the pixel art itself, so mortar, grout, laps and grain catch the low sun. It fades out past about 30 m. Glass panes are marked in the painter with `P.glass = [[x, y, w, h], ...]` (texel rects). They and the puddles in the ground atlas get a roughness map that makes them mirror-smooth. Voxel props get a roughness and metalness per kind (`SURF` in voxprops.js).
+- **Depth of field:** `src/vx/render/composite.js` focuses on the camera's look-at point. It fades in below a camera distance of about 16 m and hands over from the HD-2D tilt-shift (`cv.depthDof`). `?dof=0` turns it off.
+- **Grade:** `POST` in `src/vx/render/look.js` sets the grade per mood (bloom, vignette, split toning, saturation, vibrance and contrast).
+
 ## Testing
 
 Run:

@@ -338,9 +338,11 @@ export function installTrees(C) {
     const app = globalThis.__app, w = app && app.world;
     if (!meshes) {
       const city = w && w.sc && w.sc.city; if (!city || !city.root) return;
-      const P = city.root.getObjectByName('props'); if (!P) return;
+      // (the prop instances live in a root child named 'props'; batched solid groups can share that name)
+      const ims = []; city.root.traverse((o) => { if (o.isInstancedMesh && o.userData && o.userData.prop) ims.push(o); });
+      if (!ims.length) return;
       meshes = [];
-      for (const im of P.children) {
+      for (const im of ims) {
         const kind = im.userData && im.userData.prop; if (!im.isInstancedMesh || !PROPS[kind] || !PROPS[kind].tree || !T[kind]) continue;
         if (w.st.mats && im.material === w.st.mats.glow) continue;   // the opaque part only
         im.computeBoundingSphere();
