@@ -467,7 +467,7 @@ async function pier(X) {
   await cin.frame(hero, { at: 'chest', yaw: 10, dist: 6.5, pitch: 12, dur: 0, off: [0, 0.4, -2.4], focus: 'wide', push: 0.1 });
   await app.wait(app.auto ? 200 : 1800);
   boss.play('cry', { restart: true }); sfx(app, 'roar', { pitch: 0.7 }); cin.shake(0.22, 3); cin.lightning();
-  await cin.orbit(boss, { yaw: -10, deg: 40, time: 9, pitch: 6, dist: cin.size(boss) * 2.1, at: 'chest', push: 0.12 });
+  await cin.orbit(boss, { yaw: -10, deg: 40, time: 9, pitch: 4, dist: cin.size(boss) * 2.5, at: 'face', push: 0.12 });
   cin.place('Pier 39', 'Fisherman\'s Wharf', { wait: false });
   w.emote('boss', 'anger', 2);
   await app.wait(app.auto ? 100 : 1500);
