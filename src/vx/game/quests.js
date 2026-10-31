@@ -12,7 +12,7 @@ export const QUESTS = {
   league: { main: true, title: 'The League Begins', steps: ['Get some rest — the League starts tomorrow'] },
   tarts: { title: 'Egg Tart Run', where: 'chinatown', steps: ['Buy egg tarts at Lucky Moon Bakery', 'Bring them home to Mom'], reward: { money: 150 } },
   chess: { title: 'Grandmaster of the Square', where: 'chinatown', steps: ['Challenge the xiangqi uncle in Portsmouth Square', 'Claim your prize'], reward: { money: 300 } },
-  pigeons: { title: 'Pigeon Patrol', where: 'alamo', steps: ['Count the pigeons strutting around Alamo Square (0/5)'], count: 5, reward: { money: 200 } },
+  pigeons: { title: 'Pidgun Patrol', where: 'alamo', steps: ['Count the Pidgun strutting around Alamo Square (0/5)'], count: 5, reward: { money: 200 } },
 };
 
 export class Quests {

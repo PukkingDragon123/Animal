@@ -218,12 +218,12 @@ export function objective(ui, x, y, str, o = {}) {
   if (!str) return 0;
   x = Math.round(x); y = Math.round(y);
   const s = ui.s, maxW = o.maxW || ui.w - x - 6;
-  let t = String(str); while (t.length > 3 && ui.tw(t) + 24 > maxW) t = t.slice(0, -2);
+  let t = String(str); while (t.length > 3 && ui.tw(t) + 26 > maxW) t = t.slice(0, -2);
   if (t !== String(str)) t = t.replace(/\s*\S?$/, '') + '…';
-  const w = ui.tw(t) + 24, h = 15;
+  const w = ui.tw(t) + 26, h = 15;
   frame(ui, x, y, w, h, { paper: true, r: 4, thin: true, fill: T.wood, rivets: false, alpha: o.alpha ?? 0.96, shadowA: 0.3 });
   drawSmall(s, 'star', x + 5, y + 4, T.amber, mx(T.amber, T.ink, 0.6));
-  ui.text(t, x + 15, y + 4, T.paperText, {});
+  ui.text(t, x + 17, y + 4, T.paperText, {});
   return w;
 }
 

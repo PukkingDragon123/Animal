@@ -190,7 +190,7 @@ export class Story {
     await app.say('Kaito', won ? 'Tch. Beginner\'s luck. Don\'t get used to it.' : 'One minute. Exactly as I said. See you around, rookie.');
     await kaito.walkTo([[S0[0] + 12, S0[1] + 2.6]], { speed: 1.6 }); w.remove('kaito');
     coach.face(hero); await w.closeOn(coach, { dist: 5 });
-    await app.say('Coach Gonda', 'Not bad for a first fight. Here — every rookie gets one of these.', 'Your TokoPhone. The map shows where Tokonmon are gathering around the city. Start with Alamo Square — the pigeons there have gotten… cocky.');
+    await app.say('Coach Gonda', 'Not bad for a first fight. Here — every rookie gets one of these.', 'Your TokoPhone. The map shows where Tokonmon are gathering around the city. Start with Alamo Square — the Pidgun there have gotten… cocky.');
     S.setFlag(app.state, 'phone'); S.setFlag(app.state, 'license'); S.setFlag(app.state, 'bracelet'); S.unlockLocation(app.state, 'alamo'); S.unlockLocation(app.state, home);
     S.addItem(app.state, 'quartz', 5);
     app.toast('Got the TokoPhone!', { icon: 'phone', color: T.cyan, dur: 3 });
@@ -225,17 +225,17 @@ export class Story {
       await this.pigeonGang();
     }
   }
-  // Alamo Square: the pigeon gang that rules the park (the Guns N' Roses homage)
+  // Alamo Square: the Pidgun gang that rules the park (the Guns N' Roses homage)
   async pigeonGang() {
     const app = this.app, w = app.world, P = w.loc.spots.park || [32, 39.5, 0], at = (x, z, h = 0.5) => [x, w.ground(x, z) + h, z];
     const has = (id) => !!SPECIES[id];
     await w.shot({ target: at(P[0], P[1]), dist: 9, yaw: 10, pitch: 18 }, 1.6);
-    await app.say('', 'The Painted Ladies glow in the late sun. Up in the park, a ring of pigeons struts in tight circles — like a band warming up.');
+    await app.say('', 'The Painted Ladies glow in the late sun. Up in the park, a ring of Pidgun struts in tight circles — like a band warming up.');
     const boss = await w.addMon('gang-m', 'pidgun', [P[0] - 1, P[1] + 0.4, 0]), rose = await w.addMon('gang-f', 'pidrose', [P[0] + 1, P[1] + 0.6, 0]);
     boss.play('cry'); await app.wait(900); rose.play('cry');
-    await app.say('', 'Two of them step out front: one twirling an oversized antique revolver, the other with a red rose tucked under her wing.', 'Every pigeon in the square goes quiet. Welcome to the jungle.');
+    await app.say('', 'Two of them step out front: one twirling an oversized antique revolver, the other with a red rose tucked under her wing.', 'Every Pidgun in the square goes quiet. Welcome to the jungle.');
     if (has('pidgun')) {
-      const res = await app.startBattle({ foe: { name: 'Pigeon Gang', team: [['pidgun', 6]] }, title: 'PIGEON GANG!', subtitle: 'Alamo Square' });
+      const res = await app.startBattle({ foe: { name: 'Pidgun Gang', team: [['pidgun', 6]] }, title: 'PIDGUN GANG!', subtitle: 'Alamo Square' });
       await app.fade(0, 400);
       if (res && res.winner === 0) { boss.play('hurt'); await app.say('', 'The gang scatters in a storm of feathers… but the rose-carrier lingers, eyeing you. Maybe she\'d join you, if you met her in the tall grass.'); }
     } else await app.say('', '…they look you up and down, coo once, and go back to strutting. Not today.');

@@ -127,5 +127,4 @@ function drawChoices(ui, D, bx, by, bw) {
   for (let i = 1; i <= Math.min(9, n); i++) if (ui.key(String(i))) { ui.closeDialog(i - 1); return; }
   if (ui.key('Enter') || ui.key(' ') || ui.key('z')) { ui.closeDialog(D.pick); return; }
   ui.ptr.released = false;
-  void P;
 }

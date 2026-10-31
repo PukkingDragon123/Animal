@@ -63,7 +63,7 @@ export class Hud {
     if (obj && !busy) ui.objective(6, 36, obj, { maxW: narrow ? W - 12 : Math.min(220, W - 150) });
     // top-centre: the place sign (drops in when the zone changes, then rises away)
     const w = this.where();
-    const signW = w.name ? ui.hudLocation(W >> 1, 0, w.name, w.sub, { align: 'center', hold: 3.2, id: 'zone' + this.locN }) : 0;
+    const signW = w.name ? ui.hudLocation(W >> 1, narrow ? 26 : 0, w.name, w.sub, { align: 'center', hold: 3.2, id: 'zone' + this.locN }) : 0;
     ui.toastY = signW && !narrow ? 40 : null;     // toasts queue under the sign while it hangs there
     // top-right: menu button + coin purse
     const mb = 24;
@@ -94,7 +94,7 @@ export class Hud {
     const kw = (k) => Math.max(11, ui.tw(k, { mini: k.length > 3 }) + 6);
     const widthOf = (L) => L.reduce((s, [k]) => s + kw(k) + 17, 0) - 4;
     const list = widthOf(rows) + 16 > Math.min(ui.w - 12, maxX - 12) ? rows.slice(0, 2) : rows;
-    const tw = widthOf(list) + 14, x0 = Math.round((ui.w - tw) / 2), y = H - 30 + Math.round((1 - a) * 10);
+    const tw = widthOf(list) + 14, x0 = Math.round((ui.w - tw) / 2), y = (ui.w < 360 ? H - 66 : H - 30) + Math.round((1 - a) * 10);
     frame(ui, x0, y - 4, tw, 21, { thin: true, r: 6, fill: T.wood, rivets: false, seams: false, alpha: 0.92, shadowA: 0.3 });
     let x = x0 + 7;
     for (const [k, icon] of list) { x += ui.keycap(x, y, k) + 2; ui.bigIcon(icon, x, y, null, { shadow: false }); x += 15; }
@@ -146,7 +146,7 @@ export class Hud {
     if (!this.menu) return;
     if (!tipAt) { const i = M.sel; tipAt = [rx0 + i * (2 * R + 1 + gap), ry, MENU[i].label]; }
     // the page
-    const it = MENU[M.sel], px = 8, py = ry + R + 14, pw = W - 16, ph = H - py - 6 + Math.round((1 - k) * 40);
+    const it = MENU[M.sel], pw = Math.min(W - 16, 352), px = (W - pw) >> 1, py = ry + R + 14, ph = Math.min(H - py - 6, 176) + Math.round((1 - k) * 40);
     frame(ui, px, py, pw, ph, { paper: true, fill: T.wood, leaves: true });
     const ax = px + 10, ay = py + 9, aw = pw - 20, ah = ph - 18;
     ({ party: () => this.panelParty(ui, ax, ay, aw, ah), bag: () => this.panelBag(ui, ax, ay, aw, ah, live), map: () => this.panelMap(ui, ax, ay, aw, ah), save: () => this.panelSave(ui, ax, ay, aw, ah), options: () => this.panelOptions(ui, ax, ay, aw, ah, live), close: () => this.panelClose(ui, ax, ay, aw, ah) })[it.id]();
@@ -210,9 +210,9 @@ export class Hud {
   panelSave(ui, x, y, w, h) {
     const st = this.app.state || {}, t = st.time || { day: 1, hour: 12 };
     const rows = [['star', (st.player && st.player.name) || '—'], ['sun', String(t.day)], ['party', String((st.party || []).length)], ['coin', fmtNum(st.money || 0)]];
-    const cx = x + (w >> 1) - 60;
-    rows.forEach(([icon, v], i) => { const ry = y + 4 + i * 17; ui.bigIcon(icon, cx, ry, null, { shadow: false }); ui.text(v, cx + 18, ry + 3, T.paperText, { bold: true }); });
-    const M = this.menu, bx = x + (w >> 1) + 50, by = y + (h >> 1) - 4;
+    const cx = x + (w >> 1) - 90, ry0 = y + Math.max(2, (h - rows.length * 18) >> 1);
+    rows.forEach(([icon, v], i) => { const ry = ry0 + i * 18; ui.bigIcon(icon, cx, ry, null, { shadow: false }); ui.text(v, cx + 18, ry + 3, T.paperText, { bold: true }); });
+    const M = this.menu, bx = x + (w >> 1) + 50, by = y + (h >> 1) - 6;
     const done = M.saved != null && this.t - M.saved < 2;
     const b = roundButton(ui, bx, by, 13, done ? 'check' : 'save', { modal: true, sel: true, color: T.green, tip: 'Save' });
     if (b.over) tip(ui, bx, by + 19, 'Save');

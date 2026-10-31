@@ -14,7 +14,7 @@ import { text as drawText, textWidth } from '../font.js';
 import { rgb, bayer } from '../color.js';
 import { T, sh, mx, hash, clamp01, easeOut, easeOutBack } from './uikit/theme.js';
 import { drawSmall, drawBig, ICON_NAMES } from './uikit/icons.js';
-import { frame, dropShadow, gradFill, tri, gem, sparkle, ball, insetOf, blendRun, sprig } from './uikit/frame.js';
+import { frame, dropShadow, gradFill, tri, gem, sparkle, ball, insetOf, sprig } from './uikit/frame.js';
 import { drawDialog } from './uikit/dialog.js';
 import * as W from './uikit/widgets.js';
 import { nameEntryScreen, pickCardsScreen, drawEmblem } from './uikit/screens.js';

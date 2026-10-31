@@ -6,8 +6,8 @@
 import { Surf, P } from '../../surface.js';
 import { hasGlyph } from '../../font.js';
 import { bayer } from '../../color.js';
-import { T, sh, mx, clamp01, easeOut, easeOutBack } from './theme.js';
-import { frame, backdrop, gradFill, tri, sparkle, blendRect, dropShadow, ball, sprig, woodRing } from './frame.js';
+import { T, sh, mx, clamp01 } from './theme.js';
+import { frame, backdrop, gradFill, tri, sparkle, blendRect, dropShadow, ball, sprig } from './frame.js';
 import { roundButton } from './widgets.js';
 import { drawBig } from './icons.js';
 

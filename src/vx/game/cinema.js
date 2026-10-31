@@ -99,6 +99,7 @@ export class Cinema {
     if (!this.active) { this.active = true; this.lastSpeaker = null; this.axis.clear(); }
     this.barsTo = o.bars === false ? 0 : 1;
     this.fovTo = o.fov ?? 30;                                   // the cutscene lens (the follow camera's is wider)
+    const life = this.w && this.w.life; if (life && life.hush) { this.hushed = o.hush !== false; life.hush(this.hushed); }   // the street's Tokonmon step out of the shot
     this.set(o);
     this.take();
     return o.wait ? this.app.wait(450 * this.k) : Promise.resolve();
@@ -111,6 +112,7 @@ export class Cinema {
     this.active = false; this.barsTo = 0; this.hh = 0; this.rollTo = 0; this.fovTo = null; this.fx = null; this.room = null;
     if (!o.keepGrade) this.gradeWant = {};
     for (const a of this.looked) a.look = null; this.looked.clear();
+    const life = w && w.life; if (life && life.hush && this.hushed) { life.hush(false); this.hushed = false; }
     this.letGo();
     // hand the camera back through the world: its follow camera blends in from wherever this shot left it
     if (o.release !== false && w && w.player && w.followCam) { const p = w.followCam(this.skipping ? 0 : o.dur ?? 1.1); if (o.wait) await p; }

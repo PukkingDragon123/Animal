@@ -110,9 +110,12 @@ export function paperTex(fill = T.paper, alpha = 1) {
   const tw = 64, th = 64, d = new Uint32Array(tw * th);
   const base = pa(fill, alpha), mott = pa(mx(fill, T.paperD, 0.45), alpha), speck = pa(mx(fill, T.paperE, 0.6), alpha), lite = pa(mx(fill, '#ffffff', 0.5), alpha);
   for (let j = 0; j < th; j++) for (let i = 0; i < tw; i++) {
-    const n = Math.sin(i * 0.19 + Math.sin(j * 0.13) * 2) * Math.sin(j * 0.17 + i * 0.05), r = h2(i, j, 7), b = bayer(i, j);
+    // soft blotches: value noise on a 16 px grid (wraps with the tile)
+    const gx = i / 16, gy = j / 16, xi = Math.floor(gx), yi = Math.floor(gy), fx = gx - xi, fy = gy - yi, u = fx * fx * (3 - 2 * fx), w2 = fy * fy * (3 - 2 * fy);
+    const c00 = h2(xi & 3, yi & 3, 3), c10 = h2((xi + 1) & 3, yi & 3, 3), c01 = h2(xi & 3, (yi + 1) & 3, 3), c11 = h2((xi + 1) & 3, (yi + 1) & 3, 3);
+    const n = c00 + (c10 - c00) * u + (c01 - c00) * w2 + (c00 - c10 - c01 + c11) * u * w2, r = h2(i, j, 7), b = bayer(i, j);
     let v = base;
-    if (n > 0.62 && b < (n - 0.62) * 1.1) v = mott;
+    if (n > 0.6 && b < (n - 0.6) * 0.9) v = mott;
     if (r < 0.012) v = speck; else if (r > 0.99) v = lite;
     d[j * tw + i] = v;
   }

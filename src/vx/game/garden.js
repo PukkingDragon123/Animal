@@ -174,9 +174,10 @@ async function showdown(app, c, k) {
   sfx(app, 'beast_roar', { vol: 0.8, pitch: 0.7 }); if (cin) cin.shake(0.35);
   await app.wait(400);
   const kohl = await ensureKohl(app);
-  kohl.place(SHED_DOOR[0] - 0.3, SHED_DOOR[1], -Math.PI / 2); kohl.g.scale.set(0.55, 1.0, 0.55); kohl.play('walk');
-  await anim(700, (t) => { kohl.g.scale.set(0.55 + 0.45 * t, 1, 0.55 + 0.45 * t); });   // pop! out of the doorway
-  kohl.g.scale.set(1, 1, 1); sfx(app, 'boing', { pitch: 0.5 }); w.burst('leaf', [SHED_DOOR[0] - 0.4, 1.8, SHED_DOOR[1]], { n: 14 });
+  const s0 = kohl.m.scale || 1;
+  kohl.place(SHED_DOOR[0] - 0.3, SHED_DOOR[1], -Math.PI / 2); kohl.g.scale.set(0.55 * s0, s0, 0.55 * s0); kohl.play('walk');
+  await anim(700, (t) => { const k = 0.55 + 0.45 * t; kohl.g.scale.set(k * s0, s0, k * s0); });   // pop! out of the doorway
+  kohl.g.scale.setScalar(s0); sfx(app, 'boing', { pitch: 0.5 }); w.burst('leaf', [SHED_DOOR[0] - 0.4, 1.8, SHED_DOOR[1]], { n: 14 });
   const kx = f.g.position.x + 1.6, kz = f.g.position.z + 1.4;
   if (cin) { cin.track(kohl, { yaw: 150, dist: 9, pitch: 6 }); await cin.walk(kohl, kx, kz, { speed: 2.2 }); }
   else await kohl.walkTo([[kx, kz]], { speed: 2.2 });

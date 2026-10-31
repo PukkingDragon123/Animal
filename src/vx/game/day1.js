@@ -1,12 +1,12 @@
 // Day 1, the opening, in the walkable city — shot like a JRPG cutscene reel by the director (cinema.js).
 // A daylight flyover of San Francisco settles on Sunset Row; in the dark an alarm and Mom's voice ask who you
-// are (name, boy or girl). You wake on the edge of your bed in a shaft of sunlight with the family owl
-// wheezing in your ear, wander the house, and find Mom at the stove. Then, on foot across the city:
+// are (name, boy or girl). You wake on the edge of your bed in a shaft of sunlight with the family's
+// Wheezowl wheezing in your ear, wander the house, and find Mom at the stove. Then, on foot across the city:
 // - the cable-car stop on Market Street, where a punk is shaking down an old man; a bubble from nowhere;
 //   the Coach
 // - the Street Arena downtown, packed bleachers: the professor's three partners, a 2-vs-2 beside the Coach,
 //   your own bracelet
-// - Yumi, and the forced-bond sea lion king at the end of the pier under a storm sky (3 vs 1); chowder
+// - Yumi, and the forced-bond king of the pier, Barkorious, at the end of the pier under a storm sky (3 vs 1); chowder
 // - the Golden Claw Dojo in Chinatown: the TokoPhone and the League sign-up
 // After that the city is yours. Story beats wait for you to walk there yourself (an objective marker points
 // the way); every scene in between is a cutscene with letterbox bars, which you can hold Esc to skip.
@@ -64,6 +64,7 @@ async function prologue(X) {
   const { app, w, st, cin, Q, say } = X;
   await app.fade(1, 300);
   await w.load('city', { mood: 'golden', life: false });
+  if (w.life && w.life.start) w.life.start();               // the city's Tokonmon go about their day (hushed during cutscenes)
   Q.start('day1');
   // the city from over the bay, gliding south across Chinatown and downtown to Sunset Row
   await cin.begin({ prefer: 20 });
@@ -105,6 +106,7 @@ async function jumpTo(X, k) {
   const { app, w, st, Q } = X;
   await app.fade(1, 200);
   await w.load('city', { mood: 'golden', life: false });
+  if (w.life && w.life.start) w.life.start();
   Q.start('day1'); st.player.name = st.player.name || 'Ren'; st.look = st.player.look = st.look || 'hero';
   const at = { 1: 'bedroom', 2: 'frontDoorOut', 3: 'tramStop', 4: 'arenaA', 5: 'arenaA', 6: 'pierEnd', 7: 'pierEnd' }[k];
   const hero = w.addPerson('hero', st.look, w.spot(at));
@@ -117,7 +119,7 @@ async function jumpTo(X, k) {
   await app.fade(0, 300);
 }
 
-// ------------------------------------------------------------------ 1. the bedroom: sunlight, the owl, a stretch
+// ------------------------------------------------------------------ 1. the bedroom: sunlight, Wheezowl, a stretch
 async function wake(X) {
   const { app, w, st, cin, say } = X, nm = st.player.name;
   const ROOM = [56.3, 146.3, 64.2, 151.6];
@@ -137,7 +139,7 @@ async function wake(X) {
   w.emote('hero', 'z', 3);
   await cin.veilTo(0, 1600);
   await cin.beat('bedroom');
-  // the alarm owl, right in your ear
+  // the Wheezowl alarm, right in your ear
   owl.play('wheeze'); w.emote('owl', 'note', 3); sfx(app, 'coo', { pitch: 0.7 });
   await cin.push(owl, { yaw: 115, dist: 2.3, at: 'chest', pitch: 6 });
   cin.handheld(0.012);
@@ -145,7 +147,7 @@ async function wake(X) {
   await cin.beat('owl');
   face(hero, 'surprised', 2.2); cin.shake(0.08);
   await cin.close(hero, { dist: 2.0, yaw: 30, dur: 0 });
-  await say('', 'Wheezowl, the family owl and the world\'s worst alarm clock, wheezes right in your ear.');
+  await say('', 'Wheezowl, the family\'s Tokon and the world\'s worst alarm clock, wheezes right in your ear.');
   cin.handheld(0);
   // up you get (the cut hides the hop off the mattress)
   hero.place(57.25, 150.05, 0.4, 3); hero.play('stretch', { restart: true }); face(hero, 'sleepy', 2);
@@ -160,7 +162,7 @@ async function wake(X) {
   face(hero, 'happy', 2); hero.play('nod', { restart: true });
   await app.wait(500);
   hero.play('idle');
-  // the house is yours to explore; the mop dog naps downstairs
+  // the house is yours to explore; Mopzart naps downstairs
   const mopAt = w.spot('livingRoom');
   await w.addMon('mop', 'mopzart', off(mopAt, 0.8, 0.6, 0), { clip: 'sleep' });
   X.story.cap('WASD / arrows to walk · Shift to run · E to look at things', 'Tip: on touch screens, drag on the left side to walk', 6);
@@ -188,7 +190,7 @@ async function kitchen(X) {
   await app.wait(500);
   await cin.talk(mom, me, 'Mom', `There you are, ${nm}! Pork and shrimp, the way your grandpa liked them.`, 'Eat slowly. Mopzart, wake up — say good morning.', { clip: 'talk', face: 'happy' });
   await cin.beat('kitchen-ots');
-  // the mop dog wakes in the living room and conducts
+  // Mopzart wakes in the living room and conducts
   const dog = w.actor('mop');
   if (dog) {
     cin.set({ room: [56.3, 146.3, 64.25, 151.7] });
@@ -408,7 +410,7 @@ async function arena(X) {
   w.remove(chosen.id); w.setPlayer(hero, partner);
 }
 
-// ------------------------------------------------------------------ 5. Yumi: the sea lion king has gone mad
+// ------------------------------------------------------------------ 5. Yumi: the king of the pier has gone mad
 async function yumi(X) {
   const { app, w, cin, story } = X, say = X.say;
   const aA = w.sc.spots && w.sc.spots.arenaA ? w.spot('arenaA') : off(w.spot('arena'), 0, 4);
@@ -425,7 +427,7 @@ async function yumi(X) {
   await cin.beat('yumi');
   await cin.talk(yumi, coach || hero, 'Yumi', 'COACH! There you are — I\'ve been looking all over Chinatown for you!', { shot: 'keep' });
   cin.handheld(0.008);
-  await cin.talk(yumi, coach || hero, 'Yumi', 'It\'s the big sea lion on the pier — the king, Barkorious! He\'s gone completely mad!', 'Somebody forced a bond on him. He\'s HUGE now, his eyes are red, and he\'s scaring everyone off the wharf!', { shot: 'ots', clip: 'explain' });
+  await cin.talk(yumi, coach || hero, 'Yumi', 'It\'s the king of the pier — Barkorious! He\'s gone completely mad!', 'Somebody forced a bond on him. He\'s HUGE now, his eyes are red, and he\'s scaring everyone off the wharf!', { shot: 'ots', clip: 'explain' });
   cin.handheld(0);
   // and then she notices you
   yumi.face(hero); hero.face(yumi); yumi.play('wave', { restart: true });
@@ -466,12 +468,12 @@ async function pier(X) {
   w.emote('boss', 'anger', 2);
   await app.wait(app.auto ? 100 : 1500);
   await cin.beat('boss-orbit');
-  await say('', 'The king of the pier looms over the docks — swollen to twice his size, eyes burning red, a fish cannon strapped to his back.');
+  await say('', 'The king of the pier looms over the docks — swollen to twice his size, eyes burning red, a bubble cannon strapped to his back.');
   boss.play('special', { restart: true }); cin.shake(0.3, 3); sfx(app, 'roar', { pitch: 0.55 });
   await cin.hero(boss, { low: -14, dist: cin.size(boss) * 2.6, dur: 0.3, at: 'chest', yaw: 8 });
   cin.lightning();
   await cin.beat('boss-low');
-  await say('', 'Tourists scatter. Somewhere a seagull drops its fries.');
+  await say('', 'Tourists scatter. Somewhere a startled Pidgun drops its fries.');
   if (coach) { coach.play('angry', { restart: true }); }
   await cin.talk(coach || hero, boss, 'Coach Gonda', 'A forced bond… whoever did this ought to be ashamed.', { shot: 'ots', face: 'angry' });
   if (coach) coach.play('point', { restart: true });
@@ -522,7 +524,7 @@ async function chowder(X) {
   await app.fade(0, 600);
   const steam = setInterval(() => { w.burst('steam', [157.55, BY + 0.3, 2.05], { n: 1 }); if (yumi) w.burst('steam', [158.45, BY + 0.3, 2.05], { n: 1 }); }, 1100);
   await cin.beat('chowder');
-  await X.say('', 'Clam chowder in sourdough bowls, garlic crab, and a paper boat of fries the seagulls keep eyeing.');
+  await X.say('', 'Chowder in sourdough bowls, garlic noodles, and a paper boat of fries a Pidrose keeps eyeing from the railing.');
   if (yumi) { yumi.look = hero; hero.look = yumi; }
   await cin.talk(yumi || hero, hero, 'Yumi', `You were amazing back there, ${nm}! Your partner really trusts you, you know.`, { shot: 'close', face: 'happy', clip: 'sit', yaw: 160, dist: 2.2 });
   face(hero, 'happy', 3);
