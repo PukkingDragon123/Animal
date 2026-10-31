@@ -27,13 +27,14 @@ export const SPOT = {
   start: [56, 95.2, PI], exit: [56, 98.6], hall: [54, 80], grove: [22.5, 56], grotto: [6.6, 42.6], chest: [5.4, 41.6],
   lake: [44, 31.5], island: [51, 20.2], sun: [58.2, 37.4], m1: [44.2, 35.4], m2: [62.2, 29.4], gate: [67.6, 24.85],
   ledgeIn: [72.5, 22.2], bridge: [[84.4, 15.15], [89.6, 15.25]], mineIn: [101.6, 20.9], cart: [109.35, 44.4], barricade: [101.75, 64.3],
-  camp: [120.5, 43], journal: [121.6, 45.6], supply: [123.6, 41.4], geodeIn: [93, 74.2], geode: [85.5, 80.2], boss: [85.2, 80.6], rubble: [69.4, 82.3],
+  camp: [120.5, 43], journal: [121.6, 45.6], supply: [123.6, 41.4], arenaIn: [92.4, 74.8], arena: [85, 81.2], bossRest: [83.4, 86.0], rubble: [69.4, 82.3],
+  runeDoor: [97.5, 69.1], gus: [48.6, 77.8, 1.2], pebbles: [49.3, 79.0],
 };
 export const RAIL = [[105.6, 23.3], [108.4, 27.3], [109.35, 34], [109.35, 46], [108.05, 55], [104.4, 61.0], [101.9, 64.1]];
 // the routes the player walks: big set dressing keeps clear of them
 const ROUTES = [
-  [[56, 99], [55.5, 88], [53, 81], [46.5, 80], [41, 83.5], [34.5, 81.5], [29, 76], [24.5, 67], [23, 58], [23, 47], [25.5, 40], [30, 34.5], [36, 32], [44, 33.6], [52, 34.4], [60, 32.5], [64, 27], [68.5, 24.5], [72.5, 22.5]],
-  [[44.2, 35.4], [58.2, 37.4]], [[44.2, 35.4], [62.2, 29.4]], [[13.5, 53.5], [11, 51.5], [8.5, 48]], [[54, 79], [62, 80], [66.5, 81.5], [76.5, 81]], [[85.5, 80], [93, 74]],
+  [[56, 99], [55.5, 88], [53, 81], [49.5, 79.5], [46.5, 80], [41, 83.5], [34.5, 81.5], [29, 76], [24.5, 67], [23, 58], [23, 47], [25.5, 40], [30, 34.5], [36, 32], [44, 33.6], [52, 34.4], [60, 32.5], [64, 27], [68.5, 24.5], [72.5, 22.5]],
+  [[44.2, 35.4], [58.2, 37.4]], [[44.2, 35.4], [62.2, 29.4]], [[13.5, 53.5], [11, 51.5], [8.5, 48]], [[54, 79], [62, 80], [66.5, 81.5], [76.5, 81]], [[85, 81.2], [93, 74], [100.5, 65.8]],
 ];
 const segD = (x, z, a, b) => { const dx = b[0] - a[0], dz = b[1] - a[1], L2 = dx * dx + dz * dz || 1e-6, t = clamp(((x - a[0]) * dx + (z - a[1]) * dz) / L2, 0, 1); return Math.hypot(x - a[0] - dx * t, z - a[1] - dz * t); };
 const polyD = (x, z, P) => { let d = 1e9; for (let i = 0; i < P.length - 1; i++) d = Math.min(d, segD(x, z, P[i], P[i + 1])); return d; };
@@ -72,9 +73,9 @@ export function caveField() {
   F.tunnel([[101.6, 20.9, 0.3], [105.5, 22.8, 0.4], [108.4, 27.2, 0.5], [109.35, 34, 0.5], [109.35, 46, 0.05], [108.05, 55, -0.55], [104.4, 61, -0.95], [100.5, 65.8, -1.35]], 4.2, { ceil: 3.7, floor: 'dirt', wall: 'ochre', wob: 0.22, vault: 0.35, bump: 0.03, id: 'mine' });
   F.tunnel([[109.5, 40.6, 0.25], [114.5, 41.2, 0.3], [117.5, 42.2, 0.3]], 3.0, { ceil: 3.4, floor: 'dirt', wall: 'ochre', wob: 0.25, vault: 0.4, id: 'campway' });
   F.room(120.5, 43, 5, 4.4, { y: 0.3, ceil: 4.2, floor: 'dirt', wall: 'ochre', wob: 0.5, vault: 0.6, id: 'camp' });
-  // H. the descent and the Geode
+  // H. the descent (behind the rune door) and the Old Arena
   F.tunnel([[100.5, 65.8, -1.35], [96.5, 70.2, -1.9], [92.5, 74.4, -2.4], [89, 77, -2.5]], 3.4, { ceil: 4.4, floor: 'geode', wall: 'geode', wob: 0.4, id: 'descent' });
-  F.room(85.5, 80.2, 9.5, 8.5, { y: -2.5, ceil: 11, floor: 'geode', wall: 'geode', bump: 0.08, id: 'geode' });
+  F.room(85, 81.2, 11, 9.6, { y: -2.5, ceil: 14, floor: 'arena', wall: 'geode', bump: 0.02, wob: 0.7, id: 'arena' });
   // the collapsed passage back to the hall (rubble until the Geode's guardian is calm)
   F.tunnel([[77, 81, -2.5], [71.5, 82.5, -1.6], [66.5, 81.5, -0.6], [61.5, 80, 0]], 3.2, { ceil: 4.4, floor: 'wet', wall: 'brown', wob: 0.4, id: 'shortcut' });
   return F;
@@ -101,10 +102,10 @@ export const pieceMat = (tex) => caveMat(surfaceMaterial(tex, { side: THREE.Fron
 export function buildCave(C) {
   const F = caveField(), E = new Emit(C), nav = C.nav;
   const gkAt = (x, z) => 'cv' + Math.floor(clamp(x, 0, W - 1) / 32) + '_' + Math.floor(clamp(z, 0, D - 1) / 26);
-  const GEO = (x, z) => x > 74 && x < 98 && z > 68 && z < 92;      // the Geode's own groups (its glow is animated)
+  const GEO = (x, z) => x > 72 && x < 98 && z > 68 && z < 93;      // the Old Arena's own groups (its glow is animated)
   const gkOf = (x, z) => (GEO(x, z) ? 'cv_geode' : gkAt(x, z));
-  const FT = { wet: K.wetFloorTex('#525860', 'wet'), moss: K.mossFloorTex(), dirt: K.dirtFloorTex(), geode: K.geodeFloorTex(), sand: K.wetFloorTex('#6a6254', 'sand'), pit: K.wetFloorTex('#262a32', 'pit') };
-  const MMC = { wet: '#4a4e58', moss: '#3e6040', dirt: '#6a5440', geode: '#4a3a62', sand: '#6a6254' };
+  const FT = { wet: K.wetFloorTex('#525860', 'wet'), moss: K.mossFloorTex(), dirt: K.dirtFloorTex(), geode: K.geodeFloorTex(), arena: K.arenaFloorTex(), sand: K.wetFloorTex('#6a6254', 'sand'), pit: K.wetFloorTex('#262a32', 'pit') };
+  const MMC = { wet: '#4a4e58', moss: '#3e6040', dirt: '#6a5440', geode: '#4a3a62', arena: '#6a6058', sand: '#6a6254' };
   const lights = [], heroes = [], drips = [], fx = [];
   const light = (x, y, z, col, i, r, halo = 0) => { C.light(x, y, z, { color: col, intensity: i, r, halo, sh: Math.max(0.8, y - floorAt(x, z)) }); };
   // ---- heights: the floor dips to the water at the lake's edge
@@ -204,7 +205,7 @@ export function buildCave(C) {
       continue;
     }
     // stalagmites by the walls, off the paths
-    if (near && R() < 0.42 && !onRoute(x, z, 2.2) && F.lakeD(x, z) > 1.2 && F.pitD(x, z) > 1.2 && !nearSpot(x, z, 2.6)) {
+    if (near && id !== 'arena' && R() < 0.42 && !onRoute(x, z, 2.2) && F.lakeD(x, z) > 1.2 && F.pitD(x, z) > 1.2 && !nearSpot(x, z, 2.6)) {
       const h = Math.min(room * 0.6, 0.4 + R() * R() * 2.8), s = clamp(h / (MITE_H[v] / 16), 0.3, 1.5);
       prop(`cv_mite_${fp}${v}`, x, z, { y: fy - 0.08, s, block: 0.55 * s + 0.1 });
       if (h > 1.6 && R() < 0.3 && room < 7) prop(`cv_tite_${fp}0`, x + 0.05, z + 0.05, { y: cy + 0.45 - 4 * clamp((room - h + 0.4) / (TITE_H[0] / 16), 0.3, 1.5), s: clamp((room - h + 0.4) / (TITE_H[0] / 16), 0.3, 1.5) });   // nearly a column
@@ -214,7 +215,7 @@ export function buildCave(C) {
   // ---------------------------------------------------------------- rockfall by the walls
   for (let n = 0; n < 140; n++) {
     const x = 2 + R() * (W - 4), z = 2 + R() * (D - 4), d = F.d(x, z); if (d > -0.6 || d < -2.4) continue;
-    if (onRoute(x, z, 2.0) || F.lakeD(x, z) < 1 || F.pitD(x, z) < 1 || nearSpot(x, z, 2.4)) continue;
+    if (onRoute(x, z, 2.0) || F.lakeD(x, z) < 1 || F.pitD(x, z) < 1 || nearSpot(x, z, 2.4) || F.at(x, z).prim.id === 'arena') continue;
     const a = F.at(x, z), s = 0.25 + R() * R() * 0.9;
     prop(`cv_rock_${GEO(x, z) ? 'geode' : a.wall}${n % 3}`, x, z, { y: floorAt(x, z) - 0.1 * s, s, block: 0.95 * s });
   }
@@ -241,15 +242,49 @@ export function buildCave(C) {
   // the chasm: crystals far down in the dark, and one on the far wall
   for (let n = 0; n < 16; n++) { const x = 76 + R() * 22, z = 20 + R() * 18; if (F.pitD(x, z) > -1) continue; prop(`cv_cry_${n % 3 ? 'cyan' : 'violet'}${n % 3}`, x, z, { y: PIT_BOTTOM, s: 0.6 + R() * 0.8 }); light(x, PIT_BOTTOM + 2, z, CCOL.cyan, 0.9, 7, 1.5); }
   cluster(96.5, 33, 1.1, 'violet', { wall: 0.6, block: false });
-  // the Geode: lined with fluorite (three rings of kinds, so they can flare one after another)
-  for (let n = 0; n < 26; n++) {
-    const a = (n / 26) * PI * 2 + R() * 0.2, [x, z] = toWall(85.5 + Math.cos(a) * 6, 80.2 + Math.sin(a) * 5.5, 0.8);
-    if (polyD(x, z, [[85.5, 80], [93, 74]]) < 2.4 || polyD(x, z, [[77, 81], [85.5, 80.2]]) < 2.2) continue;
-    cluster(x, z, 0.8 + R() * 1.3, n % 3 === 1 ? 'cyan' : 'violet', { kind: 'cv_gcry' + (n % 3) });
+  // the Old Arena's walls: lined with fluorite between the pillars (three rings of kinds, so they can flare in turn)
+  for (let n = 0; n < 18; n++) {
+    const a = (n / 18) * PI * 2 + 0.17, [x, z] = toWall(SPOT.arena[0] + Math.cos(a) * 8, SPOT.arena[1] + Math.sin(a) * 7, 0.7);
+    if (polyD(x, z, [[85, 81.2], [93, 74]]) < 2.6 || polyD(x, z, [[77, 81], [85, 81.2]]) < 2.4 || Math.abs(a - PI / 2) < 0.35) continue;
+    cluster(x, z, 0.7 + R() * 0.9, n % 3 === 1 ? 'cyan' : 'violet', { kind: 'cv_gcry' + (n % 3) });
   }
-  // the dais: a ring of crystal spikes round the stone where the guardian sleeps
-  for (let n = 0; n < 9; n++) { const a = (n / 9) * PI * 2; if (Math.abs(a - 5.6) < 0.5) continue; const x = SPOT.boss[0] + Math.cos(a) * 3.3, z = SPOT.boss[1] + Math.sin(a) * 3.0; prop('cv_dais', x, z, { s: 0.9 + R() * 0.4, block: 0.4 }); }
-  prop('cv_rock_geode1', SPOT.boss[0], SPOT.boss[1], { y: floorAt(SPOT.boss[0], SPOT.boss[1]) - 0.55, s: 1.2, yaw: 0.3 });
+
+  // ---------------------------------------------------------------- the Old Arena
+  const ARENA = {};
+  function arena() {
+    const [cx, cz] = SPOT.arena, ay = floorAt(cx, cz), dA = (a, g) => Math.abs(((a - g + 540) % 360) - 180);
+    const gap = (a) => dA(a, -46) < 24 || dA(a, 180) < 20 || dA(a, 90) < 18;   // the two ways in, and the lava fall
+    // the colosseum ring: stepped blocks of carved stone in a ring, some collapsed
+    for (let k = 0; k < 15; k++) {
+      const a = (k / 15) * 360 + 5; if (gap(a)) continue;
+      const ar = (a * PI) / 180, x = cx + Math.cos(ar) * 8.0, z = cz + Math.sin(ar) * 7.0;
+      if (F.d(x, z) > -0.3) continue;
+      prop('cv_tier' + (k % 4 === 1 ? 1 : 0), x, z, { y: floorAt(x, z) - 0.04, yaw: Math.atan2(cx - x, cz - z), s: 1.0, block: 1.05 });
+    }
+    // broken columns by the walls, two fallen drums on the floor
+    for (let k = 0; k < 10; k++) {
+      const a = k * 36 + 18; if (gap(a)) continue;
+      const ar = (a * PI) / 180, [x, z] = toWall(cx + Math.cos(ar) * 9, cz + Math.sin(ar) * 8, 0.9);
+      prop('cv_pillar' + (k % 3 === 2 ? 0 : 1), x, z, { y: floorAt(x, z) - 0.05, yaw: k * 0.7, s: k % 3 === 2 ? 0.9 : 1.0, block: 0.6 });
+    }
+    for (const [a, yaw] of [[200, 0.4], [330, 2.1]]) { const ar = (a * PI) / 180, x = cx + Math.cos(ar) * 6.2, z = cz + Math.sin(ar) * 5.4; prop('cv_pillar2', x, z, { y: floorAt(x, z) - 0.08, yaw, block: 0.9 }); }
+    // six braziers round the floor (lit when the arena wakes)
+    ARENA.braziers = [];
+    for (let k = 0; k < 6; k++) {
+      const a = k * 60 + 30, ar = (a * PI) / 180, x = cx + Math.cos(ar) * 6.3, z = cz + Math.sin(ar) * 5.5, y = floorAt(x, z);
+      prop('cv_brazier', x, z, { y: y - 0.04, yaw: ar, block: 0.45 }); ARENA.braziers.push({ x, y: y + 1.15, z });
+    }
+    // the rune circle carved into the floor
+    ARENA.runes = { x: cx, y: ay + 0.025, z: cz, r: 6 };
+    // a fall of lava down the south wall into a glowing pool
+    const [lx, lz] = toWall(cx, cz + 6.5, 0.2);
+    ARENA.lava = { x: lx, z: lz, y: ay, w: 2.6, h: 9.5, pool: [lx, lz - 1.5, 2.3, 1.5] };
+    nav.each(lx - 2.6, lz - 3.2, lx + 2.6, lz + 0.5, (c, x, z) => { if (((x - lx) / 2.5) ** 2 + ((z - lz + 1.5) / 1.7) ** 2 < 1) nav.walk[0][c] = 0; });
+    light(lx, ay + 1.4, lz - 1.6, 0xff6a1a, 1.6, 8, 2.4); light(lx, ay + 5, lz - 0.6, 0xff7a2a, 0.8, 6, 0); heroes.push({ x: lx, y: ay + 2, z: lz - 1.4, col: 0xff6a20, i: 10 });
+    // where the guardian waits: a crevice high on the far wall, beside the lava
+    ARENA.bossWall = toWall(cx - 5.2, cz + 5.2, 0.35);
+  }
+  arena();
 
   // ---------------------------------------------------------------- Glowcap Grove
   const SHC = { teal: 0x62e8d0, violet: 0xc88af0, blue: 0x6ab0ff };
@@ -368,6 +403,26 @@ export function buildCave(C) {
 
   // ---------------------------------------------------------------- the dynamic pieces (voxel meshes of their own, made in postCave)
   const dyn = {};
+  dyn.braziers = ARENA.braziers; dyn.lava = ARENA.lava; dyn.runes = ARENA.runes; dyn.bossWall = ARENA.bossWall;
+  // the rune door that seals the descent to the Old Arena (Old Gus has the key)
+  {
+    const [x, z] = SPOT.runeDoor, y = floorAt(x, z), ax = 0.74, az = 0.67;
+    nav.each(x - 2.6, z - 2.6, x + 2.6, z + 2.6, (c, cx, cz) => { if (Math.abs((cx - x) * az - (cz - z) * ax) < 0.6) nav.walk[0][c] = 0; });
+    light(x - az * 0.8, y + 2.2, z + ax * 0.8, 0xff9a3a, 0.7, 4.5, 1.2);
+    dyn.runeDoor = { x, y: y - 0.05, z, yaw: yawAlong(ax, az), open: () => nav.each(x - 2.6, z - 2.6, x + 2.6, z + 2.6, (c, cx, cz) => { if (Math.abs((cx - x) * az - (cz - z) * ax) < 0.65 && F.d(cx, cz) < -0.5) { nav.walk[0][c] = 1; nav.h[0][c] = floorAt(cx, cz); } }) };
+  }
+  // heaps of ore-flecked rubble: dig through them (something is often asleep inside)
+  dyn.piles = [[16.6, 50.8], [27.6, 41.6], [38.4, 28.6], [99.0, 18.6], [107.6, 50.5], [118.6, 46.8]].map(([px, pz], i) => {
+    const [x, z] = toWall(px, pz, 1.3), y = floorAt(x, z) - 0.05; blockDisc(x, z, 0.75); light(x, y + 0.6, z, CCOL.cyan, 0.35, 2.2, 0);
+    return { id: 'pile' + i, x, y, z, yaw: i * 1.7 };
+  });
+  // Old Gus's corner of the hall: the timbered mouth of his old adit, a tool rack, a lamp, a crate
+  {
+    const [gx, gz] = toWall(45.6, 78.4, 0.9), y = floorAt(gx, gz);
+    prop('cv_timber0', gx, gz, { y: y - 0.05, yaw: Math.atan2(1, -0.25), s: 0.82 }); for (const sd of [-1, 1]) blockDisc(gx + sd * 0.25 * 1.4, gz + sd * 1.4, 0.25);
+    prop('cv_rack', 47.0, 80.4, { yaw: 2.6, block: 0.6 }); prop('cv_crate', 47.4, 76.2, { s: 0.9, yaw: 0.3, block: 0.45 });
+    prop('cv_lantern', 47.6, 76.3, { y: floorAt(47.4, 76.2) + 0.85, yaw: 0.2 }); light(47.6, floorAt(47.4, 76.2) + 1.1, 76.3, 0xffb060, 0.9, 6, 1.0); heroes.push({ x: 47.6, y: 1.3, z: 76.3, col: 0xffa850, i: 5 });
+  }
   // ore nodes (glowing veins in a lump of rock), chipped into the bag
   dyn.ores = [[61, 75.5], [37.5, 84.5], [11.5, 60.5], [27.5, 37.5], [35, 24], [63, 15.5], [99.6, 17.6], [106.5, 44], [123.5, 40], [79.5, 75]].map(([sx, sz], i) => {
     const [x, z] = toWall(sx, sz, 0.75), y = floorAt(x, z) - 0.06, col = i % 4 === 3 ? 'green' : 'cyan', s = 0.8 + (i % 3) * 0.12;
@@ -425,7 +480,7 @@ export function buildCave(C) {
   const Z = (n, r, label, music) => C.zone(n, r[0], r[1], r[2], r[3], { label, sub: 'The Deep Cave', music, step: 'step_stone' });
   Z('cv_mouth', [40, 68, 68, 104], 'Entrance Hall', 'safari'); Z('cv_drip', [22, 64, 47, 90], 'Dripping Tunnel', 'safari'); Z('cv_grove', [0, 38, 34, 66], 'Glowcap Grove', 'safari');
   Z('cv_whisper', [20, 28, 37, 46], 'Whisper Passage', 'safari'); Z('cv_lake', [30, 6, 66, 44], 'Mirror Lake', 'safari'); Z('cv_chasm', [66, 6, 104, 42], 'The Chasm', 'tension');
-  Z('cv_mine', [98, 18, 128, 66], 'Old Mine No. 3', 'tension'); Z('cv_geode', [72, 66, 100, 92], 'The Geode', 'tension'); Z('cv_short', [64, 76, 76, 88], 'Collapsed Passage', 'safari');
+  Z('cv_mine', [98, 18, 128, 66], 'Old Mine No. 3', 'tension'); Z('cv_geode', [72, 66, 100, 93], 'The Old Arena', 'tension'); Z('cv_short', [64, 76, 76, 88], 'Collapsed Passage', 'safari');
   return { F, dyn, heroes, drips, fx, floorAt, ceilAt, holes, mirrors };
 }
 
@@ -449,7 +504,7 @@ export function sign(E, gk, tex, x, y, z, nx, nz, w, h, side = 1) {
 
 // ==================================================================== after finalize: materials, pieces, glow, water, mist, motes
 export function postCave(city, stage, built) {
-  const root = city.root, { dyn } = built;
+  const root = city.root, { dyn } = built, fxEarly = [];
   // materials of the merged cave groups
   root.traverse((o) => {
     if (!o.isMesh || !o.material || !o.material.map) return;
@@ -473,6 +528,23 @@ export function postCave(city, stage, built) {
     const hinge = new THREE.Group(); hinge.position.set(0, 8 / 16, -4.5 / 16); b.mesh.add(hinge);
     const lid = voxMesh('cv_chest_lid', mats); lid.position.set(0, 0, 4.5 / 16); hinge.add(lid); b.lidMesh = hinge;
   }
+  dyn.runeDoor.mesh = put('cv_runedoor', dyn.runeDoor.x, dyn.runeDoor.y, dyn.runeDoor.z, dyn.runeDoor.yaw, 1.0, { ownGlow: true });
+  for (const p of dyn.piles) p.mesh = put('cv_orepile', p.x, p.y, p.z, p.yaw, 1.15);
+  // the rune circle (its glyphs glow when the arena wakes) and the lava fall with its pool (scrolled)
+  {
+    const R = dyn.runes, P = new Piece(), T = K.runeTex();
+    P.quad('', T, [R.x - R.r, R.y, R.z + R.r], [R.x + R.r, R.y, R.z + R.r], [R.x + R.r, R.y, R.z - R.r], [R.x - R.r, R.y, R.z - R.r], { fit: true });
+    R.mesh = P.build(pieceMat); R.mesh.traverse((o) => { if (o.material) { R.mat = o.material; o.material.transparent = false; } }); root.add(R.mesh);
+    const Lv = dyn.lava, LT = K.lavaTex(), Q = new Piece(), lm = new THREE.MeshBasicMaterial({ map: LT.clone(), toneMapped: false, side: THREE.DoubleSide });
+    lm.map.needsUpdate = true; lm.color.setScalar(1.6);
+    // three strands of the fall, the middle one proud of the wall, then the pool
+    for (const [ox, w, d] of [[-0.9, 0.9, 0.05], [0, 1.1, 0.35], [0.95, 0.8, 0.12]]) { const x0 = Lv.x + ox - w / 2, x1 = Lv.x + ox + w / 2, z = Lv.z - d; Q.quad('', LT, [x1, Lv.y - 0.1, z - 0.4], [x0, Lv.y - 0.1, z - 0.4], [x0, Lv.y + Lv.h, z], [x1, Lv.y + Lv.h, z], { u0: x0, v0: 0 }); }
+    const [px, pz, rx, rz] = Lv.pool;
+    for (let i = 0; i < 16; i++) { const a0 = (i / 16) * PI * 2, a1 = ((i + 1) / 16) * PI * 2, y = Lv.y + 0.05; Q.tri('', LT, [px, y, pz], [px + Math.cos(a1) * rx, y, pz + Math.sin(a1) * rz], [px + Math.cos(a0) * rx, y, pz + Math.sin(a0) * rz]); }
+    Lv.mesh = Q.build(() => lm); Lv.mat = lm; root.add(Lv.mesh);
+    fxEarly.push(addM(root, motes(90, [Lv.x - 3, Lv.y, Lv.z - 4, Lv.x + 3, Lv.y + 6, Lv.z], { colors: ['#ff8a2a', '#ffd060', '#ff5a1a'], size: 0.05, drift: [0, 0.35, -0.05], wob: 0.3, gain: 2.2, seed: 21 })));
+    fxEarly.push(addM(root, mistPlane(Lv.x - 3, Lv.z - 3.5, Lv.x + 3, Lv.z + 0.3, Lv.y + 0.9, 0xc8a090, 0.12, 2)));
+  }
   // the lake mirrors the crystals, the dripstones and the rocks near it
   root.add(mirroredProps(built.mirrors, mats, WATER));
   // the Geode's three rings of crystal each get their own glow material (so they can flare in turn)
@@ -493,7 +565,7 @@ export function postCave(city, stage, built) {
   fx.push(addM(root, motes(120, [52, 0, 82, 60, 4, 100.5], { colors: ['#cfe6ff', '#ffffff'], size: 0.03, drift: [0, 0.01, -0.35], wob: 0.15, gain: 0.8, seed: 5 })));                  // cold air from the mouth
   fx.push(addM(root, motes(160, [76, -2.5, 71, 95, 6, 89], { colors: ['#c8a0ff', '#ecdcff', '#9a7ae8'], size: 0.045, drift: [0, 0.06, 0], wob: 0.35, gain: 1.6, seed: 9 })));          // the geode's sparkle
   fx.push(addM(root, motes(140, [38, WATER, 13, 62, 6, 34], { colors: ['#5ad8f0', '#b8f6ff', '#b08af0'], size: 0.04, drift: [0, 0.05, 0], wob: 0.5, gain: 1.4, seed: 11 })));       // over the lake
-  built.fxMeshes = fx;
+  built.fxMeshes = fx.concat(fxEarly);
   // the geode's painted walls glow too (their fluorite cubes)
   const gg = root.getObjectByName('cv_geode'); if (gg) gg.traverse((o) => { if (o.isMesh && o.material && o.material.emissiveMap) { o.material.userData.glow0 = o.material.emissiveIntensity; built.geodeMats.push({ group: 'cv_geode', m: o.material }); } });
   return built;

@@ -291,6 +291,60 @@ add('cv_post', { size: [3, 26, 3], r: 0.15, build(F) { wood(F, 0, 0, 0, 2, 25, 2
 add('cv_ropepost', { size: [3, 18, 3], r: 0.12, build(F) { wood(F, 0, 0, 0, 2, 17, 2, 'y', WOOD(F), 6); const RP = F.c('#a48a62'); F.box(0, 14, 0, 2, 14, 2, RP); } });
 add('cv_plank', { size: [4, 1, 22], r: 0, noShadow: true, build(F) { wood(F, 0, 0, 0, 3, 0, 21, 'z', ramp(F, '#6a5642', [-0.3, -0.16, -0.04, 0.08, 0.18]), 3); F.set(1, 0, 2, F.c('#2a2624')); F.set(2, 0, 19, F.c('#2a2624')); } });
 
+// ==================================================================== the Old Arena
+const CARVE = ['#7a7068', '#6a6058', '#847a70', '#72685e'];
+/** dressed stone: block courses with lit tops, chipped arrises, carved rune bands (glow: their palette entries) */
+function masonry(F, x0, y0, z0, x1, y1, z1, o = {}) {
+  const RS = CARVE.map((c) => ramp(F, c, [-0.32, -0.18, -0.06, 0.06, 0.16])), MOSS = ramp(F, '#4e6a3a', [-0.2, 0, 0.18]), RUNE = o.rune ? F.c(o.rune, GLOW) : 0;
+  for (let y = y0; y <= y1; y++) for (let z = z0; z <= z1; z++) for (let x = x0; x <= x1; x++) {
+    const edge = (x === x0 || x === x1) + (z === z0 || z === z1) + (y === y1); if (!edge && y > y0) continue;
+    const course = Math.floor((y - y0) / (o.course || 6)), blk = Math.floor((x + z + course * 5) / 9), R = RS[(course + blk) % RS.length];
+    const joint = (y - y0) % (o.course || 6) === 0 || (x + z + course * 5) % 9 === 0;
+    let v = 0.45 + (y === y1 ? 0.3 : 0) + (x === x0 ? 0.08 : 0) + (z === z1 ? 0.05 : 0) - (joint ? 0.35 : 0) + (h3(x, y, z) - 0.5) * 0.18;
+    if (h3(x >> 1, y >> 1, z >> 1) < 0.05 && edge >= 2) continue;                                       // a chip off the corner
+    if (RUNE && o.runeY && y >= o.runeY && y < o.runeY + 3 && (x * 3 + z * 7 + y) % 5 < 2 && !joint) { F.set(x, y, z, RUNE); continue; }
+    F.set(x, y, z, o.moss && y === y1 && h3(x, 0, z) < 0.35 ? pickD(MOSS, 0.5, x, y, z) : pickD(R, v, x, y, z));
+  }
+}
+/** a stepped block of the colosseum ring (straight; set in a polygon round the arena), front +z = toward the arena */
+for (const v of [0, 1]) add(`cv_tier${v}`, { size: [42, 22, 28], r: 0, build(F) {
+  masonry(F, 0, 0, 0, 41, 7, 27, { moss: true }); masonry(F, 0, 8, 0, 41, 14, 18, { moss: true }); masonry(F, 0, 15, 0, 41, 21, 9, { moss: v === 1, rune: '#ff9a3a', runeY: 17 });
+  if (v) for (let i = 0; i < 6; i++) rock(F, 6 + i * 6, 9, 22 - (i % 2) * 3, 3, 2, 3, 'brown', i + 7, { k: 0.3 });     // a collapsed step, rubble on it
+} });
+/** a carved column with a rune band: whole (0), snapped half-way (1), a fallen drum (2) */
+for (const v of [0, 1, 2]) add(`cv_pillar${v}`, { size: [v === 2 ? 48 : 18, v === 0 ? 96 : v === 1 ? 60 : 18, 18], r: 0.6, build(F) {
+  if (v === 2) { for (let x = 0; x < 48; x++) { const r0 = x % 14 < 1 ? 6.5 : 7.5; for (let y = 0; y < 18; y++) for (let z = 0; z < 18; z++) { const d = Math.hypot(y - 8.5, z - 8.5); if (d > r0 || d < r0 - 1.5 && x % 14 && x !== 0 && x !== 47) continue; const R = ramp(F, CARVE[(Math.floor(x / 14)) % 4]); F.set(x, y, z, pickD(R, 0.3 + 0.5 * lit(nrm(0, (y - 8.5) / 8, (z - 8.5) / 8)) - (x % 14 < 1 ? 0.3 : 0), x, y, z)); } } return; }
+  const H = v === 0 ? 92 : 56, RU = F.c('#ffb050', GLOW);
+  masonry(F, 0, 0, 0, 17, 6, 17, {});                                                                   // the base
+  for (let y = 7; y < H; y++) { const flute = 7.5; for (let z = 0; z < 18; z++) for (let x = 0; x < 18; x++) {
+    const dx = x - 8.5, dz = z - 8.5, d = Math.hypot(dx, dz), ang = Math.atan2(dz, dx), r = flute - (Math.cos(ang * 12) > 0.6 ? 0.8 : 0);
+    if (d > r || d < r - 2) continue;
+    if (v === 1 && y > H - 10 && h3(x, 0, z) * 10 + (H - 10) < y) continue;                         // the jagged break
+    const band = y > 34 && y < 40, R = ramp(F, CARVE[Math.floor(y / 16) % 4]);
+    F.set(x, y, z, band && (Math.floor((ang + 4) * 4) + y) % 3 === 0 ? RU : pickD(R, 0.25 + 0.55 * lit(nrm(dx, 0, dz)) + (y % 16 === 0 ? -0.3 : 0), x, y, z));
+  } }
+  if (v === 0) masonry(F, 0, H, 0, 17, H + 3, 17, {});                                                 // the capital
+} });
+/** a brazier: a carved pedestal, an iron bowl heaped with coals (the fire itself is particles + light when lit) */
+add('cv_brazier', { size: [14, 20, 14], r: 0.4, build(F) {
+  masonry(F, 3, 0, 3, 10, 12, 10, { course: 4 });
+  const I = IRON(F), CO = ramp(F, '#3a2a24', [-0.3, 0, 0.2]), EM = F.c('#ff6a1a', GLOW);
+  for (let y = 13; y < 18; y++) for (let z = 0; z < 14; z++) for (let x = 0; x < 14; x++) { const d = Math.hypot(x - 6.5, z - 6.5), r = 4.5 + (y - 13) * 0.6; if (d > r || (d < r - 1.2 && y > 13)) continue; F.set(x, y, z, pickD(I, 0.3 + (y === 17 ? 0.5 : 0), x, y, z)); }
+  for (let z = 2; z < 12; z++) for (let x = 2; x < 12; x++) { if (Math.hypot(x - 6.5, z - 6.5) > 5) continue; F.set(x, 17, z, h3(x, 1, z) < 0.25 ? EM : pickD(CO, h3(x, 2, z), x, 17, z)); }
+} });
+/** the sealed door of the Old Arena: a carved slab with a ring of runes round a keyhole glyph (along x) */
+add('cv_runedoor', { size: [60, 64, 10], r: 0, build(F) {
+  masonry(F, 0, 0, 1, 59, 63, 8, { course: 8 });
+  const G1 = F.c('#ff9a3a', GLOW), G2 = F.c('#ffd070', GLOW), cx = 30, cy = 34;
+  for (let y = 0; y < 64; y++) for (let x = 0; x < 60; x++) { const d = Math.hypot(x - cx, y - cy); if (Math.abs(d - 16) < 1 || Math.abs(d - 11) < 0.7 || (d < 4 && Math.abs(x - cx) < 1.5) || (d < 3 && Math.abs(y - cy - 1) < 1.5)) F.set(x, y, 9, d < 5 ? G2 : G1); }
+  for (let i = 0; i < 16; i++) { const a = (i / 16) * TAU, gx = cx + Math.cos(a) * 13.5, gy = cy + Math.sin(a) * 13.5; F.set(Math.round(gx), Math.round(gy), 9, G2); F.set(Math.round(gx + 1), Math.round(gy), 9, G1); }
+} });
+/** a heap of rubble glinting with ore (dig through it: ore, and sometimes a Tokonmon that was napping inside) */
+add('cv_orepile', { size: [30, 18, 30], r: 0.6, build(F) {
+  const r = rng(41); for (let i = 0; i < 14; i++) { const a = r() * TAU, d = r() * 9; rock(F, 15 + Math.cos(a) * d, 2 + (9 - d) * 0.7, 15 + Math.sin(a) * d, 3 + r() * 3, 2 + r() * 2.5, 3 + r() * 3, i % 3 ? 'ochre' : 'slate', i, { k: 0.3 }); }
+  const R = crysRamp(F, 'cyan'); for (let i = 0; i < 22; i++) { const x = Math.floor(5 + r() * 20), z = Math.floor(5 + r() * 20), y = F.top(x, z); if (y > 0) F.set(x, y + 1, z, R[3 + Math.floor(r() * 4)]); }
+} });
+
 // ==================================================================== meshes for the pieces that move
 /** a kind as a plain group of meshes (its painted voxels and glowing voxels), origin at the kind's foot centre */
 export function voxMesh(kind, mats, o = {}) {

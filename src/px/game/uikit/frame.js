@@ -214,10 +214,9 @@ export function woodRing(s, cx, cy, r, o = {}) {
   });
   put(ui, cv, cx, cy, Rr + 3);
 }
-// clip to a crisp disc (a union of physical row rects)
+// clip to a disc (at device resolution an arc edge is crisp enough, and far cheaper to raster than row rects)
 export function clipCircle(ui, cx, cy, r, fn) {
-  const g = ui.g, X = PX(ui, cx), Y = PY(ui, cy), Rp = Math.max(0, R(r * ui.td)), A = discRows(Rp);
-  g.save(); g.setTransform(1, 0, 0, 1, 0, 0); g.beginPath(); for (let j = -Rp; j <= Rp; j++) { const hw = A[j + Rp]; g.rect(X - hw, Y + j, hw * 2 + 1, 1); } g.setTransform(ui.ta, 0, 0, ui.td, ui.te, ui.tf); g.clip();
+  const g = ui.g; g.save(); g.beginPath(); g.arc(cx, cy, Math.max(0, r + 0.5 / ui.k), 0, Math.PI * 2); g.clip();
   try { fn(); } finally { g.restore(); ui._fs = null; }
 }
 // a triangle cursor with an outline. dir: 'right' | 'down' | 'left' | 'up'; size = half-height (units)

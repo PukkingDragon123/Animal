@@ -13,7 +13,7 @@
 import * as THREE from '../../../../vendor/three.module.js';
 import { TX } from '../build.js';
 
-const { ptex, pixels, fnoise, pnoise, ramp, pick, dark, light, hx } = TX;
+const { ptex, pixels, fnoise, pnoise, ramp, pick, dark, light, hx, rnd } = TX;
 const TAU = Math.PI * 2;
 const ROUGH = new Map(), MASK = new Map();
 
@@ -179,6 +179,47 @@ export const ceilTex = () => finish(ptex('cave_ceil', 4, 4, (g, W, H, r, P) => {
   for (let i = 0; i < 26; i++) { const x = r() * W, y = r() * H; P.blob(x, y, 1.5, 1.5, '#8a8478', 0.6); P.fpx(x, y, '#c8c0b0'); }   // drip rings (soda straws)
   for (let i = 0; i < 8; i++) P.blob(r() * W, r() * H, 6 + r() * 8, 4 + r() * 6, '#4a3a2a', 0.35);                                // iron stains
 }), { rough: 0.9, relief: 0.5 });
+
+// ==================================================================== the Old Arena
+/** the arena's floor (4 × 4 m): big carved flagstones, worn smooth in the middle, chisel marks and grit in the joints */
+export const arenaFloorTex = () => finish(ptex('cave_floor_arena', 4, 4, (g, W, H, r, P) => {
+  const T = P.t, n = fnoise(r, 4, 3), R = ramp('#6a6058', [-0.3, -0.18, -0.06, 0.04, 0.12, 0.22]);
+  pixels(g, W, H, (x, y) => pick(R, 0.5 + (n(x / W, y / H) - 0.5) * 0.8 + (r() - 0.5) * 0.16, x, y));
+  const rows = [0, 22, 46, 70, 96, 128];
+  for (let i = 0; i < rows.length - 1; i++) {
+    const y0 = rows[i], y1 = rows[i + 1], off = (i % 2) * 20;
+    P.fwh(0, y0, W, '#2a2420'); P.fwh(0, y0 + T, W, '#8a8078');
+    for (let x = off; x < W + off; x += 30 + Math.floor(r() * 14)) { P.fwv(x, y0, y1 - y0, '#2a2420'); P.fwv(x + T, y0, y1 - y0, '#857a72'); }
+  }
+  for (let i = 0; i < 40; i++) { const x = r() * W, y = r() * H; P.fwh(x, y, 2 + r() * 3, dark('#6a6058', 0.25)); }        // chisel marks
+  P.speck(60, '#4a423c', r);
+}), { rough: 0.78, relief: 0.6 });
+/** the rune circle carved into the arena floor (12 × 12 m, fit): rings of glyphs that glow when the arena wakes
+ *  (the emissive mask holds only the glyphs; the gameplay ramps its strength) */
+export const runeTex = () => finish(ptex('cave_runes', 12, 12, (g, W, H, r, P) => {
+  const mc = sideCanvas(W, H, P.k), c = W / 2, put = (x, y, col, glow) => { P.rect(x, y, 1, 1, col); if (glow) { mc.g.fillStyle = glow; mc.g.fillRect(x, y, 1, 1); } };
+  g.clearRect(0, 0, W, H); mc.g.fillStyle = '#000'; mc.g.fillRect(0, 0, W, H);
+  P.fill('#5e5650'); P.speck(900, '#544c46', r); P.speck(500, '#6a625a', r);
+  // three carved rings, the glyph band between the outer two, a star in the middle
+  const ring = (rad, wdt, col, glow) => { for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const d = Math.hypot(x + 0.5 - c, y + 0.5 - c); if (Math.abs(d - rad) < wdt) put(x, y, col, glow); } };
+  ring(c - 6, 1.6, '#2e2824', '#ff8a30'); ring(c - 26, 1.2, '#2e2824', '#ff8a30'); ring(c - 70, 1.4, '#2e2824', '#ffb050');
+  const glyphs = 28;
+  for (let i = 0; i < glyphs; i++) {
+    const a = (i / glyphs) * Math.PI * 2, rr = c - 16, gx = c + Math.cos(a) * rr, gy = c + Math.sin(a) * rr, rr2 = rnd(i * 97 + 5);
+    for (let s = 0; s < 5; s++) {   // a glyph: a few strokes in a 9 × 9 cell, turned to face the centre
+      let px = (rr2() - 0.5) * 8, py = (rr2() - 0.5) * 8; const dx = rr2() < 0.5 ? 1 : 0, dy = 1 - dx, L = 3 + Math.floor(rr2() * 5);
+      for (let k = 0; k < L; k++) { const ex = px * Math.cos(a) - py * Math.sin(a), ey = px * Math.sin(a) + py * Math.cos(a); put(Math.round(gx + ex), Math.round(gy + ey), '#2a2420', '#ffc060'); px += dx; py += dy; }
+    }
+  }
+  for (let k = 0; k < 8; k++) { const a = (k / 8) * Math.PI * 2; for (let t = 0; t < c - 74; t += 0.5) put(Math.round(c + Math.cos(a) * t), Math.round(c + Math.sin(a) * t), '#2e2824', k % 2 ? '#ff7a20' : '#ffb050'); }
+  MASK.set('cave_runes', sideTex(mc.c, null, true));
+}, { ppm: 16, paint: false }), { glow: 0.05, rough: 0.8, relief: 0.4 });
+/** molten rock for the lava fall and its pool (2 × 4 m, scrolled downward in the shader) */
+export const lavaTex = () => finish(ptex('cave_lava', 2, 4, (g, W, H, r, P) => {
+  const n = fnoise(r, 2, 3, 4), R = ['#3a0a04', '#8a1a06', '#d84a0c', '#ff8a1a', '#ffc84a', '#fff4b0'].map(hx);
+  pixels(g, W, H, (x, y) => { const u = x / W, v = y / H, f = n(u + Math.sin(v * TAU * 2) * 0.05, v); return pick(R, Math.min(1, Math.max(0, (f - 0.3) * 1.8 + (Math.sin((v * 6 + u) * TAU) > 0.7 ? 0.2 : 0))), x, y); });
+  for (let i = 0; i < 30; i++) P.blob(r() * W, r() * H, 2 + r() * 3, 1 + r() * 2, '#2a0804', 0.7);    // cooling crust
+}), { glow: 2.4, rough: 0.6, relief: 0 });
 
 // ==================================================================== the Geode
 const CRYST = { cyan: ['#0e3a4e', '#1a6a86', '#2aa0c0', '#5ad8f0', '#b8f6ff'], violet: ['#2a1a4e', '#4a2a86', '#7a4ac8', '#b08af0', '#ecdcff'], green: ['#0e3a2a', '#1a6a4a', '#2aa070', '#6ae0a0', '#d0ffe4'], amber: ['#4a2a0e', '#86501a', '#c08a2a', '#f0c45a', '#fff4c8'], rose: ['#4a1a2e', '#862a50', '#c84a7a', '#f08ab0', '#ffdcea'] };

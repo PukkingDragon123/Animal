@@ -314,22 +314,36 @@ function ambienceTick(R, dt) {
 }
 
 // ==================================================================== the Tokonmon that live down here
+// do: sleep | skitter | wander | shy | drift | swim | guard | charge (notices you, warns, rolls / swoops at you:
+// touching you starts a battle) | hang (a Stalagrin asleep under the roof: drops and charges when you pass below)
 const RES = [
+  // the Entrance Hall and the dripping tunnel
   { id: 'cv_rb1', sp: 'rainblin', at: [50.5, 83], area: [46, 74, 61, 85], do: 'skitter', battle: true },
-  { id: 'cv_rb2', sp: 'rainblin', at: [59, 77], area: [48, 73, 62, 85], do: 'skitter' },
-  { id: 'cv_sr1', sp: 'studrat', at: [36.5, 82], area: [30, 77, 41, 85], do: 'wander', battle: true },
+  { id: 'cv_lm1', sp: 'lumoth', at: [58, 77.5], area: [50, 73, 62, 86], do: 'drift', battle: true },
+  { id: 'cv_pebbles', sp: 'tumblock', at: SPOT.pebbles, do: 'pet', yaw: 1.4 },
+  { id: 'cv_sg1', sp: 'stalagrin', at: [36.5, 82.2], do: 'hang', battle: true },
+  { id: 'cv_sr1', sp: 'studrat', at: [30, 77.5], area: [27, 72, 34, 80], do: 'wander', battle: true },
+  // Glowcap Grove
   { id: 'cv_sq1', sp: 'snoozaque', at: [17.4, 64], do: 'sleep', battle: true, lv: 1, yaw: 0.6 },
   { id: 'cv_cp1', sp: 'creepetal', at: [25.6, 62.6], do: 'shy', yaw: -0.8 },
   { id: 'cv_cp2', sp: 'creepetal', at: [15.6, 55.4], do: 'shy', battle: true, yaw: 1.2 },
-  { id: 'cv_cb1', sp: 'chochobake', at: [20, 52], area: [13, 47, 29, 63], do: 'drift', battle: true },
+  { id: 'cv_lm2', sp: 'lumoth', at: [20, 52], area: [13, 47, 29, 63], do: 'drift', battle: true },
+  { id: 'cv_gd1', sp: 'geodig', at: [26.5, 56], area: [20, 49, 30, 62], do: 'skitter', battle: true },
   { id: 'cv_rb3', sp: 'rainblin', at: [27, 47.5], area: [21, 44, 30, 52], do: 'skitter' },
-  { id: 'cv_wf1', sp: 'weirdfin', lake: [50, 21.5, 7.0, 3.9, 0], do: 'swim' },
-  { id: 'cv_wf2', sp: 'weirdfin', lake: [47.5, 21, 4.2, 2.4, 2], do: 'swim' },
+  // Whisper Passage and Mirror Lake
+  { id: 'cv_tb1', sp: 'tumblock', at: [27.5, 38.5], area: [24, 34, 31, 44], do: 'charge', battle: true },
+  { id: 'cv_lf1', sp: 'lumifin', lake: [50, 21.5, 7.0, 3.9, 0], do: 'swim' },
+  { id: 'cv_lf2', sp: 'lumifin', lake: [47.5, 21, 4.2, 2.4, 2], do: 'swim' },
+  { id: 'cv_wf1', sp: 'weirdfin', lake: [52, 22, 5.5, 3.2, 4], do: 'swim' },
   { id: 'cv_pd1', sp: 'piledrilla', at: [37.8, 26.5], do: 'guard', battle: true, lv: 2, yaw: 1.2 },
+  { id: 'cv_lm3', sp: 'lumoth', at: [56, 34.5], area: [48, 30, 63, 40], do: 'drift', battle: true },
   { id: 'cv_sq2', sp: 'snoozaque', at: [36.5, 35.5], do: 'sleep', yaw: 2.4 },
+  // the ledge, the mine, the camp
+  { id: 'cv_sg2', sp: 'stalagrin', at: [94, 16.2], do: 'hang', battle: true },
+  { id: 'cv_tb2', sp: 'tumblock', at: [108.6, 31], area: [106.5, 25, 110.6, 41], do: 'charge', battle: true, lv: 1 },
+  { id: 'cv_sg3', sp: 'stalagrin', at: [109, 51.5], do: 'hang', battle: true, lv: 1 },
+  { id: 'cv_gd2', sp: 'geodig', at: [106.6, 56.5], area: [104, 53, 109.5, 60], do: 'skitter', battle: true },
   { id: 'cv_mf1', sp: 'metalfang', at: [118.8, 44.4], area: [116.5, 41.5, 123, 46], do: 'wander', battle: true },
-  { id: 'cv_sr2', sp: 'studrat', at: [108.2, 30], area: [106.5, 25, 110.5, 41], do: 'wander', battle: true },
-  { id: 'cv_sr3', sp: 'studrat', at: [108.4, 51], area: [105.5, 47, 110, 58], do: 'wander' },
   { id: 'cv_cb2', sp: 'chochobake', at: [104.8, 24], area: [102.5, 21.5, 110, 39], do: 'drift' },
 ];
 // open floor for battles: [x, z, r, camera yaw]
@@ -358,20 +372,22 @@ class CaveLife {
     if (e.do === 'sleep') a.play('sleep', { fade: 0 });
     if (e.do === 'swim') { a.g.position.y = WATER - 0.2; a.play(a.anim.clips.loop ? 'loop' : 'walk', { fade: 0 }); }
     if (e.do === 'drift') { r.fy = a.g.position.y; a.play('idle', { fade: 0 }); }
+    if (e.do === 'hang') { r.hang = true; a.play('hang', { fade: 0 }); const nav = w.nav; r.roofY = this.R.built.ceilAt(x, z) - 1.3 - (a.m.scale || 0.5) * 22 / 16; a.g.position.y = nav.ground(x, z, 0); }
+    if (e.do === 'pet') a.play('sleep', { fade: 0 });
     if (e.battle) {
       const nm = (SPECIES[e.sp] && SPECIES[e.sp].name) || e.sp;
       const it = { npc: e.id, r: 1.9, L: 0, icon: 'fist', label: 'Battle the wild ' + nm, when: () => r.state === 'ok' && !r.fleeing && (e.do !== 'sleep' || r.awake), act: (app) => this.battle(app, r) };
       this.R.city.inter.push(it); this.its.push(it); r.it = it;
     }
   }
+  /** the Old Arena's guardian: up in its crevice on the far wall until the arena wakes; once calmed, asleep by the lava */
   async spawnBoss() {
-    const w = this.w, s = CS(this.R.app), [x, z] = SPOT.boss;
-    const a = await w.addMon('cv_boss', 'fluorescape', [x, z, 2.2]).catch(() => null); if (!a || this.disposed) return;
-    a.g.scale.multiplyScalar(1.35); a._cinH = null; a.play('sleep', { fade: 0 }); a.boss = true;
-    this.boss = a; this.R.boss = a;
-    const it = { npc: 'cv_boss', r: 3.2, L: 0, icon: 'heart', label: 'Sit with Fluorescape', when: (app) => !!CS(app).boss, act: (app) => calmVisit(app) };
+    const w = this.w, s = CS(this.R.app), calm = !!s.boss, [x, z] = calm ? SPOT.bossRest : this.R.built.dyn.bossWall;
+    const a = await w.addMon('cv_boss', 'magmander', [x, z, calm ? 2.6 : 0.6]).catch(() => null); if (!a || this.disposed) return;
+    a._cinH = null; a.boss = true; this.boss = a; this.R.boss = a;
+    if (calm) a.play('sleep', { fade: 0 }); else hideOnWall(this.R, a);
+    const it = { npc: 'cv_boss', r: 4.2, L: 0, icon: 'heart', label: 'Sit with Magmander', when: (app) => !!CS(app).boss, act: (app) => calmVisit(app) };
     this.R.city.inter.push(it); this.its.push(it);
-    void s;
   }
   async battle(app, r) {
     const w = app.world, me = w.player, a = r.a, e = r.e; if (!a || !me) return;
