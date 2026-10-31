@@ -84,7 +84,7 @@ export class Hud {
     const a = Math.min(1, t / 0.4, (dur - t) / 0.6); if (a <= 0.05) return;
     const rows = c.pad ? [['LS', 'MOVE'], ['B', 'RUN'], ['RS', 'CAMERA'], ['A', 'TALK']]
       : c.touch ? [['LEFT', 'MOVE'], ['RIGHT', 'CAMERA'], ['PINCH', 'ZOOM'], ['TAP', 'WALK']]
-        : [['WASD', 'MOVE'], ['SHIFT', 'RUN'], ['Q E', 'CAMERA'], ['DRAG', 'CAMERA'], ['E', 'TALK']];
+        : [['WASD', 'MOVE'], ['SHIFT', 'RUN'], ['Q E', 'CAMERA'], ['WHEEL', 'ZOOM'], ['E', 'TALK']];
     const width = (L) => L.reduce((s, [k, l]) => s + Math.max(11, ui.tw(k, { mini: k.length > 3 }) + 6) + ui.tw(l, { mini: true }) + 10, 0);
     const list = width(rows) > Math.min(ui.w - 12, maxX - 12) ? rows.slice(0, 3) : rows;
     let x = Math.round((ui.w - width(list)) / 2); const y = H - 52 + Math.round((1 - a) * 8);
