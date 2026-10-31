@@ -20,6 +20,7 @@ import { Story } from './story.js';
 import { LOCATIONS } from './locations.js';
 import { Quests, visit, drawTramSign } from './quests.js';
 import { Hud } from './hud.js';
+import { Cinema } from './cinema.js';     // [cinema] the cutscene director
 
 // fast-travel targets on the city map (phone map / cable car)
 const CITY_SPOTS = { chinatown: 'square', alamo: 'park', pier39: 'pier', dojo: 'dojoDoor', arena: 'arena', apartment: 'frontDoorOut', home: 'frontDoorOut', lab: 'labDoor', city: 'frontDoorOut' };
@@ -53,6 +54,7 @@ export class VxApp {
     this.story = new Story(this);
     this.quests = new Quests(this);
     this.hud = new Hud(this);
+    this.cinema = new Cinema(this);                          // [cinema] bars, shots, cards, hold-to-skip
     this.last = performance.now();
     this.loop = this.loop.bind(this); requestAnimationFrame(this.loop);
     window.__app = this;
@@ -91,13 +93,14 @@ export class VxApp {
     if (!this.params.get('res')) { const P = this.perf || (this.perf = { n: 0, sum: 0 }); P.n++; P.sum += (now - (P.prev || now)) / 1000; P.prev = now;
       if (P.sum > 2) { const avg = P.sum / P.n; P.n = 0; P.sum = 0; const k0 = this.resK || 1; let k1 = k0; if (avg > 1 / 40) k1 = Math.max(0.55, k0 * 0.85); else if (avg < 1 / 57 && k0 < 1) k1 = Math.min(1, k0 / 0.85); if (k1 !== k0) { this.resK = k1; this.layout(); } } }
     try {
-      this.world.update(dt);
+      this.world.update(this.cinema ? this.cinema.tick(dt) : dt);      // [cinema] the director first (hit-stop / slow motion scale the world's dt)
       if (this.battle && this.battle.active) this.battle.update(dt);
       if (this.world.ready) { const frame = this.stage.render(); this.post.draw(frame, this.t); }
       const ui = this.ui; ui.begin(dt);
       if (this.battle && this.battle.active) this.battle.drawUI(ui, dt);
       else this.world.drawUI(ui, dt);
-      if (this.roaming && !(this.battle && this.battle.active) && !this.story.title) this.hud.draw(ui, dt);
+      if (this.cinema) this.cinema.drawUnder(ui, dt);                       // [cinema] letterbox bars
+      if (this.roaming && !(this.battle && this.battle.active) && !this.story.title && !(this.cinema && this.cinema.active)) this.hud.draw(ui, dt);
       if (this.story.drawUI) this.story.drawUI(ui, dt);
       for (const o of this.overlays) o(ui, dt);
       drawTramSign(this, ui, dt);
@@ -105,17 +108,20 @@ export class VxApp {
       this.world.handleTap(ui);
       this.fadeA += Math.sign(this.fadeTo - this.fadeA) * Math.min(Math.abs(this.fadeTo - this.fadeA), dt * 3.2);
       if (this.fadeA > 0.001) ui.fade(this.fadeA, '#0c0814');
+      if (this.cinema) this.cinema.drawOver(ui, dt);                        // [cinema] flashes, veils, title / place / name cards, skip
       ui.end();
       this.uctx.putImageData(new ImageData(new Uint8ClampedArray(ui.s.data.buffer), ui.w, ui.h), 0, 0);
     } catch (e) { if (!this._err) { this._err = true; console.error(e); const el = document.getElementById('err'); if (el) { el.style.display = 'block'; el.textContent = 'Frame: ' + (e.stack || e); } } }
   }
   // ------------------------------------------------------------------ services for the story
-  fade(to, ms = 400) { this.fadeTo = to; return new Promise((r) => setTimeout(r, ms)); }
-  wait(ms) { return new Promise((r) => setTimeout(r, ms)); }
+  fade(to, ms = 400) { this.fadeTo = to; if (this.cinema && this.cinema.skipping) { this.fadeA = to; ms = 0; } return new Promise((r) => setTimeout(r, ms)); }   // [cinema] skipping: no waiting
+  wait(ms) { if (this.cinema && this.cinema.skipping) ms = 0; return new Promise((r) => setTimeout(r, ms)); }
   say(name, ...lines) {
     if (this.auto) { this.log && this.log.push(name + ': ' + lines[0]); return this.wait(40 * this.auto); }
+    const cin = this.cinema;                                                                   // [cinema] a skipped cutscene's lines close at once
+    if (cin && cin.skipping) return Promise.resolve();
     const portrait = this.portraitFor(name);
-    return lines.reduce((p, l) => p.then(() => this.ui.say(name, l, portrait ? { portrait } : {})), Promise.resolve());
+    return lines.reduce((p, l) => p.then(() => (cin && cin.skipping ? null : this.ui.say(name, l, portrait ? { portrait } : {}))), Promise.resolve());
   }
   /** a small 3D render of the speaker's head and shoulders (never drawn art): the actor whose name / role matches */
   portraitFor(name) {

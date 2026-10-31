@@ -5,7 +5,9 @@ export const LOCATIONS = {
   // the walkable city (one seamless map; see src/vx/scenes/city.js)
   city: {
     name: 'San Francisco', scene: 'city', mood: 'day', map: [0.5, 0.5], blurb: 'The whole city on foot.',
-    follow: { dist: 30, pitch: 40, yaw: 45, h: 1.0 },
+    // the third-person follow camera (src/vx/city/control.js): distance m, pitch °, look-at height m, lens °, look-ahead s;
+    // indoor: the closer, steeper framing inside buildings. The yaw is yours (orbit) and eases back behind you as you walk.
+    follow: { dist: 8.4, pitch: 20, h: 1.35, fov: 42, lead: 0.32, indoor: { dist: 6.4, pitch: 42, h: 1.0, fov: 42, lead: 0.1 } },
     spots: {},
     // passers-by walking the avenue sidewalks; pigeons strutting in the park
     life: [

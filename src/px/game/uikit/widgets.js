@@ -64,10 +64,10 @@ export function prompt(ui, x, y, keyLabel, str, o = {}) {
 }
 
 // ------------------------------------------------------------------ virtual thumbstick
-// dx, dy: knob offset as a fraction of r (−1..1). o: { color }
+// dx, dy: knob offset as a fraction of r (−1..1). o: { color, ghost (a faint resting hint: rim and chevrons only) }
 export function joystick(ui, cx, cy, r, dx = 0, dy = 0, active = false, o = {}) {
   cx = Math.round(cx); cy = Math.round(cy); r = Math.round(r);
-  const s = ui.s, k = active ? 1 : 0.6, acc = o.color || T.cyan;
+  const s = ui.s, k = active ? 1 : o.ghost ? 0.32 : 0.6, acc = o.color || T.cyan;
   discA(s, cx, cy, r, '#120c1c', 0.38 * k);
   discA(s, cx, cy, Math.round(r * 0.62), '#2b2244', 0.25 * k);
   ringPx(s, cx, cy, r + 1, T.ink, 0.75 * k);
@@ -83,10 +83,11 @@ export function joystick(ui, cx, cy, r, dx = 0, dy = 0, active = false, o = {}) 
   for (const [d, ux, uy] of dirs) {
     const on = active && m > 0.3 && nx * ux + ny * uy > 0.7;
     const px0 = cx + ux * (r - 5), py0 = cy + uy * (r - 5);
-    const c = on ? acc : mx(T.edgeL, '#ffffff', 0.2);
+    const c = on ? acc : o.ghost ? mx(T.edgeL, T.panel, 0.45) : mx(T.edgeL, '#ffffff', 0.2);
     if (d === 'up') tri(s, px0 - 2, py0 - 1, 'up', 2, c); else if (d === 'down') tri(s, px0 - 2, py0 - 1, 'down', 2, c);
     else if (d === 'left') tri(s, px0 - 1, py0 - 2, 'left', 2, c); else tri(s, px0 - 1, py0 - 2, 'right', 2, c);
   }
+  if (o.ghost) return;
   const kr = Math.max(5, Math.round(r * 0.42));
   const KX = Math.round(cx + nx * (r - kr * 0.6)), KY = Math.round(cy + ny * (r - kr * 0.6));
   discA(s, KX + 1, KY + 2, kr, T.shade, 0.5 * k);

@@ -41,7 +41,7 @@ export class VxStage {
     this.sun = new THREE.DirectionalLight(0xffffff, 2); this.sun.castShadow = true;
     this.sun.shadow.mapSize.set(o.shadowSize || 4096, o.shadowSize || 4096); this.sun.shadow.bias = -0.0004; this.sun.shadow.normalBias = 0.04; this.sun.shadow.radius = 2.5;
     S.add(this.sun, this.sun.target);
-    this.cam = new THREE.PerspectiveCamera(o.fov || 32, 16 / 9, 0.5, 2000);
+    this.cam = new THREE.PerspectiveCamera(o.fov || 32, 16 / 9, 0.5, 2000); this.baseFov = this.cam.fov;
     this.view = { target: new THREE.Vector3(0, 0, 0), dist: 60, yaw: 0, pitch: 52 };
     this.actors = new THREE.Group(); S.add(this.actors);
     this.lamps = [];                           // light-pool records (see lamp / addLights)
@@ -105,10 +105,11 @@ export class VxStage {
   addLights(list) { for (const l of list) this.lamps.push(l); this.lamps.version++; }
   /** an emissive material whose glow follows the mood (always: shines by day too, like a screen) */
   glowMat(mat, k = 1, always = false) { this.glowMats.set(mat, { k, always }); mat.emissiveIntensity = k * (always ? 1 : this.mood.emissive); }
-  // camera: look at target from yaw/pitch (degrees) at a distance
-  look(target, dist, yaw = 0, pitch = 52) { this.view.target.set(...target); Object.assign(this.view, { dist, yaw, pitch }); }
+  // camera: look at target from yaw/pitch (degrees) at a distance, through a lens of fov degrees (default: baseFov)
+  look(target, dist, yaw = 0, pitch = 52, fov) { this.view.target.set(...target); Object.assign(this.view, { dist, yaw, pitch, fov }); }
   updateCamera() {
-    const v = this.view, yr = v.yaw * Math.PI / 180, pr = v.pitch * Math.PI / 180;
+    const v = this.view, yr = v.yaw * Math.PI / 180, pr = v.pitch * Math.PI / 180, fov = v.fov || this.baseFov;
+    if (Math.abs(this.cam.fov - fov) > 1e-3) { this.cam.fov = fov; this.cam.updateProjectionMatrix(); }
     this.cam.position.set(v.target.x + Math.sin(yr) * Math.cos(pr) * v.dist, v.target.y + Math.sin(pr) * v.dist, v.target.z + Math.cos(yr) * Math.cos(pr) * v.dist);
     this.cam.lookAt(v.target);
   }

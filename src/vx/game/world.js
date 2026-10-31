@@ -148,6 +148,7 @@ export class VxWorld {
   setPlayer(a, partner = null) { this.player = a; this.partner = partner; if (this.city && a) this.city.placed(); return this; }
   roam(on = true) { this.free = on; if (on && this.player) this.followCam(0.8); return this; }
   followCam(dur = 0) {
+    if (this.city) return this.city.resume(dur);      // the city's third-person follow camera (src/vx/city/control.js) takes over
     const p = this.player.g.position, f = Object.assign({ dist: 13, pitch: 32, yaw: (this.loc.view || {}).yaw || 0, h: 1.0 }, this.loc.follow || {});
     const v = { target: [p.x, p.y + f.h, p.z], dist: f.dist, yaw: f.yaw, pitch: f.pitch };
     if (dur > 0) return this.shot(v, dur); this.setCam(v); return Promise.resolve();
@@ -251,12 +252,15 @@ export class VxWorld {
   emote(id, kind = 'anger', n = 1) { const a = this.actor(id); if (a) this.fx.emit(kind, a.headPos(), { n, scale: 1 }); }
   burst(kind, at, o = {}) { this.fx.emit(kind, new THREE.Vector3(...at), o); }
   // ---- camera
-  setCam(v) { this.cam.target.set(...v.target); this.cam.dist = v.dist; this.cam.yaw = v.yaw ?? 0; this.cam.pitch = v.pitch ?? 40; this.tween = null; }
+  // a shot may set fov (vertical °; default: the stage's lens). Setting one holds the camera until the story beat is over
+  // (camHeld; the city's follow camera then blends back in from wherever the shot left it)
+  setCam(v) { this.cam.target.set(...v.target); this.cam.dist = v.dist; this.cam.yaw = v.yaw ?? 0; this.cam.pitch = v.pitch ?? 40; this.cam.fov = v.fov; this.tween = null; this.camHeld = true; }
   shot(s, dur = 1.4, ease = E.inout) {
     const v = typeof s === 'string' ? this.shots[s] || this.loc.view : s;
     if (!v) return Promise.resolve();
     if (dur <= 0) { this.setCam(v); return Promise.resolve(); }
-    return new Promise((r) => { this.tween = { from: { target: this.cam.target.clone(), dist: this.cam.dist, yaw: this.cam.yaw, pitch: this.cam.pitch }, to: { target: new THREE.Vector3(...v.target), dist: v.dist, yaw: v.yaw ?? 0, pitch: v.pitch ?? 40 }, t: 0, dur, ease, done: r }; });
+    this.camHeld = true; const lens = this.st.baseFov || 30;
+    return new Promise((r) => { this.tween = { from: { target: this.cam.target.clone(), dist: this.cam.dist, yaw: this.cam.yaw, pitch: this.cam.pitch, fov: this.cam.fov ?? lens }, to: { target: new THREE.Vector3(...v.target), dist: v.dist, yaw: v.yaw ?? 0, pitch: v.pitch ?? 40, fov: v.fov ?? lens }, t: 0, dur, ease, done: r }; });
   }
   // frame an actor (or two) for dialogue
   closeOn(a, o = {}) { const p = a.g.position, h = a.kind === 'mon' ? 0.5 : 1.0; return this.shot({ target: [p.x + (o.dx || 0), p.y + (o.h ?? h), p.z], dist: o.dist || 4.2, yaw: o.yaw ?? (a.yaw * 180) / Math.PI * 0.35, pitch: o.pitch ?? 14 }, o.dur ?? 1.1); }
@@ -275,10 +279,11 @@ export class VxWorld {
       c.target.lerpVectors(tw.from.target, tw.to.target, k); c.dist = tw.from.dist + (tw.to.dist - tw.from.dist) * k;
       let dy = tw.to.yaw - tw.from.yaw; if (dy > 180) dy -= 360; if (dy < -180) dy += 360;
       c.yaw = tw.from.yaw + dy * k; c.pitch = tw.from.pitch + (tw.to.pitch - tw.from.pitch) * k;
+      if (tw.to.fov !== undefined) c.fov = tw.from.fov + (tw.to.fov - tw.from.fov) * k;
       if (tw.t >= tw.dur) { this.tween = null; tw.done(); }
     }
     const dr = this.drift * Math.sin(this.st.time * 0.21) * 0.6;            // a slow, breathing camera
-    this.st.look([c.target.x, c.target.y, c.target.z], c.dist, c.yaw + dr, c.pitch + Math.sin(this.st.time * 0.17) * 0.3 * this.drift);
+    this.st.look([c.target.x, c.target.y, c.target.z], c.dist, c.yaw + dr, c.pitch + Math.sin(this.st.time * 0.17) * 0.3 * this.drift, c.fov);
   }
   thinkChatter(dt) {
     const B = this.bubbles || (this.bubbles = []);

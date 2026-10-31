@@ -68,11 +68,27 @@ export class Hud {
     // bottom-right: minimap; bottom-left: party
     const mmW = narrow ? 58 : 78, mmH = narrow ? 50 : 62, mmX = W - mmW - 6, mmY = H - mmH - 6 + off;
     const world = app.world;
-    ui.minimap(mmX, mmY, mmW, mmH, world && world.drawMinimap ? (u, x, yy, ww, hh) => world.drawMinimap(u, x, yy, ww, hh) : placeholderMap, { player: !(world && world.drawMinimap) });
+    ui.minimap(mmX, mmY, mmW, mmH, world && world.drawMinimap ? (u, x, yy, ww, hh) => world.drawMinimap(u, x, yy, ww, hh) : placeholderMap, { player: !(world && world.drawMinimap), north: northOf(world) });
     const party = this.party();
     if (party.length) ui.partyBar(6, H - 34 + off, party, { maxW: mmX - 12, full: narrow ? 1 : 2 });
+    if (world && world.city) this.drawHint(ui, dt, busy, mmX);
     // centred title card for a new area
     if (this.card) this.drawCard(ui, dt);
+  }
+  // the controls, spelled out for the first few seconds you roam the city (keys, a pad or touch, whichever you use)
+  drawHint(ui, dt, busy, maxX) {
+    const c = this.app.world.city, H = ui.h;
+    if (busy || !c.active()) return;
+    this.hintT = (this.hintT || 0) + dt; const t = this.hintT, dur = 11;
+    if (t > dur) return;
+    const a = Math.min(1, t / 0.4, (dur - t) / 0.6); if (a <= 0.05) return;
+    const rows = c.pad ? [['LS', 'MOVE'], ['B', 'RUN'], ['RS', 'CAMERA'], ['A', 'TALK']]
+      : c.touch ? [['LEFT', 'MOVE'], ['RIGHT', 'CAMERA'], ['PINCH', 'ZOOM'], ['TAP', 'WALK']]
+        : [['WASD', 'MOVE'], ['SHIFT', 'RUN'], ['Q E', 'CAMERA'], ['DRAG', 'CAMERA'], ['E', 'TALK']];
+    const width = (L) => L.reduce((s, [k, l]) => s + Math.max(11, ui.tw(k, { mini: k.length > 3 }) + 6) + ui.tw(l, { mini: true }) + 10, 0);
+    const list = width(rows) > Math.min(ui.w - 12, maxX - 12) ? rows.slice(0, 3) : rows;
+    let x = Math.round((ui.w - width(list)) / 2); const y = H - 52 + Math.round((1 - a) * 8);
+    for (const [k, l] of list) { x += ui.keycap(x, y, k) + 3; ui.text(l, x, y + 4, T.text, { mini: true, outline: T.ink }); x += ui.tw(l, { mini: true }) + 7; }
   }
   drawCard(ui, dt) {
     const c = this.card; c.t += dt;
@@ -204,7 +220,7 @@ export class Hud {
     ui.text(where.name || '—', x + 4, y + 12, '#ffffff', { bold: true, shadow: T.ink });
     if (where.sub) ui.text(where.sub.toUpperCase(), x + 4, y + 22, T.cyan, { mini: true });
     const mw = Math.min(w - 8, 150), mh = Math.min(h - 70, 80);
-    if (mh > 30) { const world = this.app.world; ui.minimap(x + 4, y + 32, mw, mh, world && world.drawMinimap ? (u, a, b2, c, d) => world.drawMinimap(u, a, b2, c, d) : placeholderMap, { player: !(world && world.drawMinimap) }); }
+    if (mh > 30) { const world = this.app.world; ui.minimap(x + 4, y + 32, mw, mh, world && world.drawMinimap ? (u, a, b2, c, d) => world.drawMinimap(u, a, b2, c, d) : placeholderMap, { player: !(world && world.drawMinimap), north: northOf(world) }); }
     if (ui.button(x + 4, y + h - 22, Math.min(w - 8, 120), 18, 'Open map', { modal: true, icon: 'map', color: T.cyan })) this.activate('map', ui);
   }
   panelSave(ui, x, y, w, h) {
@@ -238,6 +254,8 @@ export class Hud {
   }
 }
 
+// the minimap and its compass turn with the city's camera (north stays up elsewhere)
+function northOf(world) { return world && world.city && world.city.mapYaw ? world.city.mapYaw() : 0; }
 function safeWeather(t) { try { return weatherOf(t); } catch (e) { return 'clear'; } }
 // stand-in minimap texture when the world has no drawMinimap
 function placeholderMap(ui, x, y, w, h) {
