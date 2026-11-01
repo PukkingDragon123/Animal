@@ -8,5 +8,5 @@ printf "import { VxApp } from '../src/vx/game/app.js';\nnew VxApp().boot().catch
 npx --yes esbuild@0.24.2 dist/entry.js --bundle --format=esm --minify --target=es2020 --outfile=dist/game.js
 rm dist/entry.js
 cp -r assets dist/
-sed 's#<script type="module">#<script>window.TOKON_AUDIO_BASE = new URL("assets/audio/", location.href).href;</script>\n<script type="module" src="game.js"></script>\n<script type="module">/*#; s#</script></body>#*/</script></body>#' index.html > dist/index.html
+sed 's#<script type="module">#<script>window.TOKON_AUDIO_BASE = new URL("assets/audio/", location.href).href; window.TOKON_FONT_BASE = new URL("assets/fonts/", location.href).href;</script>\n<script type="module" src="game.js"></script>\n<script type="module">/*#; s#</script></body>#*/</script></body>#' index.html > dist/index.html
 echo "built dist/"

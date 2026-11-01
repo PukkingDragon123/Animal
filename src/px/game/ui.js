@@ -27,7 +27,7 @@ let fontP = null, fontGen = 0;
 export function loadUIFont() {
   if (fontP) return fontP;
   if (typeof FontFace === 'undefined' || typeof document === 'undefined' || !document.fonts) return (fontP = Promise.resolve());
-  const jobs = FONT_FILES.map(([fam, file, weight]) => new FontFace(fam, `url(${new URL('../../../assets/fonts/' + file, import.meta.url).href})`, { weight }).load().then((f) => document.fonts.add(f)).catch(() => {}));
+  const jobs = FONT_FILES.map(([fam, file, weight]) => new FontFace(fam, `url(${globalThis.TOKON_FONT_BASE ? globalThis.TOKON_FONT_BASE + file : new URL('../../../assets/fonts/' + file, import.meta.url).href})`, { weight }).load().then((f) => document.fonts.add(f)).catch(() => {}));
   fontP = Promise.race([Promise.all(jobs), new Promise((r) => setTimeout(r, 3000))]).then(() => { fontGen++; faces.clear(); widths.clear(); });
   return fontP;
 }
