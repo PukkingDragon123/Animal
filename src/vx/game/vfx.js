@@ -184,28 +184,28 @@ function atlas() {
 
 // ================================================================ presets: sheet, life, size (m), speed, gravity, drag, play mode
 const PRE = {
-  fire: { s: 'fire', life: [0.42, 0.58], size: [0.9, 1.25], speed: [0, 0.4], grav: -0.8, drag: 2, once: true },
+  fire: { s: 'fire', life: [0.42, 0.58], size: [0.7, 0.95], speed: [0, 0.4], grav: -0.8, drag: 2, once: true },
   ember: { s: 'ember', life: [0.5, 0.95], size: [0.07, 0.09], speed: [1.2, 3], grav: -1.2, drag: 1.2, once: true, spread: 1 },
   spark: { s: 'spark', life: [0.2, 0.3], size: [0.55, 0.8], speed: [0, 0.2], once: true },
-  splash: { s: 'splash', life: [0.5, 0.65], size: [1.2, 1.5], speed: [0, 0.1], once: true },
+  splash: { s: 'splash', life: [0.5, 0.65], size: [0.85, 1.1], speed: [0, 0.1], once: true },
   drop: { s: 'drop', life: [0.5, 0.85], size: [0.08, 0.11], speed: [2, 4], grav: 9, drag: 0.4, spread: 0.9 },
   leaf: { s: 'leaf', life: [0.9, 1.5], size: [0.16, 0.22], speed: [1.2, 2.6], grav: 1.4, drag: 2.4, loop: 8, spread: 1, flutter: true },
-  arc: { s: 'arc', life: [0.28, 0.4], size: [1.0, 1.4], speed: [0, 0.2], once: true },
-  smoke: { s: 'smoke', life: [0.9, 1.4], size: [0.8, 1.3], speed: [0.3, 0.8], grav: -0.5, drag: 1.6, once: true, spread: 0.8 },
-  dust: { s: 'dust', life: [0.55, 0.9], size: [0.6, 0.95], speed: [0.4, 1.2], grav: -0.15, drag: 2.6, once: true, spread: 1 },
-  impact: { s: 'impact', life: [0.26, 0.34], size: [1.1, 1.5], speed: [0, 0], once: true },
-  flash: { s: 'flash', life: [0.1, 0.14], size: [1.3, 1.7], speed: [0, 0], once: true },
-  slash: { s: 'slash', life: [0.18, 0.24], size: [1.5, 1.9], speed: [0, 0], once: true },
+  arc: { s: 'arc', life: [0.28, 0.4], size: [0.75, 1.0], speed: [0, 0.2], once: true },
+  smoke: { s: 'smoke', life: [0.9, 1.4], size: [0.6, 0.95], speed: [0.3, 0.8], grav: -0.5, drag: 1.6, once: true, spread: 0.8 },
+  dust: { s: 'dust', life: [0.55, 0.9], size: [0.45, 0.72], speed: [0.4, 1.2], grav: -0.15, drag: 2.6, once: true, spread: 1 },
+  impact: { s: 'impact', life: [0.26, 0.34], size: [0.75, 1.0], speed: [0, 0], once: true },
+  flash: { s: 'flash', life: [0.1, 0.14], size: [0.9, 1.2], speed: [0, 0], once: true },
+  slash: { s: 'slash', life: [0.18, 0.24], size: [0.85, 1.1], speed: [0, 0], once: true },
   chip: { s: 'chip', life: [0.6, 1.0], size: [0.07, 0.12], speed: [2.5, 5], grav: 10, drag: 0.5, loop: 14, spread: 1 },
   shard: { s: 'shard', life: [0.5, 0.8], size: [0.16, 0.24], speed: [2.4, 4.4], grav: 8, drag: 0.6, loop: 12, spread: 0.9 },
   rock: { s: 'rock', life: [0.6, 1.0], size: [0.14, 0.24], speed: [2, 4], grav: 10, drag: 0.4, loop: 8, spread: 0.8 },
-  ghost: { s: 'ghost', life: [0.5, 0.7], size: [0.7, 0.9], speed: [0.3, 0.9], grav: -1, drag: 1.4, once: true, spread: 0.6 },
+  ghost: { s: 'ghost', life: [0.5, 0.7], size: [0.55, 0.72], speed: [0.3, 0.9], grav: -1, drag: 1.4, once: true, spread: 0.6 },
   twinkle: { s: 'twinkle', life: [0.45, 0.7], size: [0.2, 0.3], speed: [0.6, 2], grav: 0, drag: 2, once: true, spread: 1 },
   snow: { s: 'snow', life: [0.7, 1.1], size: [0.16, 0.22], speed: [0.8, 2], grav: 0.8, drag: 2, loop: 4, spread: 1 },
-  wind: { s: 'wind', life: [0.3, 0.45], size: [1.0, 1.3], speed: [1.5, 3], grav: 0, drag: 2, once: true, spread: 0.3 },
-  chevron: { s: 'chevron', life: [0.32, 0.45], size: [0.7, 0.9], speed: [0.5, 1.2], once: true, spread: 0.5 },
+  wind: { s: 'wind', life: [0.3, 0.45], size: [0.6, 0.8], speed: [1.5, 3], grav: 0, drag: 2, once: true, spread: 0.3 },
+  chevron: { s: 'chevron', life: [0.32, 0.45], size: [0.5, 0.65], speed: [0.5, 1.2], once: true, spread: 0.5 },
   note: { s: 'note', life: [0.9, 1.3], size: [0.2, 0.24], speed: [0.6, 1.2], grav: -0.6, drag: 1, spread: 0.6, flutter: true },
-  crackle: { s: 'crackle', life: [0.18, 0.24], size: [0.9, 1.1], speed: [0, 0], once: true },
+  crackle: { s: 'crackle', life: [0.18, 0.24], size: [0.65, 0.85], speed: [0, 0], once: true },
 };
 // per element: what a hit throws (kind, count, tint)
 const ELEM = {
@@ -270,7 +270,7 @@ export class VFX {
   }
   /** a whole hit for an element: the impact star (and a flash on a crit), the element's own sprites, chips */
   elementHit(elem, pos, o = {}) {
-    const pw = o.power ?? 1, sc = 0.8 + pw * 0.35;
+    const pw = o.power ?? 1, sc = 0.75 + pw * 0.22;
     this.burst('impact', pos, { scale: sc * (o.crit ? 1.35 : 1) });
     if (o.crit || pw > 1.4) this.burst('flash', pos, { scale: sc * 1.2 });
     for (const [k, n, tint] of ELEM[elem] || [['spark', 2]]) this.burst(k, pos, { n: Math.max(1, Math.round(n * (P1(k) ? 1 : 0.6 + pw * 0.4))), scale: P1(k) ? sc : 1, tint: tint || ELEM_TINT[elem], dir: o.dir, jit: P1(k) ? 0.15 : 0.2 });

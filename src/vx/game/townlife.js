@@ -84,7 +84,8 @@ const KINDS = {
     F.box(2, 1, 18, 41, 13, 18, (x, y) => { const fl = 6 + Math.round(2.2 * Math.sin(x * 0.85)); return y === 1 || y === 13 ? yel : y < fl ? org : y === fl ? yel : red; });
     F.box(0, 15, 3, 43, 16, 19, top);
     const SAUCE = [ch, org, grn, gold, chD]; let k = 0;
-    for (const [z, h] of [[6, 6], [10, 5], [14, 4]]) for (let x = 11; x <= 38; x += 3) { const c = SAUCE[k++ % SAUCE.length]; F.box(x, 17, z, x + 1, 16 + h, z + 1, (xx, y) => (y === 18 || y === 19 ? lab : c)); F.box(x, 17 + h, z, x + 1, 17 + h, z + 1, cap); }
+    for (const [z, h, x0] of [[12, 4, 11], [15, 3, 12]]) for (let x = x0; x <= 38; x += 3) { const c = SAUCE[k++ % SAUCE.length]; F.box(x, 17, z, x + 1, 16 + h, z + 1, (xx, y) => (y === 18 ? lab : c)); F.box(x, 17 + h, z, x + 1, 17 + h, z + 1, cap); }
+    F.box(18, 17, 6, 25, 17, 9, wd2); F.box(19, 18, 7, 24, 22, 8, (x, y) => (y % 2 ? gold : ch));   // a little pyramid of gift boxes at the back
     for (const x of [1, 41]) { F.box(x, 17, 3, x + 1, 39, 4, post); F.box(x, 17, 18, x + 1, 45, 19, post); }
     awning(F, 0, 43, 2, 21, 40, 33, red, cream, 3);
     for (let x = 4; x <= 39; x += 3) { F.box(x, 29, 20, x, 31, 20, x % 2 ? ch : chD); F.set(x, 32, 20, stem); }
@@ -667,10 +668,10 @@ const SCENES = [
     id: 'hotsauce', name: 'Cluck & Burn', at: [138.6, 111.45], yaw: PI, hours: [9, 23.5], notice: 'heart',
     props: [
       { k: 'tl_saucestall', at: [0, 0], block: [1.4, 0.62] },
-      { k: 'tl_grill', at: [2.3, 0.55], block: [0.4, 0.4] },
+      { k: 'tl_grill', at: [2.15, 0.6], block: [0.4, 0.4] },
       { k: 'tl_pepcrate', at: [-1.9, -0.35], yaw: 0.25, block: [0.42, 0.36] },
       { k: 'tl_pepcrate', at: [-1.95, 0.5], yaw: -0.2, s: 0.8, block: [0.34, 0.3] },
-      { k: 'sandwich', at: [3.5, 1.0], yaw: 0.35 },
+      { k: 'sandwich', at: [4.15, 1.4], yaw: 0.35 },
       { k: 'tl_shutter', at: [0, 0.6], y: 1.06, when: (S) => !S.open },
       { k: 'lantern', at: [-0.9, 0.62], y: 1.62, s: 0.45, when: (S) => S.T.night() },
       { k: 'lantern', at: [0.9, 0.62], y: 1.62, s: 0.45, when: (S) => S.T.night() },
@@ -679,7 +680,7 @@ const SCENES = [
     lamps: [[0, 1.0, 2.2, 0xff9a50, 16, 8]],
     async setup(S) {
       await S.person('inez', 'inez', [0, -0.98, 0], { name: 'Inez', voice: 'friend', when: (S) => S.open });
-      await S.mon('encore', 'chilichick', [2.3, -0.35, 0], { name: 'Encore', as: 'riffrooster', drip: [3, [0, 0, 1]], scale: 1.42 });
+      await S.mon('encore', 'chilichick', [3.05, 0.2, -PI / 2], { name: 'Encore', as: 'riffrooster', drip: [3, [0, 0, 1]], scale: 1.42 });
       await S.mon('pip', 'chilichick', [-0.92, 0.12, 0.5], { name: 'Pip', y: 1.06 });
     },
     items: () => [
@@ -931,15 +932,15 @@ async function encoreLoop(S) {
   }
 }
 async function roast(S, e, dur) {
-  const grill = S.V(2.3, 0.55, 0.85);
+  const grill = S.V(2.15, 0.6, 0.85);
   e.faceTo(grill.x, grill.z); e.play('hiccup', { restart: true }); S.sfx('fire', e, 0.6);
   await breath(S, e, dur, { to: grill, rate: 60, scale: 0.6, speed: 0.55 });
   S.fx('smoke', grill, { n: 3, scale: 0.6 }); S.fx('tl_pepper', grill, { n: 2 }); S.sfx('pyro', e, 0.3);
-  S.faceL(e, 2.3, 3);
+  S.faceL(e, 2.6, 3);
 }
 function sauceSmoke(S) {
   if (!S.open) return;
-  if ((S.ev.smT = (S.ev.smT || 0) - 1 / 60) <= 0) { S.ev.smT = rnd(0.5, 1.1); S.fx('smoke', S.V(2.3, 0.55, 0.95), { n: 1, scale: 0.45 }); if (Math.random() < 0.4) S.fx('ember', S.V(2.3, 0.55, 0.9), { n: 1 }); }
+  if ((S.ev.smT = (S.ev.smT || 0) - 1 / 60) <= 0) { S.ev.smT = rnd(0.5, 1.1); S.fx('smoke', S.V(2.15, 0.6, 0.95), { n: 1, scale: 0.45 }); if (Math.random() < 0.4) S.fx('ember', S.V(2.15, 0.6, 0.9), { n: 1 }); }
 }
 async function pipLoop(S) {
   for (;;) {
@@ -963,7 +964,7 @@ async function sauceReact(S, c) {
     await S.sleep(2.2);
   } else if (r < 0.65 && e) {                                          // a selfie with Encore
     const ep = e.g.position, [lx, lz] = S.L(ep.x, ep.z);
-    await S.walkL(c, lx + 0.95, lz + 1.05); c.faceTo(2 * c.g.position.x - ep.x, 2 * c.g.position.z - ep.z);
+    await S.walkL(c, lx - 0.15, lz + 1.05); c.faceTo(2 * c.g.position.x - ep.x, 2 * c.g.position.z - ep.z);
     c.play('selfie', { restart: true }); await S.sleep(0.9);
     e.play('win', { restart: true }); await S.sleep(0.7); flash(S, c); await S.sleep(0.8);
     c.play('peace', { restart: true }); S.say(c, pick(['Posting this!', 'Encore! Look here!', 'Best. Rooster. Ever.'])); await S.sleep(1.6);
@@ -1020,7 +1021,7 @@ async function encoreRoast(app, S) {
   if (cin) cin.hero(e, { dur: 0.9 });
   S.cry(e, 1, 'BAWK!');
   await wait(800);
-  const grill = S.V(2.3, 0.55, 0.85);
+  const grill = S.V(2.15, 0.6, 0.85);
   e.faceTo(grill.x, grill.z); e.play('hiccup', { restart: true }); app.audio.sfx && app.audio.sfx('fire', { vol: 0.8 });
   await breath(S, e, 2.2, { to: grill, rate: 85, scale: 0.75, speed: 0.6 });
   w.fx.emit('tl_pepper', grill, { n: 6 }); w.fx.emit('smoke', grill, { n: 6 }); w.fx.emit('ember', grill, { n: 10 });
@@ -1029,7 +1030,7 @@ async function encoreRoast(app, S) {
   await wait(600);
   await app.say('Inez', 'Blistered in four seconds flat. That smoky note in every bottle? That\'s all Encore.');
   if (!f.tlRoast) { f.tlRoast = 1; ST.addItem(app.state, 'hot_sauce_mild', 1); await app.say('Inez', 'Here: your first bottle\'s on the house. Don\'t tell Pip.'); }
-  S.faceL(e, 2.3, 3);
+  S.faceL(e, 2.6, 3);
   if (own) await cin.end();
 }
 async function petPip(app, S) {

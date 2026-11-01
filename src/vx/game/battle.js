@@ -376,7 +376,7 @@ export class Battle3D {
     this.shot = { fn: typeof fn === 'function' ? fn : () => fn, t: 0, blend: o.blend ?? 0.45, hold: o.hold, out: o.out, from: cloneView(this.camNow || { target: this.defT, dist: this.camCfg.dist, yaw: this.camCfg.yaw, pitch: this.camCfg.pitch, fov: 30 }), prio: o.prio || 0 };
     this.rel = null;
   }
-  releaseShot(dur = 0.6) { if (!this.shot) return; this.rel = { from: cloneView(this.camNow), t: 0, dur }; this.shot = null; }
+  releaseShot(dur = 0.6) { if (!this.shot) return; this.rel = { from: cloneView(this.camNow), t: 0, dur: Math.max(0.01, dur) }; this.shot = null; }
   /** frame an actor: ang (0 = from the fight's side, 1 = from its front), dist, pitch, h (look-at height), push (fraction closed while held) */
   shotOn(a, o = {}) {
     const base = this.camCfg.yaw, f = a.yaw / D2R, h = o.h ?? 0.6, push = o.push ?? 0.06, orb = o.orbit || 0, hold = o.span || 3;
