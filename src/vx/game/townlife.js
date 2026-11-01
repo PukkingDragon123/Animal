@@ -220,13 +220,17 @@ const ICONS = {
   flower: (P, W, H) => { const y0 = Math.round(H / 2) - 3; P.rect(7, y0 + 2, 1, 6, '#3a8a3a'); P.rect(5, y0, 5, 3, '#e83a4a'); P.rect(6, y0 - 1, 3, 5, '#e83a4a'); P.rect(7, y0 + 1, 1, 1, '#f8c830'); P.rect(8, y0 + 5, 2, 1, '#5aa848'); },
   wing: (P, W, H) => { const y0 = Math.round(H / 2) - 2; for (let i = 0; i < 4; i++) P.rect(3 + i * 2, y0 + i, 8 - i * 2, 1, '#f8f4ec'); P.rect(11, y0 + 1, 3, 3, '#c89a5a'); },
 };
-const SIGNMATS = new Map();
+const SIGNMATS = new Map(), SIGNBACK = new THREE.MeshStandardMaterial({ color: 0x3a3236, roughness: 0.9 });
+/** a sign board: the lettered face in front, a plain painted back (so it never reads mirrored from behind) */
 function signMesh(st, tex, w, h) {
   let m = SIGNMATS.get(tex);
-  if (!m) { m = new THREE.MeshStandardMaterial({ map: tex, emissiveMap: tex, emissive: 0xffffff, roughness: 0.8, side: THREE.DoubleSide }); SIGNMATS.set(tex, m); }
+  if (!m) { m = new THREE.MeshStandardMaterial({ map: tex, emissiveMap: tex, emissive: 0xffffff, roughness: 0.8 }); SIGNMATS.set(tex, m); }
   if (st && st.glowMat) st.glowMat(m, 0.55);                        // lit up after dark, like the city's shop signs
-  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(w, h), m); mesh.castShadow = true; mesh.receiveShadow = true;
-  return mesh;
+  const g = new THREE.Group(), geo = new THREE.PlaneGeometry(w, h);
+  const front = new THREE.Mesh(geo, m), back = new THREE.Mesh(geo, SIGNBACK);
+  back.rotation.y = PI; back.position.z = -0.004;
+  for (const x of [front, back]) { x.castShadow = true; x.receiveShadow = true; g.add(x); }
+  return g;
 }
 // the resolution is picked so the title fits at the bitmap font's 1× size with the subtitle under it (dt_pix fonts:
 // 6 px per capital, 7 px tall; 4 px per mini capital, 5 px tall)
@@ -691,12 +695,12 @@ const SCENES = [
     async setup(S) {
       await S.person('inez', 'inez', [0, -0.98, 0], { name: 'Inez', voice: 'friend', when: (S) => S.open });
       await S.mon('encore', 'chilichick', [3.05, 0.2, -PI / 2], { name: 'Encore', as: 'riffrooster', drip: [3, [0, 0, 1]], scale: 1.42 });
-      await S.mon('pip', 'chilichick', [-0.92, 0.12, 0.5], { name: 'Pip', y: 1.06 });
+      await S.mon('pip', 'chilichick', [-0.92, 0.12, 0.5], { name: 'Pip', y: 1.06, when: (S) => S.open });   // home with Inez when the stall is shut
     },
     items: () => [
       { who: 'inez', label: 'Shop at Cluck & Burn', icon: 'bag', when: (S) => S.open, act: hotsauceTalk, dyn: (S) => (jobOf(S.app) && jobOf(S.app).to === 'hotsauce' ? 'Deliver the parcel' : null) },
       { mon: 'encore', label: 'Watch Encore roast', icon: 'flame', r: 1.5, when: (S) => S.open, act: encoreRoast },
-      { mon: 'pip', label: 'Pet Pip', icon: 'heart', r: 1.4, h: 1.6, act: petPip },
+      { mon: 'pip', label: 'Pet Pip', icon: 'heart', r: 1.4, h: 1.6, when: (S) => S.open, act: petPip },
       { at: [0, 1.0], label: 'Read the shutter', icon: 'eye', when: (S) => !S.open, act: (app) => closedSign(app, 'Cluck & Burn', 'Back at 9 AM. Encore needs his beauty sleep. — Inez') },
     ],
     onOpen(S, open) { for (const k of ['encore', 'pip']) { const a = S.cast.get(k); if (a) { a.tlPose = open ? 'idle' : 'sleep'; a.idleClip = a.tlPose; a.play(a.tlPose, { fade: 0.4 }); } } },
