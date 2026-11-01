@@ -7,7 +7,7 @@
 import { T } from '../../px/game/ui.js';
 import { mx, clamp01, easeOut, boing } from '../../px/game/uikit/theme.js';
 import { pixelCanvas, fillDisc } from '../../px/game/uikit/gfx.js';
-import { frame, knob, ball, sparkle, tri, gem, woodRing } from '../../px/game/uikit/frame.js';
+import { frame, knob, ball, sparkle, tri, gem, woodRing, ringPx } from '../../px/game/uikit/frame.js';
 import { roundButton, plinthButton, fmtNum, badge } from '../../px/game/uikit/widgets.js';
 import { P } from '../../px/surface.js';
 import { LOCATIONS, MAP_SIGHTS } from './locations.js';
@@ -269,8 +269,8 @@ export class SFPhone {
     const pl = world.player;
     if (pl) {
       const q = pl.g.position, [px, py] = toMap(q.x, q.z), pulse = (this.t * 1.5) % 1;
-      ui.g.globalAlpha = 1 - pulse; ui.s.ring(px, py, 3 + pulse * 8, 3 + pulse * 8, '#ffffff'); ui.g.globalAlpha = 1;
-      fillDisc(ui, px, py, 3, T.ink); fillDisc(ui, px, py, 2, T.red);
+      ringPx(ui.s, px, py, 3 + pulse * 8, '#ffffff', 1 - pulse);
+      ui.rect(px - 3, py - 3, 6, 6, T.ink); ui.rect(px - 2, py - 2, 4, 4, T.red);
     }
     const g2 = app.story && app.story.goal;
     if (g2) { const [gx, gy] = toMap(g2.x, g2.z); tri(ui.s, gx - 3, gy - 10 + R(Math.abs(Math.sin(this.t * 5)) * 2), 'down', 3, T.amber); }

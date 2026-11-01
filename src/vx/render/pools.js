@@ -153,13 +153,16 @@ export function mergeLights(list, cell = 1.6) {
   return [...M.values()];
 }
 
-// Halos: a soft glow sprite around each light source (lamp heads, lanterns, neon) — the light scattering
+// Halos: a pixel glint (stepped diamond + cross) around each light source (lamp heads, lanterns, neon) — the light scattering
 // in the night air. One additive point cloud, sized in metres, drawn into the HDR frame (so the haze, the
 // tone mapping and the bloom treat it like any other light).
 const HALO_VS = `attribute float aSize; uniform float uScale; uniform float uGain; varying vec3 vCol;
 void main() { vec4 mv = modelViewMatrix * vec4(position, 1.0); gl_Position = projectionMatrix * mv; gl_PointSize = clamp(aSize * uScale / -mv.z, 1.0, 256.0); vCol = color * uGain; }`;
 const HALO_FS = `varying vec3 vCol;
-void main() { vec2 d = gl_PointCoord * 2.0 - 1.0; float r2 = dot(d, d); if (r2 >= 1.0) discard; float a = exp(-r2 * 5.0) * (1.0 - r2) + exp(-r2 * 40.0) * 0.6; gl_FragColor = vec4(vCol * a, 1.0); }`;
+// a pixel-art glint, not a soft disc: a stepped diamond core with a four-point cross, quantised to 8 steps
+void main() { vec2 d = floor((gl_PointCoord * 2.0 - 1.0) * 8.0 + 0.5) / 8.0; float m = abs(d.x) + abs(d.y); float cr = min(abs(d.x), abs(d.y));
+  float a = max(max(0.0, 1.0 - m * 1.6) * 0.9, (cr < 0.07 ? max(0.0, 1.0 - max(abs(d.x), abs(d.y))) * 0.55 : 0.0));
+  if (a <= 0.0) discard; gl_FragColor = vec4(vCol * floor(a * 4.0 + 0.5) / 4.0, 1.0); }`;
 export class Halos {
   constructor() {
     this.geo = new THREE.BufferGeometry();

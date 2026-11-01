@@ -281,7 +281,7 @@ export class SearchMode {
     const lens = S.mode === 'lens', R = Math.round(Math.min(W, H) * 0.15), r0 = Math.round;
     // the lens: the world dims outside a round window around the reticle (pixel rows, no soft edges)
     if (lens) {
-      g.globalAlpha = 0.55; g.beginPath(); g.rect(0, 0, W, H); g.arc(S.lx, S.ly, R + 3, 0, Math.PI * 2); ui.fill(T.deep); g.fill('evenodd'); g.globalAlpha = 1; void discRows;
+      g.globalAlpha = 0.55; ui.rect(0, 0, W, S.ly - R - 4, T.deep); ui.rect(0, S.ly + R + 4, W, H - S.ly - R - 4, T.deep); ui.rect(0, S.ly - R - 4, S.lx - R - 4, 2 * R + 8, T.deep); ui.rect(S.lx + R + 4, S.ly - R - 4, W - S.lx - R - 4, 2 * R + 8, T.deep); g.globalAlpha = 1; void discRows;
     } else { g.globalAlpha = 0.3; ui.fill(T.deep); for (let y = 0; y < H; y += 1) { const e = Math.abs(y / H - 0.5) * 2, n = r0(Math.max(0, e - 0.5) * W * 0.25); if (n > 0) { g.fillRect(0, y, n, 1); g.fillRect(W - n, y, n, 1); } } g.globalAlpha = 1; }
     // signal: how close the lens is to something still hidden
     let sig = 0, hit = null;
@@ -294,9 +294,9 @@ export class SearchMode {
       const col = sig > 0.75 ? T.amber : sig > 0.3 ? T.cyan : T.cream, spin = S.t * (0.6 + sig * 4), wob = sig > 0.75 ? r0(Math.sin(S.t * 40)) : 0;
       const cx = r0(S.lx) + wob, cy = r0(S.ly);
       woodRing(ui.s, cx, cy, R, { th: 4, color: sig > 0.75 ? T.brass : T.copper });
-      // spinning signal arcs + tick marks on the copper ring
-      for (let i = 0; i < 24; i++) { const a = spin + (i / 24) * Math.PI * 2, on = (i % 12) < 4; if (!on) continue; ui.px(cx + Math.cos(a) * (R + 2), cy + Math.sin(a) * (R + 2), col); }
-      for (let i = 0; i < 12; i++) { const a = i * Math.PI / 6 - spin * 0.3; ui.px(cx + Math.cos(a) * (R - 3), cy + Math.sin(a) * (R - 3), T.cream); }
+      // a signal light running round the square viewfinder + tick marks along its edges
+      { const per = 8 * R, p0 = ((spin * R * 2) % per + per) % per; for (let q = 0; q < 4; q++) { const p = (p0 + q * 2) % per, side = Math.floor(p / (2 * R)), u = p % (2 * R), lx = side === 0 ? cx - R + u : side === 1 ? cx + R + 2 : side === 2 ? cx + R - u : cx - R - 3, ly = side === 0 ? cy - R - 3 : side === 1 ? cy - R + u : side === 2 ? cy + R + 2 : cy + R - u; ui.rect(lx, ly, 1.4, 1.4, col); } }
+      for (let i = -2; i <= 2; i++) { ui.rect(cx + i * R * 0.4, cy - R + 1, 0.7, 2, T.cream); ui.rect(cx + i * R * 0.4, cy + R - 3, 0.7, 2, T.cream); ui.rect(cx - R + 1, cy + i * R * 0.4, 2, 0.7, T.cream); ui.rect(cx + R - 3, cy + i * R * 0.4, 2, 0.7, T.cream); }
       if (S.ping < 0.5) { ringPx(ui.s, cx, cy, R + 6 + r0(S.ping * 20), col, 1 - S.ping * 2); }
       // a glint on the glass
       ui.rect(cx - r0(R * 0.5), cy - r0(R * 0.6), r0(R * 0.3), 1, '#ffffff'); ui.rect(cx - r0(R * 0.6), cy - r0(R * 0.5), 1, r0(R * 0.25), '#ffffff');
@@ -321,7 +321,7 @@ export class SearchMode {
       f.t += dt;
       if (f.kind === 'burst') { for (let i = 0; i < 10; i++) { const a = i * 0.628 + f.t, rr2 = 6 + easeOut(f.t * 2) * 34; sparkle(ui.s, f.x + Math.cos(a) * rr2, f.y + Math.sin(a) * rr2 * 0.8, i % 2 ? T.amber : '#ffffff', clamp01(1 - f.t)); } }
       else if (f.kind === 'item') { const k2 = easeOut(f.t * 1.4), x = Math.round(f.x + (W / 2 - f.x) * k2), y = Math.round(f.y + (H * 0.38 - f.y) * k2 - Math.sin(k2 * Math.PI) * 30), sz = f.t < 0.25 ? 16 : 32; woodRing(ui.s, x, y, sz === 32 ? 20 : 11, { th: 3, fill: T.cream }); ui.bigIcon(f.icon, x - sz / 2, y - sz / 2, null, { scale: sz / 12 }); if (f.label && f.t > 0.6) ui.text(f.label, x, y + 26, '#ffffff', { align: 'center', bold: true, outline: T.ink }); for (let i = 0; i < 6; i++) sparkle(ui.s, x + Math.cos(i + f.t * 3) * 28, y + Math.sin(i + f.t * 3) * 28, T.amber, clamp01(1.4 - f.t)); }
-      else if (f.kind === 'puff') { g.globalAlpha = clamp01(0.8 - f.t * 1.4); for (let i = 0; i < 6; i++) { const a = i * 1.047, rr2 = 4 + f.t * 30; fillDisc(ui, f.x + Math.cos(a) * rr2, f.y + Math.sin(a) * rr2 * 0.7, 2 + f.t * 5, T.cream); } g.globalAlpha = 1; }
+      else if (f.kind === 'puff') { g.globalAlpha = clamp01(0.8 - f.t * 1.4); for (let i = 0; i < 6; i++) { const a = i * 1.047, rr2 = 4 + f.t * 30, sz = 2 + f.t * 5; ui.rect(f.x + Math.cos(a) * rr2 - sz, f.y + Math.sin(a) * rr2 * 0.7 - sz, sz * 2, sz * 2, T.cream); } g.globalAlpha = 1; }
     }
     S.fx = S.fx.filter((f) => f.t < 2.2);
     // the top bar: the lens badge, what you're looking at, what you found; the exit button

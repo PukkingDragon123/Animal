@@ -40,7 +40,8 @@ export const ITEMS = {
   star_fragment: { name: 'Star Fragment', icon: '✨', kind: 'key', desc: 'A glowing shard of fallen starlight. Dr. Hoshino wants these.' },
   dojo_pass: { name: 'Dojo Pass', icon: '🎫', kind: 'key', desc: 'Lets you leave Tokonmon to train at the Shinsekai dojo.' },
   miner_lantern: { name: 'Old Miner\'s Lantern', icon: '🏮', kind: 'key', desc: 'Found hanging by the mouth of the Deep Cave. Still burns bright — and the Tokonmon down there notice it.' },
-  fluorite_shard: { name: 'Fluorite Shard', icon: '🔮', kind: 'key', desc: 'A violet shard of Fluorescape\'s crystal armour, given freely. It hums softly whenever the ground shakes.' },
+  rune_key: { name: 'Rune Key', icon: '🗝️', kind: 'key', desc: 'A heavy bronze key shaped like a flame, handed down by Old Gus\'s grandfather. It opens the rune door that seals the Old Arena under Alamo Hill.' },
+  ember_scale: { name: 'Ember Scale', icon: '🔥', kind: 'key', desc: 'A scale of black glass with magma still glowing in its cracks, shed by Magmander, the guardian of the Old Arena. Warm to hold, always.' },
 };
 // Vinyl skill discs: every shared skill (the classic library) is pressed on a
 // disc. Discs are the ONLY way a skill is shared between Tokonmon; they teach a

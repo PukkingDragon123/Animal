@@ -174,51 +174,54 @@ export function pattern(s, x, y, w, h, c, alpha = 1) { const ui = U(s); ui.g.glo
 export function rope(s, x0, y0, x1, y1) { const ui = U(s); ui.s.line(x0, y0, x1, y1, T.ink); ui.s.line(x0 + 1, y0, x1 + 1, y1, T.rope); }
 
 // ------------------------------------------------------------------ discs, rings, triangles, twinkles, gems
-// a shaded ball: outline, a lit crescent top-left, a shaded rim bottom-right, dithered between, a glint (r in units)
+// a shaded bead — a SQUARE bevelled tile (no circles anywhere): outline, notched corners, a lit top-left
+// bevel, a shaded bottom-right bevel, dithered between, a glint (cx, cy centre, r half-size in units)
 export function ball(s, cx, cy, r, c, o = {}) {
   const ui = U(s), k = ui.k, Rp = Math.max(2, R(r * k)), key = 'B' + Rp + c + (o.ink || '') + (o.flat ? 'f' : '');
   const cv = sprite(key, 2 * Rp + 5, 2 * Rp + 5, (d, W) => {
-    const A = discRows(Rp + 1), B = discRows(Rp), c0 = Rp + 2, ink = P(o.ink || T.ink);
-    const tones = [P(mx(c, T.ink, 0.42)), P(mx(c, T.ink, 0.2)), P(c), P(mx(c, '#ffffff', 0.3)), P(mx(c, '#ffffff', 0.6))], Wt = P('#ffffff');
-    for (let j = -Rp - 1; j <= Rp + 1; j++) for (let i = -A[j + Rp + 1]; i <= A[j + Rp + 1]; i++) d[(j + c0) * W + i + c0] = ink;
-    for (let j = -Rp; j <= Rp; j++) for (let i = -B[j + Rp]; i <= B[j + Rp]; i++) {
-      const rr = Math.hypot(i, j) / Rp, l = -(i * 0.55 + j * 0.83) / Math.max(0.5, Math.hypot(i, j)) * Math.min(1, rr * 1.6);
-      let t = o.flat ? 2 : l > 0.55 ? 3 : l > 0.15 ? (bay(i, j) < l ? 3 : 2) : l < -0.55 ? 0 : l < -0.15 ? (bay(i, j) < -l ? 1 : 2) : 2;
-      if (!o.flat && rr > 0.82 && l < -0.1) t = 0;
-      d[(j + c0) * W + i + c0] = tones[t];
+    const n = 2 * Rp + 3, c0 = 1, ink = P(o.ink || T.ink), notch = Math.max(1, R(Rp * 0.35)), bev = Math.max(1, R(Rp * 0.28));
+    const tones = [P(mx(c, T.ink, 0.42)), P(mx(c, T.ink, 0.2)), P(c), P(mx(c, '#ffffff', 0.3)), P(mx(c, '#ffffff', 0.62))], Wt = P('#ffffff');
+    const I = rowIns(n, notch);
+    for (let j = 0; j < n; j++) for (let i = I[j]; i < n - I[j]; i++) {
+      const edge = i === I[j] || i === n - 1 - I[j] || j === 0 || j === n - 1;
+      let v = ink;
+      if (!edge) { const dl = Math.min(i - I[j], j), dr = Math.min(n - 1 - I[j] - i, n - 1 - j); v = o.flat ? tones[2] : dl <= bev && dl <= dr ? (dl === 1 ? tones[4] : tones[3]) : dr <= bev ? (dr === 1 ? tones[0] : tones[1]) : (bay(i, j) < 0.25 && j < n / 2 ? tones[3] : tones[2]); }
+      d[(j + c0) * W + i + c0] = v;
     }
-    if (!o.flat && Rp >= 3) { const gx = R(-Rp * 0.42), gy = R(-Rp * 0.45), gr = Math.max(1, R(Rp * 0.18)); for (let j = -gr; j <= gr; j++) for (let i = -gr; i <= gr; i++) if (i * i + j * j <= gr * gr + 0.5) d[(gy + j + c0) * W + gx + i + c0] = i + j < 0 ? Wt : tones[4]; }
+    if (!o.flat && Rp >= 3) { const gx = bev + 2, gy = bev + 2; d[(gy + c0) * W + gx + c0] = Wt; d[(gy + c0) * W + gx + 1 + c0] = Wt; d[(gy + 1 + c0) * W + gx + c0] = Wt; }
   });
   put(ui, cv, cx, cy, Rp + 2);
 }
-export function ringPx(s, cx, cy, r, c, a = 1) { const ui = U(s); ui.g.globalAlpha = a; ui.s.ring(cx, cy, r, r, c); ui.g.globalAlpha = 1; }
-export function discA(s, cx, cy, r, c, a) { const ui = U(s); ui.g.globalAlpha = Math.max(0, Math.min(1, a)); fillDisc(ui, cx, cy, r, c); ui.g.globalAlpha = 1; }
-export function disc(s, cx, cy, r, c) { fillDisc(U(s), cx, cy, r, c); }
-// a round copper rim (portrait frames, dials, radar, medals): outline, a bevelled copper ring of th units, outline; o.fill: inner disc
+// a square outline (was a ring)
+export function ringPx(s, cx, cy, r, c, a = 1) { const ui = U(s), t = 1 / ui.k * Math.max(1, R(ui.k * 0.6)); ui.g.globalAlpha = a; ui.rect(cx - r, cy - r, 2 * r, t, c); ui.rect(cx - r, cy + r - t, 2 * r, t, c); ui.rect(cx - r, cy - r, t, 2 * r, c); ui.rect(cx + r - t, cy - r, t, 2 * r, c); ui.g.globalAlpha = 1; }
+// filled squares with notched corners (were discs)
+export function discA(s, cx, cy, r, c, a) { const ui = U(s); ui.g.globalAlpha = Math.max(0, Math.min(1, a)); fillShape(ui, cx - r, cy - r, 2 * r, 2 * r, c, r * 0.35); ui.g.globalAlpha = 1; }
+export function disc(s, cx, cy, r, c) { fillShape(U(s), cx - r, cy - r, 2 * r, 2 * r, c, r * 0.35); }
+// a SQUARE copper frame with notched corners (portrait slots, medals, badges, the lens): outline, a bevelled
+// copper band of th units (lit top-left), an inner outline; o.fill: the inside (else left empty). (cx, cy) centre,
+// r: the inner half-size in units
 export function woodRing(s, cx, cy, r, o = {}) {
   const ui = U(s), k = ui.k, rp = Math.max(2, R(r * k)), th = Math.max(2, R((o.th ?? 3) * k)), Rr = rp + th, rc = o.color || T.copper;
   const key = 'W' + rp + '|' + th + '|' + rc + '|' + (o.fill || '') + (o.shadow === false ? 'n' : '');
-  const cv = sprite(key, 2 * Rr + 7, 2 * Rr + 9, (d, W) => {
-    const c0 = Rr + 3, A = discRows(Rr + 1), B = discRows(Rr), C2 = discRows(rp + 1), F = discRows(rp);
-    const set = (x, y, v) => { d[(y + c0) * W + x + c0] = v; };
+  const n = 2 * Rr + 3, padP = 3;
+  const cv = sprite(key, n + padP * 2, n + padP * 2 + 2, (d, W) => {
+    const set = (x, y, v) => { x += padP; y += padP; if (x >= 0 && y >= 0 && x < W && y < d.length / W) d[y * W + x] = v; };
     const ink = P(T.ink), hi = P(mx(rc, '#ffffff', 0.6)), lit = P(mx(rc, '#ffffff', 0.3)), mid = P(rc), dk = P(mx(rc, T.ink, 0.3)), dk2 = P(mx(rc, T.ink, 0.5)), shade = pa(T.shade, 0.35);
-    if (o.shadow !== false) { const sy = Math.max(1, R(k)); for (let j = -Rr - 1; j <= Rr + 1; j++) for (let i = -A[j + Rr + 1]; i <= A[j + Rr + 1]; i++) set(i, j + sy, shade); }
-    for (let j = -Rr - 1; j <= Rr + 1; j++) for (let i = -A[j + Rr + 1]; i <= A[j + Rr + 1]; i++) set(i, j, ink);
-    for (let j = -Rr; j <= Rr; j++) for (let i = -B[j + Rr]; i <= B[j + Rr]; i++) {
-      const dd = Math.hypot(i, j), l = (-i * 0.55 - j * 0.83) / Math.max(1, dd), t = (dd - rp) / th;
-      set(i, j, t > 0.82 ? (l > 0.3 ? hi : dk) : t < 0.2 ? (l > 0.3 ? dk2 : lit) : l > 0.4 ? lit : l < -0.4 ? dk : (bay(i, j) < 0.5 ? mid : (l > 0 ? lit : dk)));
+    const notch = Math.max(2, R(th * 0.9)), I = rowIns(n, notch), inner0 = th + 1, inner1 = n - 1 - th - 1;
+    if (o.shadow !== false) { const sy = Math.max(1, R(k)); for (let j = 0; j < n; j++) for (let i = I[j]; i < n - I[j]; i++) set(i, j + sy, shade); }
+    for (let j = 0; j < n; j++) for (let i = I[j]; i < n - I[j]; i++) {
+      const dl = Math.min(i - I[j], j), dr = Math.min(n - 1 - I[j] - i, n - 1 - j), dd = Math.min(dl, dr), lit1 = dl <= dr;
+      let v;
+      if (dd === 0) v = ink;
+      else if (i >= inner0 && i <= inner1 && j >= inner0 && j <= inner1) v = (i === inner0 || i === inner1 || j === inner0 || j === inner1) ? ink : o.fill ? (((i === inner0 + 1 || j === inner0 + 1)) ? P(mx(o.fill, T.ink, 0.22)) : P(o.fill)) : 0;
+      else v = dd === 1 ? (lit1 ? hi : dk2) : dd >= th - 1 ? (lit1 ? mid : dk2) : lit1 ? (bay(i, j) < 0.6 ? lit : mid) : (bay(i, j) < 0.6 ? dk : mid);
+      set(i, j, v);
     }
-    for (let j = -rp - 1; j <= rp + 1; j++) for (let i = -C2[j + rp + 1]; i <= C2[j + rp + 1]; i++) set(i, j, ink);
-    if (o.fill) { const fv = P(o.fill), fd = P(mx(o.fill, T.ink, 0.22)); for (let j = -rp; j <= rp; j++) for (let i = -F[j + rp]; i <= F[j + rp]; i++) set(i, j, (Math.hypot(i, j) > rp - Math.max(1, R(k * 0.7)) && i + j < 0) ? fd : fv); }
-    else for (let j = -rp; j <= rp; j++) for (let i = -F[j + rp]; i <= F[j + rp]; i++) set(i, j, 0);
   });
-  put(ui, cv, cx, cy, Rr + 3);
+  put(ui, cv, cx, cy, padP + Rr + 1);
 }
-// clip to a disc (at device resolution an arc edge is crisp enough, and far cheaper to raster than row rects)
-export function clipCircle(ui, cx, cy, r, fn) {
-  const g = ui.g; g.save(); g.beginPath(); g.arc(cx, cy, Math.max(0, r + 0.5 / ui.k), 0, Math.PI * 2); g.clip();
-  try { fn(); } finally { g.restore(); ui._fs = null; }
-}
+// clip to a square (was a disc)
+export function clipCircle(ui, cx, cy, r, fn) { ui.clip(cx - r, cy - r, 2 * r, 2 * r, fn); }
 // a triangle cursor with an outline. dir: 'right' | 'down' | 'left' | 'up'; size = half-height (units)
 export function tri(s, x, y, dir, size, c) {
   const ui = U(s), k = ui.k, sz = Math.max(2, R(size * k));

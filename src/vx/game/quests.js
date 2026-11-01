@@ -14,7 +14,8 @@ export const QUESTS = {
   chess: { title: 'Grandmaster of the Square', where: 'chinatown', steps: ['Challenge the xiangqi uncle in Portsmouth Square', 'Claim your prize'], reward: { money: 300 } },
   pigeons: { title: 'Pidgun Patrol', where: 'alamo', steps: ['Count the Pidgun strutting around Alamo Square (0/5)'], count: 5, reward: { money: 200 } },
   // [cave] the Deep Cave under Alamo Hill (src/vx/game/cave.js)
-  deepcave: { title: 'Something Rumbles Under Alamo Hill', where: 'cave', steps: ['Find where the rumbling comes from on Alamo Hill', 'Explore the Deep Cave with your lantern', 'Open the crystal gate by Mirror Lake', 'Find a way through Old Mine No. 3', 'Find what glows in the deepest chamber'], reward: { money: 600 } },
+  deepcave: { title: 'Something Rumbles Under Alamo Hill', where: 'cave', steps: ['Find where the rumbling comes from on Alamo Hill', 'Explore the Deep Cave with your lantern', 'Open the crystal gate by Mirror Lake', 'Find a way through Old Mine No. 3', 'Open the rune door below the mine (Old Gus has the key)', 'Face whatever waits in the Old Arena'], reward: { money: 600 } },
+  gusore: { title: 'Old Gus and the Lumen Ore', where: 'cave', steps: ['Chip 6 pieces of glowing Lumen Ore out of the cave walls', 'Bring the Lumen Ore to Old Gus at the miners\' camp'], reward: { money: 900 } },
 };
 
 export class Quests {

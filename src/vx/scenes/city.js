@@ -17,6 +17,8 @@ import * as downtown from '../city/districts/downtown.js';
 import * as wharf from '../city/districts/wharf.js';
 import * as caveMouth from '../city/districts/cave_mouth.js';   // [cave] the Deep Cave's entrance on Alamo Hill
 import { record, dress } from '../city/dress.js';
+import { fill } from '../city/fill.js';        // the density pass: storefronts, lots, landmarks, murals, roofs, rooms
+import { Atmos } from '../render/atmos.js';    // drifting leaves and petals, steam
 import { batchSolids } from '../city/districts/home/kit.js';
 import { installTrees } from '../city/props_trees.js';   // detailed tree species: swaps the stock trees, LOD + wind
 
@@ -65,6 +67,8 @@ export function build({ mood, stage }) {
   batched(() => downtown.build(C, DISTRICTS.downtown, ctx));
   // ---- the dressing pass: façade + roof detail, ground decals, kerbside clutter, wires (src/vx/city/dress.js)
   const dressed = typeof location !== 'undefined' && /[?&]nodress=1/.test(location.search) ? null : dress(C, REC, ctx);
+  // ---- the density pass (src/vx/city/fill.js; ?nofill=1 skips it)
+  const filled = typeof location !== 'undefined' && /[?&]nofill=1/.test(location.search) ? null : fill(C, REC);
   // ---- zones for the avenues (districts set their own)
   C.zone('Bay Street', 0, 20, W, 32, { label: 'Bay Street', sub: 'San Francisco', music: 'city', bed: 'street' });
   C.zone('Market Street', 0, 98, W, 110, { label: 'Market Street', sub: 'San Francisco', music: 'vibes', bed: 'street' });
@@ -75,7 +79,13 @@ export function build({ mood, stage }) {
   if (!C.spots.start) C.spot('start', 110, 104, 0);
   installTrees(C);   // the stock 'tree' / 'treeB' / 'palm' become detailed species (props_trees.js)
   const city = C.finalize(stage);
-  city.dressed = dressed;
+  city.dressed = dressed; city.filled = filled;
+  // the air: leaves and petals drifting round the camera, steam from stalls and vents (render/atmos.js)
+  if (!(typeof location !== 'undefined' && /[?&]noatmos=1/.test(location.search))) {
+    const atm = new Atmos(C.atmos || {}), day = { day: 1, golden: 0.9, dusk: 0.55, night: 0.3 }[mood] ?? 1;
+    city.root.add(atm.group);
+    C.updaters.push((dt) => { const st = globalThis.__app && globalThis.__app.stage; if (st) atm.update(dt, st.cam, st.h || 720, day); });
+  }
   // cut-out pixel decals (the dressing atlases): hard alpha edges, so stains, streaks and gratings sit on any surface
   city.root.traverse((o) => { const m = o.material; if (o.isMesh && m && m.map && m.map.userData && m.map.userData.cutout && !m.alphaTest) { m.alphaTest = 0.5; m.needsUpdate = true; } });
   const view = { target: [110, 1, 104], dist: 36, yaw: 45, pitch: 40 };

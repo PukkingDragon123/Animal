@@ -37,9 +37,10 @@ export class MonViewer {
     const rim = new THREE.DirectionalLight(0x9ad8ff, 1.5); rim.position.set(3, 2, -3); sc.add(rim);
     // a candy pedestal
     const ped = this.ped = new THREE.Group();
-    const top = new THREE.Mesh(new THREE.CylinderGeometry(1, 1.08, 0.16, 40), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.5 }));
+    // a square plinth: a cream slab on a copper base (no round shapes)
+    const top = new THREE.Mesh(new THREE.BoxGeometry(2, 0.16, 2), new THREE.MeshStandardMaterial({ color: 0xf3e6cf, roughness: 0.6 }));
     top.position.y = -0.08; ped.add(top);
-    const band = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.14, 0.12, 40), new THREE.MeshStandardMaterial({ color: 0xff4a5e, roughness: 0.45 }));
+    const band = new THREE.Mesh(new THREE.BoxGeometry(2.16, 0.12, 2.16), new THREE.MeshStandardMaterial({ color: 0xa35d3c, roughness: 0.45 }));
     band.position.y = -0.2; ped.add(band);
     sc.add(ped);
     this.cam = new THREE.PerspectiveCamera(24, 1, 0.05, 200);

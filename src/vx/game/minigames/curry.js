@@ -217,7 +217,7 @@ export default class Curry {
     const heat = k === 'simmer' ? this.heat : k === 'stir' ? 0.5 : this.stage >= 1 ? 0.3 : 0;
     this.flame.material.opacity = 0;
     // the gas ring: pixel flames round the burner, taller and orange-tipped as the heat goes up
-    if (heat > 0.02) { this.flT = (this.flT || 0) - dt; if (this.flT <= 0) { this.flT = 0.09; const n = heat > 0.6 ? 2 : 1; for (let i = 0; i < n; i++) { const a = s.rand() * Math.PI * 2, r = 0.13; s.burst(heat > 0.78 ? 'fire' : 'bluefire', [POT.x + Math.cos(a) * r, POT.y + 0.005, POT.z + Math.sin(a) * r], { n: 1, scale: 0.22 + heat * 0.25, speed: 0.15 + heat * 0.25 }); } } }
+    if (heat > 0.02) { this.flT = (this.flT || 0) - dt; if (this.flT <= 0) { this.flT = 0.16 - heat * 0.06; const a = s.rand() * Math.PI * 2, r = 0.13; s.burst(heat > 0.78 ? 'fire' : 'bluefire', [POT.x + Math.cos(a) * r, POT.y + 0.005, POT.z + Math.sin(a) * r], { n: 1, scale: 0.14 + heat * 0.14, speed: 0.08 + heat * 0.12 }); } }
     if (heat > 0.05 && this.stage >= 1) { this.bubT = (this.bubT || 0) - dt; if (this.bubT <= 0) { this.bubT = 0.65 - heat * 0.4; s.burst('bubble', [POT.x + (s.rand() - 0.5) * 0.14, POT.y + 0.12, POT.z + (s.rand() - 0.5) * 0.14], { n: 1, scale: 0.35, speed: 0.3 }); if (heat > 0.3) s.burst('steam', [POT.x, POT.y + 0.3, POT.z], { n: 1, scale: 0.7 }); } }
     this.soup.position.y = 0.04 + (this.stage >= 1 ? 0.04 : 0) + (k === 'simmer' ? Math.sin(s.t * 14) * 0.004 * this.heat : 0) + this.thick * 0.02;
     this.soupMat.color.set(this.thick > 0 ? lerpHex('#c8a058', '#7a4418', this.thick) : '#c8a058');

@@ -42,7 +42,7 @@ const curtain = (rep) => ptex(32, 64, (g) => {
 }, rep);
 const pedTop = () => ptex(32, 32, (g) => {
   px(g, '#f3e6cf', 0, 0, 32, 32);
-  for (let y = 0; y < 32; y++) for (let x = 0; x < 32; x++) { const d = Math.hypot(x - 15.5, y - 15.5); if (d > 13 && d < 15) px(g, '#a35d3c', x, y); else if (d >= 15) px(g, '#d48c5c', x, y); else if (d > 11 && d < 12) px(g, '#d9a89a', x, y); }
+  for (let y = 0; y < 32; y++) for (let x = 0; x < 32; x++) { const d = Math.max(Math.abs(x - 15.5), Math.abs(y - 15.5)); if (d > 13 && d < 15) px(g, '#a35d3c', x, y); else if (d >= 15) px(g, '#d48c5c', x, y); else if (d > 11 && d < 12) px(g, '#d9a89a', x, y); }
   for (const [x, y] of [[15, 4], [15, 27], [4, 15], [27, 15]]) px(g, '#e8b84a', x, y, 2, 2);
 });
 const copperBand = () => ptex(32, 8, (g) => { px(g, '#a35d3c', 0, 0, 32, 8); px(g, '#d48c5c', 0, 1, 32, 1); px(g, '#6b3a28', 0, 6, 32, 2); for (let x = 2; x < 32; x += 8) { px(g, '#f2b98a', x, 3, 2, 2); px(g, '#6b3a28', x + 1, 4, 1, 1); } }, [6, 1]);
@@ -63,13 +63,15 @@ class Diorama {
     const s = new THREE.SpotLight(col, I, 12, 0.42, 0.55, 1.4); s.position.set(x, y, z); s.target.position.set(tx, ty, tz); s.castShadow = false;   // (a second scene's shadow passes upset the shared renderer; blob shadows instead) s.shadow.mapSize.set(512, 512); s.shadow.bias = -0.0006;
     this.scene.add(s, s.target);
     // a visible beam: an open cone, additive
-    const h = Math.hypot(x - tx, y - ty, z - tz), geo = new THREE.ConeGeometry(Math.tan(0.42) * h * 0.95, h, 24, 1, true), mat = new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.07, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
-    const beam = new THREE.Mesh(geo, mat); beam.position.set((x + tx) / 2, (y + ty) / 2, (z + tz) / 2); beam.lookAt(tx, ty, tz); beam.rotateX(-Math.PI / 2); this.scene.add(beam);
+    const h = Math.hypot(x - tx, y - ty, z - tz), geo = new THREE.ConeGeometry(Math.tan(0.42) * h * 0.95, h, 4, 1, true), mat = new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.07, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+    const beam = new THREE.Mesh(geo, mat); beam.position.set((x + tx) / 2, (y + ty) / 2, (z + tz) / 2); beam.lookAt(tx, ty, tz); beam.rotateX(-Math.PI / 2); beam.rotateY(Math.PI / 4); this.scene.add(beam);
     this.disposables.push(geo, mat);
     return { light: s, beam, base: I };
   }
-  // a soft round contact shadow under a subject (stepped rings, no shadow map)
-  blob(x, y, z, r) { for (let k = 0; k < 3; k++) { const geo = new THREE.CircleGeometry(r * (1 - k * 0.25), 32), mat = new THREE.MeshBasicMaterial({ color: 0x1a0f0c, transparent: true, opacity: 0.18, depthWrite: false }); const m = new THREE.Mesh(geo, mat); m.rotation.x = -Math.PI / 2; m.position.set(x, y + 0.002 * (k + 1), z); this.scene.add(m); this.disposables.push(geo, mat); } }
+  // a square glowing frame (four thin bars) lying flat at (x, y, z), half-size r
+  squareRing(x, y, z, r, mat) { const g = new THREE.Group(), t = 0.035; for (const [w, d, ox, oz] of [[2 * r + t, t, 0, -r], [2 * r + t, t, 0, r], [t, 2 * r, -r, 0], [t, 2 * r, r, 0]]) { const geo = new THREE.BoxGeometry(w, t, d), m = new THREE.Mesh(geo, mat); m.position.set(ox, 0, oz); g.add(m); this.disposables.push(geo); } g.position.set(x, y, z); this.scene.add(g); return { material: mat, group: g }; }
+  // a soft square contact shadow under a subject (stepped squares, no shadow map)
+  blob(x, y, z, r) { for (let k = 0; k < 3; k++) { const geo = new THREE.PlaneGeometry(2 * r * (1 - k * 0.25), 2 * r * (1 - k * 0.25)), mat = new THREE.MeshBasicMaterial({ color: 0x1a0f0c, transparent: true, opacity: 0.18, depthWrite: false }); const m = new THREE.Mesh(geo, mat); m.rotation.x = -Math.PI / 2; m.position.set(x, y + 0.002 * (k + 1), z); this.scene.add(m); this.disposables.push(geo, mat); } }
   dust(n, box) {
     const pos = new Float32Array(n * 3); for (let i = 0; i < n; i++) { pos[i * 3] = box[0] + Math.random() * (box[3] - box[0]); pos[i * 3 + 1] = box[1] + Math.random() * (box[4] - box[1]); pos[i * 3 + 2] = box[2] + Math.random() * (box[5] - box[2]); }
     const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
@@ -130,16 +132,16 @@ export function pickHero(app, o = {}) {
   const D = new Diorama(app, 0x2a1a22);
   // the set: a round wooden stage, a red curtain, two pedestals under spotlights
   const floorMat = new THREE.MeshStandardMaterial({ map: planks([6, 6]), roughness: 0.8 });
-  D.mesh(new THREE.CylinderGeometry(3.4, 3.5, 0.2, 48), floorMat, 0, -0.1, 0);
-  const cur = D.mesh(new THREE.CylinderGeometry(4.2, 4.2, 4.2, 48, 1, true, Math.PI * 0.62, Math.PI * 0.76), new THREE.MeshStandardMaterial({ map: curtain([10, 1]), roughness: 0.9, side: THREE.BackSide }), 0, 1.9, 0.6);
+  D.mesh(new THREE.BoxGeometry(7.2, 0.2, 4.4), floorMat, 0, -0.1, 0.4);
+  const cur = D.mesh(new THREE.PlaneGeometry(9, 4.4), new THREE.MeshStandardMaterial({ map: curtain([10, 1]), roughness: 0.9 }), 0, 2.0, -1.5);
   cur.receiveShadow = true; cur.castShadow = false;
   D.add(new THREE.HemisphereLight(0xffe8d8, 0x3a2030, 0.55));
   const people = [], spots = [], peds = [];
   const who = ['hero', 'heroine'], X = [-0.95, 0.95];
   for (let i = 0; i < 2; i++) {
     const top = new THREE.MeshStandardMaterial({ map: pedTop(), roughness: 0.6 }), side = new THREE.MeshStandardMaterial({ map: copperBand(), roughness: 0.45, metalness: 0.2 });
-    const ped = D.mesh(new THREE.CylinderGeometry(0.52, 0.58, 0.34, 32), [side, top, side], X[i], 0.17, 0);
-    const ring = D.mesh(new THREE.TorusGeometry(0.6, 0.03, 8, 40), new THREE.MeshBasicMaterial({ color: i ? 0xff8ab8 : 0xffb050 }), X[i], 0.03, 0); ring.rotation.x = Math.PI / 2; ring.castShadow = false;
+    const ped = D.mesh(new THREE.BoxGeometry(1.04, 0.34, 1.04), [side, side, top, side, side, side], X[i], 0.17, 0);
+    const ring = D.squareRing(X[i], 0.03, 0, 0.62, new THREE.MeshBasicMaterial({ color: i ? 0xff8ab8 : 0xffb050 }));
     peds.push({ ped, ring });
     spots.push(D.spot(X[i] * 1.2, 4.2, 1.6, X[i], 0.4, 0, i ? 0xffe0ee : 0xfff0d0, 26));
     const m = castHuman(who[i]); const anim = m.animator ? m.animator() : new Animator(m);
@@ -227,17 +229,18 @@ export function pickStarter(app, o = {}) {
   D.mesh(new THREE.BoxGeometry(4.6, 0.9, 1.5), [tableSide, tableSide, tableTop, tableSide, tableSide, tableSide], 0, 0.45, 0);
   // a shelf strip on the wall with little bottles
   D.mesh(new THREE.BoxGeometry(5, 0.08, 0.3), new THREE.MeshStandardMaterial({ color: 0x8a5434, roughness: 0.7 }), 0, 2.4, -1.65);
-  for (let i = 0; i < 9; i++) D.mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.24 + (i % 3) * 0.06, 10), new THREE.MeshStandardMaterial({ color: [0x5fd84a, 0x3ab8d8, 0xe86a9a, 0xf0b030][i % 4], roughness: 0.2, transparent: true, opacity: 0.8 }), -2 + i * 0.5, 2.56 + (i % 3) * 0.03, -1.62);
+  for (let i = 0; i < 9; i++) D.mesh(new THREE.BoxGeometry(0.13, 0.24 + (i % 3) * 0.06, 0.13), new THREE.MeshStandardMaterial({ color: [0x5fd84a, 0x3ab8d8, 0xe86a9a, 0xf0b030][i % 4], roughness: 0.2, transparent: true, opacity: 0.8 }), -2 + i * 0.5, 2.56 + (i % 3) * 0.03, -1.62);
   D.add(new THREE.HemisphereLight(0xe8f4ff, 0x2a2a3a, 0.6));
   const X = [-1.3, 0, 1.3], caps = [];
   ids.forEach((id, i) => {
     const sp = SPECIES[id] || {}, el = sp.elem ? elemsOf(sp)[0] : null, col = new THREE.Color((ELEMENTS[el] && ELEMENTS[el].color) || '#3ab8d8');
-    const base = D.mesh(new THREE.CylinderGeometry(0.44, 0.48, 0.14, 32), [new THREE.MeshStandardMaterial({ map: copperBand(), roughness: 0.45, metalness: 0.3 }), new THREE.MeshStandardMaterial({ map: pedTop(), roughness: 0.5 }), new THREE.MeshStandardMaterial({ color: 0x6b3a28 })], X[i], 0.97, 0);
+    const cb = new THREE.MeshStandardMaterial({ map: copperBand(), roughness: 0.45, metalness: 0.3 });
+    const base = D.mesh(new THREE.BoxGeometry(0.9, 0.14, 0.9), [cb, cb, new THREE.MeshStandardMaterial({ map: pedTop(), roughness: 0.5 }), cb, cb, cb], X[i], 0.97, 0);
     const glow = new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.6 });
-    const ring = D.mesh(new THREE.TorusGeometry(0.4, 0.025, 8, 40), glow, X[i], 1.05, 0); ring.rotation.x = Math.PI / 2; ring.castShadow = false;
+    const ring = D.squareRing(X[i], 1.05, 0, 0.4, glow);
     const glassMat = new THREE.MeshPhysicalMaterial({ color: 0xd8f0ff, roughness: 0.05, metalness: 0, transparent: true, opacity: 0.16, depthWrite: false, side: THREE.DoubleSide });
-    const glass = D.mesh(new THREE.CylinderGeometry(0.38, 0.38, 0.95, 32, 1, true), glassMat, X[i], 1.52, 0); glass.castShadow = false;
-    const capTop = D.mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.1, 32), new THREE.MeshStandardMaterial({ map: copperBand(), roughness: 0.4, metalness: 0.3 }), X[i], 2.04, 0);
+    const glass = D.mesh(new THREE.BoxGeometry(0.78, 0.95, 0.78), glassMat, X[i], 1.52, 0); glass.castShadow = false;
+    const capTop = D.mesh(new THREE.BoxGeometry(0.86, 0.1, 0.86), cb, X[i], 2.04, 0);
     const spot = D.spot(X[i], 4.4, 1.4, X[i], 1.1, 0, 0xf4f8ff, 22);
     const C = { id, sp, el, col, base, ring, glass, capTop, spot, glow, holder: new THREE.Group(), anim: null, yaw: 0, spin: 0, pop: 0, lift: 0 };
     C.holder.position.set(X[i], 1.04, 0); D.add(C.holder); D.blob(X[i], 1.041, 0, 0.26);

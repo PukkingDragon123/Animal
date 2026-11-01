@@ -7,25 +7,35 @@
 // Icons and numbers first; words only where an icon can't say it (and then on hover or briefly).
 import { T, mx, clamp01, easeOut, boing, squash } from './theme.js';
 import { rgba, fillShape, fillDisc, pixelCanvas, blit } from './gfx.js';
+export { brackets as cornerBrackets };
 import { frame, knob, plinth, pill, tri, sparkle, ball, woodRing, clipCircle, discA, ringPx, gem } from './frame.js';
 import { drawBig, drawSmall } from './icons.js';
 
 export const fmtNum = (n) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 const R = Math.round;
 
-// a round badge holding an icon (toasts, pills, medals)
+// a square badge holding an icon (toasts, medals): a small bevelled tile with notched corners — no discs
 export function badge(ui, cx, cy, r, icon, color = T.amber) {
   ball(ui.s, cx, cy, r, color);
   const box = r >= 8 ? 16 : 12;
-  drawBig(ui.s, icon, R(cx - box / 2), R(cy - box / 2), null, { scale: box / 12, shadow: false });
+  drawBig(ui.s, icon, cx - box / 2, cy - box / 2, null, { scale: box / 12, shadow: false });
+}
+// selection brackets: four animated corner pieces around a rect (instead of a ring)
+export function brackets(ui, x, y, w, h, c = T.amber, t = ui.t) {
+  const o = 1.5 + Math.abs(Math.sin(t * 5)) * 1.5, L = 5, th = 1.2;
+  for (const [cx, cy, dx, dy] of [[x - o, y - o, 1, 1], [x + w + o, y - o, -1, 1], [x - o, y + h + o, 1, -1], [x + w + o, y + h + o, -1, -1]]) {
+    ui.rect(Math.min(cx, cx + dx * L) - 0.6, cy - 0.6 - (dy < 0 ? th : 0), L + 1.2, th + 1.2, T.ink); ui.rect(cx - 0.6 - (dx < 0 ? th : 0), Math.min(cy, cy + dy * L) - 0.6, th + 1.2, L + 1.2, T.ink);
+    ui.rect(Math.min(cx, cx + dx * L), cy - (dy < 0 ? th : 0), L, th, c); ui.rect(cx - (dx < 0 ? th : 0), Math.min(cy, cy + dy * L), th, L, c);
+  }
 }
 // ------------------------------------------------------------------ value pill
-// o: { color (badge), id (count-up memory), right (x is the right edge) } → width
+// a cream pill with chamfered ends, the icon itself overlapping its left end (no disc behind it), a chunky number.
+// o: { right (x is the right edge) } → width
 export function valuePill(ui, x, y, w, icon, value, o = {}) {
   const h = 15; if (o.right) x -= w;
-  pill(ui, x + 6, y, w - 6, h);
+  pill(ui, x + 7, y, w - 7, h);
   ui.text(String(value), x + w - 6, y + 4, T.text, { bold: true, align: 'right' });
-  badge(ui, x + 7, y + 7, 9, icon, o.color || T.amber);
+  drawBig(ui.s, icon, x - 2, y - 2.5, null, { scale: 20 / 12 });
   return w;
 }
 // ------------------------------------------------------------------ keycap: a little cream key with a lip
@@ -80,22 +90,21 @@ export function prompt(ui, x, y, keyLabel, str, o = {}) {
   if (tapped) ui.ptr.released = false;
   return tapped;
 }
-// ------------------------------------------------------------------ virtual thumbstick
+// ------------------------------------------------------------------ virtual thumbstick: a square pad with a square knob
+// dx, dy: knob offset as a fraction of r (−1..1). o: { color, ghost (a faint resting hint) }
 export function joystick(ui, cx, cy, r, dx = 0, dy = 0, active = false, o = {}) {
-  cx = R(cx); cy = R(cy); r = R(r);
-  const k = active ? 1 : o.ghost ? 0.45 : 0.75;
-  discA(ui.s, cx, cy, r, T.shade, 0.28 * k);
-  ringPx(ui.s, cx, cy, r + 1, T.ink, 0.8 * k); ringPx(ui.s, cx, cy, r, T.cream, 0.85 * k); ringPx(ui.s, cx, cy, r - 1, T.copper, 0.6 * k);
+  const k = active ? 1 : o.ghost ? 0.45 : 0.75, g = ui.g;
+  g.globalAlpha = 0.3 * k; fillShape(ui, cx - r, cy - r, 2 * r, 2 * r, T.shade, r * 0.3); g.globalAlpha = 0.85 * k;
+  ringPx(ui.s, cx, cy, r, T.ink); ringPx(ui.s, cx, cy, r - 1, T.cream); g.globalAlpha = 1;
   let m = Math.hypot(dx, dy), nx = dx, ny = dy; if (m > 1) { nx /= m; ny /= m; m = 1; }
   for (const [d, ux, uy] of [['up', 0, -1], ['right', 1, 0], ['down', 0, 1], ['left', -1, 0]]) {
     const on = active && m > 0.3 && nx * ux + ny * uy > 0.7, px0 = cx + ux * (r - 6), py0 = cy + uy * (r - 6);
-    ui.g.globalAlpha = o.ghost ? 0.6 : 1;
+    g.globalAlpha = o.ghost ? 0.6 : 1;
     if (d === 'up' || d === 'down') tri(ui.s, px0 - 2, py0 - 1, d, 2, on ? T.amber : T.cream); else tri(ui.s, px0 - 1, py0 - 2, d, 2, on ? T.amber : T.cream);
-    ui.g.globalAlpha = 1;
+    g.globalAlpha = 1;
   }
   if (o.ghost) return;
-  const kr = Math.max(5, R(r * 0.42)), KX = cx + nx * (r - kr * 0.6), KY = cy + ny * (r - kr * 0.6);
-  discA(ui.s, KX, KY + 2, kr, T.shade, 0.4 * k);
+  const kr = Math.max(5, r * 0.42), KX = cx + nx * (r - kr * 0.8), KY = cy + ny * (r - kr * 0.8);
   ball(ui.s, KX, KY, kr, active ? T.copperL : T.cream);
 }
 // ------------------------------------------------------------------ clock: a value pill with a clock badge; the day on a square tag
@@ -169,31 +178,26 @@ export function objective(ui, x, y, str, o = {}) {
   ui.text(t, x + 17, y + 4, T.text, {});
   return w;
 }
-// ------------------------------------------------------------------ round button: a copper ring around a coloured face, with a lip
-// (cx, cy) centre, r radius of the face. o: { sel, color (face), hotkey, disabled, modal, tint, badge, tip } → { clicked, over }
+// ------------------------------------------------------------------ the icon button: a SQUARE bevelled key with a lip (kept name: roundButton)
+// (cx, cy) centre, r: half the face size. o: { sel (animated corner brackets), color (face), hotkey, disabled, modal, tint, badge, tip }
+// returns { clicked, over }
 export function roundButton(ui, cx, cy, r, icon, o = {}) {
-  cx = R(cx); cy = R(cy); r = R(r);
-  const g = ui.g, Rr = r + 3, blk = ui.blocked(o);
-  const over = Math.hypot(ui.ptr.x - cx, ui.ptr.y - cy) <= Rr + 1 && !o.disabled && !blk, down = over && ui.ptr.down;
+  const Rr = r + 2, blk = ui.blocked(o);
+  const over = ui.inside(cx - Rr, cy - Rr, 2 * Rr, 2 * Rr + 2) && !o.disabled && !blk, down = over && ui.ptr.down;
   if (over) ui.hot = o.tip || icon;
   const a = ui.anim('rb' + ((cx * 977 + cy * 131 + r) | 0), { bt: 9 });
   a.bt += ui.dt;
   if (over && ui.ptr.pressed) ui.click('ui_tap', { vol: 0.7, pitch: 1 + (6 / Math.max(6, r)) * 0.1 });
   const hk = o.hotkey && ui.key(o.hotkey) && !o.disabled && !blk, clicked = (over && ui.ptr.released) || hk;
   if (clicked) { a.bt = 0; if (hk) ui.click('ui_tap', { vol: 0.7 }); }
-  const col = o.disabled ? '#a89a8c' : o.color || T.cream, sq = squash(a.bt, 0.12), dy = down ? 2 : over ? -1 : 0;
-  const xf = Math.abs(sq) > 0.01;
+  const col = o.disabled ? '#a89a8c' : o.color || T.cream, sq = squash(a.bt, 0.12), xf = Math.abs(sq) > 0.01, S = 2 * Rr;
   if (xf) ui.push(cx, cy + Rr, 1 + sq, 1 - sq);
-  if (o.sel) { const p = ((ui.t * 4) | 0) % 2; ringPx(ui.s, cx, cy + dy, Rr + 3, p ? T.brass : '#fff0a0', 1); ringPx(ui.s, cx, cy + dy, Rr + 4, T.ink, 0.6); }
-  // the lip below, then the ring and face
-  woodRing(ui.s, cx, cy + 2, r, { th: 3, fill: mx(col, T.ink, 0.45), color: T.copperD });
-  woodRing(ui.s, cx, cy + dy, r, { th: 3, fill: over ? mx(col, '#ffffff', 0.2) : col, shadow: false, color: o.sel ? T.brass : T.copper });
-  if (!o.disabled) { ui.fill(mx(over ? mx(col, '#ffffff', 0.2) : col, '#ffffff', 0.45)); g.fillRect(cx - R(r * 0.5), cy + dy - r + 1, R(r * 0.6), 1); g.fillRect(cx - r + 1, cy + dy - R(r * 0.4), 1, R(r * 0.5)); }
-  const box = r >= 9 ? 16 : 12;
-  drawBig(ui.s, icon, cx - box / 2, cy + dy - box / 2, o.tint || null, { scale: box / 12, shadow: true, dim: o.disabled ? 0.5 : 0 });
+  knob(ui, cx - Rr, cy - Rr, S, S + 2, { color: col, state: o.disabled ? 3 : down ? 2 : over ? 1 : 0, lip: 3, r: Math.max(2, r * 0.3), active: !!o.sel, frame: 'copper' });
+  const box = r >= 9 ? 16 : 12, dy = down ? 2 : 0;
+  drawBig(ui.s, icon, cx - box / 2, cy - box / 2 - 1 + dy, o.tint || null, { scale: box / 12, shadow: true, dim: o.disabled ? 0.5 : 0 });
   if (xf) ui.pop();
-  if (o.sel) { const k = (ui.t * 0.9) % 1; sparkle(ui.s, cx + Math.cos(k * 6.28) * (Rr + 3), cy + Math.sin(k * 6.28) * (Rr + 3), T.amberL, 1 - k); }
-  if (o.badge) { const bx = cx + r, by = cy - r; ball(ui.s, bx, by, 4, T.berry); ui.text(String(o.badge), bx + 1, by - 2, '#ffffff', { mini: true, align: 'center', bold: true }); }
+  if (o.sel) brackets(ui, cx - Rr, cy - Rr, S, S + 2, T.amber);
+  if (o.badge) { const bx = cx + Rr - 2, by = cy - Rr + 2; ball(ui.s, bx, by, 4, T.berry); ui.text(String(o.badge), bx, by - 2.5, '#ffffff', { mini: true, align: 'center', bold: true }); }
   if (clicked) ui.ptr.released = false;
   return { clicked, over };
 }
@@ -242,24 +246,18 @@ export function partyBar(ui, x, y, party = [], o = {}) {
   }
   return { w: cx - 3 - x, h: H };
 }
-// ------------------------------------------------------------------ the round radar in a copper ring, with an "N" bead
-// draw(ui, x, y, w, h) paints the map (clipped to the disc). o: { north (radians), label, player, heading }
+// ------------------------------------------------------------------ the map window: a rectangular copper-framed panel
+// draw(ui, x, y, w, h) paints the map (clipped). o: { north (radians), label, player, heading }
 export function minimap(ui, x, y, w, h, draw, o = {}) {
-  const d = Math.min(w, h), Rr = R(d / 2) - 4, cx = R(x + w / 2), cy = R(y + h / 2);
-  woodRing(ui.s, cx, cy, Rr, { th: 4, fill: '#2a3a2e' });
-  clipCircle(ui, cx, cy, Rr, () => {
-    if (draw) draw(ui, cx - Rr, cy - Rr, 2 * Rr + 1, 2 * Rr + 1);
-    // radar rings + a sweep of dots
-    ui.g.globalAlpha = 0.35; ui.s.ring(cx, cy, Rr * 0.5, Rr * 0.5, '#a8f0b0'); ui.g.globalAlpha = 1;
-    const sw = (ui.t * 1.4) % (Math.PI * 2);
-    for (let k = 0; k < 4; k++) { ui.g.globalAlpha = 0.3 - k * 0.06; for (let rr = 2; rr < Rr; rr += 2) ui.px(cx + Math.cos(sw - k * 0.08) * rr, cy + Math.sin(sw - k * 0.08) * rr, '#a8f0b0'); }
-    ui.g.globalAlpha = 1;
-  });
-  if (o.player) { tri(ui.s, cx - 2, cy - 3, 'up', 2, T.red); }
-  const nr = o.north || 0, bx = R(cx + Math.sin(nr) * (Rr + 2)), by = R(cy - Math.cos(nr) * (Rr + 2));
-  ball(ui.s, bx, by, 5, T.red);
-  ui.text('N', bx + 1, by - 2, '#ffffff', { mini: true, bold: true, align: 'center' });
-  if (o.label) { const lw = R(ui.tw(o.label, { mini: true, bold: true }) + 10), lx = cx - R(lw / 2), ly = cy + Rr + 2; frame(ui, lx, ly, lw, 11, { thin: true, r: 1, shadow: false }); ui.text(o.label.toUpperCase(), lx + 5, ly + 3, T.text, { mini: true, bold: true }); }
+  frame(ui, x, y, w, h, { thin: true, r: 2, fill: '#2a3a2e' });
+  const ix = x + 4, iy = y + 4, iw = w - 8, ih = h - 8;
+  ui.clip(ix, iy, iw, ih, () => { if (draw) draw(ui, ix, iy, iw, ih); });
+  if (o.player) tri(ui.s, x + w / 2 - 2, y + h / 2 - 3, 'up', 2, T.red);
+  // a square "N" tag riding the frame toward north
+  const nr = o.north || 0, bx = x + w / 2 + Math.sin(nr) * (w / 2 - 2), by = y + h / 2 - Math.cos(nr) * (h / 2 - 2);
+  ball(ui.s, bx, by, 4.5, T.red);
+  ui.text('N', bx, by - 2.5, '#ffffff', { mini: true, bold: true, align: 'center' });
+  if (o.label) { const lw = R(ui.tw(o.label, { mini: true, bold: true }) + 12), lx = x + w / 2 - lw / 2, ly = y + h + 1; frame(ui, lx, ly, lw, 13, { thin: true, r: 1, shadow: false }); ui.text(o.label.toUpperCase(), x + w / 2, ly + 4, T.text, { mini: true, bold: true, align: 'center' }); }
 }
 // ------------------------------------------------------------------ images (3D renders, portraits)
 const imgCache = new WeakMap();

@@ -81,21 +81,18 @@ export function buf(d, w, h) { return { d, w, h, set(x, y, v) { if (x >= 0 && y 
 export const PK = (c) => P(c);
 
 // ------------------------------------------------------------------ shapes
-// row insets for a w×h shape (any units): kind 'round' (radius r), 'pill' (r = h/2), 'chamfer'
+// row insets for a w×h shape: no curves anywhere — 'round' (and 'chamfer') cut the corners at 45° by r
+// (a bevelled / notched corner), 'pill' gives chamfered ends (r ≈ 0.3·h)
 const insCache = new Map();
 export function rowIns(h, r, kind = 'round') {
   h = Math.max(1, Math.round(h));
-  const key = h * 8192 + Math.round(r * 4) * 4 + (kind === 'pill' ? 1 : kind === 'chamfer' ? 2 : 0);
+  if (kind === 'pill') r = Math.max(1, Math.round(h * 0.3));
+  r = Math.max(0, Math.round(r));
+  const key = h * 8192 + r;
   let A = insCache.get(key);
   if (A) return A;
   A = new Int16Array(h);
-  if (kind === 'pill') r = h / 2;
-  for (let j = 0; j < h; j++) {
-    const d = Math.min(j, h - 1 - j);
-    if (kind === 'chamfer') { A[j] = Math.max(0, Math.round(r) - d); continue; }
-    if (d >= r) { A[j] = 0; continue; }
-    const dy = r - d - 0.5; A[j] = Math.max(0, Math.round(r - Math.sqrt(Math.max(0, r * r - dy * dy))));
-  }
+  for (let j = 0; j < h; j++) A[j] = Math.max(0, r - Math.min(j, h - 1 - j));
   if (insCache.size > 4000) insCache.clear();
   insCache.set(key, A);
   return A;
