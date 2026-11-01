@@ -59,7 +59,7 @@ export const LOCATIONS = {
   // [cave] the Deep Cave under Alamo Hill: its own map, walked like the city (scenes/cave.js, game/cave.js); the
   // way in is the old mine portal on the hill (city/districts/cave_mouth.js). A darker, closer follow camera.
   cave: {
-    name: 'The Deep Cave', scene: 'cave', mood: 'cave', music: 'safari', map: [0.45, 0.39], hidden: true, blurb: 'Under Alamo Hill: an old mine, a lake of glowing crystals… and a rumble.',
+    name: 'The Deep Cave', scene: 'cave', mood: 'cave', music: 'safari', map: [0.45, 0.39], hidden: true, blurb: 'Under Alamo Hill: an old mine, a lake of glowing crystals, an arena older than the city… and a rumble.',
     follow: { dist: 5.0, pitch: 21, h: 1.25, fov: 46, lead: 0.2, indoor: { dist: 4.6, pitch: 30, h: 1.1, fov: 46, lead: 0.1 } },
     spots: {}, life: [],
   },

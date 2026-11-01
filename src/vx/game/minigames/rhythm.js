@@ -46,7 +46,7 @@ export default class Rhythm {
     this.foe.place(B[0], B[1], -Math.PI / 2, gy);
     const el = elemsOf(SPECIES[sp] || {})[0]; this.fx = HIT_FX[el] || 'spark';
     const fel = elemsOf(SPECIES[this.rivalSp] || {})[0]; this.foeFx = HIT_FX[fel] || 'note';
-    if (s.hero) { s.hero.place(A[0] - 2.2, A[1] + 2.4, Math.PI * 0.8, gy); s.hero.play('cheer'); }
+    if (s.hero) { s.hero.place(A[0] - 1.6, A[1] - 2.4, Math.PI * 0.3, gy); s.hero.play('cheer'); }
     this.foeName = SPECIES[this.rivalSp] ? SPECIES[this.rivalSp].name : 'Champion';
   }
   async intro(cin) {
@@ -80,6 +80,7 @@ export default class Rhythm {
     const s = this.s;
     this.shown += (this.score - this.shown) * Math.min(1, dt * 10); if (Math.abs(this.score - this.shown) < 1) this.shown = this.score;
     this.comboT += dt; for (let i = 0; i < 4; i++) this.flashLane[i] = Math.max(0, this.flashLane[i] - dt * 5); if (this.judge) this.judge.t += dt;
+    this.camDt = dt;
     if (!this.started) { this.cam(false); return; }
     if (live) this.clock += dt;
     const b = this.beat(), sec = 60 / BPM;
@@ -149,7 +150,7 @@ export default class Rhythm {
   }
   cam(snap) {
     const s = this.s, gy = this.gy;
-    if (this.closeT > 0) { this.closeT -= 1 / 60; const p = this.me.g.position; s.look(new V3(p.x + 0.8, gy + 0.6, p.z), 3.4, 330, 8, 38, { rate: 8 }); return; }
+    if (this.closeT > 0) { this.closeT -= this.camDt || 1 / 60; s.look(new V3((A[0] + B[0]) / 2 - 1, gy + 0.6, A[1]), 5.6, 12, 6, 36, { rate: 7 }); return; }   // the special: a low dramatic two-shot
     s.look(new V3(143, gy + 0.8, 165), 8.2, 0, 12, 40, { rate: 4, snap });
   }
   // ================================================================ HUD: the HP bars and the note highway
@@ -185,9 +186,15 @@ export default class Rhythm {
 function arrow(ui, cx, cy, lane, col, k = 1) {
   const x = Math.round(cx), y = Math.round(cy), dk = LANES[lane].dk, s = 7;
   bevel(ui, x - s - 1, y - s - 1, s * 2 + 2, s * 2 + 2, T.ink, 1); bevel(ui, x - s, y - s, s * 2, s * 2, col, 1); ui.rect(x - s + 2, y + s - 2, s * 2 - 4, 1, dk); ui.rect(x - s + 2, y - s + 1, s * 2 - 4, 1, 'rgba(255,255,255,0.35)');
-  const g = ui.g, rot = [Math.PI, Math.PI / 2, -Math.PI / 2, 0][lane];
-  g.save(); g.translate(x, y); g.rotate(rot);
-  ui.rect(-3, -1, 4, 3, '#fff8ec'); ui.rect(1, -3, 1, 7, '#fff8ec'); ui.rect(2, -2, 1, 5, '#fff8ec'); ui.rect(3, -1, 1, 3, '#fff8ec'); ui.rect(4, 0, 1, 1, '#fff8ec');
-  g.restore(); ui._fs = null; void k;
+  // the arrow glyph as pixel rects (pointing right), turned per lane by swapping / mirroring the axes
+  const R = [[-3, -1, 4, 3], [1, -3, 1, 7], [2, -2, 1, 5], [3, -1, 1, 3], [4, 0, 1, 1]];
+  for (const [dx, dy, w, h] of R) {
+    let X = dx, Y = dy, Wd = w, Hd = h;
+    if (lane === 0) { X = -dx - w + 1; }                                  // ◀
+    else if (lane === 1) { X = dy; Y = dx; Wd = h; Hd = w; }               // ▼
+    else if (lane === 2) { X = dy; Y = -dx - w + 1; Wd = h; Hd = w; }      // ▲
+    ui.rect(x + X, y + Y, Wd, Hd, '#fff8ec');
+  }
+  void k;
 }
 void clamp; void clamp01; void lerp; void drawScore;

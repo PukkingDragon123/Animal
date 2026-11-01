@@ -508,7 +508,7 @@ export class Battle3D {
           if (e.crit) { this.shake(0.22, 7); if (cin) cin.hitStop(110); this.flash('#ffffff', 0.12, 0.35); this.banner('CRITICAL HIT!', '#ffd84a'); }
           else if (heavy) { this.shake(0.12, 8); if (cin) cin.hitStop(55); }
           if (e.eff > 1.2) this.banner('SUPER EFFECTIVE!', '#ff8a5a');
-          else if (e.eff < 0.8 && Math.random() < 0.6) this.banner('not very effective…', '#9a94b8', true);
+          else if (e.eff < 0.8 && Math.random() < 0.6) this.banner('not very effective...', '#9a94b8', true);
           // the trainers feel it
           if (e.crit || e.eff > 1.2 || heavy) { this.react(t.side === 0 ? 1 : 0, 'good'); this.react(t.side, 'bad'); this.crowd(e.crit ? 'cheer' : 'gasp'); }
           break;
@@ -560,10 +560,10 @@ export class Battle3D {
         case 'order': { const u = U(e.u); if (u && u.side === 0 && e.kind === 'skill') { const tr = this.trainers.find((x) => x.T.isPlayer); if (tr && this.t >= tr.cool) { tr.cool = this.t + 1.4; tr.back = this.t + 1.3; tr.a.play('command', { restart: true }); } } break; }
         case 'item': app.ui.toast('Used ' + String(e.id).replace('_', ' '), { icon: 'bag' }); break;
         case 'captureThrow': this.callout('SOUL LINK!', Math.round((e.chance || 0) * 100) + '% chance', T.green, 1); { const tr = this.trainers.find((x) => x.T.isPlayer); if (tr) { tr.a.play('throw', { restart: true }); tr.back = this.t + 1.4; } } break;
-        case 'captureShake': for (let i = 0; i < (e.shakes || 1); i++) setTimeout(() => this.callout(String(i + 1) + '…', '', T.text, 0.5), 650 * (i + 1)); if (!e.ok) setTimeout(() => this.callout('IT BROKE FREE!', '', T.red, 1), 650 * ((e.shakes || 1) + 1)); break;
+        case 'captureShake': for (let i = 0; i < (e.shakes || 1); i++) setTimeout(() => this.callout(String(i + 1) + '...', '', T.text, 0.5), 650 * (i + 1)); if (!e.ok) setTimeout(() => this.callout('IT BROKE FREE!', '', T.red, 1), 650 * ((e.shakes || 1) + 1)); break;
         case 'captured': this.callout('GOTCHA!', 'soul link established', T.green, 1.6, true); this.react(0, 'win', { force: true }); this.flash('#d8ffd0', 0.3, 0.5); break;
         case 'captureImmune': this.callout("CAN'T BE CAUGHT!", '', T.red, 1); break;
-        case 'disobey': { const u = U(e.u); if (u) this.pop(this.wpos(u, 0.7), 'ignores you…', T.dim, 1); break; }
+        case 'disobey': { const u = U(e.u); if (u) this.pop(this.wpos(u, 0.7), 'ignores you...', T.dim, 1); break; }
         default: break;
       }
     }
@@ -606,14 +606,14 @@ export class Battle3D {
       this.crowd(won ? 'cheer' : 'gasp');
     }
     app.audio.stinger && app.audio.stinger(won ? 'victory' : 'defeat');
-    this.callout(won ? 'VICTORY!' : fled ? 'GOT AWAY' : r.reason === 'capture' ? 'CAUGHT!' : 'DEFEAT…', won ? '' : fled ? '' : 'your team needs rest', won ? T.amber : '#9fb3ff', 2.6, true);
+    this.callout(won ? 'VICTORY!' : fled ? 'GOT AWAY' : r.reason === 'capture' ? 'CAUGHT!' : 'DEFEAT!', won ? '' : fled ? '' : 'your team needs rest', won ? T.amber : '#9fb3ff', 2.6, true);
     // the orbit: round your partner and you when you win, round the victor when you lose
     const hero = this.trainers.find((tr) => tr.T.isPlayer), winU = [...this.units.values()].find((rec) => rec.u.side === r.winner && rec.u.onField && rec.u.state !== 'faint');
     if (!fled) {
       const focus = won && hero && winU ? null : winU ? winU.a : null;
       if (focus || (won && hero && winU)) {
         const P = () => { if (focus) return focus.g.position.clone(); const a = hero.a.g.position, b = winU.a.g.position; return a.clone().lerp(b, 0.5); };
-        const h = winU ? this.height(winU) : 0.8, d0 = won && hero ? Math.max(4.2, Math.hypot(hero.a.g.position.x - winU.a.g.position.x, hero.a.g.position.z - winU.a.g.position.z) * 1.4 + 2) : Math.max(3, h * 3.2);
+        const h = winU ? this.height(winU) : 0.8, d0 = won && hero ? Math.max(4.2, Math.hypot(hero.a.g.position.x - winU.a.g.position.x, hero.a.g.position.z - winU.a.g.position.z) * 1.4 + 2) : Math.max(4.4, h * 3.8);
         const p0 = P(), yaw0 = this.clearView({ target: new V3(p0.x, p0.y + Math.max(0.6, h * 0.55), p0.z), dist: d0, yaw: this.camCfg.yaw + (won ? -40 : 30), pitch: 11 }).yaw;
         this.shotTo((t) => { const p = P(); return { target: new V3(p.x, p.y + Math.max(0.6, h * 0.55), p.z), dist: d0 * (1 - 0.06 * Math.min(1, t / 3)), yaw: yaw0 + t * 14 * (won ? 1 : -1), pitch: 9 + Math.min(1, t / 3) * 4, fov: 30 }; }, { blend: 0.8, prio: 9 });
       }

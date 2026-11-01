@@ -127,6 +127,8 @@ const KINDS = {
     F.box(0, 36, 0, 37, 41, 8, (x, y, z) => (y === 36 || y === 41 ? gold : cloth));
     for (const x of [8, 19, 29]) { F.box(x, 33, 4, x, 35, 4, pole); F.box(x - 2, 29, 3, x + 2, 32, 5, (xx, yy) => (yy === 29 || yy === 32 ? lanG : lan)); }
   } },
+  // a slim post (a banner between two of them)
+  tl_pole: { size: [3, 40, 3], r: 0, build(F) { const p = F.c('#3a4a6a'), c = F.c('#f0c040'); F.box(1, 0, 1, 1, 38, 1, p); F.box(0, 0, 0, 2, 1, 2, p); F.box(0, 39, 0, 2, 39, 2, c); } },
   tl_cover: { size: [36, 9, 16], r: 0, build(F) { const a = F.c('#4a5a8a'), b = F.c('#3a4870'); F.box(0, 0, 0, 35, 8, 15, (x, y, z) => ((x >> 2) % 2 ? a : b)); } },
   tl_stool: { size: [8, 8, 8], r: 0, build(F) { const leg = F.c('#5a3a2a'), seat = F.c('#c83a2a'), seat2 = F.c('#e85a3a'); for (const [x, z] of [[2, 2], [5, 2], [2, 5], [5, 5]]) F.box(x, 0, z, x, 5, z, leg); F.box(1, 6, 1, 6, 7, 6, (x, y) => (y === 7 ? seat2 : seat)); } },
   // Bubble Moon cart: mint with a pink stripe, cups lined up on the counter, a shaker, an awning and a giant cup on top
@@ -226,7 +228,12 @@ function signMesh(st, tex, w, h) {
   const mesh = new THREE.Mesh(new THREE.PlaneGeometry(w, h), m); mesh.castShadow = true; mesh.receiveShadow = true;
   return mesh;
 }
-const sign = (key, text, sub, w, h, bg, fg, icon, o = {}) => () => signBoard('tl_' + key, text, w, h, { bg, fg, frame: o.frame, sub, subCol: o.subCol, stripe: o.stripe, icon: ICONS[icon], dx: icon ? 6 : 0, ppm: o.ppm || 40, bolts: false });
+// the resolution is picked so the title fits at the bitmap font's 1× size with the subtitle under it (dt_pix fonts:
+// 6 px per capital, 7 px tall; 4 px per mini capital, 5 px tall)
+const sign = (key, text, sub, w, h, bg, fg, icon, o = {}) => () => {
+  const need = Math.max(text.length * 6 - 1, sub ? sub.length * 4 - 1 : 0) + 14 + (icon ? 14 : 0), ppm = Math.max(40, Math.ceil(need / w), Math.ceil((sub ? 21 : 14) / h));
+  return signBoard('tl_' + key, text, w, h, { bg, fg, frame: o.frame, sub, subCol: o.subCol, stripe: o.stripe, icon: ICONS[icon], dx: icon ? 7 : 0, ppm, bolts: false });
+};
 let FX_IN = false;
 function defineParticles() {
   if (FX_IN) return; FX_IN = true;
@@ -737,7 +744,7 @@ const SCENES = [
     lamps: [[0, 0.5, 2.0, 0xff7a40, 16, 8]],
     async setup(S) {
       await S.person('bao', 'bao', [-0.3, -0.95, 0], { name: 'Chef Bao', voice: 'coach', when: (S) => S.open });
-      await S.mon('turbo', 'hellcoon', [1.85, -0.45, -1.2], { name: 'Turbo' });
+      await S.mon('turbo', 'hellcoon', [2.85, 0.15, PI / 2], { name: 'Turbo' });
       await S.mon('ghost', 'chochobake', [0.3, 0.3, 0], { name: 'Chochobake', y: 2.0, when: (S) => S.T.night() && S.open });
     },
     items: () => [
@@ -750,7 +757,7 @@ const SCENES = [
       S.go(wokCook);
       for (let i = 0; i < 3; i++) S.go(() => diner(S, i));
       S.go(() => customers(S, {
-        spots: [[2.5, 1.2], [3.5, 1.5], [4.4, 1.7]], look: [0.7, 0], ends: [[-9, 3.0], [11, 3.0]], gap: [8, 14], food: true,
+        spots: [[-2.4, 1.3], [-3.4, 1.6], [-4.3, 1.8]], look: [-0.6, 0], ends: [[-9, 3.0], [11, 3.0]], gap: [8, 14], food: true,
         max: (S) => (S.T.night() ? 3 : S.T.lunch() ? 2 : 1),
         serve: (S, c) => serveAt(S, c, { vendor: 'bao', hand: 'tl_bowl', orders: ['Chili noodles to go!', 'Extra chili, extra Turbo!', 'One bowl, please. The big one.'], thanks: ['Hot hot hot! Mind the bowl!', 'Wok-fired, Turbo-powered!'], prepare: (S) => toss(S, 1) }),
         after: async (S, c) => { c.play('cheer', { restart: true }); S.say(c, pick(['Smells amazing!', 'Night market noodles, best noodles.', 'Turbo, you\'re a legend!'])); await S.sleep(1.2); },
@@ -893,8 +900,8 @@ const SCENES = [
   // ------------------------------------------------------------------------------------------ Swift Wing Express
   {
     id: 'courier', name: 'Swift Wing Express', at: [146.4, 117.4], yaw: -PI / 2, hours: [8, 20], notice: '?',
-    props: [{ k: 'tl_parcelcart', at: [0, 0], block: [0.5, 0.4] }, { k: 'sandwich', at: [0.9, 0.55], yaw: -0.3 }],
-    signs: [{ tex: sign('wing', 'SWIFT WING', 'EXPRESS COURIER', 1.2, 0.3, '#3a4a6a', '#f8f4ec', 'wing', { frame: '#f0c040', subCol: '#f0c040' }), at: [0, 0.42], y: 1.5, w: 1.2, h: 0.3 }],
+    props: [{ k: 'tl_parcelcart', at: [0, 0], block: [0.5, 0.4] }, { k: 'sandwich', at: [1.25, 0.75], yaw: -0.3 }, { k: 'tl_pole', at: [-0.86, 0.3] }, { k: 'tl_pole', at: [0.86, 0.3] }],
+    signs: [{ tex: sign('wing', 'SWIFT WING', 'EXPRESS COURIER', 1.62, 0.42, '#3a4a6a', '#f8f4ec', 'wing', { frame: '#f0c040', subCol: '#f0c040' }), at: [0, 0.33], y: 2.12, w: 1.62, h: 0.42 }],
     async setup(S) {
       await S.person('dot', 'dot', [0.8, -0.25, 0], { name: 'Dot', voice: 'friend', when: (S) => S.open });
       await S.mon('express', 'pidgun', [0, 0, 0], { name: 'Express', y: 1.14 });
@@ -1143,10 +1150,15 @@ async function cheerSlap(app, S) {
   await app.say('', 'Slapjack spins, slaps a funky lick on its flame-painted bass and points a wing at you. You have been acknowledged.');
 }
 // ---------------------------------------------------------------- Wok & Roll
+/** Turbo revs: a lick of exhaust flame from behind its bike, across under the wok */
+function exhaust(S, t, dur, rate = 60) {
+  const wok = S.V(0.69, -0.06, 1.1), back = () => { const p = t.g.position; return new V3(p.x - Math.sin(t.yaw) * 0.55, p.y + 0.45, p.z - Math.cos(t.yaw) * 0.55); };
+  return S.tween(dur, (k, dt) => { const b = back(); S.w.fx.emit('breath', b, { dt, rate, dir: wok.clone().sub(b).normalize(), speed: 0.65, spread: 0.2, scale: 0.7, key: 'tl-ex' }); if (Math.random() < dt * 6) S.w.fx.emit('smoke', b, { n: 1, scale: 0.5 }); });
+}
 async function toss(S, n = 1) {
   const v = S.cast.get('bao'), t = S.cast.get('turbo'), wok = S.V(0.69, -0.06, 1.35);
   for (let i = 0; i < n; i++) {
-    if (t) { t.faceTo(wok.x, wok.z); t.play(t.anim.clips.rev ? 'rev' : 'attack', { restart: true }); S.fx('fire', S.V(0.69, -0.06, 1.12), { n: 10, scale: 0.9 }); S.sfx('pyro', t, 0.35); }
+    if (t) { t.play(t.anim.clips.rev ? 'rev' : 'attack', { restart: true }); exhaust(S, t, 0.8); S.fx('fire', S.V(0.69, -0.06, 1.12), { n: 10, scale: 0.9 }); S.sfx('pyro', t, 0.35); }
     if (v) v.play('cheer', { restart: true });
     S.fx('tl_noodle', wok, { n: 5 }); S.fx('steam', wok, { n: 4 }); S.sfx('fire', wok, 0.35, 1.3);
     await S.sleep(1.1);
@@ -1173,7 +1185,9 @@ async function diner(S, i) {
     const [sx, sz] = seats[i], end = pick([[-9, 3.0], [11, 3.0]]);
     const c = await S.person('diner', 'passerby' + (1 + Math.floor(Math.random() * 400)), [end[0], end[1], 0], { temp: true, speed: rnd(1.1, 1.3) });
     if (!c) continue;
-    await S.walkL(c, sx, sz + 0.25); c.targetYaw = S.Y(PI); c.g.position.set(...(() => { const [x, z] = S.P(sx, sz + 0.05); return [x, S.y, z]; })());
+    await S.walkL(c, sx, sz + 0.3);
+    // onto the stool: the sit pose seats the hips on the actor's root, so the root goes up to the seat (0.5 m)
+    const [qx, qz] = S.P(sx, sz + 0.06); c.path = null; c.g.position.set(qx, S.y + 0.5, qz); c.yaw = c.targetYaw = S.Y(PI); c.g.rotation.y = c.yaw;
     S.pose(c, 'sit', true);
     const bao = S.cast.get('bao'); if (bao) { bao.face(c); S.say(bao, pick(['One chili noodle, coming up!', 'Sit, sit! Two minutes!']), 'coach'); }
     await S.sleep(2.5); await toss(S, 1); hold(S, c, 'tl_bowl', 'L');
@@ -1184,6 +1198,7 @@ async function diner(S, i) {
       if (Math.random() < 0.3) { S.pose(c, 'sitTalk'); S.say(c, pick(['So good…', 'Mmmph!', 'Spicy! Spicy!', 'Turbo, you\'re a genius.'])); await S.sleep(2.2); S.pose(c, 'sit'); }
     }
     drop(c); c.tlLock = false; c.tlPose = null; c.play('idle', { fade: 0.3 });
+    const [ux, uz] = S.P(sx, sz + 0.55); c.g.position.set(ux, S.y, uz);
     await S.sleep(0.6); S.say(c, pick(['Thanks, Bao!', 'Same time tomorrow!']));
     await S.walkL(c, end[0] > 0 ? -9 : 11, 3.0);
     S.drop(c);
@@ -1211,7 +1226,7 @@ async function wokShow(app, S, order) {
   if (cin && t) cin.two(t, v || S.me, { dur: 0.8 });
   if (v) { v.play('point', { restart: true }); }
   await app.say('Chef Bao', order ? 'Turbo! One bowl, full throttle!' : 'Turbo! Show them the breath of the wok!');
-  if (t) { t.faceTo(wok.x, wok.z); t.play(t.anim.clips.rev ? 'rev' : 'attack', { restart: true }); S.cry(t, 1); }
+  if (t) { t.play(t.anim.clips.rev ? 'rev' : 'attack', { restart: true }); S.cry(t, 1); exhaust(S, t, 1.6, 90); }
   app.audio.sfx && app.audio.sfx('pyro', { vol: 0.7 });
   await S.tween(1.6, (k, dt) => { w.fx.emit('fire', S.V(0.69, -0.06, 1.12), { dt, rate: 50, speed: 1.2, scale: 1.1, key: 'tl-wok' }); });
   w.fx.emit('fire', wok, { n: 18, scale: 1.4 }); w.fx.emit('tl_noodle', wok, { n: 10 }); w.fx.emit('steam', wok, { n: 10 }); app.audio.sfx && app.audio.sfx('pyro_boom', { vol: 0.6 });

@@ -5,7 +5,7 @@
 // walls. Painters and clips: cave_parts.js.
 import { B, both, twin, lavaSkinP, solidP, glowP, crystalP, caveClips, eyeFaces, animSpec } from './cave_parts.js';
 
-const SKIN = lavaSkinP('#2c2224', '#ff7a24'), SKIN2 = lavaSkinP('#3a2a28', '#ff9a30', { dense: true }), BELLY = lavaSkinP('#5a3a30', '#ffb040', { bias: -0.1 });
+const SKIN = lavaSkinP('#3c2e30', '#ff7a24'), SKIN2 = lavaSkinP('#4c3832', '#ff9a30', { dense: true }), BELLY = lavaSkinP('#5a3a30', '#ffb040', { bias: -0.1 });
 const SEAM = glowP('#ff7a20', '#ffd060'), CORE = glowP('#ffb040', '#fff0a0'), EYE = glowP('#fff0a0', '#ffffff'), SHUT = solidP('#1a1010');
 const GILL = crystalP(['#7a1a08', '#c8400e', '#ff7a20', '#ffc040', '#fff2b0']), CLAW = solidP('#1a1414', { top: '#4a3a3a' }), TOOTH = solidP('#ffe0a0', { top: '#ffffff' });
 const gill = (x, y, z, len, ry, rz) => B([x, y, z], [len, 1.4, 1.4], GILL, { glow: true, pivot: [x, y + 0.7, z + 0.7], rot: [0, ry, rz] });

@@ -244,7 +244,7 @@ export default class Dash {
     const g = r.a.g.position, dir = where(Math.max(0, r.p)).dir, lead = clamp(r.v * 0.25, 0, 2) * dir;
     if (r.fin != null && this.endT > 0.6) { s.look(new V3(g.x, g.y + 0.55, g.z), 4.2, 205, 10, 38, { rate: 2.5 }); return; }   // the finish: a front shot of the winner's grin
     const fast = this.feverT > 0 ? 6 : r.v > 6.6 ? 3 : 0;
-    s.look(new V3(15.2, this.gy + 0.7, clamp(g.z + lead, Z0 - 2, Z0 + LEG + 1)), this.done ? 6.5 : 8.6, 90 + dir * 8, 11, 40 + fast, { rate: 4, snap });
+    s.look(new V3(15.2, this.gy + 0.7, clamp(g.z + lead, Z0 - 2, Z0 + LEG + 1)), this.done ? 6.5 : 8.6, 90 + dir * 8, 15, 40 + fast, { rate: 4, snap });
   }
   draw(ui, dt) {
     const s = this.s, W = ui.w, H = ui.h, narrow = W < 360, r = this.me;

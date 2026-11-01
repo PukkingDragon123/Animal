@@ -198,6 +198,8 @@ export function attach(app, city, built) {
   // the accent lights hop to the nearest strong glow; the lantern's own light
   R.acc = [0, 1].map(() => { const l = new THREE.PointLight(0xffffff, 0, 10, 1.6); l.userData.k = 0; city.root.add(l); return l; });
   R.lamp = new THREE.PointLight(0xffb468, 0, 14, 1.6); city.root.add(R.lamp);
+  // the guardian's own glow (made now, at 0, so the light count never changes mid-scene)
+  R.bossLamp = new THREE.PointLight(0xff8a40, 0, 11, 1.5); city.root.add(R.bossLamp); R.bossLampK = s.boss ? 0.3 : 0;
   // restore what you've already done
   for (const o of dyn.ores) if (s.ore[o.id]) o.mesh.visible = false;
   if (s.gate) { dyn.gate.mesh.visible = false; dyn.gate.open(); }
@@ -290,7 +292,7 @@ function fxTick(R, dt) {
   for (const g of b.geodeMats || []) {
     const i = g.group === 'cv_geode' ? 3 : +g.group.slice(-1), want = (i < 3 ? R.flare[i] : (R.flare[0] + R.flare[1] + R.flare[2]) / 3) * (1 + 0.12 * Math.sin(t * 1.3 + i));
     g.k = (g.k ?? 1) + (want - (g.k ?? 1)) * (1 - Math.exp(-dt * 4));
-    if (g.basic) g.m.color.setScalar(g0 * g.k); else g.m.emissiveIntensity = g.m.userData.glow0 * g.k;
+    if (g.basic) g.m.color.setScalar(g0 * (1 + (g.k - 1) * 0.6)); else g.m.emissiveIntensity = g.m.userData.glow0 * g.k;
   }
   for (const h of b.heroes) if (h.x > 74 && h.x < 98 && h.z > 66 && h.z < 92) h.glowK = (R.flare[0] + R.flare[1] + R.flare[2]) / 3;
   for (const bm of R.beams) if (bm.material) bm.material.opacity = bm.userData.o * (0.8 + 0.2 * Math.sin(t * 6 + bm.userData.k));
@@ -439,7 +441,7 @@ class CaveLife {
   }
   /** a charger notices you: in range, in sight, not resting, and the cave has been calm for a while */
   mayCharge(r, d, q, p, reach = 5.2) {
-    return d < reach && this.R.t > this.calm && this.R.t > (r.cool || 0) && this.canFight() && this.w.nav.los(q.x, q.z, p.x, p.z, 0, 0.25);
+    return d < reach && this.R.t > this.calm && this.R.t > (r.cool || 0) && this.canFight() && sight(this.w.nav, q.x, q.z, p.x, p.z);
   }
   warn(r, wait = 0.85) {
     const a = r.a, app = this.R.app; r.mode = 'warn'; r.wt = wait; a.path = null; a.face(this.w.player);
@@ -487,6 +489,12 @@ class CaveLife {
   }
   hush(on = true) { this.hushed = !!on; }
   dispose() { this.disposed = true; for (const it of this.its) { const i = this.R.city.inter.indexOf(it); if (i >= 0) this.R.city.inter.splice(i, 1); } this.its = []; }
+}
+/** open floor all the way from (x0, z0) to just short of (x1, z1): a wall or a rock in between hides you */
+function sight(nav, x0, z0, x1, z1) {
+  const L = Math.hypot(x1 - x0, z1 - z0), n = Math.ceil(L / 0.2);
+  for (let i = 1; i < n; i++) { if (L * (1 - i / n) < 0.6) break; const x = x0 + ((x1 - x0) * i) / n, z = z0 + ((z1 - z0) * i) / n; if (!nav.ok(x, z, 0)) return false; }
+  return true;
 }
 /** a reachable point in an area, away from (fx, fz) if given */
 function pointIn(L, r, fx, fz, tries = 10) {
@@ -718,7 +726,7 @@ function timingTap(app, o = {}) {
       ui.rect(mx - 2, y0 - 4, 5, bh + 8, T.ink); ui.rect(mx - 1, y0 - 3, 3, bh + 6, live ? T.gold : S2.out === 2 ? T.gold : S2.out === 1 ? T.cyanL : T.dim);
       ui.text(live ? '[E] / tap' : S2.out === 2 ? 'PERFECT!' : S2.out === 1 ? 'GOOD!' : 'miss…', W / 2, y0 + bh + 4, live ? T.dim : S2.out === 2 ? T.amber2 : S2.out === 1 ? T.cyan2 : T.dim, { align: 'center', mini: !!live, bold: !live });
       if (live) {
-        const hit = ui.key('e') || ui.key(' ') || ui.key('Enter') || ui.ptr.pressed;
+        const hit = ui.key('e') || ui.key('f') || ui.key(' ') || ui.key('Enter') || ui.ptr.pressed;
         if ((hit && S2.t > 0.15) || S2.t > 4.2) {
           const d = Math.abs(pos() - S2.c); S2.mk = pos(); S2.out = hit ? (d < S2.perf ? 2 : d < S2.good ? 1 : 0) : 0; S2.ot = 0;
           ui.ptr.pressed = false; ui.keys = {};
@@ -1094,6 +1102,13 @@ function arenaTick(R, dt) {
   const Lv = b.dyn.lava; if (Lv.mat && Lv.mat.map) { Lv.mat.map.offset.y = (Lv.mat.map.offset.y + dt * 0.12) % 1; Lv.mat.color.setScalar(1.45 + 0.15 * Math.sin(t * 1.7)); }
   // the rune circle: dark until the arena wakes, then a ring of fire; a slow ember glow once the guardian sleeps
   const ru = b.dyn.runes; if (ru.mat) { R.runeA = (R.runeA ?? 0) + ((R.runeK ?? 0) - (R.runeA ?? 0)) * (1 - Math.exp(-dt * 3)); ru.mat.emissiveIntensity = 0.05 + R.runeA * 2.8 * (0.88 + 0.12 * Math.sin(t * 2.3)); }
+  // the guardian's glow: on the wall it lights the rock in front of it, on the floor it hangs over its head
+  const bl = R.bossLamp, bo = R.boss;
+  if (bl) {
+    R.blA = (R.blA ?? 0) + ((R.bossLampK || 0) - (R.blA ?? 0)) * (1 - Math.exp(-dt * 2.5));
+    if (bo && R.blA > 0.01) { const hp = bo.headPos(_v); if (R.bossState === 'wall' && R.wall) hp.addScaledVector(_q.set(R.wall.nx, 0, R.wall.nz), 2.4); else hp.y += 1.8; bl.position.copy(hp); bl.intensity = R.blA * 24 * (0.9 + 0.1 * Math.sin(t * 5.3)); }
+    else bl.intensity = 0;
+  }
   // the braziers burn
   if (!R.flames || !me) return;
   const p = me.g.position, near = Math.hypot(p.x - SPOT.arena[0], p.z - SPOT.arena[1]) < 24 || (R.app.battle && R.app.battle.active);
@@ -1184,41 +1199,43 @@ async function bossFight(app) {
       await app.say('', 'Stone steps ring the chamber like an old theatre, half fallen in. Broken columns. A circle of runes carved into the floor, and lava pouring down the far wall.', 'It is warm down here. Much too warm.');
     } else await cin.cut(view([cx, ay + 2.2, cz], 13, wallYaw + 140, 20));
     // 2. the braziers light, one after another round the ring
-    for (let k = 0; k < R.built.dyn.braziers.length; k++) { lightBrazier(R, k); R.flare = R.flare.map((f) => Math.min(1.6, f + 0.18)); await app.wait(first ? 380 : 160); }
+    for (let k = 0; k < R.built.dyn.braziers.length; k++) { lightBrazier(R, k); R.flare = R.flare.map((f) => Math.min(1.2, f + 0.11)); await app.wait(first ? 380 : 160); }
     s.braziers = true;
     // 3. the runes ignite; the hill rumbles; stones fall
     R.runeK = 1; sfx(app, 'charge', { vol: 0.6, pitch: 0.5 }); sfx(app, 'pyro', { vol: 0.5, pitch: 0.7 }); cin.flash('#ff9040', 0.22, 0.4);
     rumble(app, 0.45); cin.shake(0.4, 2.4);
     for (let i = 0; i < 7; i++) setTimeout(() => { const a = Math.random() * PI * 2, r = 2 + Math.random() * 5; w.burst('rock', [cx + Math.cos(a) * r, ay + 7, cz + Math.sin(a) * r], { n: 4 }); w.burst('dust', [cx + Math.cos(a) * r, ay + 0.3, cz + Math.sin(a) * r], { n: 6 }); }, i * 170);
-    R.flare = [2.0, 2.0, 2.0];
-    await cin.cut(view([cx, ay + 0.6, cz], 9, wallYaw + 175, 30));
-    cin.move((t) => view([cx, ay + 0.6, cz], 9 - t * 0.5, wallYaw + 175 + t * 10, 30 - t * 2), { dur: 0 });
+    R.flare = [1.35, 1.35, 1.35];
+    await cin.cut(view([cx, ay + 0.6, cz], 6.5, wallYaw + 175, 30));
+    cin.move((t) => view([cx, ay + 0.6, cz], 6.5 - t * 0.3, wallYaw + 175 + t * 10, 30 - t * 2), { dur: 0 });
     await app.wait(first ? 1500 : 700);
     // 4. high on the wall, two eyes open
     const mid = () => boss.g.position.clone().addScaledVector(_w.set(W.nx, 0, W.nz), 0.8).setY(boss.g.position.y - 0.6);
     await cin.frame(mid, { dist: 8.5, yaw: wallYaw + 22, pitch: -4, dur: first ? 1.0 : 0.6, focus: 0.15 });
     await app.wait(500);
-    boss.play('idle', { fade: 0.4 }); eyesOn(R, true); sfx(app, 'charge', { vol: 0.6, pitch: 0.55 }); cin.flash('#ffb060', 0.25, 0.5);
+    boss.play('idle', { fade: 0.4 }); eyesOn(R, true); R.bossLampK = 1; sfx(app, 'charge', { vol: 0.6, pitch: 0.55 }); cin.flash('#ffb060', 0.25, 0.5);
     if (first) await app.say('', 'What you took for a seam of magma in the wall opens two burning eyes.');
     // 5. it crawls down the wall
     cin.track(boss, { dist: 10, yaw: wallYaw + 28, pitch: 8, dur: 0.8, hold: 30 });
     await crawlDown(R, boss, first ? 3600 : 2400);
+    // off the wall and out into the ring, away from the crystals
+    { const q = boss.g.position, dx = cx - q.x, dz = cz - q.z, L = Math.hypot(dx, dz) || 1; await cin.walk(boss, q.x + (dx / L) * 2.4, q.z + (dz / L) * 2.4, { speed: 1.4 }); }
   } else {
     await cin.cut(view([cx, ay + 2, cz], 12, wallYaw + 160, 18));
-    eyesOn(R, true);
+    eyesOn(R, true); R.bossLampK = 1;
   }
   // 6. it rises and roars
-  R.flare = [1.6, 1.6, 1.6];
+  R.flare = [1.3, 1.3, 1.3];
   boss.face(me); boss.play('cry', { restart: true }); sfx(app, 'beast_roar', { vol: 0.95, pitch: 0.42 }); echo(app, 'beast_roar', 0.35, 0.4);
   cin.shake(0.65, 2.4); w.burst('ember', [boss.g.position.x, boss.g.position.y + 1.6, boss.g.position.z], { n: 30 });
-  await cin.hero(boss, { low: -14, dist: 11, dur: 0.8 });
+  await cin.hero(boss, { low: -9, dist: 8.5, dur: 0.8 });
   if (first) cin.nameCard('MAGMANDER', 'Guardian of the Old Arena', { side: 'right' });
   await app.say('', first ? 'A salamander the size of a cable car: cracked black rock with magma glowing in every seam, a crown of gills fanned out like flames. Its tail sweeps the steps. Its eyes find your lantern.' : 'Magmander is awake again, every seam blazing. It remembers you.');
   const pt = w.partner; if (pt) { pt.face(boss); pt.play(pt.anim.clips.cry ? 'cry' : 'idle', { restart: true }); }
   const ch = await app.choose('The arena\'s runes blaze. Magmander opens its jaws.', ['Battle!', 'Back away slowly']);
   if (ch === 1) {
     await app.say('', 'You back away, step by careful step. The heat follows you up the tunnel.');
-    eyesOn(R, false); R.flare = [1, 1, 1]; boss.play('idle', { fade: 0.6 });
+    eyesOn(R, false); R.flare = [1, 1, 1]; R.bossLampK = 0.5; boss.play('idle', { fade: 0.6 });
     const [ix, iz] = SPOT.arenaIn; me.place(ix, iz, 0.7); if (w.city) w.city.placed(); if (w.partner) w.partner.place(ix + 0.8, iz - 0.6, 0.7);
     R.retreat = R.t + 9; await cin.end({ dur: 0.6 }); return;
   }
@@ -1233,7 +1250,7 @@ async function bossFight(app) {
     await cin.hero(boss, { low: -10, dist: 11 });
     await app.say('', 'Magmander\'s roar fills the ring with heat and light — and the next thing you know, you\'re sitting at the top of the tunnel, blinking, your team piled around you.');
     await app.fade(1, 500);
-    eyesOn(R, false); R.flare = [1, 1, 1]; boss.play('idle', { fade: 0 }); S.healParty(app.state, 1);
+    eyesOn(R, false); R.flare = [1, 1, 1]; R.bossLampK = 0.5; boss.play('idle', { fade: 0 }); S.healParty(app.state, 1);
     const [ix, iz] = SPOT.arenaIn; me.place(ix, iz, 0.7); if (w.city) w.city.placed(); if (w.partner) w.partner.place(ix + 0.8, iz - 0.6, 0.7);
     R.retreat = R.t + 12; await cin.end({ dur: 0 }); await app.fade(0, 600);
     app.toast('Rest, then try again — Magmander is waiting', { icon: 'heart', dur: 3 });
@@ -1241,7 +1258,7 @@ async function bossFight(app) {
   }
   // ---- won: the story beat
   boss.play('down', { restart: true }); sfx(app, 'thud', { vol: 0.6, pitch: 0.4 });
-  R.flare = [1.3, 1.3, 1.3]; R.runeK = 0.6;
+  R.flare = [1.15, 1.15, 1.15]; R.runeK = 0.6;
   await cin.two(me, boss, { dist: 10 });
   await app.say('', 'Magmander sinks onto the warm stone, its seams dimming to embers. And up close, now, you see it:', 'Jammed between two scutes behind its gills, grinding every time it breathes — the rusted bit of an old mining drill, stamped "No. 3".');
   const c2 = await app.choose('The drill bit grinds as Magmander breathes.', ['Pull it out', 'Keep your distance']);
@@ -1267,7 +1284,7 @@ async function bossFight(app) {
   await cin.track(boss, { dist: 10, yaw: 160, pitch: 14, dur: 0.8 });
   await cin.walk(boss, 76.6, 81.6, { speed: 1.5 });
   boss.face({ g: { position: new THREE.Vector3(rx, 0, rz) } });
-  await cin.frame([rx + 2, R.built.floorAt(rx, rz) + 1.4, rz], { dist: 9, yaw: 120, pitch: 12, dur: 0.6 });
+  await cin.frame([rx + 1, R.built.floorAt(rx, rz) + 1.2, rz], { dist: 7.5, yaw: 88, pitch: 14, dur: 0.6 });
   boss.play('attack', { restart: true }); await app.wait(420);
   sfx(app, 'slam', { vol: 1, pitch: 0.5 }); echo(app, 'thud', 0.7, 0.4); cin.shake(0.8); cin.flash('#ffffff', 0.18);
   const D = R.built.dyn.rubble; D.mesh.visible = false; D.open();
@@ -1276,7 +1293,7 @@ async function bossFight(app) {
   await app.say('', 'One flick of that enormous tail and the fallen rock bursts apart. Cool air pours in from the other side: a passage straight back up to the Entrance Hall.');
   await cin.walk(boss, SPOT.bossRest[0], SPOT.bossRest[1], { speed: 1.3 });
   boss.face(me); boss.play('sleep', { fade: 0.8 });
-  s.boss = true; R.flare = [1, 1, 1]; R.runeK = 0.35;
+  s.boss = true; R.flare = [1, 1, 1]; R.runeK = 0.35; R.bossLampK = 0.3;
   const Q = app.quests; if (Q) { if (!Q.has('deepcave') && !Q.done('deepcave')) Q.start('deepcave'); Q.complete('deepcave'); }
   await cin.end({ dur: 1.2 });
   app.save();

@@ -132,7 +132,7 @@ export class Wreck {
     else if (how === 'fly') { const piv = new V3(P.x, P.y + P.hy * 0.5, P.z); this.piece(pieces[0], piv, { fly: new V3(dx * (3 + pw * 1.5), 3.5 + pw, dz * (3 + pw * 1.5)), spin: new V3(Math.random() * 8 - 4, Math.random() * 6 - 3, Math.random() * 8 - 4) }); }
     else if (how === 'split') {
       // snapped in the middle: each half sags toward the break
-      const c = Math.cos(P.yaw), s = Math.sin(P.yaw), ax = new V3(-s, 0, -c).normalize();   // the bench's own width axis (its length runs along local x)
+      const c = Math.cos(P.yaw), s = Math.sin(P.yaw), ax = new V3(s, 0, c).normalize();   // the bench's width axis (its length runs along local x): each half's inner end drops
       pieces.forEach((pc, i) => { const sg = i ? 1 : -1; this.piece(pc, new V3(P.x + c * P.hx * sg * 0.9, P.y, P.z - s * P.hx * sg * 0.9), { axis: ax.clone().multiplyScalar(sg), to: 0.42, acc: 6, drop: 0.06 }); });
       this.debris(P.x, mid.y, P.z, 8, cols, 3);
     }
