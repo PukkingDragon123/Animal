@@ -15,7 +15,7 @@
 //        grab the thief to help.
 //      Bubble Moon cart (Wharf promenade): Pearl and Zest the Lemmo, who shakes every drink with a jolt.
 //      Petal Pushers (the park's south gate): Fern's flower cart; Clover the Cabbunny waters the buckets.
-//      Fetch (park east lawn): Hana and Volt the Zapkit. Throw the ball yourself, or race your partner against Volt.
+//      Fetch (park east lawn, south of the path): Hana and Volt the Zapkit. Throw the ball yourself, or race your partner against Volt.
 //      Practice match (park east lawn): Kenji & Fuse (Dynacoon) vs Aiko & Pinchy (Kanizumo), round after round with
 //        sparks and splashes, comparing partners in between. Watch it, or challenge one of them to a real battle.
 //      Nap pile (park west lawn): five Tokonmon and Grandpa Moku asleep on a blanket. Join them (heals the team).
@@ -24,7 +24,7 @@
 //  · Schedules: every stand has opening hours (shutter down and the Tokonmon asleep when it's shut), crowds thicken at
 //    lunch (11:30–13:30) and the food stands run a night market after dark. The hour is the day cycle's (moments.js);
 //    when that isn't running it follows the light (day ≈ lunchtime, golden ≈ 5 PM, dusk ≈ 7:30, night ≈ 10:30 PM).
-//    ?tlhour=H forces it, ?notown=1 turns the module off, ?tldebug=1 logs.
+//    ?tlhour=H forces it, ?notown=1 turns the module off, ?tldebug=1 logs, ?tldemo=1 brings the rare events round fast.
 //  · Performance: the stalls and carts are voxel props sculpted once (registered as city prop kinds) and shared; a
 //    scene's people and Tokonmon load only when you come within ~46 m, animate within ~30 m and are detached past
 //    ~54 m (the same LOD as life.js); its Tokonmon are baked (life.js bakeModel). Each scene's scripts run on its own
@@ -540,10 +540,13 @@ async function customer(S, Q) {
 /** a vendor serves a customer: the order, the handover, the coins */
 async function serveAt(S, c, o) {
   const v = S.cast.get(o.vendor);
+  while (S.ev.chase && !S.dead) await S.sleep(0.5);                    // the vendor is off chasing a thief: wait
+  if (v && v.path) await S.sleep(2.5);
   c.play('talk', { restart: true }); S.say(c, pick(o.orders), 'friend');
   if (v) { v.face(c); v.play('nod', { restart: true }); }
   await S.sleep(1.6);
   if (o.prepare) await o.prepare(S, c); else await S.sleep(1.0);
+  while (S.ev.chase && !S.dead) await S.sleep(0.5);
   if (v) { v.play('point', { restart: true }); S.say(v, pick(o.thanks)); }
   S.sfx('coin', c, 0.35);
   hold(S, c, o.hand);
@@ -672,7 +675,7 @@ const SAUCES = ['hot_sauce_mild', 'hot_sauce', 'hot_sauce_ghost'];
 const SCENES = [
   // ------------------------------------------------------------------------------------------ Cluck & Burn
   {
-    id: 'hotsauce', name: 'Cluck & Burn', at: [138.6, 111.45], yaw: PI, hours: [9, 23.5], notice: 'heart',
+    id: 'hotsauce', name: 'Cluck & Burn', at: [141.2, 111.45], yaw: PI, hours: [9, 23.5], notice: 'heart',
     props: [
       { k: 'tl_saucestall', at: [0, 0], block: [1.4, 0.62] },
       { k: 'tl_grill', at: [2.15, 0.6], block: [0.4, 0.4] },
@@ -849,7 +852,7 @@ const SCENES = [
   },
   // ------------------------------------------------------------------------------------------ Fetch
   {
-    id: 'fetch', name: 'Fetch', at: [93.5, 54.5], yaw: PI / 2, hours: [8, 18.5], notice: '!',
+    id: 'fetch', name: 'Fetch', at: [88.0, 61.2], yaw: PI / 2, hours: [8, 18.5], notice: '!',
     async setup(S) {
       await S.person('hana', 'hana', [0, 0, 0], { name: 'Hana', voice: 'kid', when: (S) => S.open });
       await S.mon('volt', 'zapkit', [0.7, 0.6, 0], { name: 'Volt', speed: 3.4, when: (S) => S.open });
@@ -863,7 +866,7 @@ const SCENES = [
   },
   // ------------------------------------------------------------------------------------------ Practice match
   {
-    id: 'spar', name: 'Practice match', at: [81.0, 73.4], yaw: 0, hours: [8, 19], notice: 'star',
+    id: 'spar', name: 'Practice match', at: [82.5, 68.4], yaw: 0, hours: [8, 19], notice: 'star',
     async setup(S) {
       await S.person('kenji', 'kenji', [-3.9, 0, PI / 2], { name: 'Kenji', voice: 'rival', when: (S) => S.open });
       await S.person('aiko', 'aiko', [3.9, 0, -PI / 2], { name: 'Aiko', voice: 'friend', when: (S) => S.open });
@@ -881,7 +884,7 @@ const SCENES = [
   },
   // ------------------------------------------------------------------------------------------ Nap pile
   {
-    id: 'nap', name: 'Nap pile', at: [20.5, 84.5], yaw: 0, hours: [0, 24], notice: 'zzz',
+    id: 'nap', name: 'Nap pile', at: [25.6, 83.2], yaw: 0, hours: [0, 24], notice: 'zzz',
     props: [{ k: 'tl_blanket', at: [0, 0] }, { k: 'tl_stool', at: [-1.45, -0.6] }],
     async setup(S) {
       await S.mon('snooze', 'snoozaque', [0, 0, 0.3], { clip: 'sleep', scale: 1.1 });
@@ -889,7 +892,8 @@ const SCENES = [
       await S.mon('bunny', 'cabbunny', [-0.75, 0.4, 1.2], { clip: 'sleep' });
       await S.mon('bub', 'woodbub', [0.72, 0.5, -0.8], { clip: 'sleep' });
       await S.mon('kappa', 'kappachi', [0.35, -0.62, 2.6], { clip: 'sleep' });
-      await S.person('moku', 'moku', [-1.45, -0.6, 0.9], { name: 'Grandpa Moku', voice: 'elder', clip: 'wheeze', lock: true });
+      const g = await S.person('moku', 'moku', [-1.45, -0.6, 0.9], { name: 'Grandpa Moku', voice: 'elder', clip: 'sitSad', lock: true });
+      if (g) g.g.position.y = S.y + 0.5;                              // dozing on his stool (the sit pose seats the hips on the root)
     },
     items: () => [
       { at: [0, 0.9], label: 'Join the nap pile', icon: 'bed', r: 2.0, act: napJoin },
@@ -1255,9 +1259,9 @@ async function fishWork(S) {
 }
 const CHASE = [[37.2, 16.0], [32.5, 14.4], [27.5, 14.9], [29.5, 12.9], [36.5, 12.8], [42.5, 13.6], [43.5, 15.5], [39.5, 16.1]];
 async function thief(S) {
-  await S.sleep(rnd(20, 35));
+  await S.sleep(S.T.demo ? 4 : rnd(20, 35));
   for (;;) {
-    await S.sleep(rnd(45, 80));
+    await S.sleep(S.T.demo ? 6 : rnd(45, 80));
     const c = S.cast.get('crumb'), v = S.cast.get('marisol'); if (!c || !v || !S.open || !S.live || S.busy) continue;
     // swoop onto the counter, snatch a fish
     await fly(S, c, S.V(-0.4, 0.95, 0.82), 1.6, 3.5);
@@ -1460,7 +1464,7 @@ async function fetchLoop(S) {
     const k = S.cast.get('hana'), v = S.cast.get('volt'); if (!k || !v || !S.open || S.busy) continue;
     S.faceL(k, 0, 3); k.play('throw', { restart: true }); S.say(k, pick(['Fetch, Volt!', 'Go long!', 'Ready… GO!']), 'kid');
     await S.sleep(0.3);
-    const to = S.V(rnd(-2.5, 2.5), rnd(3.2, 7.5), 0.05); S.ballTaken = null;
+    const to = S.V(rnd(-1.2, 1.2), rnd(2.8, 7.0), 0.05); S.ballTaken = null;
     await throwBall(S, S.V(0, 0.25, 1.15), to);
     await fetchRun(S, v);
     const hp = k.g.position; await S.walk(v, hp.x + Math.sin(k.yaw) * 0.6, hp.z + Math.cos(k.yaw) * 0.6, { speed: 3.0, direct: true });
@@ -1486,7 +1490,7 @@ async function playerThrow(app, S, race) {
   me.faceTo(...S.P(0, 6)); me.play('throw', { restart: true }); app.audio.sfx && app.audio.sfx('whoosh', { vol: 0.6 });
   if (race && b) { b.busy = true; b.tlBusy = true; b.path = null; }
   await wait(250);
-  const to = S.V(rnd(-2, 2), rnd(4.5, 7.5), 0.05); S.ballTaken = null;
+  const to = S.V(rnd(-1.1, 1.1), rnd(4.0, 7.0), 0.05); S.ballTaken = null;
   const from = me.headPos(); from.y -= 0.2;
   if (cin) cin.track(v, { dist: 6.5, pitch: 14, dur: 0.6 });
   await throwBall(S, from, to, 2.2);
@@ -1628,7 +1632,7 @@ async function mokuTalk(app, S) {
 // ---------------------------------------------------------------- Swift Wing Express
 async function courierLoop(S) {
   for (;;) {
-    await S.sleep(rnd(18, 30));
+    await S.sleep(S.T.demo ? 5 : rnd(18, 30));
     const e = S.cast.get('express'), d = S.cast.get('dot'), H = S.T.scene('hotsauce'); if (!e || !d || !S.open) continue;
     const inez = H && H.state === 'ok' && H.live && H.open && H.cast.get('inez');
     if (!inez) continue;
@@ -1666,7 +1670,7 @@ export class TownLife {
   constructor(world, city) {
     this.w = world; this.app = world.app; this.c = city; this.nav = city.nav; this.mats = world.st.mats;
     const P = this.app.params;
-    this.debug = !!(P && P.get('tldebug')); this.off = !!(P && P.get('notown'));
+    this.debug = !!(P && P.get('tldebug')); this.off = !!(P && P.get('notown')); this.demo = !!(P && P.get('tldemo'));   // tldemo: the rare events (thief, courier) come round quickly
     this.scenes = []; this.started = false; this.disposed = false; this.loading = null; this.hT = 0; this.h = 12;
     this.root = new THREE.Group(); this.root.name = 'townlife';
     this.overlay = (ui, dt) => this.drawOverlay(ui, dt);
@@ -1725,8 +1729,9 @@ export class TownLife {
   }
   /** a square-cornered card beside the menu: the highlighted item's name, price, what it does, how many you have */
   drawCard(ui, D) {
-    const o = D.o.tlShop, st = this.app.state, i = D.pick || 0, id = o.goods[i], w = 156, x = 8, y = Math.max(30, Math.round(ui.h * 0.14));
+    const o = D.o.tlShop, st = this.app.state, i = D.pick || 0, id = o.goods[i], x = 8, y = Math.max(30, Math.round(ui.h * 0.14));
     const it = id && ITEMS[id], ex = !id && o.extras[i - o.goods.length];
+    const w = clamp(Math.max(156, ...o.goods.map((g) => ui.tw(short(g), { bold: true }) + 40), ...o.extras.map((e) => ui.tw(e.label, { bold: true }) + 40)), 156, Math.max(156, ui.w - 260));
     const lines = ui.wrap(it ? it.desc || '' : ex ? ex.hint || '' : 'See you next time!', w - 16, { mini: true }).slice(0, 4), h = 46 + lines.length * 8;
     ui.rect(x + 2, y + 2, w, h, 'rgba(12,8,9,0.45)');
     ui.rect(x, y, w, h, T.copperD); ui.rect(x + 1, y + 1, w - 2, h - 2, T.copper); ui.rect(x + 2, y + 2, w - 4, h - 4, T.cream);
