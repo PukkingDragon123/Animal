@@ -30,6 +30,9 @@ import { weatherOf } from '../../game/time.js';
 import * as S from '../../game/state.js';
 import { E } from '../anim.js';
 import { VOICE } from './life.js';
+import { VFX } from './vfx.js';            // hand-drawn pixel sprite effects
+import { Wreck } from './wreck.js';        // breaking props, debris, cracks and craters (restored after)
+import { BattleHud } from './battlehud.js';   // the battle HUD
 
 const ELC = (e) => (ELEMENTS[e] && ELEMENTS[e].color) || '#ffffff';
 const HIT_FX = { pyro: 'fire', hydro: 'splash', bio: 'leaf', volto: 'bolt', geo: 'rock', echo: 'note', ecto: 'ghostfire', cryo: 'sparkle', ferro: 'shard', aero: 'dust', astro: 'star', nucleo: 'ember', draco: 'ghostfire' };
@@ -108,6 +111,8 @@ export class Battle3D {
       if (a === w.partner || d < (A.r || 5) + 1.2 || withTrainer) { if (a.g.visible) { a.g.visible = false; this.hidden.push(a); } }
     }
     this.watchers = this.stageWatchers(keep);
+    this.vfx = VFX.of(app); this.hudUI = new BattleHud(this);
+    try { this.wreck = new Wreck(app, { at: [this.cx, this.cz], r: A.r || 5 }); } catch (e) { console.warn('[battle] wreck', e); this.wreck = null; }
     this.units = new Map();
     for (const u of this.st.units) {
       const a = await w.addMon('bu-' + u.id, u.model || u.species, [this.cx, this.cz, 0], { drip: u.drip || 1, look: u.look || 0 });
@@ -116,7 +121,7 @@ export class Battle3D {
     }
     // a ring on the ground, discs for zones, glowing orbs for projectiles
     this.grp = new THREE.Group(); app.stage.scene.add(this.grp);
-    this.ring = new THREE.Mesh(new THREE.RingGeometry(0.97, 1, 72), new THREE.MeshBasicMaterial({ color: 0x5fd8e8, transparent: true, opacity: 0.55, side: THREE.DoubleSide, depthWrite: false, toneMapped: false }));
+    this.ring = new THREE.Mesh(new THREE.RingGeometry(0.965, 1, 8, 1, Math.PI / 8), new THREE.MeshBasicMaterial({ color: 0x5fd8e8, transparent: true, opacity: 0.6, side: THREE.DoubleSide, depthWrite: false, toneMapped: false }));   // an octagon, never a circle
     this.ring.rotation.x = -Math.PI / 2; this.ring.position.set(this.cx, this.gy + 0.03, this.cz); this.ring.scale.setScalar(0.01); this.grp.add(this.ring);
     this.orbs = []; this.zones = [];
     this.camCfg = { dist: C.dist || 8.2, yaw: C.yaw ?? 0, pitch: C.pitch ?? 18 };
@@ -321,8 +326,9 @@ export class Battle3D {
     { const [x, z] = this.W(u.x, u.z), a = r.a; a.g.position.set(x, this.app.world.ground(x, z) + (u.y || 0) * this.k, z); a.yaw = a.targetYaw = u.face + this.phi; a.g.rotation.y = a.yaw; }   // on its gate, facing in, before the camera frames it
     const p = this.wpos(u, 0.3), col = ELC(u.elem);
     if (!o.quiet) {
-      fx.emit('ring', p, { scale: 2.2 }); fx.emit('sparkle', p.clone().setY(p.y + 0.3), { n: 22 }); fx.emit('spark', p.clone().setY(p.y + 0.4), { n: 2, scale: 2.4 });
-      if (this.spec.wild && u.side === 1) fx.emit('dust', p, { n: 14 }); else fx.emit('star', p.clone().setY(p.y + 0.3), { n: 6, tint: col });
+      const v = this.vfx, top = p.clone().setY(p.y + 0.35); void fx;
+      v.burst('flash', top, { scale: 1.3 }); v.burst('twinkle', top, { n: 14, tint: col, speed: 1.4 }); v.burst('impact', top, { scale: 0.8 });
+      if (this.spec.wild && u.side === 1) { v.dust(p, 4, 1.1); v.burst('leaf', top, { n: 8 }); } else v.elementHit(u.elem, top, { power: 0.5 });
       this.sfx('charge_release', { vol: 0.7 }); this.sfx('sparkle', { vol: 0.6 });
       if (o.first && this.app.cinema) this.app.cinema.flash('#ffffff', 0.25, 0.55);
       setTimeout(() => this.cry(r), 120);
@@ -400,6 +406,7 @@ export class Battle3D {
     if (st.qte && !this._qte) { this._qte = true; setTimeout(() => { import('../../battle/sim.js').then((m) => { if (this.st === st) m.resolveQte(st, st.qte.id, 0.75 + Math.random() * 0.2); this._qte = false; }); }, 600); }
     this.sync(dt);
     this.camUpdate(dt);
+    if (this.wreck) this.wreck.update(dt);
     for (const tr of this.trainers) {
       if (tr.back && this.t > tr.back) { tr.back = 0; tr.a.play('idle', { fade: 0.3 }); }
       const u = tr.T.active && unitById(st, tr.T.active), r = u && this.units.get(u.id);   // eyes on their Tokonmon
@@ -447,15 +454,15 @@ export class Battle3D {
         const want = charging ? 'cry' : u.moving > 0.4 || u.dash ? 'walk' : 'idle';
         if (r.clip !== want) { a.anim.play(want, { fade: 0.15 }); r.clip = want; }
       }
-      if (u.bonded && Math.random() < dt * 6) w.fx.emit('sparkle', this.wpos(u, 0.5), { n: 1, scale: 0.8 });
+      if (u.bonded && Math.random() < dt * 6) this.vfx.burst('twinkle', this.wpos(u, 0.5), { tint: '#bff4ff', speed: 0.6 });
     }
     // the ring grows in under the first send-out
     const rs = this.ring.scale.x, rw = this.A.r || 5; if (rs < rw) this.ring.scale.setScalar(Math.min(rw, rs + (rw - rs) * Math.min(1, dt * 4) + dt * 0.5));
+    // projectiles: a pixel sprite head each frame and a trail of the element's own sprites
     const st = this.st, orbs = st.proj || [];
-    while (this.orbs.length < orbs.length) { const m = new THREE.Mesh(new THREE.SphereGeometry(0.09, 10, 8), new THREE.MeshBasicMaterial({ color: 0xffffff, toneMapped: false })); this.grp.add(m); this.orbs.push(m); }
-    this.orbs.forEach((m, i) => { const pr = orbs[i]; m.visible = !!pr; if (!pr) return; const [x, z] = this.W(pr.x, pr.z); m.position.set(x, this.gy + 0.45, z); m.material.color.set(ELC(pr.elem)).multiplyScalar(1.6); if (Math.random() < dt * 30) w.fx.emit(HIT_FX[pr.elem] === 'fire' ? 'ember' : 'sparkle', m.position, { n: 1, scale: 0.7 }); });
+    for (const pr of orbs) { const [x, z] = this.W(pr.x, pr.z); _v.set(x, this.gy + 0.45, z); this.vfx.head(pr.elem, _v); if (Math.random() < dt * 22) this.vfx.trail(pr.elem, _v); }
     const zs = st.zones || [];
-    while (this.zones.length < zs.length) { const m = new THREE.Mesh(new THREE.CircleGeometry(1, 40), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.3, depthWrite: false, toneMapped: false })); m.rotation.x = -Math.PI / 2; this.grp.add(m); this.zones.push(m); }
+    while (this.zones.length < zs.length) { const m = new THREE.Mesh(new THREE.CircleGeometry(1, 8, Math.PI / 8), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.3, depthWrite: false, toneMapped: false })); m.rotation.x = -Math.PI / 2; this.grp.add(m); this.zones.push(m); }   // octagons
     this.zones.forEach((m, i) => { const z0 = zs[i]; m.visible = !!z0; if (!z0) return; const [x, z] = this.W(z0.x, z0.z); m.position.set(x, this.gy + 0.04, z); m.scale.setScalar(z0.r * this.k); m.material.color.set(ELC(z0.elem)); });
   }
   events(evs) {
@@ -465,13 +472,13 @@ export class Battle3D {
         case 'anim': {
           const u = U(e.u), r = R(u); if (!r || !e.anim || e.anim === 'spawn' || e.anim === 'hit') break;
           if (e.anim === 'bigHit') { this.once(r, r.a.anim.clips.hurt ? 'hurt' : 'idle', 0.55); break; }
-          if (e.anim === 'dodge') { this.once(r, 'walk', 0.35); fx.emit('dust', this.wpos(u, 0.05), { n: 5 }); break; }
+          if (e.anim === 'dodge') { this.once(r, 'walk', 0.35); this.vfx.dust(this.wpos(u, 0.05), 2, 0.8); this.vfx.burst('wind', this.wpos(u, 0.4), { scale: 0.8 }); break; }
           this.once(r, MELEE.has(e.anim) ? 'attack' : 'special', MELEE.has(e.anim) ? 0.7 : 1.2); break;
         }
         case 'cast': {
           const u = U(e.u), r = R(u); if (!r) break;
           const big = skillWeight(e.skill) >= 44;
-          if (e.phase !== 'release') { if (big) { fx.emit('ring', this.wpos(u, 0.05), { scale: 1.4, tint: ELC(u.elem) }); this.sfx('charge', { vol: 0.5 }); } break; }
+          if (e.phase !== 'release') { if (big) { this.vfx.burst('crackle', this.wpos(u, 0.1), { scale: 1.2, tint: ELC(u.elem) }); this.vfx.burst('twinkle', this.wpos(u, 0.5), { n: 8, tint: ELC(u.elem), speed: 1.2 }); this.sfx('charge', { vol: 0.5 }); } break; }
           this.once(r, 'special', 1.2); this.sfx('charge_release');
           if (big && this.beat(1)) {
             // a push-in on a big skill: from the attacker's front three-quarter, a lens punch and a jolt
@@ -485,9 +492,12 @@ export class Battle3D {
           const t = U(e.tgt), r = R(t); if (!r) break;
           const src = e.src ? U(e.src) : null, heavy = e.dmg > t.maxHp * 0.12, dot = e.kind === 'dot' || e.kind === 'recoil';
           if (!dot && e.dmg > t.maxHp * 0.08) this.once(r, r.a.anim.clips.hurt ? 'hurt' : 'idle', 0.5);
-          const p = this.wpos(t, 0.45);
-          fx.emit('spark', p, { n: 1, scale: e.crit ? 1.8 : heavy ? 1.3 : 1 }); fx.emit(HIT_FX[e.elem] || 'star', p, { n: e.crit ? 12 : heavy ? 8 : 5, scale: 0.9 });
-          if (e.crit || heavy) fx.emit('ring', p, { scale: e.crit ? 1.6 : 1.1, tint: e.crit ? '#ffe070' : ELC(e.elem) });
+          const p = this.wpos(t, 0.45), sk = e.skill && SKILLS[e.skill], melee = !e.skill || (sk && sk.eff && sk.eff.some((f) => f.t === 'melee' || f.t === 'dash'));
+          const dir = src && R(src) && R(src).placed ? new V3().subVectors(t ? this.wpos(t, 0) : p, this.wpos(src, 0)).setY(0.4).normalize() : null;
+          if (!dot) { this.vfx.elementHit(e.elem || (src && src.elem) || 'astro', p, { power: e.crit ? 2 : heavy ? 1.5 : 0.8, crit: e.crit, dir }); if (melee && src) this.vfx.slash(p, { tint: ELC(src.elem), scale: e.crit ? 1.3 : 1 }); }
+          else this.vfx.burst(HIT_FX[e.elem] === 'fire' ? 'ember' : 'spark', p, { n: 2, scale: 0.6 });
+          this.hudUI.hit(t, e.dmg); if (!dot && src && src.side === 0 && t.side === 1) this.hudUI.comboHit();
+          if (this.wreck && !dot && (heavy || e.crit)) { const g = this.wpos(t, 0); this.wreck.impact(g.x, g.z, { r: e.crit ? 2.2 : 1.6, power: e.crit ? 2 : 1.2, crack: e.crit || Math.random() < 0.4, y: this.gy }); }
           this.pop(p, String(e.dmg), e.crit ? T.amber : e.eff > 1.2 ? '#ff8a5a' : e.eff < 0.8 ? T.dim : T.text, e.crit ? 2 : heavy ? 1.5 : 1, 0, e.crit);
           if (dot) break;
           // the shove and squash
@@ -503,17 +513,20 @@ export class Battle3D {
           if (e.crit || e.eff > 1.2 || heavy) { this.react(t.side === 0 ? 1 : 0, 'good'); this.react(t.side, 'bad'); this.crowd(e.crit ? 'cheer' : 'gasp'); }
           break;
         }
-        case 'miss': { const t = U(e.u); if (t) { this.pop(this.wpos(t, 0.6), e.blind ? 'miss' : 'dodge!', T.cyan, 1); fx.emit('dust', this.wpos(t, 0.05), { n: 4 }); } break; }
+        case 'miss': { const t = U(e.u); if (t) { this.pop(this.wpos(t, 0.6), e.blind ? 'miss' : 'dodge!', T.cyan, 1); this.vfx.dust(this.wpos(t, 0.05), 2, 0.8); this.vfx.burst('wind', this.wpos(t, 0.5), { scale: 0.7 }); } break; }
         case 'perfectDodge': { this.callout('PERFECT DODGE!', 'counter for a crit', T.cyan, 1); if (app.cinema) app.cinema.slowmo(0.35, 380, 260); const t = U(e.u); if (t) this.react(t.side, 'good', { force: true }); break; }
         case 'parry': { this.callout(e.perfect ? 'PERFECT PARRY!' : 'PARRY!', '', T.amber, 0.9); if (e.perfect) { this.shake(0.12); this.flash('#fff0b0', 0.15, 0.3); } break; }
-        case 'reaction': { const [x, z] = this.W(e.x, e.z); fx.emit('ring', new V3(x, this.gy + 0.3, z), { scale: 2 }); fx.emit('sparkle', new V3(x, this.gy + 0.4, z), { n: 14 }); this.callout(String(e.name).toUpperCase(), 'reaction!', e.color || T.amber, 1.2); this.shake(0.2, 5); this.flash(e.color || '#ffffff', 0.2, 0.3); this.crowd('cheer'); break; }
+        case 'reaction': { const [x, z] = this.W(e.x, e.z), q = new V3(x, this.gy + 0.5, z); this.vfx.burst('impact', q, { scale: 2, tint: e.color }); this.vfx.burst('flash', q, { scale: 1.6, tint: e.color }); this.vfx.burst('twinkle', q, { n: 16, tint: e.color, speed: 2 }); if (this.wreck) this.wreck.impact(x, z, { r: 2.6, power: 2, crack: true, y: this.gy }); this.callout(String(e.name).toUpperCase(), 'reaction!', e.color || T.amber, 1.2); this.shake(0.2, 5); this.flash(e.color || '#ffffff', 0.2, 0.3); this.crowd('cheer'); break; }
         case 'combo': this.callout(String(e.name).toUpperCase(), 'combo!', T.pink, 0.9); break;
-        case 'teamComboHit': { const [x, z] = this.W(e.x, e.z); fx.emit('ring', new V3(x, this.gy + 0.2, z), { scale: 2.6 }); this.shake(0.3, 4); this.flash('#ffffff', 0.25, 0.45); this.crowd('cheer'); break; }
-        case 'burst': { const [x, z] = this.W(e.x, e.z); fx.emit('ring', new V3(x, this.gy + 0.2, z), { scale: Math.max(0.6, (e.r || 1) * this.k) }); fx.emit(HIT_FX[e.elem] || 'sparkle', new V3(x, this.gy + 0.3, z), { n: e.small ? 6 : 14 }); if (!e.small) this.shake(0.08, 8); break; }
+        case 'teamComboHit': { const [x, z] = this.W(e.x, e.z), q = new V3(x, this.gy + 0.4, z); this.vfx.burst('impact', q, { scale: 2.6 }); this.vfx.burst('flash', q, { scale: 2 }); this.vfx.burst('chip', q, { n: 14 }); if (this.wreck) this.wreck.impact(x, z, { r: (e.r || 2) * this.k + 2, power: 3, crater: true, y: this.gy }); this.shake(0.3, 4); this.flash('#ffffff', 0.25, 0.45); this.crowd('cheer'); break; }
+        case 'burst': { const [x, z] = this.W(e.x, e.z), rr = Math.max(0.6, (e.r || 1) * this.k); this.vfx.elementHit(e.elem || 'geo', new V3(x, this.gy + 0.3, z), { power: e.small ? 0.6 : 1.4 }); if (!e.small) { this.shake(0.08, 8); if (this.wreck) this.wreck.impact(x, z, { r: rr + 1.2, power: 1.5, crater: rr > 1.3 || !!e.crack, crack: true, y: this.gy }); } break; }
+        case 'slam': { const [x, z] = this.W(e.x, e.z); this.vfx.burst('impact', new V3(x, this.gy + 0.2, z), { scale: 1.8 }); this.vfx.dust(new V3(x, this.gy + 0.1, z), 4, 1.3); this.shake(0.16, 6); if (this.wreck) this.wreck.impact(x, z, { r: (e.r || 1.5) * this.k + 1.5, power: 2.5, crater: true, y: this.gy }); break; }
+        case 'wallSlam': case 'land': { if (e.type === 'land' && !e.heavy) break; const uu = e.u && U(e.u), q = uu ? this.wpos(uu, 0) : null; if (!q) break; this.vfx.dust(q, 3, 1); if (this.wreck) this.wreck.impact(q.x, q.z, { r: 1.4, power: 1.6, crack: true, y: this.gy }); break; }
+        case 'projEnd': { const [x, z] = this.W(e.x, e.z); this.vfx.elementHit(e.elem || 'astro', new V3(x, this.gy + 0.45, z), { power: 0.6 }); if (this.wreck) this.wreck.impact(x, z, { r: 0.9, power: 1, y: this.gy }); break; }
         case 'faint': {
           const u = U(e.u), r = R(u); if (!r) break;
           this.once(r, r.a.anim.clips.faint ? 'faint' : 'hurt', 99); r.faintT = this.t;
-          this.sfx('ko'); fx.emit('dust', this.wpos(u, 0.05), { n: 12 }); fx.emit('star', this.wpos(u, 0.8), { n: 6 });
+          this.sfx('ko'); this.vfx.dust(this.wpos(u, 0.05), 4, 1.2); this.vfx.burst('twinkle', this.wpos(u, 0.8), { n: 8, speed: 1.5 }); this.vfx.smoke(this.wpos(u, 0.3), 1, 0.9); if (this.wreck) { const g = this.wpos(u, 0); this.wreck.impact(g.x, g.z, { r: 1.6, power: 1.4, crack: true, y: this.gy }); }
           if (u.side === 1) this.callout('KNOCKED OUT!', u.name, T.pink, 1.2); else this.callout(u.name + ' is down!', '', '#9fb3ff', 1.2);
           this.react(u.side, 'down', { force: true, hold: 2.4 }); this.react(u.side === 0 ? 1 : 0, 'ko', { force: true }); this.crowd(u.side === 1 ? 'cheer' : 'gasp');
           // slow motion, and the camera leans in on the fall (the last one down gets the full treatment in end())
@@ -521,7 +534,7 @@ export class Battle3D {
           if (left && this.beat(3)) { this.shotOn(r.a, { dist: Math.max(2.8, this.height(r) * 3), ang: 0.3, pitch: 12, h: this.height(r) * 0.4, blend: 0.3, hold: 1.2, out: 0.7, prio: 3, orbit: 18, span: 1.4 }); if (app.cinema) app.cinema.slowmo(0.3, 750, 400); this.flash('#ffffff', 0.18, 0.35); }
           break;
         }
-        case 'recall': { const u = U(e.u), r = R(u); if (!r) break; r.leave = { t: 0, dur: 0.38 }; const p = this.wpos(u, 0.3); fx.emit('ring', p, { scale: 1.6, tint: '#ff6a6a' }); fx.emit('sparkle', p, { n: 10, tint: '#ffb0b0' }); this.sfx('switch'); if (u.side === 0) this.callout(u.name + ', come back!', '', T.text, 0.9); const tr = this.trainers.find((x) => x.T.id === u.trainer); if (tr) { tr.a.play('point', { restart: true }); tr.back = this.t + 1.5; } break; }
+        case 'recall': { const u = U(e.u), r = R(u); if (!r) break; r.leave = { t: 0, dur: 0.38 }; const p = this.wpos(u, 0.3); this.vfx.burst('flash', p, { scale: 1.2, tint: '#ff8a8a' }); this.vfx.burst('twinkle', p, { n: 10, tint: '#ffb0b0', speed: 1.3 }); this.sfx('switch'); if (u.side === 0) this.callout(u.name + ', come back!', '', T.text, 0.9); const tr = this.trainers.find((x) => x.T.id === u.trainer); if (tr) { tr.a.play('point', { restart: true }); tr.back = this.t + 1.5; } break; }
         case 'switch': {
           const inn = U(e.in), r = R(inn); if (!r) break;
           r.sent = false; this.sendOut(r, { again: true, first: inn.side === 0 });
@@ -530,7 +543,7 @@ export class Battle3D {
           if (this.beat(2, 1.2)) this.shotOn(r.a, { dist: Math.max(2.6, this.height(r) * 2.6), ang: 0.4, pitch: 6, h: this.height(r) * 0.5, blend: 0.3, hold: 1.0, out: 0.6, prio: 2 });
           break;
         }
-        case 'bond': { const u = U(e.u), r = R(u); if (r) { this.callout('BOND!', e.name || 'soul stones in sync', T.cyan, 1.2, true); fx.emit('ring', this.wpos(u, 0.2), { scale: 1.5 }); fx.emit('sparkle', this.wpos(u, 0.5), { n: 20 }); this.once(r, 'cry', 1.4); this.flash('#bff4ff', 0.3, 0.5); this.react(u.side, 'good', { force: true }); if (this.beat(2)) this.shotOn(r.a, { dist: Math.max(2.6, this.height(r) * 2.6), ang: 0.5, pitch: 4, h: this.height(r) * 0.5, blend: 0.3, hold: 1.2, out: 0.6, prio: 2, orbit: 25, span: 1.4 }); } break; }
+        case 'bond': { const u = U(e.u), r = R(u); if (r) { this.callout('BOND!', e.name || 'soul stones in sync', T.cyan, 1.2, true); this.vfx.burst('flash', this.wpos(u, 0.5), { scale: 1.6, tint: '#bff4ff' }); this.vfx.burst('twinkle', this.wpos(u, 0.5), { n: 20, tint: '#bff4ff', speed: 2 }); this.once(r, 'cry', 1.4); this.flash('#bff4ff', 0.3, 0.5); this.react(u.side, 'good', { force: true }); if (this.beat(2)) this.shotOn(r.a, { dist: Math.max(2.6, this.height(r) * 2.6), ang: 0.5, pitch: 4, h: this.height(r) * 0.5, blend: 0.3, hold: 1.2, out: 0.6, prio: 2, orbit: 25, span: 1.4 }); } break; }
         case 'unbond': { const u = U(e.u); if (u && u.side === 0) app.ui.toast(e.reason === 'ult' ? 'The ultimate burned out the bond' : 'Bond released', { icon: 'link', color: T.dim }); break; }
         case 'ult': {
           const u = U(e.u), r = R(u); if (!r) break;
@@ -538,11 +551,12 @@ export class Battle3D {
           this.shake(0.3, 3); this.punch(8); this.flash(ELC(u.elem), 0.4, 0.6); this.sfx('ult_start');
           if (this.beat(4)) { this.shotOn(r.a, { dist: Math.max(2.4, this.height(r) * 2.4), ang: 0.65, pitch: -6, h: this.height(r) * 0.55, blend: 0.25, hold: 1.5, out: 0.7, prio: 4, orbit: 30, span: 1.6, low: true }); if (app.cinema) app.cinema.dutch(u.side === 0 ? -6 : 6); setTimeout(() => app.cinema && app.cinema.dutch(0), 1500); }
           this.react(u.side, 'good', { force: true }); this.crowd('cheer');
+          { const q = this.wpos(u, 0.4); this.vfx.burst('flash', q, { scale: 2.2, tint: ELC(u.elem) }); this.vfx.elementHit(u.elem, q, { power: 2 }); setTimeout(() => { if (this.active && this.wreck) { this.wreck.impact(q.x, q.z, { r: 4.5, power: 3, crater: true, y: this.gy }); this.vfx.burst('impact', q, { scale: 3 }); this.shake(0.3, 4); } }, 600); }
           break;
         }
-        case 'heal': { const u = U(e.u); if (u) { this.pop(this.wpos(u, 0.6), '+' + e.amt, T.green, 1); fx.emit('heart', this.wpos(u, 0.5), { n: 4 }); } break; }
+        case 'heal': { const u = U(e.u); if (u) { this.pop(this.wpos(u, 0.6), '+' + e.amt, T.green, 1); this.vfx.burst('twinkle', this.wpos(u, 0.5), { n: 8, tint: '#9af06a', speed: 1 }); this.vfx.burst('leaf', this.wpos(u, 0.5), { n: 3 }); } break; }
         case 'status': { const u = U(e.u); if (u) this.pop(this.wpos(u, 0.8), String(e.s), T.pink, 1); break; }
-        case 'emote': { const u = U(e.u), r = R(u); if (r) { this.once(r, r.a.anim.clips.dance ? 'dance' : 'win', 1.4); fx.emit('note', this.wpos(u, 0.8), { n: 3 }); } break; }
+        case 'emote': { const u = U(e.u), r = R(u); if (r) { this.once(r, r.a.anim.clips.dance ? 'dance' : 'win', 1.4); this.vfx.burst('note', this.wpos(u, 0.8), { n: 3 }); } break; }
         case 'order': { const u = U(e.u); if (u && u.side === 0 && e.kind === 'skill') { const tr = this.trainers.find((x) => x.T.isPlayer); if (tr && this.t >= tr.cool) { tr.cool = this.t + 1.4; tr.back = this.t + 1.3; tr.a.play('command', { restart: true }); } } break; }
         case 'item': app.ui.toast('Used ' + String(e.id).replace('_', ' '), { icon: 'bag' }); break;
         case 'captureThrow': this.callout('SOUL LINK!', Math.round((e.chance || 0) * 100) + '% chance', T.green, 1); { const tr = this.trainers.find((x) => x.T.isPlayer); if (tr) { tr.a.play('throw', { restart: true }); tr.back = this.t + 1.4; } } break;
@@ -561,118 +575,15 @@ export class Battle3D {
   // ------------------------------------------------------------------ HUD + controls
   drawUI(ui) {
     if (!this.active || !this.st) return;
-    const st = this.st, me = this.me(), W = ui.w, H = ui.h, w = this.app.world, hk = this.hud;
     // the intro can be skipped (Space / Enter / a tap)
     if (this.intro && !this.skipIntro && this.t > 0.6 && (ui.key(' ') || ui.key('Enter') || ui.ptr.released)) { this.skipIntro = true; ui.ptr.released = false; for (const W_ of this.waits.splice(0)) W_.r(); }
-    for (const [, r] of this.units) {
-      const u = r.u; if (!u.onField || u.state === 'faint' || !r.sent || hk < 0.5 || this.ending) continue;
-      const s = w.project(this.wpos(u, (r.a.m.scale || 1) * 1.6 + 0.2)); if (!s.vis) continue;
-      const x = Math.round(s.x), y = Math.round(s.y);
-      ui.bar(x - 12, y, 24, 2, u.hp / u.maxHp, {});
-      if (u.side === 0 && u.order && u.order.dur > 0) { ui.bar(x - 12, y - 5, 24, 2, 1 - u.order.t / u.order.dur, { color: T.cyan }); ui.icon(u.order.cmd.type === 'dodge' ? 'dodge' : u.order.cmd.type === 'skill' ? 'star' : 'fist', x + 14, y - 8, T.cyan); }
-      if (u.bonded) ui.icon('link', x - 4, y - 14 + Math.round(Math.sin(this.t * 6)), T.cyan);
-    }
-    // cries: a little speech bubble with the call
-    for (const c of this.cries) {
-      const r = c.r; if (!r.a.g.visible) continue;
-      const s = w.project(this.wpos(r.u, this.height(r) + 0.35)); if (!s.vis) continue;
-      const k = Math.min(1, c.t * 8), bw = ui.tw(c.text) + 10, x = Math.round(s.x - bw / 2), y = Math.round(s.y - 16 - k * 3);
-      if (c.t > 1.1) continue;
-      ui.rrect(x, y, bw, 13, '#ffffff', 4); ui.text(c.text, x + 5, y + 3, '#2a1a32');
-      ui.px(Math.round(s.x), y + 13, '#ffffff'); ui.px(Math.round(s.x) - 1, y + 13, '#ffffff'); ui.px(Math.round(s.x), y + 14, '#ffffff');
-    }
-    for (const p of this.pops) {
-      const s = w.project(p.p); if (!s.vis || p.t > 1) continue;
-      const k = p.t, bounce = k < 0.25 ? Math.sin((k / 0.25) * Math.PI) * 6 : 0, sc = p.scale * (k < 0.12 ? 1 + (1 - k / 0.12) * 0.6 : 1);
-      const y = Math.round(s.y - p.dy - k * 20 - bounce), x = Math.round(s.x + p.dx * k);
-      if (k > 0.85 && Math.floor(k * 40) % 2) continue;
-      ui.text(p.str, x, y, p.c, { align: 'center', outline: true, scale: Math.max(1, Math.round(sc)) });
-      if (p.crit && k < 0.8) ui.text('CRIT', x, y - 10 * Math.max(1, Math.round(sc)), '#fff0a0', { align: 'center', outline: true, mini: true });
-    }
-    const panel = (u, x, y, right) => {
-      const pw = 132; if (right) x -= pw;
-      ui.panel(x, y, pw, 30, {});
-      const sp = SPECIES[u.species];
-      ui.icon(u.elem === 'pyro' ? 'flame' : u.elem === 'hydro' ? 'drop' : u.elem === 'bio' ? 'leaf' : u.elem === 'volto' ? 'bolt' : 'star', x + 5, y + 5, ELC(u.elem));
-      ui.text(`${sp ? sp.name : u.name}`, x + 15, y + 5, T.text, { shadow: T.ink });
-      ui.text(`Lv${u.level}`, x + pw - 6, y + 5, T.dim, { align: 'right', mini: true });
-      ui.bar(x + 6, y + 16, pw - 12, 4, u.hp / u.maxHp, { seg: 4 });
-      if (!right) { ui.bar(x + 6, y + 23, (pw - 12) * 0.62, 2, u.energy / 100, { color: T.cyan }); ui.bar(x + 6 + (pw - 12) * 0.66, y + 23, (pw - 12) * 0.34, 2, (u.ult || 0) / 100, { color: T.amber }); }
-      else ui.text(`${Math.ceil(u.hp)}/${u.maxHp}`, x + pw - 6, y + 22, T.dim, { align: 'right', mini: true });
-    };
-    const slide = Math.round((1 - hk) * 150);
-    if (me && hk > 0.02) panel(me, 4 - slide, 4, false);
-    const foe = this.foe(); if (foe && hk > 0.02) panel(foe, W - 4 + slide, 4, true);
-    if (me && !this.ending && !this.frozen && !st.paused) this.controls(ui, me);
-    if (st.paused === 'halftime' && !this.ending) this.arenaChoice(ui, 'HALFTIME');
-    for (const b of this.banners) this.drawBanner(ui, b);
-    if (this.vs) this.drawVs(ui, this.vs.t);
-    for (const c of this.callouts) {
-      const a = Math.min(1, c.t * 8, (c.dur - c.t) * 5), y = Math.round(H * (c.big ? 0.36 : 0.26) - (1 - a) * 6); if (a <= 0) continue;
-      const pop = c.big && c.t < 0.18 ? 1 + (1 - c.t / 0.18) * 0.5 : 1;
-      ui.text(c.str, W >> 1, y, c.c, { align: 'center', outline: true, scale: Math.round((c.big ? 3 : 2) * pop), spacing: 2 });
-      if (c.sub) ui.text(c.sub, W >> 1, y + (c.big ? 26 : 18), T.text, { align: 'center', outline: true });
-    }
-    if (this.intro && this.t > 0.6 && !this.skipIntro) ui.text('SPACE / TAP  SKIP', W - 8, H - 14, '#8a84a8', { align: 'right', mini: true, outline: T.ink });
-  }
-  drawBanner(ui, b) {
-    const W = ui.w, H = ui.h, k = b.t / b.dur, kin = E.out3(clamp(b.t / 0.18, 0, 1)), kout = clamp((b.dur - b.t) / 0.2, 0, 1);
-    const hgt = b.small ? 13 : 19, cy = Math.round(H * (b.small ? 0.47 : 0.45)), slant = hgt;
-    const x0 = Math.round(-W * (1 - kin)), wid = Math.round(W * 0.62 * kout);
-    const cx = Math.round(W / 2 + (k - 0.5) * 18);
-    // a slanted strip: dark band, coloured edges
-    for (let i = 0; i < hgt; i++) {
-      const off = Math.round((hgt - i) * (slant / hgt)), xs = cx - (wid >> 1) + off + x0;
-      ui.rect(xs, cy + i, wid, 1, i === 0 || i === hgt - 1 ? b.c : '#120c1c');
-    }
-    if (kout > 0.3) ui.text(b.str, cx + x0 + slant / 2, cy + (b.small ? 3 : 4), b.c, { align: 'center', outline: T.ink, scale: b.small ? 1 : 2, spacing: 1 });
-  }
-  drawVs(ui, t) {
-    const W = ui.w, H = ui.h, k = clamp(t / 0.25, 0, 1), out = clamp((1.5 - t) / 0.3, 0, 1); if (out <= 0) return;
-    const sc = Math.max(2, Math.round(4 * (1 + (1 - k) * 0.6))), y = Math.round(H * 0.46) - sc * 4;
-    ui.text('VS', W >> 1, y, null, { align: 'center', outline: T.ink, scale: sc, grad: ['#ffffff', T.amberL, T.coral] });
+    this.hudUI.draw(ui);                                        // panels, cards, meters, combo, callouts (battlehud.js)
+    if (this.st.paused === 'halftime' && !this.ending) this.arenaChoice(ui, 'HALFTIME');
   }
   arenaChoice(ui, title) {
     const W = ui.w, H = ui.h, bw = 96, gap = 6, x0 = Math.round(W / 2 - (bw * 3 + gap * 2) / 2), y = Math.round(H * 0.5);
     ui.fade(0.45, '#0c0814'); ui.text(title, W >> 1, y - 44, T.amber, { align: 'center', scale: 2, outline: true });
     Object.entries(ARENA_TYPES).forEach(([id, A], i) => { if (ui.button(x0 + i * (bw + gap), y, bw, 22, A.name, { color: T.amber, hotkey: String(i + 1) }) && this.st.paused) resumeMatch(this.st, { arena: id }); });
-  }
-  controls(ui, me) {
-    const W = ui.w, H = ui.h, st = this.st, T_ = this.ptr, app = this.app;
-    const cmd = (c) => { if (order(st, me.id, c)) app.audio.sfx && app.audio.sfx('ui_tap'); };
-    const target = () => { const f = this.foe(); return f ? f.id : undefined; };
-    const bw = Math.min(112, Math.floor((W - 70 - 4 * 3) / 4)), bh = 22, y = H - bh - 6 + Math.round((1 - this.hud) * 40);
-    me.skills.forEach((id, i) => {
-      const sk = SKILLS[id]; if (!sk) return;
-      const x = 6 + i * (bw + 3), cd = cooldownFrac(st, me, id), cost = skillCost(me, id), ok = cd <= 0 && me.energy >= cost;
-      const name = skillName(me, id), short = name.length * 6 > bw - 16 ? name.slice(0, Math.max(3, Math.floor((bw - 18) / 6))) + '.' : name;
-      if (ui.button(x, y, bw, bh, short, { color: ELC(sk.elem), disabled: !ok, hotkey: String(i + 1), sub: cost ? String(cost) : '' })) cmd({ type: 'skill', id, target: target() });
-      if (cd > 0) { const h = Math.round((bh - 4) * cd); for (let j = 0; j < h; j++) for (let k = 0; k < bw - 4; k++) if ((k + j) % 2 === 0) ui.px(x + 2 + k, y + 2 + (bh - 4 - h) + j, '#120c1c'); ui.text(Math.ceil(cd * (sk.cd || 1)) + 's', x + bw - 4, y + 3, T.amber, { align: 'right', mini: true }); }
-    });
-    const ax = W - 52, ab = 46, ah = 17; let yy = H - 6 - ah;
-    const act = (label, icon, color, key, fn, o = {}) => { if (ui.button(ax, yy, ab, ah, label, Object.assign({ icon, color, hotkey: key }, o))) fn(); yy -= ah + 3; };
-    act('Atk', 'fist', T.amber, ' ', () => cmd({ type: 'attack', id: target() }));
-    act('Dodge', 'dodge', T.cyan, 'Shift', () => { const f = this.foe(); let dx = 1, dz = 0; if (f) { dx = -(f.z - me.z); dz = f.x - me.x; if (Math.random() < 0.5) { dx = -dx; dz = -dz; } } cmd({ type: 'dodge', dx, dz }); });
-    const canBond = st.rules.bond && T_.canBond && !T_.bonded && T_.bondCd <= 0;
-    if (me.bonded && me.ultSkill) act('Ult', 'star', T.amber, 'f', () => order(st, me.id, { type: 'ult' }), { disabled: (me.ult || 0) < 100 });
-    else if (st.rules.bond && T_.canBond) act(T_.bonded ? 'Unbond' : T_.bondCd > 0 ? Math.ceil(T_.bondCd) + 's' : 'Bond', 'link', T.cyan, 'b', () => trainerCommand(st, T_.id, { type: T_.bonded ? 'unbond' : 'bond' }), { disabled: !T_.bonded && !canBond });
-    const bench = T_.team.map((id) => unitById(st, id)).filter((u) => u && u.id !== me.id && u.state !== 'faint');
-    if (bench.length) act(T_.switching ? Math.ceil(switchLeft(T_)) + 's' : 'Swap', 'swap', T.green, 'Tab', () => trainerCommand(st, T_.id, { type: 'switch', to: bench[0] && bench[0].id }), { disabled: !!T_.switching || T_.switchCd > 0 });
-    act('Emote', 'smile', T.pink, 'e', () => cmd({ type: 'emote', id: Object.keys(EMOTES)[0] }), { disabled: me.emoteCd > 0 });
-    if (st.rules.capture) act('Catch', 'star', T.green, 'c', () => { const f = this.foe(); if (!f) return; const gem = ['diamond', 'amethyst', 'ruby', 'sapphire', 'emerald', 'topaz', 'opal', 'quartz'].find((g) => app.state.bag[g] > 0) || 'quartz'; trainerCommand(st, T_.id, { type: 'capture', target: f.id, gem }); });
-    if (st.rules.flee) act('Run', 'dodge', T.dim, 'r', () => trainerCommand(st, T_.id, { type: 'flee' }));
-    // tap the arena: target a foe or move there
-    const p = ui.ptr;
-    if (p.released && !ui.dialog && Math.hypot(p.x - p.sx, p.y - p.sy) < 6 && p.y < H - 34 && p.x < W - 56 && p.y > 36) {
-      p.released = false;
-      let best = null, bd = 26;
-      for (const [, r] of this.units) if (r.u.onField && r.u.side === 1 && r.u.state !== 'faint') { const s = app.world.project(this.wpos(r.u, 0.4)); const d = Math.hypot(s.x - p.x, s.y - p.y); if (d < bd) { bd = d; best = r.u; } }
-      if (best) cmd({ type: 'target', id: best.id });
-      else {
-        _n.set((p.x / app.vw) * 2 - 1, -((p.y / app.vh) * 2 - 1)); _r.setFromCamera(_n, app.stage.cam); _p.constant = -this.gy;
-        if (_r.ray.intersectPlane(_p, _v)) { let [x, z] = this.S(_v.x, _v.z); const d = Math.hypot(x, z), Rr = st.arena.r - 0.4; if (d > Rr) { x *= Rr / d; z *= Rr / d; } cmd({ type: 'move', x, z }); app.world.fx.emit('ring', _v.clone().setY(this.gy + 0.05), { scale: 0.5 }); }
-      }
-    }
   }
   // ------------------------------------------------------------------ end
   async end() {
@@ -688,7 +599,7 @@ export class Battle3D {
       await this.sleep(1.5);
     }
     // the winners strike a pose; the trainers celebrate (or don't)
-    for (const [, rec] of this.units) if (rec.u.side === r.winner && rec.u.onField && rec.u.state !== 'faint') { this.once(rec, 'win', 9); this.app.world.fx.emit('star', this.wpos(rec.u, 0.8), { n: 6 }); }
+    for (const [, rec] of this.units) if (rec.u.side === r.winner && rec.u.onField && rec.u.state !== 'faint') { this.once(rec, 'win', 9); this.vfx.burst('twinkle', this.wpos(rec.u, 0.8), { n: 10, speed: 1.5 }); }
     if (!fled) {
       this.react(r.winner, 'win', { force: true, hold: Infinity });
       this.react(r.winner === 0 ? 1 : 0, Math.random() < 0.5 ? 'lose' : 'sore', { force: true, hold: Infinity });
@@ -772,6 +683,8 @@ export class Battle3D {
     for (const wa of this.watchers || []) { wa.a.look = wa.look || null; if (!wa.seated) { wa.a.yaw = wa.a.targetYaw = wa.yaw; wa.a.g.rotation.y = wa.yaw; } wa.a.play(wa.clip && wa.a.anim.clips[wa.clip] ? wa.clip : 'idle', { fade: 0.2 }); }
     if (w.bubbles) w.bubbles = w.bubbles.filter((b) => !String(b.a.id).startsWith('bu-'));
     if (this.grp) this.app.stage.scene.remove(this.grp);
+    if (this.wreck) { try { this.wreck.restore(); } catch (e) { console.warn('[battle] restore', e); } this.wreck = null; }   // every broken prop back, no debris, no cracks
+    if (this.vfx) this.vfx.clear();
     w.setCam(this.prevCam);
     if (cin) { cin.dutch(0); cin.barsTo = this.cin0 || 0; }
     this.active = false; this.st = null; this.units = new Map(); this.trainers = []; this.watchers = []; this.waits = [];

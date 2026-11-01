@@ -7,7 +7,7 @@
 // battles (index.js applies it to the battle snapshot).
 import * as THREE from '../../../../vendor/three.module.js';
 import { T } from '../../../px/game/ui.js';
-import { V3, clamp, clamp01, lerp, easeOut, boing, fmt, drawScore, keyRow, voxel, GLOW, WHITE, worldText, bigText, vGauge } from './kit.js';
+import { V3, clamp, clamp01, lerp, easeOut, boing, fmt, drawScore, keyRow, voxel, GLOW, WHITE, worldText, bigText, vGauge, tile } from './kit.js';
 
 const BPM = 96, BOARD = new V3(60.34, 0.95, 141.66), POT = new V3(59.37, 0.915, 141.7);   // the pot on the free front-left burner (the stove model keeps a pot and a kettle on two others)
 const ING = [
@@ -55,8 +55,6 @@ export default class Curry {
     this.ladle = new THREE.Group(); this.ladle.position.y = 0.2; this.pot.add(this.ladle);
     const ld = voxel(st, [6, 24, 6], (F, r, H) => { const w = F.c('#c89a5a'), wD = F.c('#a87a42'); F.box(2, 4, 2, 3, 23, 3, (x, y) => (y % 6 === 0 ? wD : w)); H.ball(F, 2.5, 2.5, 2.5, 2.6, 2.4, 2.6, wD); }, { vpm: 64, key: 'mg-ladle', origin: [3 / 64, 2 / 64, 3 / 64] });
     ld.position.set(0.09, -0.12, 0); ld.rotation.z = -0.35; this.ladle.add(ld); this.ladle.visible = false;
-    this.flame = new THREE.Mesh(new THREE.RingGeometry(0.06, 0.15, 16), new THREE.MeshBasicMaterial({ color: '#4aa8ff', transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide, toneMapped: false }));
-    this.flame.rotation.x = -Math.PI / 2; this.flame.position.set(POT.x, POT.y + 0.005, POT.z); root.add(this.flame);
     this.ingMeshes = ING.map((g, i) => this.ingMesh(i));
     // people
     this.mom = s.w.actor('mom'); if (this.mom) { const p = this.mom.g.position; this.momWas = [p.x, p.z, this.mom.yaw, p.y]; this.mom.place(61.55, 142.75, Math.PI * 1.2, this.fy); this.mom.play('idle'); }
@@ -88,7 +86,7 @@ export default class Curry {
     this.chop = null; this.addSeq = null; this.heat = 0.3; this.zone = 0.5; this.simT = 0; this.inZone = 0; this.stirN = 0; this.lastStir = null; this.thick = 0;
     for (const m of this.pieces || []) m.parent && m.parent.remove(m); this.pieces = [];
     if (this.onBoard) { this.onBoard.parent && this.onBoard.parent.remove(this.onBoard); this.onBoard = null; }
-    this.soup.visible = false; this.ladle.visible = false; this.flame.material.opacity = 0; this.soupMat.color.set('#c8a058');
+    this.soup.visible = false; this.ladle.visible = false; this.soupMat.color.set('#c8a058');
     this.stageCam = 'chop'; this.cam(true);
   }
   start() { this.s.audio.music('dinner', { fade: 0.4, restart: true }); this.clock = 0; this.next(); }
@@ -215,7 +213,6 @@ export default class Curry {
     for (const f of this.flying || []) { f.t += dt * 2.6; const u = clamp01(f.t); f.m.position.lerpVectors(f.from, f.to, u); f.m.position.y += Math.sin(u * Math.PI) * 0.35; if (u >= 1 && !f.fin) { f.fin = true; f.m.parent && f.m.parent.remove(f.m); if (f.plop) { s.audio.sfx('plop'); s.burst('splash', [POT.x, POT.y + 0.25, POT.z], { n: 10 }); } } }
     if (this.flying) this.flying = this.flying.filter((f) => !f.fin);
     const heat = k === 'simmer' ? this.heat : k === 'stir' ? 0.5 : this.stage >= 1 ? 0.3 : 0;
-    this.flame.material.opacity = 0;
     // the gas ring: pixel flames round the burner, taller and orange-tipped as the heat goes up
     if (heat > 0.02) { this.flT = (this.flT || 0) - dt; if (this.flT <= 0) { this.flT = 0.16 - heat * 0.06; const a = s.rand() * Math.PI * 2, r = 0.13; s.burst(heat > 0.78 ? 'fire' : 'bluefire', [POT.x + Math.cos(a) * r, POT.y + 0.005, POT.z + Math.sin(a) * r], { n: 1, scale: 0.14 + heat * 0.14, speed: 0.08 + heat * 0.12 }); } }
     if (heat > 0.05 && this.stage >= 1) { this.bubT = (this.bubT || 0) - dt; if (this.bubT <= 0) { this.bubT = 0.65 - heat * 0.4; s.burst('bubble', [POT.x + (s.rand() - 0.5) * 0.14, POT.y + 0.12, POT.z + (s.rand() - 0.5) * 0.14], { n: 1, scale: 0.35, speed: 0.3 }); if (heat > 0.3) s.burst('steam', [POT.x, POT.y + 0.3, POT.z], { n: 1, scale: 0.7 }); } }
@@ -274,7 +271,7 @@ export default class Curry {
     ui.text(ING[C.ing].name.toUpperCase() + `  ${C.ing + 1}/4`, x0, y - 11, T.dim, { mini: true });
     ui.rect(x0, y + 1, w, 3, T.creamD || '#e5d2b4');
     ui.rect(hitX - 1, y - 6, 3, 14, T.amber2);
-    for (const n of C.notes) { if (n.done) continue; const x = Math.round(hitX + (n.b - b) * ppb); if (x < x0 - 4 || x > x0 + w) continue; ui.rrect(x - 4, y - 2, 9, 9, T.ink, 4); ui.rrect(x - 3, y - 1, 7, 7, ING[C.ing].col, 3); }
+    for (const n of C.notes) { if (n.done) continue; const x = Math.round(hitX + (n.b - b) * ppb); if (x < x0 - 4 || x > x0 + w) continue; tile(ui, x - 4, y - 3, 9, 9, ING[C.ing].col, { cut: 1 }); }
     keyRow(ui, W / 2, y + 22, [['SPACE', 'Chop on the line']]);
   }
   drawAdd(ui, W, H) {
@@ -283,13 +280,13 @@ export default class Curry {
     A.order.forEach((k, i) => {
       const x = Math.round(cx - 78 + i * 52), I = ING[k], revealed = show || i < A.i;
       ui.panel(x - 2, y + 16, 54 - 6, 24, { thin: true, fill: i < A.i ? '#a6ec80' : undefined });
-      if (revealed) { ui.rrect(x + 3, y + 21, 12, 12, I.col, 5); ui.text(I.name.slice(0, 6).toUpperCase(), x + 18, y + 25, T.text, { mini: true }); }
+      if (revealed) { tile(ui, x + 3, y + 21, 12, 12, I.col, { cut: 1 }); ui.text(I.name.slice(0, 6).toUpperCase(), x + 18, y + 25, T.text, { mini: true }); }
       else ui.text('?', x + 22, y + 22, T.dim, { scale: 2, align: 'center' });
     });
     if (!show) {
       // four big ingredient buttons (keys or taps)
       const bw = Math.min(70, Math.floor((W - 20) / 4) - 4), bx = Math.round(cx - (bw * 4 + 12) / 2), by = H - 40;
-      ING.forEach((I, k) => { const x = bx + k * (bw + 4); ui.panel(x, by, bw, 30, { thin: true }); ui.rrect(x + 5, by + 9, 12, 12, I.col, 5); ui.keycap(x + bw - 16, by + 5, I.glyph); ui.text(I.name.slice(0, 6).toUpperCase(), x + 20, by + 18, T.text, { mini: true }); if (this.s.live && ui.ptr.pressed && ui.inside(x, by, bw, 30)) { this.tapIng = k; ui.ptr.pressed = false; } });
+      ING.forEach((I, k) => { const x = bx + k * (bw + 4); ui.panel(x, by, bw, 30, { thin: true }); tile(ui, x + 5, by + 9, 12, 12, I.col, { cut: 1 }); ui.keycap(x + bw - 16, by + 5, I.glyph); ui.text(I.name.slice(0, 6).toUpperCase(), x + 20, by + 18, T.text, { mini: true }); if (this.s.live && ui.ptr.pressed && ui.inside(x, by, bw, 30)) { this.tapIng = k; ui.ptr.pressed = false; } });
     }
   }
   bot(inp) {

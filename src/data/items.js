@@ -14,6 +14,18 @@ export const ITEMS = {
   ice_cream: { name: 'Soft-Serve', icon: '🍦', kind: 'food', price: 350, desc: 'Yellow Submarine special.', heal: 0.2, friend: 4 },
   cabbage: { name: 'Garden Cabbage', icon: '🥬', kind: 'food', price: 120, desc: 'Pulled fresh from the Sunset Row community garden (ask the farmer first!). Crunchy; Tokonmon adore it.', heal: 0.2, friend: 3 },
   lemon_tart: { name: 'Lemon Tart', icon: '🍋', kind: 'food', price: 450, desc: 'Sour and sweet.', heal: 0.25, friend: 2 },
+  // [townlife] street food from the city's stalls and carts (src/vx/game/townlife.js). `likes`: shared with a partner of
+  // that element at the stall, it adds that much extra friendship; `spicy` ones count as spicy food (Chilichick's Fire Breath)
+  hot_sauce_mild: { name: 'Chick Drizzle Sauce', icon: '🌶️', kind: 'food', price: 150, desc: 'Cluck & Burn\'s gentlest bottle: sweet chili, honey and a little smoke. Pyro Tokonmon adore it.', heal: 0.15, friend: 3, heat: 1, spicy: true, likes: { pyro: 2 } },
+  hot_sauce: { name: 'Riffrooster Red', icon: '🌶️', kind: 'food', price: 320, desc: 'Peppers fire-roasted by Encore the Riffrooster himself. A Pyro Tokonmon that tastes it gets all fired up.', heal: 0.25, friend: 4, heat: 3, spicy: true, likes: { pyro: 5 } },
+  hot_sauce_ghost: { name: 'Funkadoodle Ghost Gold', icon: '🔥', kind: 'food', price: 650, desc: 'Ghost peppers roasted until they glow. The label is mostly a warning. Pyro Tokonmon think it is dessert.', heal: 0.35, friend: 5, heat: 5, spicy: true, likes: { pyro: 9 } },
+  chili_noodles: { name: 'Wok-Fired Chili Noodles', icon: '🍜', kind: 'food', price: 550, desc: 'Chef Bao\'s night-market noodles, tossed over Turbo the Hellcoon\'s flames. Smoky, slippery, a little dangerous.', heal: 0.45, friend: 4, heat: 2, spicy: true, likes: { pyro: 2 } },
+  boba_tea: { name: 'Brown Sugar Boba', icon: '🧋', kind: 'food', price: 320, desc: 'Tiger-striped milk tea from the Bubble Moon cart, shaken to order by Zest the Lemmo.', heal: 0.2, friend: 4, likes: { volto: 2 } },
+  lemmo_fizz: { name: 'Lemmo-nade Fizz', icon: '🍋', kind: 'food', price: 260, desc: 'Lemonade shaken so hard by a Lemmo that it crackles. Volto Tokonmon get giddy on it.', heal: 0.15, friend: 3, likes: { volto: 4 } },
+  fish_skewer: { name: 'Grilled Catch Skewer', icon: '🍢', kind: 'food', price: 380, desc: 'Today\'s catch from Pier Pressure, filleted by Chomps the Thrashark and grilled with sea salt.', heal: 0.3, friend: 3, likes: { hydro: 3 } },
+  kelp_chips: { name: 'Sea-Salt Kelp Chips', icon: '🥬', kind: 'food', price: 200, desc: 'Crunchy toasted kelp. Hydro Tokonmon go wild for the salt.', heal: 0.1, friend: 3, likes: { hydro: 4 } },
+  sweet_peas: { name: 'Sweet Pea Posy', icon: '💐', kind: 'food', price: 180, desc: 'A little bunch from Petal Pushers, watered by Clover the Cabbunny. Bio Tokonmon nibble the petals.', heal: 0.1, friend: 4, likes: { bio: 4 } },
+  sunflower_seeds: { name: 'Sunflower Seeds', icon: '🌻', kind: 'food', price: 120, desc: 'A paper twist of roasted seeds. Every bird Tokonmon in the city knows the sound of this bag.', heal: 0.1, friend: 3, likes: { aero: 4 } },
   protein_mochi: { name: 'Protein Mochi', icon: '🍡', kind: 'boost', price: 3000, desc: '+1 stat point for one Tokonmon.', sp: 1 },
   star_candy: { name: 'Konpeito Star Candy', icon: '🍬', kind: 'boost', price: 5000, desc: '+1 Astral point for one Tokonmon.', ap: 1 },
   // capture gems (keychain device fuel)

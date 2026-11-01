@@ -10,6 +10,7 @@
 //  3. the sky itself (render/sky.js).
 // Pure scenery: no collision, no minimap.
 import * as TX from '../city/pixtex.js';
+import { muralTex, MURALS } from '../city/murals.js';
 
 const hash = (a, b) => { const s = Math.sin(a * 127.1 + b * 311.7) * 43758.5453; return s - Math.floor(s); };
 // eight façade schemes (wall, window frame, window kind): enough variety, few textures
@@ -123,6 +124,8 @@ export function skirt(C, o = {}) {
     const trim = TX.solid(TX.hex(TX.light(base, 0.25)));
     C.box(gk, trim, x0 - 0.25, h, z0 - 0.25, x1 + 0.25, h + 0.45, z1 + 0.25, { skip: { bottom: true } });
     if (shop) C.box(gk, TX.solid('#4a4640'), x0 - 0.12, 3.1, z0 - 0.12, x1 + 0.12, 3.45, z1 + 0.12, { skip: { bottom: true } });
+    // now and then a mural on a near block's flank (painted over the ground-floor windows)
+    if (dist < 110 && hash(k, 13) < 0.16) { const fz = Math.min(z1 - z0, 9) > 4.5, w2 = Math.round(Math.min((fz ? x1 - x0 : z1 - z0) - 1, 8)), h2 = Math.round(Math.min(h - 1, 5)); if (w2 >= 4 && h2 >= 3) { const v = Math.floor(hash(k, 17) * MURALS); if (fz) C.decal(gk, muralTex(v, w2, h2), (x0 + x1) / 2, 0.6, z1, 's', w2, h2, { off: 0.03 }); else C.decal(gk, muralTex(v, w2, h2), x1, 0.6, (z0 + z1) / 2, 'e', w2, h2, { off: 0.03 }); } }
     // rooftop: a water tank on stilts, a plant room, or a set-back crown on the tall ones
     const r = hash(k, 9), cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
     if (fl > 14 && r < 0.6) { const iw = (x1 - x0) * 0.3, id2 = (z1 - z0) * 0.3; C.box(gk, wall, cx - iw, h, cz - id2, cx + iw, h + 6 + r * 9, cz + id2, { top: roofT, skip: { bottom: true } }); }

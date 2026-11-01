@@ -85,7 +85,9 @@ export default class Fishing {
     }, { vpm: 64, key: 'mg-bobber', origin: [4.5 / 64, 4 / 64, 4.5 / 64] }));
     // the aim reticle and the ripples: pixel-art rings on the water
     const ringTex = (n, th, dots) => canvasTex(n, n, (c) => { const r0 = n / 2 - 0.5; for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) { const d = Math.hypot(x - r0, y - r0); if (d <= n / 2 - 0.6 && d >= n / 2 - 0.6 - th && (!dots || ((Math.atan2(y - r0, x - r0) * 8 / Math.PI + 16) | 0) % 2)) { c.fillStyle = '#ffffff'; c.fillRect(x, y, 1, 1); } } });
-    this.ring = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 1.1), new THREE.MeshBasicMaterial({ map: ringTex(24, 2, true), color: '#ffe066', transparent: true, opacity: 0.9, depthWrite: false, toneMapped: false }));
+    // the aim marker: square pixel corner brackets with a cross in the middle (no round UI)
+    const brackets = canvasTex(24, 24, (c) => { c.fillStyle = '#ffffff'; for (const [x, y, sx, sy] of [[0, 0, 1, 1], [23, 0, -1, 1], [0, 23, 1, -1], [23, 23, -1, -1]]) { for (let i = 0; i < 7; i++) { c.fillRect(x + sx * i, y, 1, 2); c.fillRect(x, y + sy * i, 2, 1); } } c.fillRect(11, 8, 2, 8); c.fillRect(8, 11, 8, 2); });
+    this.ring = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 1.1), new THREE.MeshBasicMaterial({ map: brackets, color: '#ffe066', transparent: true, opacity: 0.9, depthWrite: false, toneMapped: false }));
     this.ring.rotation.x = -Math.PI / 2; root.add(this.ring);
     const ripT = ringTex(32, 1.2, false);
     this.rips = []; for (let i = 0; i < 10; i++) { const m = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.MeshBasicMaterial({ map: ripT, color: '#e8f6ff', transparent: true, opacity: 0, depthWrite: false })); m.rotation.x = -Math.PI / 2; m.visible = false; root.add(m); this.rips.push({ m, t: 9, dur: 1 }); }

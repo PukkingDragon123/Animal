@@ -196,12 +196,12 @@ export class CityControl {
       this.stepD += moved;
       if (!(a.m && a.m.onStep) && this.stepD > (this.spd > 3.2 ? 0.62 : 0.44)) { this.stepD = 0; const au = this.app.audio; if (au && au.sfx) au.sfx(this.stepKind(p), { vol: this.spd > 3.2 ? 1 : 0.75, pitch: 0.94 + Math.random() * 0.12 }); }
       // [feel] a little dust kicked up behind you while you run
-      if (this.spd > WALK + 0.8 && (this.dustT = (this.dustT || 0) - dt) <= 0 && this.inside < 0) { this.dustT = 0.1; _s.set(p.x - this.vx * 0.06, p.y + 0.06, p.z - this.vz * 0.06); this.w.fx.emit('dust', _s, { n: 1, scale: 0.5 + Math.random() * 0.25, speed: 0.5 }); }
+      if (this.spd > WALK + 0.8 && (this.dustT = (this.dustT || 0) - dt) <= 0 && this.inside < 0) { this.dustT = 0.1; _s.set(p.x - this.vx * 0.06, p.y + 0.08, p.z - this.vz * 0.06); if (this.app.vfx) this.app.vfx.burst('dust', _s, { scale: 0.42 + Math.random() * 0.2, speed: 0.4 }); else this.w.fx.emit('dust', _s, { n: 1, scale: 0.5, speed: 0.5 }); }
       this.topSpd = Math.max((this.topSpd || 0) * Math.exp(-dt * 1.2), this.spd);
     } else if (this.moving) {
       this.moving = false; if (!(a.m && a.m.animator)) a.play(a.idleClip || 'idle', { fade: 0.2 });
       // [feel] skidding to a stop from a run: a puff at your feet
-      if ((this.topSpd || 0) > RUN - 1.6 && this.inside < 0) { _s.set(p.x + Math.sin(this.head) * 0.2, p.y + 0.06, p.z + Math.cos(this.head) * 0.2); this.w.fx.emit('dust', _s, { n: 4, scale: 0.6, speed: 0.8 }); }
+      if ((this.topSpd || 0) > RUN - 1.6 && this.inside < 0) { _s.set(p.x + Math.sin(this.head) * 0.2, p.y + 0.06, p.z + Math.cos(this.head) * 0.2); if (this.app.vfx) this.app.vfx.dust(_s, 2, 0.55); else this.w.fx.emit('dust', _s, { n: 4, scale: 0.6, speed: 0.8 }); }
       this.topSpd = 0;
     }
   }

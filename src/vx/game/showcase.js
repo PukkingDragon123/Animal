@@ -98,7 +98,12 @@ class Diorama {
     return true;
   }
   // world point → UI pixels
-  project(x, y, z, ui) { _p.set(x, y, z).project(this.cam); return { x: R((_p.x + 1) / 2 * ui.w), y: R((1 - _p.y) / 2 * ui.h), vis: _p.z < 1 }; }
+  project(x, y, z, ui) {
+    if (!this.placed) { this.cam.position.copy(this.camPos); this.cam.lookAt(this.at); this.cam.updateMatrixWorld(); this.placed = true; }
+    _p.set(x, y, z).project(this.cam);
+    const X = (_p.x + 1) / 2 * ui.w, Y = (1 - _p.y) / 2 * ui.h;
+    return isFinite(X) && isFinite(Y) ? { x: R(X), y: R(Y), vis: _p.z < 1 } : { x: -999, y: -999, vis: false };
+  }
   dispose() { for (const d of this.disposables) if (d.dispose) d.dispose(); this.scene.traverse((o) => { if (o.material && o.material.map && o.material.map.dispose) o.material.map.dispose(); }); }
 }
 function sfx(app, id, o) { const a = app.audio; if (a && a.sfx) a.sfx(id, o); }

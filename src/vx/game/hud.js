@@ -61,7 +61,7 @@ export class Hud {
     // top-right: one coin pill
     hudMoney(ui, W - 6 + off, 6, st.money || 0, { align: 'right', id: 'hud' });
     // bottom-right: the icon row on plinths
-    const size = 20, step = size + 14, x0 = W - ROW.length * step + R(step / 2) - 4, y0 = H - size - 16 + off;
+    const size = 20, step = size + 14, x0 = W - ROW.length * step + R(step / 2) - 6, y0 = H - size - 22 + off;
     ROW.forEach(([icon, tab, label], i) => { const b = plinthButton(ui, x0 + i * step, y0, icon, { size, label, tip: label, badge: tab === 'quests' ? this.newQuests() || null : null }); if (b.clicked) this.openMenu(tab, ui); });
     if (!ui.dialog && !ui.modal && !busy && (ui.key('Escape') || ui.key('Tab'))) this.openMenu('home', ui);
     // the lens, only when something is near

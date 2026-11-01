@@ -6,7 +6,7 @@
 import * as THREE from '../../../../vendor/three.module.js';
 import { T } from '../../../px/game/ui.js';
 import { SPECIES } from '../../../data/species.js';
-import { V3, clamp, clamp01, lerp, easeOut, boing, fmtTime, drawClock, drawCombo, keyRow, boxes, picture, voxel, pixelSign, WHITE, worldText } from './kit.js';
+import { V3, clamp, clamp01, lerp, easeOut, boing, fmtTime, drawClock, drawCombo, keyRow, boxes, picture, voxel, pixelSign, WHITE, worldText, bevel, tile } from './kit.js';
 
 const LANES = [16.35, 15.45, 14.55, 13.65], Z0 = 40.0, LEG = 50, LEGS = 4, RACE = LEG * LEGS, HURDLES = [9, 17, 25, 33, 41];
 /** leg (0..), metres into it, z on the walk and the running direction (+1 south, −1 north) for race position p */
@@ -256,7 +256,7 @@ export default class Dash {
     const bx = 78, bw = Math.min(W - bx - 70, 240), byy = 14;
     ui.panel(bx - 6, 6, bw + 12, 22, { thin: true });
     ui.rect(bx, byy + 2, bw, 4, T.track || '#3a2a2e'); for (let k = 1; k < LEGS; k++) ui.rect(bx + Math.round((bw * k) / LEGS) - 1, byy, 2, 8, k % 2 ? '#ffc93a' : '#f4f0e6');
-    this.runners.slice().reverse().forEach((q) => { const x = bx + clamp01(q.p / RACE) * bw; ui.rrect(x - 3, byy + 1, 6, 6, q.me ? T.red : '#a89a8c', 3); if (q.me) ui.rect(x - 1, byy - 2, 2, 2, T.red); });
+    this.runners.slice().reverse().forEach((q) => { const x = bx + clamp01(q.p / RACE) * bw; ui.rect(x - 3, byy + 1, 6, 6, T.ink); ui.rect(x - 2, byy + 2, 4, 4, q.me ? T.red : '#a89a8c'); if (q.me) ui.rect(x - 1, byy - 2, 2, 2, T.red); });
     ui.text('GOAL', bx + bw - 1, byy + 10, T.dim, { mini: true, align: 'right' }); ui.text('LAP 2', bx + bw / 2, byy + 10, T.dim, { mini: true, align: 'center' });
     drawClock(ui, W - 40, 6, this.time);
     drawCombo(ui, 10, 48, this.combo, this.comboT, { hot: 12, label: 'STREAK' });
@@ -280,10 +280,9 @@ export default class Dash {
     ui.rect(Math.round(cx + PERFECT[0] * pxPerM), y - 6, Math.round((PERFECT[1] - PERFECT[0]) * pxPerM), 12, 'rgba(240,176,48,0.55)');
     if (n) { const hx = Math.round(cx + n.gap * pxPerM); if (hx < x0 + w) { ui.rect(hx - 1, y - 8, 3, 16, T.red); ui.rect(hx - 4, y - 8, 9, 2, T.red); } }
     // beat rings: two pips sliding in from the sides, meeting at the centre on the beat
-    for (const k of [0, 1]) { const t = (k ? ph + 1 : ph), off = (1 - (t % 1)) * (w / 2 - 8); if (off < 2) continue; for (const sg of [-1, 1]) ui.rrect(Math.round(cx + sg * off) - 3, y - 3, 6, 6, '#8a62d0', 3); }
+    for (const k of [0, 1]) { const t = (k ? ph + 1 : ph), off = (1 - (t % 1)) * (w / 2 - 8); if (off < 2) continue; for (const sg of [-1, 1]) { const px = Math.round(cx + sg * off); ui.rect(px - 3, y - 3, 6, 6, T.ink); ui.rect(px - 2, y - 2, 4, 4, '#8a62d0'); } }
     const pulse = Math.max(this.ringK, ph < 0.12 ? 1 - ph / 0.12 : 0);
-    ui.rrect(Math.round(cx - 6 - pulse * 3), Math.round(y - 6 - pulse * 3), Math.round(12 + pulse * 6), Math.round(12 + pulse * 6), pulse > 0.3 ? '#ffd860' : T.copper, 7);
-    ui.rrect(cx - 3, y - 3, 6, 6, WHITE, 3);
+    { const hs = Math.round(6 + pulse * 3), hc = pulse > 0.3 ? '#ffd860' : T.copper; ui.rect(cx - hs, y - hs, hs * 2, hs * 2, T.ink); ui.rect(cx - hs + 1, y - hs + 1, hs * 2 - 2, hs * 2 - 2, hc); ui.rect(cx - hs + 3, y - hs + 3, hs * 2 - 6, hs * 2 - 6, T.ink); ui.rect(cx - hs + 4, y - hs + 4, hs * 2 - 8, hs * 2 - 8, '#fbf3e3'); }   // a square target that swells on the beat
     keyRow(ui, cx, y + 16, [['SPACE', n && n.gap < JUMP[1] + 0.8 ? 'JUMP!' : 'Stride on the beat']]);
   }
   bot(inp) {

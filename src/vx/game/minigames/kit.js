@@ -325,6 +325,18 @@ export function keyRow(ui, cx, y, pairs, o = {}) {
     x += kw + 3 + ui.tw(p.l, { mini: true }) + gap;
   }
 }
+/** a bevelled pixel box (45° corners cut by `cut` px, never round): fill only */
+export function bevel(ui, x, y, w, h, c, cut = 1) {
+  x = Math.round(x); y = Math.round(y); w = Math.round(w); h = Math.round(h); cut = Math.max(0, Math.min(cut, Math.floor(Math.min(w, h) / 2)));
+  for (let j = 0; j < cut; j++) { const k = cut - j; ui.rect(x + k, y + j, w - 2 * k, 1, c); ui.rect(x + k, y + h - 1 - j, w - 2 * k, 1, c); }
+  ui.rect(x, y + cut, w, h - 2 * cut, c);
+}
+/** a bevelled pixel tile: ink outline, a fill, a light top edge and a dark bottom edge */
+export function tile(ui, x, y, w, h, c, o = {}) {
+  const cut = o.cut ?? 1, dk = o.dark || 'rgba(43,26,23,0.35)';
+  bevel(ui, x, y, w, h, o.ink || T.ink, cut); bevel(ui, x + 1, y + 1, w - 2, h - 2, c, Math.max(0, cut - 1));
+  ui.rect(x + 1 + cut, y + 1, w - 2 - 2 * cut, 1, o.light || 'rgba(255,255,255,0.45)'); ui.rect(x + 1 + cut, y + h - 2, w - 2 - 2 * cut, 1, dk);
+}
 /** text over the world: light with a dark outline */
 export function worldText(ui, str, x, y, o = {}) { return ui.text(str, x, y, o.color || WHITE, Object.assign({ outline: T.ink }, o)); }
 /** a vertical gauge with coloured zones: v 0..1, zones [[a, b, '#col'], …] */
@@ -638,7 +650,7 @@ export class Session {
           const rk = boing((t - 0.9) * 1.8), cx = x + w - 36, cy = y + 32, col = { S: '#f0b030', A: '#e86a9a', B: '#3ab8d8', C: '#5cc24a', D: '#a89a8c' }[rec.rank] || T.cyan;
           if (rk > 0.02) {
             g.save(); g.translate(cx, cy); g.scale(rk, rk); g.translate(-cx, -cy);
-            ui.rrect(cx - 18, cy - 18, 36, 36, T.ink, 18); ui.rrect(cx - 16, cy - 16, 32, 32, T.copperL || '#d48c5c', 16); ui.rrect(cx - 13, cy - 13, 26, 26, col, 13);
+            bevel(ui, cx - 18, cy - 18, 36, 36, T.ink, 3); bevel(ui, cx - 16, cy - 16, 32, 32, T.copperL || '#d48c5c', 2); bevel(ui, cx - 13, cy - 13, 26, 26, col, 1); ui.rect(cx - 9, cy - 12, 18, 2, 'rgba(255,255,255,0.4)');
             ui.text(rec.rank, cx, cy - 7, WHITE, { align: 'center', scale: 3, outline: T.ink });
             g.restore(); ui._fs = null; ui._font = null;
             if (!m.rankSnd) { m.rankSnd = true; A.sfx(rec.rank === 'S' ? 'perfect_parry' : 'qte_good'); }

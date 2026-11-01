@@ -305,7 +305,7 @@ export class VFX {
       const t = q.tint || [1, 1, 1], a = P.once ? 1 : clamp01((1 - k) * 4);
       lay.arr.iCol[j * 4] = t[0]; lay.arr.iCol[j * 4 + 1] = t[1]; lay.arr.iCol[j * 4 + 2] = t[2]; lay.arr.iCol[j * 4 + 3] = a;
     }
-    for (const [lay, n] of [[L.glow, ng], [L.solid, ns]]) { lay.mesh.count = n; if (n) for (const a of Object.values(lay.g.attributes)) if (a.isInstancedBufferAttribute) { a.needsUpdate = true; a.clearUpdateRanges && a.clearUpdateRanges(); } }
+    for (const [lay, n] of [[L.glow, ng], [L.solid, ns]]) { if (!lay.mesh.parent && st) st.scene.add(lay.mesh); lay.mesh.count = n; /* (a world load may have swept it out) */ if (n) for (const a of Object.values(lay.g.attributes)) if (a.isInstancedBufferAttribute) { a.needsUpdate = true; a.clearUpdateRanges && a.clearUpdateRanges(); } }
   }
 }
 // the big single sprites (one per hit) vs the scattered small ones

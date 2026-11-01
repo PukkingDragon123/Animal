@@ -5,7 +5,7 @@
 import * as THREE from '../../../../vendor/three.module.js';
 import { T } from '../../../px/game/ui.js';
 import { SPECIES, elemsOf } from '../../../data/species.js';
-import { V3, clamp, clamp01, lerp, fmt, drawScore, drawCombo, voxel, GLOW, WHITE, worldText, rng } from './kit.js';
+import { V3, clamp, clamp01, lerp, fmt, drawScore, drawCombo, voxel, GLOW, WHITE, worldText, rng, bevel } from './kit.js';
 
 const BPM = 144, FIRST = 8, LAST = 120, A = [139, 165], B = [147, 165];
 const LANES = [
@@ -34,8 +34,8 @@ export default class Rhythm {
     const speaker = (F, r, H) => { const b = F.c('#2a2632'), bD = F.c('#1a1620'), cone = F.c('#4a4656'), rim = F.c('#c8ccd4'), led = F.c('#ff74c0', GLOW); F.box(0, 0, 0, 13, 27, 11, (x, y) => (x === 0 || x === 13 || y === 27 ? bD : b)); for (const [cy, rr] of [[8, 5], [20, 3]]) for (let y = cy - rr; y <= cy + rr; y++) for (let x = 7 - rr; x <= 7 + rr; x++) { const d = (x - 6.5) ** 2 + (y - cy) ** 2; if (d <= rr * rr) F.set(x, y, 12, d > (rr - 1) ** 2 ? rim : cone); } F.box(3, 25, 12, 10, 25, 12, led); };
     this.speakers = [];
     for (const [x, z, yaw] of [[143 - 6.5, 160.6, 0.35], [143 + 6.5, 160.6, -0.35]]) { const g = voxel(st, [14, 28, 13], speaker, { vpm: 16, key: 'mg-speaker' }); g.position.set(x, gy, z); g.rotation.y = yaw; s.root.add(g); this.speakers.push(g); }
-    // spotlights on the two fighters: coloured discs that pulse on the beat
-    this.spots = [A, B].map(([x, z], i) => { const m = new THREE.Mesh(new THREE.CircleGeometry(1.2, 20), new THREE.MeshBasicMaterial({ color: i ? '#e86a9a' : '#3ab8d8', transparent: true, opacity: 0.25, depthWrite: false, toneMapped: false })); m.rotation.x = -Math.PI / 2; m.position.set(x, gy + 0.03, z); s.root.add(m); return m; });
+    // light pads under the two fighters (over their painted boxes) that pulse on the beat
+    this.spots = [A, B].map(([x, z], i) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 3.2), new THREE.MeshBasicMaterial({ color: i ? '#e86a9a' : '#3ab8d8', transparent: true, opacity: 0.25, depthWrite: false, toneMapped: false })); m.rotation.x = -Math.PI / 2; m.position.set(x, gy + 0.03, z); s.root.add(m); return m; });
     this.dj = s.person('passerby222', [120.5, 150.95, 0, gy + 0.33]); this.dj.play('dance');
     // the fighters
     const sp = (s.lead && s.lead.species) || 'chilichick', pool = RIVAL.filter((id) => SPECIES[id] && id !== sp);
@@ -184,7 +184,7 @@ export default class Rhythm {
 // a lane arrow as a chunky pixel sprite centred on (cx, cy)
 function arrow(ui, cx, cy, lane, col, k = 1) {
   const x = Math.round(cx), y = Math.round(cy), dk = LANES[lane].dk, s = 7;
-  ui.rrect(x - s - 1, y - s - 1, s * 2 + 2, s * 2 + 2, T.ink, 4); ui.rrect(x - s, y - s, s * 2, s * 2, col, 3); ui.rect(x - s + 1, y + s - 2, s * 2 - 2, 1, dk);
+  bevel(ui, x - s - 1, y - s - 1, s * 2 + 2, s * 2 + 2, T.ink, 1); bevel(ui, x - s, y - s, s * 2, s * 2, col, 1); ui.rect(x - s + 2, y + s - 2, s * 2 - 4, 1, dk); ui.rect(x - s + 2, y - s + 1, s * 2 - 4, 1, 'rgba(255,255,255,0.35)');
   const g = ui.g, rot = [Math.PI, Math.PI / 2, -Math.PI / 2, 0][lane];
   g.save(); g.translate(x, y); g.rotate(rot);
   ui.rect(-3, -1, 4, 3, '#fff8ec'); ui.rect(1, -3, 1, 7, '#fff8ec'); ui.rect(2, -2, 1, 5, '#fff8ec'); ui.rect(3, -1, 1, 3, '#fff8ec'); ui.rect(4, 0, 1, 1, '#fff8ec');

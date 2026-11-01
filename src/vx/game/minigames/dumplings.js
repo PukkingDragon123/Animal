@@ -7,7 +7,7 @@
 import * as THREE from '../../../../vendor/three.module.js';
 import { T } from '../../../px/game/ui.js';
 import { SPECIES } from '../../../data/species.js';
-import { V3, clamp, clamp01, lerp, easeOut, boing, fmt, drawTimer, drawScore, drawCombo, keyRow, voxel, WHITE, worldText } from './kit.js';
+import { V3, clamp, clamp01, lerp, easeOut, boing, fmt, drawTimer, drawScore, drawCombo, keyRow, voxel, WHITE, worldText, bevel, tile } from './kit.js';
 
 const ROUND = 75, COOK = 4.2, PERF = [1.0, 1.42], BURN = 2.05;
 const TYPES = [
@@ -259,7 +259,7 @@ export default class Dumplings {
     for (const sl of this.slots) {
       const p = sl.g.position, pr = s.project([p.x, p.y + 0.55, p.z]); if (!pr.vis) continue;
       const cx = Math.round(pr.x), cy = Math.round(pr.y), k = sl.cook, has = sl.type !== null && sl.type !== undefined;
-      ringGauge(ui, cx, cy, 11, has ? clamp01(k / BURN) : 0, has ? (sl.burnt ? '#3a2a22' : k >= PERF[0] && k <= PERF[1] ? '#f0b030' : k > PERF[1] ? '#e2403a' : '#3ab8d8') : '#a89a8c');
+      squareGauge(ui, cx, cy, 11, has ? clamp01(k / BURN) : 0, has ? (sl.burnt ? '#3a2a22' : k >= PERF[0] && k <= PERF[1] ? '#f0b030' : k > PERF[1] ? '#e2403a' : '#3ab8d8') : '#a89a8c');
       ui.keycap(cx - 5, cy - 6, STEAM_KEYS[sl.i].toUpperCase());
       if (has && k >= PERF[0] && k <= PERF[1]) worldText(ui, 'NOW!', cx, cy - 22 - (((s.t * 8) | 0) % 2), { align: 'center', mini: true, color: '#ffe8a0' });
       if (sl.burnt) worldText(ui, 'BURNT', cx, cy - 22, { align: 'center', mini: true, color: '#ffbc94' });
@@ -277,14 +277,16 @@ export default class Dumplings {
     });
     const F = this.fold;
     if (F) {
-      const cx = Math.round(W / 2 + (narrow ? 40 : 30)), cy = H - 44, R = 22, ph = F.t / 1.6;
-      ui.panel(cx - 32, cy - 32, 64, 64, {});
-      for (let i = 0; i < 48; i++) { const a = (i / 48) * Math.PI * 2 - Math.PI / 2; ui.rect(Math.round(cx + Math.cos(a) * R), Math.round(cy + Math.sin(a) * R), 2, 2, T.creamD || '#e5d2b4'); }
-      F.marks.forEach((m, i) => { const a = m * Math.PI * 2 - Math.PI / 2, mx = Math.round(cx + Math.cos(a) * R), my = Math.round(cy + Math.sin(a) * R); ui.rrect(mx - 4, my - 4, 8, 8, F.hits[i] ? '#5cc24a' : '#f0b030', 4); ui.rrect(mx - 2, my - 2, 4, 4, WHITE, 2); });
-      const a = ph * Math.PI * 2 - Math.PI / 2; for (let r = 4; r < R + 6; r += 2) ui.rect(Math.round(cx + Math.cos(a) * r), Math.round(cy + Math.sin(a) * r), 2, 2, T.ink);
-      dumplingIcon(ui, F.type, cx, cy, 2);
-      worldText(ui, 'SPACE: PLEAT', cx, cy + 36, { mini: true, align: 'center' });
-      if (s.live && ui.ptr.pressed && ui.inside(cx - 32, cy - 32, 64, 64)) { this.tapped = 'pleat'; ui.ptr.pressed = false; }
+      // the pleat track: four marks along a strip, the needle sweeps left to right once
+      const tw = 128, x0 = Math.round(W / 2 + (narrow ? 40 : 30) - tw / 2), y0 = H - 66, ph = F.t / 1.6;
+      ui.panel(x0 - 8, y0 - 8, tw + 16, 50, {});
+      dumplingIcon(ui, F.type, x0 + 10, y0 + 11, 1.6);
+      const tx = x0 + 26, tl = tw - 32;
+      ui.rect(tx, y0 + 10, tl, 3, T.creamD || '#e5d2b4');
+      F.marks.forEach((m, i) => { const mx = Math.round(tx + m * tl); tile(ui, mx - 4, y0 + 7, 9, 9, F.hits[i] ? '#5cc24a' : '#f0b030', { cut: 1 }); });
+      const nx = Math.round(tx + clamp01(ph) * tl); ui.rect(nx - 1, y0 + 2, 3, 19, T.ink); ui.rect(nx, y0 + 3, 1, 17, WHITE);
+      ui.text('SPACE: PLEAT ON EACH MARK', x0 + tw / 2, y0 + 27, T.dim, { mini: true, align: 'center' });
+      if (s.live && ui.ptr.pressed && ui.inside(x0 - 8, y0 - 8, tw + 16, 50)) { this.tapped = 'pleat'; ui.ptr.pressed = false; }
     } else if (!narrow) keyRow(ui, W / 2 + 70, H - 26, [['J K L', 'Pull steamer']]);
     if (this.msg) worldText(ui, this.msg.text, W / 2, H * 0.22, { align: 'center' });
   }
@@ -299,15 +301,16 @@ export default class Dumplings {
   debug() { return { t: +this.t.toFixed(1), score: this.score, served: this.served, perfect: this.perfect, lost: this.lost, slots: this.slots.map((x) => x.type === null ? '-' : TYPES[x.type].id + ':' + x.cook.toFixed(2)), queue: this.queue.map((c) => c ? TYPES[c.type].id + (c.arrived ? '' : '…') : '-') }; }
   dispose() { this.over = true; if (this.auntie) this.auntie.play('idle'); }
 }
-// a dumpling as a little pixel picture, centred on (cx, cy)
+// a dumpling as a little stepped-pixel picture (bevelled shapes, never round), centred on (cx, cy)
 export function dumplingIcon(ui, type, cx, cy, k = 1) {
   const T0 = TYPES[type], r = Math.round(5 * k), x = Math.round(cx), y = Math.round(cy);
-  if (type === 0) { ui.rrect(x - r - 1, y - r, r * 2 + 2, r * 2, T.ink, r); ui.rrect(x - r, y - r + 1, r * 2, r * 2 - 2, T0.col, r); ui.rect(x - 1, y - r + 2, 2, 2, T0.dot); ui.rect(x - r + 2, y - 1, 2, 1, '#e5d2b4'); }
-  else if (type === 1) { ui.rrect(x - r - 1, y - r + 2, r * 2 + 2, r * 2 - 3, T.ink, r); ui.rrect(x - r, y - r + 3, r * 2, r * 2 - 5, T0.col, r); for (let i = -r + 2; i < r - 1; i += 2) ui.rect(x + i, y - r + 3, 1, 2, '#e8a090'); ui.rect(x - 1, y, 2, 2, T0.dot); }
+  if (type === 0) { bevel(ui, x - r - 1, y - r, r * 2 + 2, r * 2, T.ink, 1); bevel(ui, x - r, y - r + 1, r * 2, r * 2 - 2, T0.col, 1); ui.rect(x - r + 1, y + r - 3, r * 2 - 2, 1, '#e5d2b4'); ui.rect(x - 1, y - r + 2, 2, 2, T0.dot); }
+  else if (type === 1) { bevel(ui, x - r - 1, y - r + 2, r * 2 + 2, r * 2 - 3, T.ink, 1); bevel(ui, x - r, y - r + 3, r * 2, r * 2 - 5, T0.col, 1); for (let i = -r + 2; i < r - 1; i += 2) ui.rect(x + i, y - r + 3, 1, 2, '#e8a090'); ui.rect(x - 1, y, 2, 2, T0.dot); }
   else { ui.rect(x - r, y - r + 1, r * 2, r * 2 - 1, T.ink); ui.rect(x - r + 1, y - r + 2, r * 2 - 2, r * 2 - 3, T0.col); ui.rect(x - r + 1, y - r + 2, r * 2 - 2, 2, '#f8e070'); ui.rect(x - 1, y - r + 2, 3, 2, T0.dot); }
 }
-// a ring gauge of pixel dots (v 0..1 filled clockwise from the top)
-function ringGauge(ui, cx, cy, R, v, col) {
-  for (let i = 0; i < 28; i++) { const a = (i / 28) * Math.PI * 2 - Math.PI / 2, on = i / 28 < v; ui.rect(Math.round(cx + Math.cos(a) * R) - 1, Math.round(cy + Math.sin(a) * R) - 1, 3, 3, on ? col : 'rgba(43,26,23,0.45)'); }
+// a square cook meter: cells round a bevelled square, filling clockwise from the top middle (v 0..1)
+function squareGauge(ui, cx, cy, R, v, col) {
+  const pts = []; for (let i = 0; i <= R; i += 3) pts.push([i, -R]); for (let j = -R + 3; j <= R; j += 3) pts.push([R, j]); for (let i = R - 3; i >= -R; i -= 3) pts.push([i, R]); for (let j = R - 3; j >= -R; j -= 3) pts.push([-R, j]); for (let i = -R + 3; i < 0; i += 3) pts.push([i, -R]);
+  pts.forEach(([dx, dy], i) => ui.rect(Math.round(cx + dx) - 1, Math.round(cy + dy) - 1, 3, 3, i / pts.length < v ? col : 'rgba(43,26,23,0.45)'));
 }
 void easeOut; void boing; void fmt; void clamp;

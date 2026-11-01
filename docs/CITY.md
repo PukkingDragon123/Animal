@@ -147,6 +147,18 @@ After the districts, `scenes/city.js` runs `dress(C, record)`: drainpipes, windo
 
 New prop kinds: `treeB` (rounder canopy), `sandwich` (A-board), `bags`, `dumpster`, `boxes`, `pot`, `upole` (utility pole), `scooter`, `barrier`, `firebox`. A kind with `noShadow: true` skips the shadow pass. `canopy.cball` / `canopy.leafCol` (voxprops.js) build cheap blocky foliage in 25 cm cells coloured in chunks (~3k triangles per tree instead of ~10k).
 
+### The density pass (`src/vx/city/fill.js`)
+After the dressing pass, `scenes/city.js` runs `fill(C, record)` (`?nofill=1` skips it). It keeps clear of paths, doors, interactables, spots and NPCs, and only places things where the nav grid is open and level:
+- **Storefronts:** produce stands, florists' buckets, clothes rails, café sets under square umbrellas, A-boards and plants either side of shop doors, by district, always leaving a lane on the pavement.
+- **Empty lots and open plazas:** one vignette each (a little market of food stalls, a pocket garden, a café terrace).
+- **Landmarks:** square fountains (Chinatown's square, the park), Tokonmon statues (wharf, downtown, Sunset Row), food stalls on the promenade and in Chinatown, with benches and planters round them.
+- **Murals** on bare ground-floor walls (`murals.js`: creatures, patterns and lettering, never people), and on some of the skirt's blocks.
+- **Laundry** strung across the alleys; **roof gardens**, chairs and strings of lights on flat roofs.
+- **Ground:** weeds in the cracks along wall bases, planter strips where the pavement is deep; **banners** that sway, down the avenues in each district's colours.
+- **Bare rooms** (under a quarter of the floor furnished) get bookcases, sideboards, palms and boxes against their walls.
+- **Atmosphere** (`render/atmos.js`, `?noatmos=1`): leaves and blossom petals drifting round the camera and steam over the stalls and street vents, as square pixel flakes (two draw calls).
+The new kinds are voxel sculpts in `fill_props.js`; build.js bakes them into the tiled static meshes, so the pass adds triangles, not draw calls. **No circles** in the world: covers, grates, fans, panels, puddles and stains are square or blocky pixel shapes, and the night light glints are stepped diamonds.
+
 ## The look up close
 The city is seen from a close third-person camera, so the stage renders it for street level: detailed voxel art and hand-painted pixel textures under physically based light, every asset wearing a crisp black outline.
 - **One context, full resolution:** the stage renders straight into the view canvas (`app.js`), at the canvas size × devicePixelRatio, capped at 2 on desktop and 1.5 on lite / phones, inside a pixel budget (4K desktop, ~2.3 MP lite). `?res=N` caps the long side. The adaptive step-down only acts when the frame rate stays under ~22 fps (never below 70%).

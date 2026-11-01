@@ -55,6 +55,7 @@ export function sprite(key, w, h, paint) {
   let S = sprites.get(key);
   if (S) { sprites.delete(key); sprites.set(key, S); return S; }
   w = Math.max(1, Math.round(w)); h = Math.max(1, Math.round(h));
+  if (!(w < 1e5 && h < 1e5)) return null;
   S = pixelCanvas(w, h, paint);
   if (!S) return null;
   sprites.set(key, S); pix += w * h;

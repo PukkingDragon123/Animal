@@ -99,6 +99,7 @@ export function paintFrame(d, W, H, px, py, w, h, o, k) {
 // line, shadow, shadowA, r, pill, thin, big, brackets
 export function frame(ui, x, y, w, h, o = {}) {
   ui = U(ui); const k = ui.k, X = PX(ui, x), Y = PY(ui, y), Wp = Math.max(4, PX(ui, x + w) - X), Hp = Math.max(4, PY(ui, y + h) - Y);
+  if (!(Wp < 1e5 && Hp < 1e5 && isFinite(X) && isFinite(Y))) return;
   const pad = R(2.5 * k) + 2;
   const key = 'F' + Wp + 'x' + Hp + '|' + k + '|' + (o.r ?? '') + (o.pill ? 'p' : '') + (o.thin ? 't' : '') + (o.big ? 'b' : '') + '|' + (o.fill || '') + '|' + (o.paper && o.paper !== true ? o.paper : '') + '|' + (o.edge || '') + '|' + (o.alpha ?? 1) + '|' + (o.line || '') + '|' + (o.shadow === false ? 0 : o.shadowA ?? 0.36) + (o.brackets === false ? 'n' : '');
   const cv = sprite(key, Wp + pad * 2, Hp + pad * 2, (d, W, H) => paintFrame(d, W, H, pad, pad, Wp, Hp, o, k));

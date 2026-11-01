@@ -15,6 +15,7 @@ import * as THREE from '../../../vendor/three.module.js';
 import { T } from '../../px/game/ui.js';
 import { ITEMS } from '../../data/items.js';
 import { VOICE } from './life.js';
+import { VFX } from './vfx.js';
 
 const V3 = THREE.Vector3, _v = new V3(), _w = new V3();
 const pick = (a) => a[Math.floor(Math.random() * a.length)];
@@ -55,6 +56,7 @@ export class Feel {
   // ================================================================ per frame
   update(dt) {
     this.t += dt;
+    if (this.app.stage && this.app.world && this.app.world.ready) VFX.of(this.app).update(dt);   // the pixel sprite effects (battles and the street)
     for (const e of this.emotes) e.t += dt; this.emotes = this.emotes.filter((e) => e.t < e.dur && e.a && e.a.g);
     for (const p of this.pops) p.t += dt; this.pops = this.pops.filter((p) => p.t < p.dur);
     const app = this.app, w = this.w;
@@ -88,7 +90,7 @@ export class Feel {
     const p = a.g.position;
     if (a === w.player) {
       au.sfx(w.city.stepKind(p), { vol: spd > 3.2 ? 1 : 0.72, pitch: 0.93 + Math.random() * 0.14 });
-      if (spd > 3.6) w.fx.emit('dust', _v.set(p.x, p.y + 0.05, p.z), { n: 1, scale: 0.55, speed: 0.6 });
+      if (spd > 3.6) VFX.of(app).burst('dust', _v.set(p.x, p.y + 0.08, p.z), { scale: 0.45, speed: 0.4 });
       return;
     }
     const me = w.player; if (!me) return;
@@ -146,7 +148,7 @@ export class Feel {
     if ((P.state === 'sniff' || P.state === 'sniffed') && this.pIdle < 0.2) { this.partnerFree(); return; }      // you set off: back to heel
     if (P.state === 'react' || P.state === 'sniffed') { if (this.t > P.until) this.partnerFree(); return; }
     if (P.state === 'sniff') {
-      if (!b.path) { P.state = 'sniffed'; P.until = this.t + 2.4; b.play(clips.cry ? 'cry' : 'idle', { restart: true }); this.emote(b, pick(['?', 'idea', 'note', '...']), 1.8); w.fx.emit('dust', _v.set(bp.x, bp.y + 0.05, bp.z), { n: 3, scale: 0.6 }); }
+      if (!b.path) { P.state = 'sniffed'; P.until = this.t + 2.4; b.play(clips.cry ? 'cry' : 'idle', { restart: true }); this.emote(b, pick(['?', 'idea', 'note', '...']), 1.8); VFX.of(this.app).dust(_v.set(bp.x, bp.y + 0.08, bp.z), 2, 0.5); }
       else if (this.t > P.until) this.partnerFree();
       return;
     }
@@ -361,8 +363,8 @@ export class Feel {
       const s = w.project(hp); if (!s.vis) continue;
       const kin = Math.min(1, e.t / 0.16), kout = Math.min(1, (e.dur - e.t) / 0.2), k = Math.min(kin, kout); if (k <= 0) continue;
       const bob = Math.round(Math.sin(e.t * 7) * 1 - (1 - kin) * 5), bw = 15, bh = 13, x = Math.round(s.x - bw / 2), y = Math.round(s.y - 22 + bob);
-      if (k < 0.5) { ui.rrect(x + 4, y + 3, bw - 8, bh - 6, '#ffffff', 2); continue; }       // popping open
-      ui.rrect(x - 1, y - 1, bw + 2, bh + 2, T.ink, 5); ui.rrect(x, y, bw, bh, '#ffffff', 4);
+      if (k < 0.5) { cham(ui, x + 4, y + 3, bw - 8, bh - 6, 1, '#ffffff'); continue; }       // popping open
+      cham(ui, x - 1, y - 1, bw + 2, bh + 2, 3, T.ink); cham(ui, x, y, bw, bh, 2, '#ffffff');
       const cx = Math.round(s.x); ui.rect(cx - 2, y + bh, 4, 1, '#ffffff'); ui.rect(cx - 1, y + bh + 1, 2, 1, '#ffffff'); ui.px(cx - 3, y + bh, T.ink); ui.px(cx + 2, y + bh, T.ink); ui.px(cx - 2, y + bh + 1, T.ink); ui.px(cx + 1, y + bh + 1, T.ink); ui.px(cx - 1, y + bh + 2, T.ink); ui.px(cx, y + bh + 2, T.ink);
       const [icon, col] = EMOTE[e.kind];
       if (icon) ui.icon(icon, x + 4, y + 3, col);
@@ -378,10 +380,12 @@ export class Feel {
         const k = p.t / p.dur, rise = Math.round(Math.min(1, p.t / 0.35) * 14 + k * 8), pop = p.t < 0.15 ? 1 + (1 - p.t / 0.15) * 0.4 : 1;
         if (k > 0.82 && Math.floor(p.t * 30) % 2) return;
         const y = Math.round(s.y - 18 - rise - i * 16), tw = ui.tw(p.label) + 16, x = Math.round(s.x - tw / 2);
-        ui.rrect(x - 1, y - 1, tw + 2, 13, T.ink, 5); ui.rrect(x, y, tw, 11, pop > 1.05 ? '#fff6d0' : '#2a2238', 4);
+        cham(ui, x - 1, y - 1, tw + 2, 13, 2, T.ink); cham(ui, x, y, tw, 11, 1, pop > 1.05 ? '#fff6d0' : '#2a2238');
         ui.icon(p.icon, x + 3, y + 2, p.color); ui.text(p.label, x + 12, y + 2, p.color, { mini: true });
       });
     }
     void app;
   }
 }
+/** a box with 45° cut corners (c units): the GUI never draws a circle */
+function cham(ui, x, y, w, h, c, col) { for (let i = 0; i < c; i++) { ui.rect(x + c - i, y + i, w - 2 * (c - i), 1, col); ui.rect(x + c - i, y + h - 1 - i, w - 2 * (c - i), 1, col); } ui.rect(x, y + c, w, h - 2 * c, col); }

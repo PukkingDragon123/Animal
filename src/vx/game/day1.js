@@ -260,7 +260,7 @@ async function tram(X) {
   await cin.push(hero, { punch: 8 });
   await app.wait(350);
   const sp = spike.g.position;
-  w.burst('bubble', [sp.x - 2, sp.y + 1.2, sp.z + 0.5], { n: 20, speed: 2.5 }); sfx(app, 'hydro_splash');
+  w.burst('drop', [sp.x - 2, sp.y + 1.2, sp.z + 0.5], { n: 20, speed: 2.5 }); sfx(app, 'hydro_splash');
   await cin.frame(spike, { at: 'chest', rel: -50, dist: 6.2, pitch: 12, dur: 0, off: [0.7, 0, -0.3], focus: 0.24 });
   await app.wait(250);
   w.burst('splash', [sp.x, sp.y + 1.2, sp.z], { n: 26 }); w.burst('drop', [duck.g.position.x, duck.g.position.y + 1.2, duck.g.position.z], { n: 18 });
@@ -492,7 +492,7 @@ async function pier(X) {
   await app.fade(0, 400);
   await app.wait(700);
   const bp = boss.g.position;
-  w.burst('sparkle', [bp.x, bp.y + 1.4, bp.z], { n: 30 }); w.burst('ring', [bp.x, bp.y + 0.2, bp.z], {});
+  w.burst('sparkle', [bp.x, bp.y + 1.4, bp.z], { n: 30 }); if (app.vfx) app.vfx.burst('flash', { x: bp.x, y: bp.y + 0.8, z: bp.z }, { scale: 2.4 });   // a jagged flash (no ring)
   cin.flash('#ffffff', 0.6, 1); cin.shake(0.2, 3); sfx(app, 'sparkle');
   for (let i = 0; i < 20; i++) { const k = 1 - (i / 20) * 0.42; boss.m.group.scale.multiplyScalar(i ? k / (1 - ((i - 1) / 20) * 0.42) : k); await app.wait(30); }
   boss._cinH = null;
